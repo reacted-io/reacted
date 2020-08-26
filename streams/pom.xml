@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+  ~ All rights reserved.
+  ~
+  ~ This source code is licensed under the BSD-style license found in the
+  ~ LICENSE file in the root directory of this source tree.
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>ReActed-Parent</artifactId>
+        <groupId>io.reacted</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <developers>
+        <developer>
+            <id>wireknight</id>
+            <name>Pierre Falda</name>
+            <email>pierre@reacted.io</email>
+            <url>https://www.linkedin.com/in/pierrefalda/</url>
+            <organization>ReActed</organization>
+            <organizationUrl>http://www.reacted.io</organizationUrl>
+            <roles>
+                <role>architect</role>
+                <role>developer</role>
+            </roles>
+        </developer>
+        <developer>
+            <id>nicoara.razvan</id>
+            <name>Razvan Nicoara</name>
+            <email>razvan@reacted.io</email>
+            <url>https://www.linkedin.com/in/razvan-nicoara-059a1440/</url>
+            <organization>ReActed</organization>
+            <organizationUrl>http://www.reacted.io</organizationUrl>
+            <roles>
+                <role>QA Engineer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>reacted-streams</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>7.1.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams-tck-flow</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-pattern</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+    </dependencies>
+</project>

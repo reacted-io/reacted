@@ -1,0 +1,66 @@
+/*
+ * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+package io.reacted.examples.typedsubscription;
+
+import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.reactors.ReActions;
+import io.reacted.core.reactors.ReActor;
+import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.examples.ExampleUtils;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
+
+public class UpdateGeneratorApp {
+    public static void main(String[] args) throws InterruptedException {
+        var reActorSystem = ExampleUtils.getDefaultInitedReActorSystem(UpdateGeneratorApp.class.getSimpleName());
+        //Create a reactor that subscribes for Updates. Whenever a new Update is received by a reactor within
+        //the reactorsystem, the TypeSubscriber reactor will receive a copy of it
+        reActorSystem.spawnReActor(new ReActor() {
+            @NotNull
+            @Override
+            public ReActions getReActions() {
+                return ReActions.newBuilder()
+                                .reAct(Update.class,
+                                       (ctx, update) -> System.out.printf("Unpdates received %d%n",
+                                                                          update.getUpdateId()))
+                                .reAct((ctx, any) -> {
+                                })
+                                .build();
+            }
+
+            @NotNull
+            @Override
+            public ReActorConfig getConfig() {
+                return ReActorConfig.newBuilder()
+                                    .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                                    .setReActorName("PassiveUpdatesListener")
+                                    .setMailBoxProvider(BasicMbox::new)
+                                    .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Update.class))
+                                    .build();
+            }
+        }).orElseSneakyThrow();
+        //We lost the ReActorRef of the listener, we have no way of contacting it directly now
+        IntStream.range(0, 1)
+                 .mapToObj(Update::new)
+                 .forEachOrdered(update -> reActorSystem.broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF,
+                                                                                     update));
+        TimeUnit.SECONDS.sleep(1);
+        //alternatively, we can just send a message to another reactor. The listener will be triggered in the same way
+        IntStream.range(1, 2)
+                 .mapToObj(Update::new)
+                 .forEachOrdered(update -> reActorSystem.getSystemSink().tell(ReActorRef.NO_REACTOR_REF, update));
+        TimeUnit.SECONDS.sleep(1);
+        reActorSystem.shutDown();
+    }
+}
