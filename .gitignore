@@ -1,5 +1,5 @@
 *.iml
 target
 .idea/
-/.idea/
-/.m2/
+.m2/
+/release.properties
