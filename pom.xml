@@ -76,7 +76,7 @@
         <nexus.staging.plugin.version>1.6.8</nexus.staging.plugin.version>
         <maven.source.plugin.version>3.0.1</maven.source.plugin.version>
         <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
-        <maven.javadoc.plugin.version>3.2.1</maven.javadoc.plugin.version>
+        <maven.javadoc.plugin.version>3.2.0</maven.javadoc.plugin.version>
         <asm.version>7.3.1</asm.version>
         <slf4j-api.version>2.0.0-alpha1</slf4j-api.version>
         <slf4j-simple.version>2.0.0-alpha1</slf4j-simple.version>
