@@ -20,6 +20,7 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,9 +78,8 @@ class LoopbackDriverTest {
                                             .toCompletableFuture()
                                             .get()
                                             .isSuccess());
-
         // as we have a dispatcher the message was dispatched & it cannot be found in destination mbox
-        Assertions.assertEquals(1, MagicTestReActor.RECEIVED.intValue());
+        Awaitility.await().until(() -> MagicTestReActor.RECEIVED.sum() == 1);
     }
 
     @Test
