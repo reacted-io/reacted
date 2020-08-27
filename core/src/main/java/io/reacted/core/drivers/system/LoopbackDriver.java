@@ -108,7 +108,7 @@ public class LoopbackDriver extends ReActorSystemDriver {
     public CompletionStage<Try<Void>> cleanDriverLoop() { return localDriver.cleanDriverLoop(); }
 
     @Override
-    public final ChannelId getChannelId() { return ChannelId.NO_CHANNEL_ID; }
+    public final ChannelId getChannelId() { return localDriver.getChannelId(); }
 
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
