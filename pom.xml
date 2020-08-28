@@ -15,6 +15,20 @@
     <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
 
+    <name>ReActed</name>
+    <description>
+        Java actor framework for building replayable microservices based applications in a distributed and
+        heterogeneous environment
+    </description>
+    <url>http://www.reacted.io</url>
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
     <developers>
         <developer>
             <id>wireknight</id>
