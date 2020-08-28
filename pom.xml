@@ -110,7 +110,6 @@
         <module>core</module>
         <module>streams</module>
         <module>drivers</module>
-        <module>examples</module>
     </modules>
     <dependencyManagement>
         <dependencies>
