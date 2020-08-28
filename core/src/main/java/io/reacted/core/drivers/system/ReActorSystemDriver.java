@@ -69,11 +69,11 @@ public abstract class ReActorSystemDriver {
      * @param src source of the message
      * @param dst destination of the message
      * @param message payload
-     * @param <PayloadT>> upperbound of the payload
      * @return a completion stage that is going to be completed on error or when the message is successfully delivered
      *         to the target mailbox
      */
-    abstract public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> tell(ReActorRef src, ReActorRef dst,
+    abstract public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> tell(ReActorRef src,
+                                                                                              ReActorRef dst,
                                                                                               AckingPolicy ackingPolicy,
                                                                                               PayloadT message);
 

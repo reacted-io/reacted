@@ -92,7 +92,7 @@ public class ReActorSystemConfig {
          * This specifies how bit it is
          *
          * @param msgFanOutPoolSize numbers of threads that should be used.
-         *                          1 <= Threads <= 100
+         *                          Range 1 - 200
          */
         public Builder setMsgFanOutPoolSize(int msgFanOutPoolSize) {
             this.msgFanOutPoolSize = msgFanOutPoolSize;
