@@ -146,7 +146,8 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>${project.build.directory}/generated-sources</source>
+                                <source>${project.build.directory}/generated-sources/protobuf/grpc-java</source>
+                                <source>${project.build.directory}/generated-sources/protobuf/java</source>
                             </sources>
                         </configuration>
                     </execution>
