@@ -49,7 +49,7 @@ public class Backpressuring implements MailBox, AutoCloseable {
      *                            message to a saturated mailbox. 0 means immediate fail is delivery
      *                            is not possible
      * @param bufferSize          how many updates we can cache befor beginning to backpressure new updates.
-     *                            1 <= bufferSize <= Integer.MAX_VALUE
+     *                            Must be a positive integer
      * @param requestOnStartup    how main messages should be automatically made deliverable on startup.
      *                            Same semantic of Java Flow Subscription.request
      * @param asyncExecutor       Executor used to perform the delivery attempt
