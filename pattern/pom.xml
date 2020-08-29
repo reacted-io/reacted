@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+  ~ All rights reserved.
+  ~
+  ~ This source code is licensed under the BSD-style license found in the
+  ~ LICENSE file in the root directory of this source tree.
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>reacted-all</artifactId>
+        <groupId>io.reacted</groupId>
+        <version>1.1-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <developers>
+        <developer>
+            <id>wireknight</id>
+            <name>Pierre Falda</name>
+            <email>pierre@reacted.io</email>
+            <url>https://www.linkedin.com/in/pierrefalda/</url>
+            <organization>ReActed</organization>
+            <organizationUrl>http://www.reacted.io</organizationUrl>
+            <roles>
+                <role>architect</role>
+                <role>developer</role>
+            </roles>
+        </developer>
+        <developer>
+            <id>nicoara.razvan</id>
+            <name>Razvan Nicoara</name>
+            <email>razvan@reacted.io</email>
+            <url>https://www.linkedin.com/in/razvan-nicoara-059a1440/</url>
+            <organization>ReActed</organization>
+            <organizationUrl>http://www.reacted.io</organizationUrl>
+            <roles>
+                <role>QA Engineer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <artifactId>reacted-pattern</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

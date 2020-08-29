@@ -1,0 +1,14 @@
+syntax = "proto3";
+option java_outer_classname = "ReActedLinkProtocol";
+package io.reacted.drivers.channels.grpc;
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+
+service ReActedLink {
+    rpc Link(stream ReActedDatagram) returns (google.protobuf.Empty) {}
+}
+
+message ReActedDatagram {
+    bytes binaryPayload = 1;
+}

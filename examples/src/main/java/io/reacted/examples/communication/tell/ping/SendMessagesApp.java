@@ -1,0 +1,50 @@
+/*
+ * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+package io.reacted.examples.communication.tell.ping;
+
+import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.examples.ExampleUtils;
+
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
+
+class SendMessagesApp {
+    public static void main(String[] args) throws InterruptedException {
+        //ReActor system configuration
+        var simpleReActorSystem = ExampleUtils.getDefaultInitedReActorSystem(SendMessagesApp.class.getSimpleName());
+
+        var pingDelim = ":";
+        int messagesToSend = 20;
+        //Body/state of the reactor
+        var newReActorInstance = new SimpleTestReActor(pingDelim, messagesToSend);
+        //Reference of the reactor within the ReActorSystem (cluster)
+        var newReActorReference = simpleReActorSystem.spawnReActor(newReActorInstance.getReActions(),
+                                                                   newReActorInstance.getConfig())
+                                                     .orElse(ReActorRef.NO_REACTOR_REF, error -> {
+                                                         error.printStackTrace();
+                                                         simpleReActorSystem.shutDown();
+                                                     });
+        //Let's ping our new reactor
+        newReActorReference.tell(ReActorRef.NO_REACTOR_REF, new PreparationRequest())
+                           .toCompletableFuture()
+                           .join()
+                           .filter(DeliveryStatus::isDelivered)
+                           .ifSuccessOrElse(success -> System.out.println("Preparation request has been delivered"),
+                                            error -> System.err.println("Error communicating with reactor"));
+
+        IntStream.range(0, messagesToSend)
+                 .parallel()
+                 //Tell and aTell are functionally the same if we do not care about the return value
+                 //aTell brings more overhead because of the acking system
+                 .forEach(msgNum -> newReActorReference.aTell("Ping Request" + pingDelim + msgNum));
+        TimeUnit.SECONDS.sleep(1);
+        simpleReActorSystem.shutDown();
+    }
+}
