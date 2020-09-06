@@ -7,6 +7,7 @@ import io.reacted.patterns.Try;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 
 public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.DeliveryRequest> {
@@ -14,6 +15,7 @@ public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringM
     private final Function<Message, DeliveryStatus> realDeliveryCallback;
     private final Executor onErroAsyncExecutor;
     private final SubmissionPublisher<BackpressuringMbox.DeliveryRequest> backpressurer;
+    private final LongAdder preInitializationRequests;
     private volatile boolean isCompleted;
     private volatile Flow.Subscription subscription;
 
@@ -25,13 +27,18 @@ public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringM
         this.realDeliveryCallback = realDeliveryCallback;
         this.onErroAsyncExecutor = onErrorAsyncExecutor;
         this.backpressurer = backpressurer;
+        this.preInitializationRequests = new LongAdder();
     }
 
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         this.subscription = subscription;
-        if (requestOnStartup > 0) {
-            subscription.request(requestOnStartup);
+        long requests = this.requestOnStartup;
+        synchronized (this.preInitializationRequests) {
+            requests += this.preInitializationRequests.sum();
+        }
+        if (requests > 0) {
+            subscription.request(requests);
         }
     }
 
@@ -60,6 +67,14 @@ public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringM
     }
 
     public void request(long elementsToRequest) {
+        if (this.subscription == null) {
+            synchronized (this.preInitializationRequests) {
+                if (this.subscription == null) {
+                    this.preInitializationRequests.add(elementsToRequest);
+                    return;
+                }
+            }
+        }
         this.subscription.request(elementsToRequest);
     }
 }
