@@ -37,7 +37,7 @@ public class DeadLetter {
 
     private  <PayloadT extends Serializable>
     void onMessage(ReActorContext reActorContext, PayloadT message) {
-        LOGGER.info("{} of {}: {}", getClass().getSimpleName(),
+        LOGGER.debug("{} of {}: {}", getClass().getSimpleName(),
                     reActorContext.getReActorSystem()
                                   .getLocalReActorSystemId()
                                   .getReActorSystemName(),

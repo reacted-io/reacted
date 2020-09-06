@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 , <Razvan Nicoara> [ razvan@reacted.io ]
+ * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -53,8 +53,8 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     public Flow.Publisher<Long> createFlowPublisher(long l) {
         var publisher = new ReactedSubmissionPublisher<Long>(this.localReActorSystem,
                                                              "TckFeed-" + counter.getAndIncrement());
-        asyncPublishMessages(publisher, l);
         this.generatedFlows.add(publisher);
+        asyncPublishMessages(publisher, l);
         return publisher;
     }
 
@@ -64,8 +64,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
                                                              "FailedTckFeed-" + counter.getAndIncrement());
         publisher.close();
         Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(20))
-           .ifError(error -> Thread.currentThread()
-                                   .interrupt());
+           .ifError(error -> Thread.currentThread().interrupt());
         this.generatedFlows.add(publisher);
         return publisher;
     }
@@ -101,11 +100,10 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     private void asyncPublishMessages(ReactedSubmissionPublisher<Long> publisher,
                                       long messagesNum) {
         this.submitterThread.submit(() -> {
-            Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(50));
+            Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(150));
             for(long cycle = 0; cycle < messagesNum && !Thread.currentThread().isInterrupted(); cycle++) {
-                publisher.submit(cycle).toCompletableFuture().join();
+                publisher.submit(cycle);
             }
-            Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(20));
             publisher.close();
         });
     }

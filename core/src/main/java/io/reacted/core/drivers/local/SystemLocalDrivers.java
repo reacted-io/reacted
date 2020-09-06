@@ -179,9 +179,10 @@ public final class SystemLocalDrivers {
             @Override
             public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
                 synchronized (logFile) {
-                    logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t PAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+                    logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
                                    message.getSender().getReActorId().getReActorName(),
                                    message.getDestination().getReActorId().getReActorName(),
+                                   message.getSequenceNumber(),
                                    message.getPayload().getClass().toString(),
                                    message.getPayload().toString());
                     logFile.flush();
@@ -193,9 +194,10 @@ public final class SystemLocalDrivers {
             public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
                 synchronized (logFile) {
 
-                    logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t PAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+                    logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
                                    message.getSender().getReActorId().getReActorName(),
                                    message.getDestination().getReActorId().getReActorName(),
+                                   message.getSequenceNumber(),
                                    message.getPayload().getClass().toString(),
                                    message.getPayload().toString());
                     logFile.flush();

@@ -10,10 +10,9 @@ package io.reacted.examples.streams;
 
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher;
-import org.awaitility.Awaitility;
 
-import java.time.Duration;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.concurrent.Flow;
@@ -22,39 +21,34 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.IntStream;
 
 @NonNullByDefault
-class StreamToMultipleSubscribersApp {
+class BestEffortConsumersApp {
 
     public static void main(String[] args) throws InterruptedException {
-        var reactorSystem =
-                ExampleUtils.getDefaultInitedReActorSystem(StreamToMultipleSubscribersApp.class.getSimpleName());
+        var reactorSystem = ExampleUtils.getDefaultInitedReActorSystem(BestEffortConsumersApp.class.getSimpleName());
         var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem,
-                                                                      StreamToMultipleSubscribersApp.class.getSimpleName() + "-Publisher");
+                                                                      BestEffortConsumersApp.class.getSimpleName() +
+                                                                      "-Publisher");
         var subscriber = new TestSubscriber<>(-1, Integer::compareTo);
-        var subscriber2 = new TestSubscriber<>(-1, Integer::compareTo);
-        var subscriber3 = new TestSubscriber<>(-1, Integer::compareTo);
-        //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber, Duration.ofNanos(Long.MAX_VALUE));
-        //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber2, Duration.ofNanos(Long.MAX_VALUE));
         //Best effort subscriber. Updates from this may be lost
-        streamPublisher.subscribe(subscriber3);
+        streamPublisher.subscribe(subscriber, 10);
         //We need to give the time to the subscription to propagate till the producer
         TimeUnit.SECONDS.sleep(1);
-        var msgNum = 1_000_000;
+        var msgNum = 1_000_000_000;
         //Produce a stream of updates
         IntStream.range(0, msgNum)
                  //Propagate them to every consumer, regardless of the location
-                 //Reliable subscribers will receive all the updates, best effort may loose something
-                 //NOTE: in this example we are not slowing down the producer if a consumer cannot
-                 //keep up with the update speed. Delivery guarantee is still valid, but pending
-                 //updates will keep stacking in memory
                  .forEachOrdered(streamPublisher::submit);
         streamPublisher.close();
-        Awaitility.await()
-                  .atMost(Duration.ofMinutes(20))
-                  .until(() -> subscriber.getReceivedUpdates() == msgNum && subscriber2.getReceivedUpdates() == msgNum);
-        TimeUnit.SECONDS.sleep(5);
-        System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber3.getReceivedUpdates(), msgNum);
+        //NOTE: you can join or triggering the new update once the previous one has been delivered
+        do {
+            long updates = subscriber.getReceivedUpdates();
+            TimeUnit.SECONDS.sleep(1);
+            long updates2 = subscriber.getReceivedUpdates();
+            if (updates == updates2) {
+                break;
+            }
+        }while (true);
+        System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber.getReceivedUpdates(), msgNum);
         reactorSystem.shutDown();
     }
 
@@ -82,11 +76,13 @@ class StreamToMultipleSubscribersApp {
         public void onNext(PayloadT item) {
             if (!this.isTerminated) {
                 if (this.payloadTComparator.compare(this.lastItem, item) >= 0) {
-                    throw new IllegalStateException("Unordered sequence detected");
+                    Try.ofRunnable(() -> { throw new IllegalStateException("Unordered sequence detected"); })
+                       .peekFailure(Throwable::printStackTrace)
+                       .orElseSneakyThrow();
                 }
                 this.lastItem = item;
                 this.updatesReceived.increment();
-                this.subscription.request(1);
+                subscription.request(1);
             }
         }
 

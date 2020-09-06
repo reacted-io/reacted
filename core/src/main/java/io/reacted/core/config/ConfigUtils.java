@@ -55,4 +55,13 @@ public final class ConfigUtils {
         }
         throw onError.get();
     }
+
+    public static <ReturnT, OnErrorT extends RuntimeException>  ReturnT
+    requiredCondition(ReturnT element, Predicate<ReturnT> controlPredicate,
+                      Supplier<OnErrorT> onControlPredicateFailure) {
+        if (controlPredicate.negate().test(element)) {
+            throw onControlPredicateFailure.get();
+        }
+        return element;
+    }
 }
