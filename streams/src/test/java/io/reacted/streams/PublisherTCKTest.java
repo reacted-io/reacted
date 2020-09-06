@@ -36,7 +36,6 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     private final BlockingQueue<ReactedSubmissionPublisher<Long>> generatedFlows = new LinkedBlockingDeque<>();
     private volatile ExecutorService submitterThread;
 
-
     public PublisherTCKTest() {
         super(new TestEnvironment(250, 250, false));
         var rasCfg = ReActorSystemConfig.newBuilder()

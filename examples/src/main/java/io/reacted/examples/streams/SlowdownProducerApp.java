@@ -8,6 +8,7 @@
 
 package io.reacted.examples.streams;
 
+import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
@@ -35,9 +36,9 @@ class SlowdownProducerApp {
         var subscriber2 = new TestSubscriber<>(-1, Integer::compareTo);
         var subscriber3 = new TestSubscriber<>(-1, Integer::compareTo);
         //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber, Duration.ofNanos(Long.MAX_VALUE));
+        streamPublisher.subscribe(subscriber, BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT);
         //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber2, Duration.ofNanos(Long.MAX_VALUE));
+        streamPublisher.subscribe(subscriber2, BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT);
         //Best effort subscriber. Updates from this may be lost
         streamPublisher.subscribe(subscriber3);
         //We need to give the time to the subscription to propagate till the producer

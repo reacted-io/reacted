@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 @NonNullByDefault
 public class BackpressuringMbox implements MailBox, AutoCloseable {
     public static final Duration BEST_EFFORT_TIMEOUT = Duration.ofNanos(0);
+    public static final Duration RELIABLE_DELIVERY_TIMEOUT = Duration.ofNanos(Long.MAX_VALUE);
     private final Duration backpressureTimeout;
     private final MailBox realMbox;
     @Nullable
@@ -91,7 +92,7 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
             return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
         }
         return reliableDelivery(message, shouldNotBeBackPressured(payloadType)
-                                         ? Duration.ofNanos(Long.MAX_VALUE)
+                                         ? RELIABLE_DELIVERY_TIMEOUT
                                          : backpressureTimeout);
     }
 

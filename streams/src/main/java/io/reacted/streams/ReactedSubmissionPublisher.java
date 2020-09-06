@@ -281,8 +281,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param bufferSize           Consumer buffer. Updates messages exceeding this buffer size will cause
      *                             a drop or a wait signal for the producer, according to the subscription type
      * @param backpressureTimeout  For how long the subscription should attempt to deliver an update
-     *                             to the subscriber. 0 means don't wait (BEST EFFORT) otherwise a submission result
-     *                             won't be completed unless the message is delivered or an error is signaled
+     *                             to the subscriber. 
      * @param subscriberName       This name must be unique and if deterministic it allows cold replay
      */
     public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, Executor asyncRetrierExecutor,

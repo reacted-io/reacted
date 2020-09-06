@@ -8,6 +8,7 @@
 
 package io.reacted.examples.streams;
 
+import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
@@ -16,6 +17,8 @@ import org.awaitility.Awaitility;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
@@ -33,9 +36,9 @@ class StreamToMultipleSubscribersApp {
         var subscriber2 = new TestSubscriber<>(-1, Integer::compareTo);
         var subscriber3 = new TestSubscriber<>(-1, Integer::compareTo);
         //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber, Duration.ofNanos(Long.MAX_VALUE));
+        streamPublisher.subscribe(subscriber, BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT);
         //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber2, Duration.ofNanos(Long.MAX_VALUE));
+        streamPublisher.subscribe(subscriber2, BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT);
         //Best effort subscriber. Updates from this may be lost
         streamPublisher.subscribe(subscriber3);
         //We need to give the time to the subscription to propagate till the producer
@@ -48,7 +51,9 @@ class StreamToMultipleSubscribersApp {
                  //NOTE: in this example we are not slowing down the producer if a consumer cannot
                  //keep up with the update speed. Delivery guarantee is still valid, but pending
                  //updates will keep stacking in memory
-                 .forEachOrdered(streamPublisher::submit);
+                 .mapToObj(streamPublisher::backpressurableSubmit)
+                 .map(CompletionStage::toCompletableFuture)
+                 .forEachOrdered(CompletableFuture::join);
         streamPublisher.close();
         Awaitility.await()
                   .atMost(Duration.ofMinutes(20))
