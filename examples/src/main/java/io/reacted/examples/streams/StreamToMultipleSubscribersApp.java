@@ -17,8 +17,6 @@ import org.awaitility.Awaitility;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
@@ -51,9 +49,8 @@ class StreamToMultipleSubscribersApp {
                  //NOTE: in this example we are not slowing down the producer if a consumer cannot
                  //keep up with the update speed. Delivery guarantee is still valid, but pending
                  //updates will keep stacking in memory
-                 .mapToObj(streamPublisher::backpressurableSubmit)
-                 .map(CompletionStage::toCompletableFuture)
-                 .forEachOrdered(CompletableFuture::join);
+                 .forEachOrdered(streamPublisher::submit);
+
         streamPublisher.close();
         Awaitility.await()
                   .atMost(Duration.ofMinutes(20))

@@ -113,11 +113,18 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
      * in the mailbox
      */
     private CompletableFuture<Try<DeliveryStatus>> reliableDelivery(Message message, Duration backpressureTimeout) {
+        System.out.println("Request for " + message.getPayload());
         CompletableFuture<Try<DeliveryStatus>> trigger = new CompletableFuture<>();
-        Try.of(() -> this.backpressurer.offer(new DeliveryRequest(message, trigger),
-                                              backpressureTimeout.toNanos(), TimeUnit.NANOSECONDS,
-                                              BackpressuringMbox::onBackPressure))
-           .ifError(error -> trigger.complete(Try.ofFailure(error)));
+        try {
+            var waitTime = this.backpressurer.offer(new DeliveryRequest(message, trigger),
+                                                         backpressureTimeout.toNanos(), TimeUnit.NANOSECONDS,
+                                                         BackpressuringMbox::onBackPressure);
+            if (waitTime < 0) {
+                trigger.complete(Try.ofSuccess(DeliveryStatus.BACKPRESSURED));
+            }
+        } catch (Throwable anyError) {
+           trigger.complete(Try.ofFailure(anyError));
+        }
         return trigger;
     }
 
@@ -131,6 +138,7 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
 
     private static boolean onBackPressure(Flow.Subscriber<? super DeliveryRequest> subscriber,
                                           DeliveryRequest request) {
+        System.out.println("BP");
         request.pendingTrigger.complete(Try.ofSuccess(DeliveryStatus.BACKPRESSURED));
         return false;
     }

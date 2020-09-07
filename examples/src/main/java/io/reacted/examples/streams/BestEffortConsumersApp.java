@@ -30,10 +30,10 @@ class BestEffortConsumersApp {
                                                                       "-Publisher");
         var subscriber = new TestSubscriber<>(-1, Integer::compareTo);
         //Best effort subscriber. Updates from this may be lost
-        streamPublisher.subscribe(subscriber, 10);
+        streamPublisher.subscribe(subscriber);
         //We need to give the time to the subscription to propagate till the producer
         TimeUnit.SECONDS.sleep(1);
-        var msgNum = 1_000_000_000;
+        var msgNum = 1_000_000;
         //Produce a stream of updates
         IntStream.range(0, msgNum)
                  //Propagate them to every consumer, regardless of the location

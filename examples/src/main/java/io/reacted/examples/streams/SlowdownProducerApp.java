@@ -40,7 +40,7 @@ class SlowdownProducerApp {
         //Reliable (no messages lost) subscription
         streamPublisher.subscribe(subscriber2, BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT);
         //Best effort subscriber. Updates from this may be lost
-        streamPublisher.subscribe(subscriber3);
+        //streamPublisher.subscribe(subscriber3);
         //We need to give the time to the subscription to propagate till the producer
         TimeUnit.SECONDS.sleep(1);
         var msgNum = 1_000_000;
@@ -88,6 +88,7 @@ class SlowdownProducerApp {
                 }
                 this.lastItem = item;
                 this.updatesReceived.increment();
+                System.out.println("Please send 1 more after " + item);
                 this.subscription.request(1);
             }
         }

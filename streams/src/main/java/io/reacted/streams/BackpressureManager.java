@@ -30,8 +30,8 @@ import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.function.Supplier;
 
@@ -39,9 +39,8 @@ import java.util.function.Supplier;
 public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription, AutoCloseable {
     private final Flow.Subscriber<? super PayloadT> subscriber;
     private final ReActorRef feedGate;
-    private final Executor subscriberExecutor;
+    private final ExecutorService subscriberExecutor;
     private final BackpressuringMbox backpressuredMailbox;
-    private CompletableFuture<Void> executionChainer = CompletableFuture.completedFuture(null);
     @Nullable
     private volatile ReActorContext backpressurerCtx;
 
@@ -51,18 +50,17 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
      *
      * @param subscriber subscriber body
      * @param feedGate source of data for the managed stream
-     * @param subscriberExecutor thread used to execute the actions of the subscriber body
      * @param bufferSize subscriber data buffer
      * @param backpressureTimeout give up timeout on publication attempt
      */
-    BackpressureManager(Flow.Subscriber<? super PayloadT> subscriber, ReActorRef feedGate,
-                        Executor subscriberExecutor, int bufferSize, Duration backpressureTimeout) {
+    BackpressureManager(Flow.Subscriber<? super PayloadT> subscriber, ReActorRef feedGate, int bufferSize,
+                        Duration backpressureTimeout) {
         this.subscriber = Objects.requireNonNull(subscriber);
         this.feedGate = Objects.requireNonNull(feedGate);
-        this.subscriberExecutor = Objects.requireNonNull(subscriberExecutor);
+        this.subscriberExecutor = Executors.newSingleThreadExecutor();
         this.backpressuredMailbox = new BackpressuringMbox(new BoundedBasicMbox(bufferSize),
                                                            Objects.requireNonNull(backpressureTimeout),
-                                                           bufferSize, 0, subscriberExecutor,
+                                                           bufferSize, 0, this.subscriberExecutor,
                                                            Set.of(ReActorInit.class, ReActorStop.class,
                                                                   SubscriptionRequest.class, SubscriptionReply.class,
                                                                   UnsubscriptionRequest.class, SubscriberError.class),
@@ -72,7 +70,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     @Override
     public void request(long elements) {
         if (elements <= 0) {
-            errorTermination(Objects.requireNonNull(backpressurerCtx),
+            errorTermination(Objects.requireNonNull(this.backpressurerCtx),
                              new IllegalArgumentException("non-positive subscription request"), this.subscriber);
         } else {
             if (this.backpressurerCtx != null) {
@@ -110,33 +108,27 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
 
     private void forwarder(ReActorContext raCtx, Object anyPayload) {
         //noinspection unchecked
-        this.executionChainer = this.executionChainer.thenAcceptAsync(voidRet -> Try.ofRunnable(() -> this.subscriber.onNext((PayloadT) anyPayload))
-                                                                                    .ifError(error -> errorTermination(raCtx, error, this.subscriber)),
-                                                                      subscriberExecutor);
+        this.subscriberExecutor.execute(() -> Try.ofRunnable(() -> this.subscriber.onNext((PayloadT) anyPayload))
+                                                 .ifError(error -> errorTermination(raCtx, error, this.subscriber)));
     }
 
     private void onSubscriptionReply(ReActorContext raCtx, SubscriptionReply payload) {
+        Runnable task;
         if (payload.isSuccess()) {
-            executionChainer =
-                    executionChainer.thenAcceptAsync(voidRet -> Try.ofRunnable(() -> this.subscriber.onSubscribe(this))
-                                                                   .ifError(error -> errorTermination(raCtx, error, this.subscriber)),
-                                                     subscriberExecutor);
+            task = () -> Try.ofRunnable(() -> this.subscriber.onSubscribe(this))
+                            .ifError(error -> errorTermination(raCtx, error, this.subscriber));
         } else {
-            executionChainer = executionChainer.thenAcceptAsync(voidRet -> errorTermination(raCtx,
-                                                                                            new RuntimeException(
-                                                                                                    "RemoteRegistrationException"), this.subscriber));
+            task = () -> errorTermination(raCtx, new RuntimeException("RemoteRegistrationException"), this.subscriber);
         }
+        this.subscriberExecutor.execute(task);
     }
 
     private void onSubscriberError(ReActorContext raCtx, SubscriberError error) {
-        executionChainer = executionChainer.thenAcceptAsync(voidRet -> errorTermination(raCtx, error.getError(),
-                                                                                        this.subscriber),
-                                                            subscriberExecutor);
+        this.subscriberExecutor.execute(() -> errorTermination(raCtx, error.getError(), this.subscriber));
     }
 
     private void onSubscriberComplete(ReActorContext raCtx, SubscriberComplete subscriberComplete) {
-        executionChainer = executionChainer.thenAcceptAsync(voidRet -> completeTermination(raCtx, this.subscriber),
-                                                            subscriberExecutor);
+        this.subscriberExecutor.execute(() -> completeTermination(raCtx, this.subscriber));
 
     }
 
@@ -154,6 +146,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
         this.backpressuredMailbox.close();
+        this.subscriberExecutor.shutdown();
     }
 
     private void completeTermination(ReActorContext raCtx, Flow.Subscriber<? super PayloadT> localSubscriber) {
