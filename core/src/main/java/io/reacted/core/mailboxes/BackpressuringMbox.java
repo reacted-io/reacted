@@ -22,6 +22,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.TimeUnit;
@@ -38,6 +40,7 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
     private final BackpressuringSubscriber reliableBackpressuringSubscriber;
     private final Set<Class<? extends Serializable>> notDelayed;
     private final Set<Class<? extends Serializable>> notBackpressurable;
+    private final ExecutorService asyncSerialExecutor;
     /**
      * BackpressuringMbox wrapper for any other mailbox type.
      *
@@ -59,9 +62,11 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
         this.realMbox = Objects.requireNonNull(realMbox);
         this.notDelayed = Objects.requireNonNull(notDelayed);
         this.notBackpressurable = Objects.requireNonNull(notBackpressurable);
-        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(asyncExecutor), bufferSize);
+        this.asyncSerialExecutor = Executors.newSingleThreadExecutor();
+        this.backpressurer = new SubmissionPublisher<>(asyncExecutor, bufferSize);
         this.reliableBackpressuringSubscriber = new BackpressuringSubscriber(requestOnStartup, realMbox::deliver,
-                                                                             asyncExecutor, this.backpressurer);
+                                                                             Objects.requireNonNull(asyncExecutor),
+                                                                             this.backpressurer);
         this.backpressurer.subscribe(reliableBackpressuringSubscriber);
     }
 
@@ -91,9 +96,16 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
         if (shouldNotBeDelayed(payloadType)) {
             return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
         }
-        return reliableDelivery(message, shouldNotBeBackPressured(payloadType)
-                                         ? RELIABLE_DELIVERY_TIMEOUT
-                                         : backpressureTimeout);
+        CompletableFuture<Try<DeliveryStatus>> trigger = new CompletableFuture<>();
+        var deliveryFailureTimeout = shouldNotBeBackPressured(payloadType)
+                                     ? RELIABLE_DELIVERY_TIMEOUT
+                                     : backpressureTimeout;
+        if (deliveryFailureTimeout.equals(BEST_EFFORT_TIMEOUT)) {
+            reliableDelivery(message, deliveryFailureTimeout , trigger);
+        } else {
+            this.asyncSerialExecutor.execute(() -> reliableDelivery(message, deliveryFailureTimeout, trigger));
+        }
+        return trigger;
     }
 
     public void request(long messagesNum) {
@@ -105,6 +117,7 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
         if (this.backpressurer != null) {
             this.backpressurer.close();
         }
+        this.asyncSerialExecutor.shutdownNow();
     }
 
     /*
@@ -112,9 +125,8 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
      * returns a completable future that will be completed with the result of the actual delivery of the message
      * in the mailbox
      */
-    private CompletableFuture<Try<DeliveryStatus>> reliableDelivery(Message message, Duration backpressureTimeout) {
-        System.out.println("Request for " + message.getPayload());
-        CompletableFuture<Try<DeliveryStatus>> trigger = new CompletableFuture<>();
+    private void reliableDelivery(Message message, Duration backpressureTimeout,
+                             CompletableFuture<Try<DeliveryStatus>> trigger) {
         try {
             var waitTime = this.backpressurer.offer(new DeliveryRequest(message, trigger),
                                                          backpressureTimeout.toNanos(), TimeUnit.NANOSECONDS,
@@ -125,7 +137,6 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
         } catch (Throwable anyError) {
            trigger.complete(Try.ofFailure(anyError));
         }
-        return trigger;
     }
 
     private boolean shouldNotBeDelayed(Class<? extends Serializable> payloadType) {
@@ -138,7 +149,6 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
 
     private static boolean onBackPressure(Flow.Subscriber<? super DeliveryRequest> subscriber,
                                           DeliveryRequest request) {
-        System.out.println("BP");
         request.pendingTrigger.complete(Try.ofSuccess(DeliveryStatus.BACKPRESSURED));
         return false;
     }

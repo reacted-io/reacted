@@ -7,7 +7,6 @@ import io.reacted.patterns.Try;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 
@@ -17,7 +16,6 @@ public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringM
     private final Executor onErroAsyncExecutor;
     private final SubmissionPublisher<BackpressuringMbox.DeliveryRequest> backpressurer;
     private final LongAdder preInitializationRequests;
-    private final AtomicLong elem = new AtomicLong(0);
     private volatile boolean isCompleted;
     private volatile Flow.Subscription subscription;
 
@@ -46,12 +44,11 @@ public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringM
 
     @Override
     public void onNext(BackpressuringMbox.DeliveryRequest item) {
-        System.out.println("On Next " + elem.getAndIncrement());
         var deliveryResult = this.isCompleted
                 ? Try.ofSuccess(DeliveryStatus.NOT_DELIVERED)
-                : Try.of(() -> realDeliveryCallback.apply(item.deliveryPayload))
-                     .peekFailure(error -> onErroAsyncExecutor.execute(() -> onError(error)));
+                : Try.of(() -> realDeliveryCallback.apply(item.deliveryPayload));
         item.pendingTrigger.complete(deliveryResult);
+        deliveryResult.ifError(this::onError);
     }
 
     @Override

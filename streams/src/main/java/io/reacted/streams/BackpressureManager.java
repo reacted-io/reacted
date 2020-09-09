@@ -124,6 +124,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     }
 
     private void onSubscriberError(ReActorContext raCtx, SubscriberError error) {
+        System.out.println("Eception");
         this.subscriberExecutor.execute(() -> errorTermination(raCtx, error.getError(), this.subscriber));
     }
 

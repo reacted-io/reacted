@@ -42,7 +42,7 @@ class BestEffortConsumersApp {
         //NOTE: you can join or triggering the new update once the previous one has been delivered
         do {
             long updates = subscriber.getReceivedUpdates();
-            TimeUnit.SECONDS.sleep(1);
+            TimeUnit.SECONDS.sleep(5);
             long updates2 = subscriber.getReceivedUpdates();
             if (updates == updates2) {
                 break;

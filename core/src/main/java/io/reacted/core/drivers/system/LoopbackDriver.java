@@ -60,10 +60,9 @@ public class LoopbackDriver extends ReActorSystemDriver {
                                                                               localReActorSystem.getLocalReActorSystemId(),
                                                                               ackingPolicy, payload));
             if (isAckRequired) {
-                tellResult.thenAccept(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered)
-                                                                            .ifError(error -> localDriver.removePendingAckTrigger(seqNum)
-                                                                                                         .ifPresent(deliveryAttempt -> deliveryAttempt.toCompletableFuture()
-                                                                                                                                                      .complete(deliveryStatusTry))));
+                tellResult.thenAccept(deliveryStatusTry -> localDriver.removePendingAckTrigger(seqNum)
+                                                                      .ifPresent(deliveryAttempt -> deliveryAttempt.toCompletableFuture()
+                                                                                                                   .complete(deliveryStatusTry)));
                 tellResult = pendingAck;
             }
 

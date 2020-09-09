@@ -53,9 +53,8 @@ class StreamToMultipleSubscribersApp {
 
         streamPublisher.close();
         Awaitility.await()
-                  .atMost(Duration.ofMinutes(20))
+                  .atMost(Duration.ofMinutes(5))
                   .until(() -> subscriber.getReceivedUpdates() == msgNum && subscriber2.getReceivedUpdates() == msgNum);
-        TimeUnit.SECONDS.sleep(5);
         System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber3.getReceivedUpdates(), msgNum);
         reactorSystem.shutDown();
     }
@@ -82,12 +81,12 @@ class StreamToMultipleSubscribersApp {
 
         @Override
         public void onNext(PayloadT item) {
+            this.updatesReceived.increment();
             if (!this.isTerminated) {
                 if (this.payloadTComparator.compare(this.lastItem, item) >= 0) {
                     throw new IllegalStateException("Unordered sequence detected");
                 }
                 this.lastItem = item;
-                this.updatesReceived.increment();
                 this.subscription.request(1);
             }
         }

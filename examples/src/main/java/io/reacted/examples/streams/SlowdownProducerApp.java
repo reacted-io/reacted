@@ -40,7 +40,7 @@ class SlowdownProducerApp {
         //Reliable (no messages lost) subscription
         streamPublisher.subscribe(subscriber2, BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT);
         //Best effort subscriber. Updates from this may be lost
-        //streamPublisher.subscribe(subscriber3);
+        streamPublisher.subscribe(subscriber3);
         //We need to give the time to the subscription to propagate till the producer
         TimeUnit.SECONDS.sleep(1);
         var msgNum = 1_000_000;
@@ -53,7 +53,7 @@ class SlowdownProducerApp {
                  .forEachOrdered(CompletableFuture::join);
         //NOTE: you can join or triggering the new update once the previous one has been delivered
         Awaitility.await()
-                  .atMost(Duration.ofMinutes(20))
+                  .atMost(Duration.ofMinutes(5))
                   .until(() -> subscriber.getReceivedUpdates() == msgNum && subscriber2.getReceivedUpdates() == msgNum);
         System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber3.getReceivedUpdates(), msgNum);
         streamPublisher.close();
@@ -82,13 +82,12 @@ class SlowdownProducerApp {
 
         @Override
         public void onNext(PayloadT item) {
+            this.updatesReceived.increment();
             if (!this.isTerminated) {
                 if (this.payloadTComparator.compare(this.lastItem, item) >= 0) {
                     throw new IllegalStateException("Unordered sequence detected");
                 }
                 this.lastItem = item;
-                this.updatesReceived.increment();
-                System.out.println("Please send 1 more after " + item);
                 this.subscription.request(1);
             }
         }
