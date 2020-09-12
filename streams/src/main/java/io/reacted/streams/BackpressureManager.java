@@ -30,8 +30,7 @@ import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.function.Supplier;
 
@@ -39,7 +38,7 @@ import java.util.function.Supplier;
 public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription, AutoCloseable {
     private final Flow.Subscriber<? super PayloadT> subscriber;
     private final ReActorRef feedGate;
-    private final ExecutorService subscriberExecutor;
+    private final Executor subscriberExecutor;
     private final BackpressuringMbox backpressuredMailbox;
     @Nullable
     private volatile ReActorContext backpressurerCtx;
@@ -54,10 +53,10 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
      * @param backpressureTimeout give up timeout on publication attempt
      */
     BackpressureManager(Flow.Subscriber<? super PayloadT> subscriber, ReActorRef feedGate, int bufferSize,
-                        Duration backpressureTimeout) {
+                        Executor asyncBackpressusrer, Duration backpressureTimeout) {
         this.subscriber = Objects.requireNonNull(subscriber);
         this.feedGate = Objects.requireNonNull(feedGate);
-        this.subscriberExecutor = Executors.newSingleThreadExecutor();
+        this.subscriberExecutor = Objects.requireNonNull(asyncBackpressusrer);
         this.backpressuredMailbox = new BackpressuringMbox(new BoundedBasicMbox(bufferSize),
                                                            Objects.requireNonNull(backpressureTimeout),
                                                            bufferSize, 0, this.subscriberExecutor,
@@ -147,7 +146,6 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
         this.backpressuredMailbox.close();
-        this.subscriberExecutor.shutdown();
     }
 
     private void completeTermination(ReActorContext raCtx, Flow.Subscriber<? super PayloadT> localSubscriber) {

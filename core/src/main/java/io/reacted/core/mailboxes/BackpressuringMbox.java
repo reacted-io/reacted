@@ -8,10 +8,13 @@
 
 package io.reacted.core.mailboxes;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -32,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class BackpressuringMbox implements MailBox, AutoCloseable {
     public static final Duration BEST_EFFORT_TIMEOUT = Duration.ofNanos(0);
     public static final Duration RELIABLE_DELIVERY_TIMEOUT = Duration.ofNanos(Long.MAX_VALUE);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BackpressuringMbox.class);
     private final Duration backpressureTimeout;
     private final MailBox realMbox;
     @Nullable
@@ -52,20 +56,24 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
      *                            Must be a positive integer
      * @param requestOnStartup    how main messages should be automatically made deliverable on startup.
      *                            Same semantic of Java Flow Subscription.request
-     * @param asyncExecutor       Executor used to perform the delivery attempt
+     * @param ayncBackpressurer   Executor used to perform the potentially blocking delivery attempt
      * @param notDelayed  Message types that cannot be backpressured by this wrapper
      */
     public BackpressuringMbox(MailBox realMbox, Duration backpressureTimeout, int bufferSize, int requestOnStartup,
-                              Executor asyncExecutor, Set<Class<? extends Serializable>> notDelayed,
+                              Executor ayncBackpressurer, Set<Class<? extends Serializable>> notDelayed,
                               Set<Class<? extends Serializable>> notBackpressurable) {
         this.backpressureTimeout = Objects.requireNonNull(backpressureTimeout);
         this.realMbox = Objects.requireNonNull(realMbox);
         this.notDelayed = Objects.requireNonNull(notDelayed);
         this.notBackpressurable = Objects.requireNonNull(notBackpressurable);
-        this.asyncSerialExecutor = Executors.newSingleThreadExecutor();
-        this.backpressurer = new SubmissionPublisher<>(asyncExecutor, bufferSize);
+        var deliveryThreadFactory = new ThreadFactoryBuilder()
+                .setUncaughtExceptionHandler((thread, throwable) -> LOGGER.error("Uncaught exception in {} delivery thread",
+                                                                                 BackpressuringMbox.class.getSimpleName(),
+                                                                                 throwable))
+                .build();
+        this.asyncSerialExecutor = Executors.newSingleThreadExecutor(deliveryThreadFactory);
+        this.backpressurer = new SubmissionPublisher<>(ayncBackpressurer, bufferSize);
         this.reliableBackpressuringSubscriber = new BackpressuringSubscriber(requestOnStartup, realMbox::deliver,
-                                                                             Objects.requireNonNull(asyncExecutor),
                                                                              this.backpressurer);
         this.backpressurer.subscribe(reliableBackpressuringSubscriber);
     }
@@ -126,7 +134,7 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
      * in the mailbox
      */
     private void reliableDelivery(Message message, Duration backpressureTimeout,
-                             CompletableFuture<Try<DeliveryStatus>> trigger) {
+                                  CompletableFuture<Try<DeliveryStatus>> trigger) {
         try {
             var waitTime = this.backpressurer.offer(new DeliveryRequest(message, trigger),
                                                          backpressureTimeout.toNanos(), TimeUnit.NANOSECONDS,

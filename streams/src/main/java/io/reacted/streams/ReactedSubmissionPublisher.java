@@ -42,13 +42,16 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
 public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
                                                                                   AutoCloseable, Externalizable {
+    public static final Duration RELIABLE_SUBSCRIPTION = BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT;
     private static final long FEED_GATE_OFFSET = SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class,
                                                                                    "feedGate")
                                                                    .orElseSneakyThrow();
@@ -139,7 +142,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param subscriberName This name must be unique and if deterministic it allows cold replay
      */
     public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, String subscriberName) {
-        subscribe(subscriber, Flow.defaultBufferSize(), BackpressuringMbox.BEST_EFFORT_TIMEOUT, subscriberName);
+        subscribe(subscriber, Flow.defaultBufferSize(), BackpressuringMbox.BEST_EFFORT_TIMEOUT,
+                  ForkJoinPool.commonPool(), subscriberName);
     }
 
     /**
@@ -153,7 +157,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                   effort subscriber
      */
     public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize) {
-        subscribe(subscriber, bufferSize, BackpressuringMbox.BEST_EFFORT_TIMEOUT, UUID.randomUUID().toString());
+        subscribe(subscriber, bufferSize, BackpressuringMbox.BEST_EFFORT_TIMEOUT, ForkJoinPool.commonPool(),
+                  UUID.randomUUID().toString());
     }
 
     /**
@@ -169,7 +174,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                       it allows cold replay
      */
     public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize, String subscriberName) {
-        subscribe(subscriber, bufferSize, BackpressuringMbox.BEST_EFFORT_TIMEOUT, subscriberName);
+        subscribe(subscriber, bufferSize, BackpressuringMbox.BEST_EFFORT_TIMEOUT,
+                  ForkJoinPool.commonPool(), subscriberName);
     }
 
     /**
@@ -179,14 +185,36 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *
      * @param subscriber Java Flow compliant subscriber
      * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
-     *                                 before signaling an errpr
+     *                                 before signaling an error
+     * @param asyncBackpressurer the executor to use for async delivery, supporting creation of at least one independent
+     *                           thread
      * @throws IllegalArgumentException if duration is not bigger than zero
+     * @throws NullPointerException if any of the arguments is null
+     */
+    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, Executor asyncBackpressurer,
+                          Duration backpressureErrorTimeout) {
+        subscribe(subscriber, Flow.defaultBufferSize(),
+                  ConfigUtils.requiredCondition(backpressureErrorTimeout, Predicate.not(Duration::isZero),
+                                                IllegalArgumentException::new),
+                  asyncBackpressurer, UUID.randomUUID().toString());
+    }
+
+    /**
+     + Registers a producer slowdown subscriber. Submissions towards this subscriber will be marked as completed only
+     * when the message has been actually delivered or on error, allowing the producer to slow down the production rate.
+     * Strict message ordering is guaranteed to be the same of submission
+     *
+     * @param subscriber Java Flow compliant subscriber
+     * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
+     *                                 before signaling an error
+     * @throws IllegalArgumentException if duration is not bigger than zero
+     * @throws NullPointerException if any of the arguments is null
      */
     public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, Duration backpressureErrorTimeout) {
         subscribe(subscriber, Flow.defaultBufferSize(),
                   ConfigUtils.requiredCondition(backpressureErrorTimeout, Predicate.not(Duration::isZero),
                                                 IllegalArgumentException::new),
-                  UUID.randomUUID().toString());
+                  ForkJoinPool.commonPool(), UUID.randomUUID().toString());
     }
 
     /**
@@ -196,7 +224,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *
      * @param subscriber     Java Flow compliant subscriber
      * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
-     *                                 before signaling an errpr
+     *                                 before signaling an error
      * @param subscriberName This name must be unique and if deterministic it allows cold replay
      * @throws IllegalArgumentException if duration is not bigger than zero
      */
@@ -205,7 +233,28 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         subscribe(subscriber, Flow.defaultBufferSize(), ConfigUtils.requiredCondition(backpressureErrorTimeout,
                                                                                       Predicate.not(Duration::isZero),
                                                                                       IllegalArgumentException::new),
-                  subscriberName);
+                  ForkJoinPool.commonPool(), subscriberName);
+    }
+
+    /**
+     + Registers a producer slowdown subscriber. Submissions towards this subscriber will be marked as completed only
+     * when the message has been actually delivered or on error, allowing the producer to slow down the production rate.
+     * Strict message ordering is guaranteed to be the same of submission
+     *
+     * @param subscriber     Java Flow compliant subscriber
+     * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
+     *                                 before signaling an error
+     * @param asyncBackpressurer the executor to use for async delivery, supporting creation of at least one independent
+     *                           thread
+     * @param subscriberName This name must be unique and if deterministic it allows cold replay
+     * @throws IllegalArgumentException if duration is not bigger than zero
+     */
+    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, Duration backpressureErrorTimeout,
+                          Executor asyncBackpressurer, String subscriberName) {
+        subscribe(subscriber, Flow.defaultBufferSize(), ConfigUtils.requiredCondition(backpressureErrorTimeout,
+                                                                                      Predicate.not(Duration::isZero),
+                                                                                      IllegalArgumentException::new),
+                  asyncBackpressurer, subscriberName);
     }
 
     /**
@@ -217,7 +266,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param bufferSize How many elements can be buffered in the best
      *                   effort subscriber
      * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
-     *                                 before signaling an errpr
+     *                                 before signaling an error
      * @throws IllegalArgumentException if duration is not bigger than zero
      */
     public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
@@ -225,7 +274,29 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         subscribe(subscriber, bufferSize, ConfigUtils.requiredCondition(backpressureErrorTimeout,
                                                                         Predicate.not(Duration::isZero),
                                                                         IllegalArgumentException::new),
-                  UUID.randomUUID().toString());
+                  ForkJoinPool.commonPool(), UUID.randomUUID().toString());
+    }
+
+    /**
+     + Registers a producer slowdown subscriber. Submissions towards this subscriber will be marked as completed only
+     * when the message has been actually delivered or on error, allowing the producer to slow down the production rate.
+     * Strict message ordering is guaranteed to be the same of submission
+     *
+     * @param subscriber Java Flow compliant subscriber
+     * @param bufferSize How many elements can be buffered in the best
+     *                   effort subscriber
+     * @param asyncBackpressurer the executor to use for async delivery, supporting creation of at least one independent
+     *                           thread
+     * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
+     *                                 before signaling an error
+     * @throws IllegalArgumentException if duration is not bigger than zero
+     */
+    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize, Executor asyncBackpressurer,
+                          Duration backpressureErrorTimeout) {
+        subscribe(subscriber, bufferSize, ConfigUtils.requiredCondition(backpressureErrorTimeout,
+                                                                        Predicate.not(Duration::isZero),
+                                                                        IllegalArgumentException::new),
+                  asyncBackpressurer, UUID.randomUUID().toString());
     }
 
     /**
@@ -237,15 +308,18 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                             a drop or a wait signal for the producer, according to the subscription type
      * @param backpressureTimeout  For how long the subscription should attempt to deliver an update
      *                             to the subscriber.
+     * @param asyncBackpressurer   the executor to use for async delivery, supporting creation of at least one
+     *                             independent thread
      * @param subscriberName       This name must be unique and if deterministic it allows cold replay
      */
     public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize, Duration backpressureTimeout,
-                          String subscriberName) {
+                          Executor asyncBackpressurer, String subscriberName) {
 
         var backpressureManager = new BackpressureManager<>(Objects.requireNonNull(subscriber), this.feedGate,
                                                             ConfigUtils.requiredInRange(bufferSize, 1,
                                                                                         Integer.MAX_VALUE,
                                                                                         IllegalArgumentException::new),
+                                                            Objects.requireNonNull(asyncBackpressurer),
                                                             Objects.requireNonNull(backpressureTimeout));
 
         var subscriberCfg = ReActorConfig.newBuilder()
