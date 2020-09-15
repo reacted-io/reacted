@@ -38,7 +38,6 @@ import java.util.function.Supplier;
 public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription, AutoCloseable {
     private final Flow.Subscriber<? super PayloadT> subscriber;
     private final ReActorRef feedGate;
-    private final Executor subscriberExecutor;
     private final BackpressuringMbox backpressuredMailbox;
     @Nullable
     private volatile ReActorContext backpressurerCtx;
@@ -53,13 +52,12 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
      * @param backpressureTimeout give up timeout on publication attempt
      */
     BackpressureManager(Flow.Subscriber<? super PayloadT> subscriber, ReActorRef feedGate, int bufferSize,
-                        Executor asyncBackpressusrer, Duration backpressureTimeout) {
+                        Executor asyncBackpressurer, Duration backpressureTimeout) {
         this.subscriber = Objects.requireNonNull(subscriber);
         this.feedGate = Objects.requireNonNull(feedGate);
-        this.subscriberExecutor = Objects.requireNonNull(asyncBackpressusrer);
         this.backpressuredMailbox = new BackpressuringMbox(new BoundedBasicMbox(bufferSize),
                                                            Objects.requireNonNull(backpressureTimeout),
-                                                           bufferSize, 0, this.subscriberExecutor,
+                                                           bufferSize, 0, Objects.requireNonNull(asyncBackpressurer),
                                                            Set.of(ReActorInit.class, ReActorStop.class,
                                                                   SubscriptionRequest.class, SubscriptionReply.class,
                                                                   UnsubscriptionRequest.class, SubscriberError.class),
@@ -107,41 +105,34 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
 
     private void forwarder(ReActorContext raCtx, Object anyPayload) {
         //noinspection unchecked
-        this.subscriberExecutor.execute(() -> Try.ofRunnable(() -> this.subscriber.onNext((PayloadT) anyPayload))
-                                                 .ifError(error -> errorTermination(raCtx, error, this.subscriber)));
+        Try.ofRunnable(() -> this.subscriber.onNext((PayloadT) anyPayload))
+           .ifError(error -> errorTermination(raCtx, error, this.subscriber));
     }
 
     private void onSubscriptionReply(ReActorContext raCtx, SubscriptionReply payload) {
-        Runnable task;
         if (payload.isSuccess()) {
-            task = () -> Try.ofRunnable(() -> this.subscriber.onSubscribe(this))
-                            .ifError(error -> errorTermination(raCtx, error, this.subscriber));
+            Try.ofRunnable(() -> this.subscriber.onSubscribe(this))
+               .ifError(error -> errorTermination(raCtx, error, this.subscriber));
         } else {
-            task = () -> errorTermination(raCtx, new RuntimeException("RemoteRegistrationException"), this.subscriber);
+            errorTermination(raCtx, new RuntimeException("RemoteRegistrationException"), this.subscriber);
         }
-        this.subscriberExecutor.execute(task);
     }
 
     private void onSubscriberError(ReActorContext raCtx, SubscriberError error) {
-        System.out.println("Eception");
-        this.subscriberExecutor.execute(() -> errorTermination(raCtx, error.getError(), this.subscriber));
+        errorTermination(raCtx, error.getError(), this.subscriber);
     }
 
     private void onSubscriberComplete(ReActorContext raCtx, SubscriberComplete subscriberComplete) {
-        this.subscriberExecutor.execute(() -> completeTermination(raCtx, this.subscriber));
-
+        completeTermination(raCtx, this.subscriber);
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         this.backpressurerCtx = raCtx;
-        this.feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf()))
-                     .thenAccept(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered)
-                                                                       .ifError(error -> {
-                                                                           this.subscriber.onSubscribe(this);
-                                                                           errorTermination(raCtx, error,
-                                                                                            this.subscriber);
-                                                                       }));
-
+        var requestDelivery = this.feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf()));
+        Try.TryConsumer<Throwable> onSubscriptionError = error -> { this.subscriber.onSubscribe(this);
+                                                                    errorTermination(raCtx, error, this.subscriber); };
+        requestDelivery.thenAccept(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered)
+                                                                         .ifError(onSubscriptionError));
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
