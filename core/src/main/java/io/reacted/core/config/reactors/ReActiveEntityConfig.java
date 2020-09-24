@@ -9,7 +9,9 @@
 package io.reacted.core.config.reactors;
 
 import com.google.common.base.Strings;
+import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.MailBox;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.io.Serializable;
@@ -74,14 +76,12 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
 
     public abstract static class Builder<BuiltT extends ReActiveEntityConfig<BuiltT, BuilderT>,
                                          BuilderT extends Builder<BuiltT, BuilderT>> {
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private String dispatcherName;
+        private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reActorName;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private Supplier<MailBox> mailBoxProvider;
+        private SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions =
+                SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS;
+        private Supplier<MailBox> mailBoxProvider = BasicMbox::new;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActiveEntityType entityType;
 

@@ -11,6 +11,7 @@ package io.reacted.core.config.reactorsystem;
 import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.patterns.NonNullByDefault;
@@ -67,12 +68,10 @@ public class ReActorSystemConfig {
     public static class Builder {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reactorSystemName;
-        private int msgFanOutPoolSize;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private LocalDriver localDriver;
+        private int msgFanOutPoolSize = 1;
+        private LocalDriver localDriver = SystemLocalDrivers.DIRECT_COMMUNICATION;
         private boolean shallRecordExecution;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private Duration askTimeoutsCleanupInterval;
+        private Duration askTimeoutsCleanupInterval = Duration.ofSeconds(10);
         private final Set<DispatcherConfig> dispatcherConfigs = new HashSet<>();
         private final Set<RemotingDriver> remotingDrivers = new HashSet<>();
         private final Set<ServiceRegistryDriver> serviceRegistryDrivers = new HashSet<>();
