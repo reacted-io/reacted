@@ -105,14 +105,11 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
             return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
         }
         CompletableFuture<Try<DeliveryStatus>> trigger = new CompletableFuture<>();
-        var deliveryFailureTimeout = shouldNotBeBackPressured(payloadType)
-                                     ? RELIABLE_DELIVERY_TIMEOUT
-                                     : backpressureTimeout;
-        if (deliveryFailureTimeout.equals(BEST_EFFORT_TIMEOUT)) {
-            reliableDelivery(message, deliveryFailureTimeout , trigger);
-        } else {
-            this.asyncSerialExecutor.execute(() -> reliableDelivery(message, deliveryFailureTimeout, trigger));
-        }
+        Try.ofRunnable(() -> this.asyncSerialExecutor.execute(() -> reliableDelivery(message,
+                                                                                     shouldNotBeBackPressured(payloadType)
+                                                                                     ? RELIABLE_DELIVERY_TIMEOUT
+                                                                                     : backpressureTimeout, trigger)))
+           .ifError(error -> trigger.complete(Try.ofFailure(error)));
         return trigger;
     }
 
