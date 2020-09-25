@@ -12,10 +12,7 @@ import io.reacted.core.config.reactors.ReActorConfig;
 
 import javax.annotation.Nonnull;
 
-public interface ReActor {
-    @Nonnull
-    ReActions getReActions();
-
+public interface ReActor extends ReActiveEntity {
     @Nonnull
     ReActorConfig getConfig();
 }

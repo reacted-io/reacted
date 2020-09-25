@@ -37,6 +37,7 @@ import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
+import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.DeadLetter;
@@ -407,6 +408,19 @@ public class ReActorSystem {
     public Try<ReActorRef> spawnReActor(ReActions reActions, ReActiveEntityConfig<?, ?> reActorConfig) {
         return spawnChild(Objects.requireNonNull(reActions), Objects.requireNonNull(userReActorsRoot),
                           Objects.requireNonNull(reActorConfig));
+    }
+
+    /**
+     * Create a new reactor
+     *
+     * @param reActiveEntity a reactive entity
+     * @param reActorConfig reactor configuration
+     * @return A successful Try containing the ReActorRef for the new reactor on success,
+     * a failed Try on failure
+     */
+    public Try<ReActorRef> spawnReActor(ReActiveEntity reActiveEntity, ReActiveEntityConfig<?, ?> reActorConfig) {
+        return spawnChild(Objects.requireNonNull(Objects.requireNonNull(reActiveEntity).getReActions()),
+                          Objects.requireNonNull(userReActorsRoot), Objects.requireNonNull(reActorConfig));
     }
 
     /**
