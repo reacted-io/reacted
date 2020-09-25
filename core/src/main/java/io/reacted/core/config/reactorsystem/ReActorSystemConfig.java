@@ -23,7 +23,9 @@ import java.util.Set;
 
 @NonNullByDefault
 public class ReActorSystemConfig {
-
+    public static final int DEFAULT_FANOUT_POOL_SIZE = 1;
+    public static final LocalDriver DEFAULT_LOCAL_DRIVER = SystemLocalDrivers.DIRECT_COMMUNICATION;
+    public static final Duration DEFAULT_ASK_TIMER_CLEANUP = Duration.ofSeconds(10);
     private final String reactorSystemName;
     private final boolean recordedExecution;
     private final int msgFanOutPoolSize;
@@ -68,10 +70,10 @@ public class ReActorSystemConfig {
     public static class Builder {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reactorSystemName;
-        private int msgFanOutPoolSize = 1;
-        private LocalDriver localDriver = SystemLocalDrivers.DIRECT_COMMUNICATION;
+        private int msgFanOutPoolSize = DEFAULT_FANOUT_POOL_SIZE;
+        private LocalDriver localDriver = DEFAULT_LOCAL_DRIVER;
         private boolean shallRecordExecution;
-        private Duration askTimeoutsCleanupInterval = Duration.ofSeconds(10);
+        private Duration askTimeoutsCleanupInterval = DEFAULT_ASK_TIMER_CLEANUP;
         private final Set<DispatcherConfig> dispatcherConfigs = new HashSet<>();
         private final Set<RemotingDriver> remotingDrivers = new HashSet<>();
         private final Set<ServiceRegistryDriver> serviceRegistryDrivers = new HashSet<>();

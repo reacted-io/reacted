@@ -24,6 +24,9 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
                                            BuilderT extends ReActiveEntityConfig.Builder<BuiltT, BuilderT>>
     implements Serializable {
 
+    public static final Supplier<MailBox> DEFAULT_MAILBOX_SUPPLIER = BasicMbox::new;
+    public static final SubscriptionPolicy.SniffSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS =
+            SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS;
     private final String dispatcherName;
     private final String reActorName;
     private final SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions;
@@ -79,9 +82,8 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
         private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reActorName;
-        private SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions =
-                SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS;
-        private Supplier<MailBox> mailBoxProvider = BasicMbox::new;
+        private SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
+        private Supplier<MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActiveEntityType entityType;
 
