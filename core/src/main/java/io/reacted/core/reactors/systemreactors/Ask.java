@@ -10,6 +10,7 @@ package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -27,6 +28,7 @@ import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -59,21 +61,9 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, (raCtx, init) -> {
-                            this.askExpirationTask = this.scheduledExecutorService.schedule(getOnTimeoutExpireTask(raCtx, completionTrigger),
-                                                                                            askTimeout.toMillis(), TimeUnit.MILLISECONDS);
-                            target.tell(raCtx.getSelf(), request)
-                                  .thenAccept(delivery -> delivery.filter(DeliveryStatus::isDelivered)
-                                                                  .ifError(error -> this.completionTrigger.completeAsync(() -> Try.ofFailure(error))));
-                        })
-                        .reAct(expectedReplyType, (raCtx, reply) -> {
-                            raCtx.stop();
-                            completionTrigger.completeAsync(() -> Try.ofSuccess(reply));
-                        })
-                        .reAct(ReActorStop.class,
-                               (raCtx, reActorStop) -> { if (this.askExpirationTask != null) {
-                                                            this.askExpirationTask.cancel(true);
-                                                         } })
+                        .reAct(ReActorInit.class, this::onInit)
+                        .reAct(expectedReplyType, this::onExpectedReply)
+                        .reAct(ReActorStop.class, this::onStop)
                         .build();
     }
 
@@ -87,6 +77,31 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
                             .setMailBoxProvider(BasicMbox::new)
                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                             .build();
+    }
+
+    private void onInit(ReActorContext raCtx, ReActorInit init) {
+        try {
+            this.askExpirationTask = this.scheduledExecutorService.schedule(getOnTimeoutExpireTask(raCtx, completionTrigger),
+                                                                            askTimeout.toMillis(), TimeUnit.MILLISECONDS);
+            target.tell(raCtx.getSelf(), request)
+                  .thenAccept(delivery -> delivery.filter(DeliveryStatus::isDelivered, DeliveryException::new)
+                                                  .ifError(error -> { raCtx.stop();
+                                                                      this.completionTrigger.completeAsync(() -> Try.ofFailure(error)); }));
+        } catch (RejectedExecutionException poolCannotHandleRequest) {
+            this.completionTrigger.completeAsync(() -> Try.ofFailure(poolCannotHandleRequest));
+            raCtx.stop();
+        }
+    }
+
+    private void onExpectedReply(ReActorContext raCtx, ReplyT reply) {
+        this.completionTrigger.completeAsync(() -> Try.ofSuccess(reply));
+        raCtx.stop();
+    }
+
+    private void onStop(ReActorContext raCtx, ReActorStop stop) {
+        if (this.askExpirationTask != null) {
+            this.askExpirationTask.cancel(true);
+        }
     }
 
     private static <ReplyT extends Serializable> Runnable

@@ -362,9 +362,9 @@ public class ReActorSystem {
                             error -> LOGGER.error("Error waiting for local drivers to stop", error));
 
         this.reActorSystemDrivers.clear();
-        stopDispatchers();
-        stopFanOutPool();
         stopSystemTimer();
+        stopFanOutPool();
+        stopDispatchers();
     }
 
     /**
