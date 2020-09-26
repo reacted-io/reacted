@@ -58,7 +58,7 @@ public class TimeReActor implements ReActor {
                                                        .toCompletableFuture()
                                                        .thenAccept(result -> result.filter(DeliveryStatus::isDelivered)
                                                                                    .ifError(Throwable::printStackTrace)),
-                             () -> raCtx.getReActorSystem().logInfo("No response received"));
+                             () -> raCtx.getReActorSystem().logError("No response received"));
     }
 
     private void onServiceResponse(ReActorContext raCtx, ZonedDateTime time) {
@@ -69,6 +69,7 @@ public class TimeReActor implements ReActor {
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
         raCtx.getReActorSystem()
              .logInfo("{} is exiting and exiting reactorsystem...", raCtx.getSelf().getReActorId().getReActorName());
+
         CompletableFuture.supplyAsync(() -> Try.ofRunnable(() -> raCtx.getReActorSystem().shutDown())
                                                .ifError(Throwable::printStackTrace));
     }

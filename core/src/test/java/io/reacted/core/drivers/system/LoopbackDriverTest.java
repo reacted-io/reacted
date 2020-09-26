@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 
 class LoopbackDriverTest {
@@ -48,7 +47,6 @@ class LoopbackDriverTest {
                                                                                                           .setBatchSize(1_000)
                                                                                                           .setDispatcherThreadsNum(1)
                                                                                                           .build())
-                                                                     .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
                                                                      .build();
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();

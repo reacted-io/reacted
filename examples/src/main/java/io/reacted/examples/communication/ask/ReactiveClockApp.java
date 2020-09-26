@@ -49,6 +49,6 @@ public class ReactiveClockApp {
                      .thenApply(Try::orElseSneakyThrow)
                      .thenAccept(time -> System.out.printf("It's %s%n",
                                                            ZonedDateTime.ofInstant(time, ZoneId.systemDefault())))
-                     .thenAccept(nullValue -> reActorSystem.shutDown());
+                     .thenAccept(nullValue -> { reActorSystem.shutDown(); });
     }
 }

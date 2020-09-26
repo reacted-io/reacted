@@ -20,8 +20,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
-
 class ReActorServiceTest {
     private static ReActorSystem reActorSystem;
     private static ReActorServiceConfig reActorServiceConfig;
@@ -30,7 +28,6 @@ class ReActorServiceTest {
     void setUp() {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
                                                                      .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
-                                                                     .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
                                                                      .setMsgFanOutPoolSize(2)
                                                                      .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                                      .addDispatcherConfig(DispatcherConfig.newBuilder()

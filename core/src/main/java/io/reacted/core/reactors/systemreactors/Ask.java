@@ -26,14 +26,15 @@ import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @NonNullByDefault
 public class Ask<ReplyT extends Serializable> implements ReActor {
-    private final Timer systemTimer;
+    private final ScheduledExecutorService scheduledExecutorService;
     private final Duration askTimeout;
     private final Class<ReplyT> expectedReplyType;
     private final CompletableFuture<Try<ReplyT>> completionTrigger;
@@ -41,12 +42,12 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     private final ReActorRef target;
     private final Serializable request;
     @Nullable
-    private TimerTask askExpirationTask;
+    private ScheduledFuture<?> askExpirationTask;
 
-    public Ask(Timer systemTimer, Duration askTimeout, Class<ReplyT> expectedReplyType,
+    public Ask(ScheduledExecutorService scheduledExecutorService, Duration askTimeout, Class<ReplyT> expectedReplyType,
                CompletableFuture<Try<ReplyT>> completionTrigger, String requestName, ReActorRef target,
                Serializable request) {
-        this.systemTimer = Objects.requireNonNull(systemTimer);
+        this.scheduledExecutorService = Objects.requireNonNull(scheduledExecutorService);
         this.askTimeout = Objects.requireNonNull(askTimeout);
         this.expectedReplyType = Objects.requireNonNull(expectedReplyType);
         this.completionTrigger = Objects.requireNonNull(completionTrigger);
@@ -59,21 +60,20 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, (raCtx, init) -> {
-                            this.askExpirationTask = getOnTimeoutExpireTask(raCtx, completionTrigger);
-                            systemTimer.schedule(this.askExpirationTask, askTimeout.toMillis());
+                            this.askExpirationTask = this.scheduledExecutorService.schedule(getOnTimeoutExpireTask(raCtx, completionTrigger),
+                                                                                            askTimeout.toMillis(), TimeUnit.MILLISECONDS);
                             target.tell(raCtx.getSelf(), request)
                                   .thenAccept(delivery -> delivery.filter(DeliveryStatus::isDelivered)
-                                                                  .ifError(error -> this.completionTrigger.complete(Try.ofFailure(error))));
+                                                                  .ifError(error -> this.completionTrigger.completeAsync(() -> Try.ofFailure(error))));
                         })
                         .reAct(expectedReplyType, (raCtx, reply) -> {
                             raCtx.stop();
-                            completionTrigger.complete(Try.ofSuccess(reply));
+                            completionTrigger.completeAsync(() -> Try.ofSuccess(reply));
                         })
-                        .reAct(ReActorStop.class, (raCtx, reActorStop) -> {
-                            if (this.askExpirationTask != null) {
-                                this.askExpirationTask.cancel();
-                            }
-                        })
+                        .reAct(ReActorStop.class,
+                               (raCtx, reActorStop) -> { if (this.askExpirationTask != null) {
+                                                            this.askExpirationTask.cancel(true);
+                                                         } })
                         .build();
     }
 
@@ -89,14 +89,9 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
                             .build();
     }
 
-    private static <ReplyT extends Serializable> TimerTask getOnTimeoutExpireTask(ReActorContext raCtx,
-                                                                                  CompletableFuture<Try<ReplyT>> askFuture) {
-        return new TimerTask() {
-            @Override
-            public void run() {
-                raCtx.stop();
-                askFuture.complete(Try.ofFailure(new TimeoutException()));
-            }
-        };
+    private static <ReplyT extends Serializable> Runnable
+    getOnTimeoutExpireTask(ReActorContext raCtx, CompletableFuture<Try<ReplyT>> askFuture) {
+        return () -> { raCtx.stop();
+                       askFuture.completeAsync(() -> Try.ofFailure(new TimeoutException())); };
     }
 }

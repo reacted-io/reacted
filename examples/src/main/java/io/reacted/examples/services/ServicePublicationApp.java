@@ -28,7 +28,6 @@ import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -51,7 +50,6 @@ public class ServicePublicationApp {
                                                               .setReactorSystemName(ServicePublicationApp.class.getSimpleName())
                                                               .setMsgFanOutPoolSize(1)
                                                               .setRecordExecution(false)
-                                                              .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
                                                               .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLogger("/Users/angel/Desktop/ClockServiceLog"))
                                                               //.setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                               //We can add as many dispatchers as we want

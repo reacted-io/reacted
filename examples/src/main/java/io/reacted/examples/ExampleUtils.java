@@ -17,7 +17,6 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
@@ -44,7 +43,6 @@ public final class ExampleUtils {
         var configBuilder = ReActorSystemConfig.newBuilder()
                                   //Tunable parameter for purging java timers from
                                   // canceled tasks
-                                  .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
                                   //How messages are delivered within a Reactor System
                                   .setLocalDriver(localDriver)
                                   //Fan out pool to message type subscribers

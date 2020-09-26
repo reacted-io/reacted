@@ -22,8 +22,6 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
-
 class DeadLetterTest {
 
     @Test
@@ -38,7 +36,6 @@ class DeadLetterTest {
                                                                                                           .setBatchSize(1_000)
                                                                                                           .setDispatcherThreadsNum(1)
                                                                                                           .build())
-                                                                     .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
                                                                      .build();
         ReActorSystem reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();

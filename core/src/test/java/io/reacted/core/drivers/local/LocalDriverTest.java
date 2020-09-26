@@ -27,8 +27,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
-
 import static org.mockito.Mockito.mock;
 
 class LocalDriverTest {
@@ -50,7 +48,6 @@ class LocalDriverTest {
                                                                                                           .setBatchSize(1_000)
                                                                                                           .setDispatcherThreadsNum(1)
                                                                                                           .build())
-                                                                     .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
                                                                      .build();
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();

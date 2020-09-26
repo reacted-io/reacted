@@ -52,7 +52,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -61,8 +60,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,6 +67,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -83,6 +81,7 @@ import java.util.stream.Stream;
 public class ReActorSystem {
     /* Default dispatcher. Used by system internals */
     public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
+    private static final int SYSTEM_TASK_SCHEDULER_POOL_SIZE = 2;
     private static final ReActorConfig DEFAULT_REACTOR_CONFIG = ReActorConfig.newBuilder()
                                                                              .setMailBoxProvider(NullMailbox::new)
                                                                              .setDispatcherName(DEFAULT_DISPATCHER_NAME)
@@ -117,7 +116,7 @@ public class ReActorSystem {
      * The fields below can be null only before a successful init completion
      */
     @Nullable
-    private Timer systemTimer;
+    private ScheduledExecutorService systemTimerService;
     @Nullable
     private ExecutorService msgFanOutPool;
     @Nullable
@@ -504,7 +503,7 @@ public class ReActorSystem {
                             .collect(Collectors.toUnmodifiableSet());
     }
 
-    Timer getSystemTimer() { return Objects.requireNonNull(systemTimer); }
+    ScheduledExecutorService getSystemTimerService() { return Objects.requireNonNull(systemTimerService); }
 
     Set<ReActorSystemDriver> getReActorSystemDrivers() {
         return Set.copyOf(this.reActorSystemDrivers);
@@ -539,8 +538,8 @@ public class ReActorSystem {
             throw new ReActorSystemInitException("Unable to register system dispatcher");
         }
 
-        this.systemTimer = createSystemTimer(getSystemConfig().getReActorSystemName(),
-                                             getSystemConfig().getAskTimeoutsCleanupInterval());
+        this.systemTimerService = createSystemScheduleService(getSystemConfig().getReActorSystemName(),
+                                                              SYSTEM_TASK_SCHEDULER_POOL_SIZE);
         this.msgFanOutPool = createFanOutPool(getLocalReActorSystemId().getReActorSystemName(),
                                               getSystemConfig().getMsgFanOutPoolSize());
 
@@ -667,9 +666,9 @@ public class ReActorSystem {
     }
 
     private void stopSystemTimer() {
-        if (this.systemTimer != null) {
-            this.systemTimer.cancel();
-            this.systemTimer = null;
+        if (this.systemTimerService != null) {
+            this.systemTimerService.shutdownNow();
+            this.systemTimerService = null;
         }
     }
 
@@ -850,13 +849,13 @@ public class ReActorSystem {
                      .map(Dispatcher::new);
     }
 
-    private static Timer createSystemTimer(String reactorSystemName, Duration askTimeoutsCleanupInterval) {
-        var systemTimer = new Timer("ReActorSystem-" + reactorSystemName + "-Timer");
-        systemTimer.schedule(new TimerTask() {
-            @Override
-            public void run() { systemTimer.purge(); }
-        }, askTimeoutsCleanupInterval.toMillis(), askTimeoutsCleanupInterval.toMillis());
-        return systemTimer;
+    private static ScheduledExecutorService createSystemScheduleService(String reactorSystemName,
+                                                                        int schedulePoolSize) {
+        var taskSchedulerProps = new ThreadFactoryBuilder()
+                .setNameFormat(reactorSystemName + "-schedule_service-%d")
+                .setUncaughtExceptionHandler((thread, error) -> LOGGER.error("Unexpected in scheduled task", error))
+                .build();
+        return Executors.newScheduledThreadPool(schedulePoolSize, taskSchedulerProps);
     }
 
     private static ExecutorService createFanOutPool(String reActorSystemName, int poolSize) {
