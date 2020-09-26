@@ -128,8 +128,7 @@ public class KafkaDriver extends RemotingDriver {
                .recover(InterruptException.class,
                         (Try.TryValueSupplier<ConsumerRecords<Long, Message>>) ConsumerRecords::empty)
                .ifSuccessOrElse(records -> records.forEach(record -> thisDriver.offerMessage(record.value())),
-                                error -> localReActorSystem.logError("Unable to fetch messages from kafka",
-                                                                     error))
+                                error -> localReActorSystem.logError("Unable to fetch messages from kafka", error))
                .ifError(error -> LOGGER.error("WUT!?!?!?", error));
 
         }

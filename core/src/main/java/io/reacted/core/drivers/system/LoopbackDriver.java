@@ -73,8 +73,8 @@ public class LoopbackDriver extends ReActorSystemDriver {
             } else {
                 LOGGER.error("Critic! Deadletters not found!? Source {} Destination {} Message {}",
                              src, dst, payload);
-                localReActorSystem.logError("Critic! Deadletters not found! Source %s Destination %s " +
-                                            "Message %s", new RuntimeException(), src, dst, payload);
+                localReActorSystem.logError("Critic! Deadletters not found! Source {} Destination {} " +
+                                            "Message {}", src, dst, payload, new RuntimeException());
             }
         }
         return tellResult;

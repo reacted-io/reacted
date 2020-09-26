@@ -264,7 +264,7 @@ public abstract class Try<T> {
      *                          is a failure
      * @param <X>               type of the thrown exception
      * @return the value contained in the Try if it is successful
-     * @throws X
+     * @throws X any exception
      */
     @SuppressWarnings("UnusedReturnValue")
     public <X extends Throwable> T orElseThrow(Function<Throwable, X> throwableSupplier) throws X {

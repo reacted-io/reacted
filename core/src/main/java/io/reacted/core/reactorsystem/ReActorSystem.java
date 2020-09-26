@@ -32,6 +32,7 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActedDebug;
 import io.reacted.core.messages.reactors.ReActedError;
+import io.reacted.core.messages.reactors.ReActedInfo;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
@@ -205,12 +206,11 @@ public class ReActorSystem {
     /**
      * Log an error using the centralized logging system
      *
-     * @param errorDescription Java String Format error description
-     * @param exception        An error. It will be appended after the errorDescription log line
-     * @param args             Arguments for the Java String Format errorDescription
+     * @param errorDescription Sl4j Format error description
+     * @param args             Arguments for Sl4j
      */
-    public void logError(@Nullable String errorDescription, @Nullable Throwable exception, Object... args) {
-        getSystemLogger().tell(getSystemSink(), new ReActedError(errorDescription, exception, args))
+    public void logError(String errorDescription, Serializable ...args) {
+        getSystemLogger().tell(getSystemSink(), new ReActedError(errorDescription, args))
                          .thenAccept(tryDelivery -> tryDelivery.ifError(error -> LOGGER.error("Unable to log error: ",
                                                                                               error)));
     }
@@ -218,11 +218,25 @@ public class ReActorSystem {
     /**
      * Log a debug line using the centralized logging system
      *
-     * @param format Java String Format error description
-     * @param args   Arguments for the Java String Format errorDescription
+     * @param format Sl4j error description
+     * @param args   Arguments for Sl4j
      */
-    public void logDebug(String format, Object... args) {
-        getSystemLogger().tell(getSystemSink(), new ReActedDebug(Objects.requireNonNull(format), args))
+    public void logDebug(String format, Serializable ...args) {
+        getSystemLogger().tell(getSystemSink(), new ReActedDebug(Objects.requireNonNull(format),
+                                                                 Objects.requireNonNull(args)))
+                         .thenAccept(tryDelivery -> tryDelivery.ifError(error -> LOGGER.error("Unable to log debug" +
+                                                                                              " info:", error)));
+    }
+
+    /**
+     * Log a info line using the centralized logging system
+     *
+     * @param format Sl4j format error description
+     * @param args   Arguments for Sl4j
+     */
+    public void logInfo(String format, Serializable ...args) {
+        getSystemLogger().tell(getSystemSink(), new ReActedInfo(Objects.requireNonNull(format),
+                                                                Objects.requireNonNull(args)))
                          .thenAccept(tryDelivery -> tryDelivery.ifError(error -> LOGGER.error("Unable to log debug" +
                                                                                               " info:", error)));
     }

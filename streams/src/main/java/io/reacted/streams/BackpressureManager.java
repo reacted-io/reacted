@@ -142,15 +142,15 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     private void completeTermination(ReActorContext raCtx, Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(localSubscriber::onComplete)
-           .ifError(error -> raCtx.getReActorSystem().logError("Error in %s onComplete: ", error,
-                                                               localSubscriber.getClass().getSimpleName()));
+           .ifError(error -> raCtx.getReActorSystem().logError("Error in {} onComplete: ",
+                                                               localSubscriber.getClass().getSimpleName(), error));
     }
 
     private void errorTermination(ReActorContext raCtx, Throwable handlingError,
                                   Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(() -> localSubscriber.onError(handlingError))
-           .ifError(error -> raCtx.getReActorSystem().logError("Error in %s onError: ", error,
-                                                               localSubscriber.getClass().getSimpleName()));
+           .ifError(error -> raCtx.getReActorSystem().logError("Error in {} onError: ",
+                                                               localSubscriber.getClass().getSimpleName(), error));
     }
 }

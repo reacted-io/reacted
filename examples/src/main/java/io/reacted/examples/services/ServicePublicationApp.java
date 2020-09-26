@@ -34,7 +34,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 public class ServicePublicationApp {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         String serviceName = "Clock Service";
         String serviceDispatcherName = serviceName + " Dedicated Dispatcher";
         //Since we want to grant the best possible service, let's not mix system messages execution with the
@@ -119,7 +119,7 @@ public class ServicePublicationApp {
     }
 
     private static void onTimeRequest(ReActorContext raCtx, TimeRequest timeRequest) {
-        raCtx.getReActorSystem().logDebug("%s received %s", raCtx.getSelf().getReActorId().getReActorName(),
+        raCtx.getReActorSystem().logInfo("{} received {}", raCtx.getSelf().getReActorId().getReActorName(),
                                           timeRequest.getClass().getSimpleName());
         raCtx.getSender().tell(ReActorRef.NO_REACTOR_REF, ZonedDateTime.ofInstant(Instant.now(),
                                                                                   ZoneId.systemDefault()));

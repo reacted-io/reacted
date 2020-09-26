@@ -33,8 +33,8 @@ import java.util.stream.Stream;
 @NonNullByDefault
 public class Dispatcher {
     private static final String UNCAUGHT_EXCEPTION_IN_DISPATCHER = "Uncaught exception in thread [%s] : ";
-    private static final String REACTIONS_EXECUTION_ERROR = "Error for ReActor [%s] processing " +
-                                                            "message type [%s] with seq num [%d] and value [%s] ";
+    private static final String REACTIONS_EXECUTION_ERROR = "Error for ReActor {} processing " +
+                                                            "message type {} with seq num {} and value {} ";
     private static final Logger LOGGER = LoggerFactory.getLogger(Dispatcher.class);
     private final DispatcherConfig dispatcherConfig;
     @Nullable

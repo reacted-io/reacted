@@ -25,7 +25,7 @@ import java.time.Instant;
 public class SystemReplayAskApp {
     //NOTE: you may need to provide --illegal-access=permit --add-exports java.base/jdk.internal.ref=ALL-UNNAMED
     //as jvm option
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         String dumpDirectory = args.length == 0 || Strings.isNullOrEmpty(args[0]) ? "/tmp" : args[0];
         var dumpingLocalDriverCfg = CQDriverConfig.newBuilder()
                                                   .setChronicleFilesDir(dumpDirectory)

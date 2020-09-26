@@ -13,6 +13,8 @@ import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.ReActions;
+import io.reacted.core.reactors.ReActiveEntity;
+import io.reacted.core.reactors.ReActor;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
@@ -136,6 +138,14 @@ public final class ReActorContext {
 
     public final void reschedule() {
         getDispatcher().dispatch(this);
+    }
+
+    public Try<ReActorRef> spawnChild(ReActor reActor) {
+        return getReActorSystem().spawnChild(reActor.getReActions(), getSelf(), reActor.getConfig());
+    }
+
+    public Try<ReActorRef> spawnChild(ReActiveEntity reActiveEntity, ReActorConfig reActorConfig) {
+        return getReActorSystem().spawnChild(reActiveEntity.getReActions(), getSelf(), reActorConfig);
     }
 
     public Try<ReActorRef> spawnChild(ReActions reActions, ReActorConfig reActorConfig) {

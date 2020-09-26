@@ -28,7 +28,7 @@ import java.util.function.BiConsumer;
 public class ReActorService {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
-    private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router [%s]";
+    private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router {}";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
     private final ReActorServiceConfig reActorServiceConfig;
     private long msgReceived;
@@ -58,7 +58,6 @@ public class ReActorService {
 
     public void initService(ReActorContext raCtx, ReActorInit reActorInit) {
         //spawn the minimum number or routees
-        BiConsumer<String, Throwable> systemLogger = raCtx.getReActorSystem()::logError;
         for (int currentRoutee = 0; currentRoutee < reActorServiceConfig.getRouteesNum(); currentRoutee++) {
             try {
                 ReActor routee = Objects.requireNonNull(reActorServiceConfig.getRouteeProvider()
@@ -74,7 +73,7 @@ public class ReActorService {
                                                       .build();
                 spawnRoutee(raCtx, routeeReActions, newRouteeCfg);
             } catch (Throwable routeeSpawnError) {
-                systemLogger.accept(ROUTEE_SPAWN_ERROR, routeeSpawnError);
+                raCtx.getReActorSystem().logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);
             }
         }
 
@@ -102,12 +101,11 @@ public class ReActorService {
     }
 
     private void routeMessage(ReActorContext raCtx, Serializable newMessage) {
-        BiConsumer<String, Throwable> systemLogger = raCtx.getReActorSystem()::logError;
         selectRoutee(raCtx, ++msgReceived)
                 .ifPresentOrElse(routee -> routee.tell(raCtx.getSender(), newMessage),
-                                 () -> systemLogger.accept(String.format(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
-                                                                         reActorServiceConfig.getReActorName()),
-                                                           new IllegalStateException()));
+                                 () -> raCtx.getReActorSystem()
+                                            .logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
+                                                      reActorServiceConfig.getReActorName(), new IllegalStateException()));
     }
 
     private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived) {

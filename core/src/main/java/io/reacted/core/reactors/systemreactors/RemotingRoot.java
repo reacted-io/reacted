@@ -71,7 +71,7 @@ public class RemotingRoot {
             deliveryAttempt.thenAccept(attempt -> attempt.filter(DeliveryStatus::isDelivered)
                                                          .ifError(error -> raCtx.getReActorSystem()
                                                                                 .logError("Unable to deliver service publish request",
-                                                                                        error)));
+                                                                                          error)));
         }
     }
 
@@ -100,7 +100,7 @@ public class RemotingRoot {
 
     private static void onRegistryServicePublicationFailure(ReActorContext raCtx,
                                                             RegistryServicePublicationFailed failure) {
-        raCtx.getReActorSystem().logError("Error publishing service %s", failure.getPublicationError(),
+        raCtx.getReActorSystem().logError("Error publishing service {}", failure.getPublicationError(),
                                           failure.getServiceName());
     }
 
@@ -112,7 +112,7 @@ public class RemotingRoot {
             raCtx.getReActorSystem().registerNewRoute(upsert.getReActorSystemId(), upsert.getChannelId(),
                                                       upsert.getChannelData());
 
-            raCtx.getReActorSystem().logDebug("I am [%s] received config for [%s] Channel [%s] Data: [%s]",
+            raCtx.getReActorSystem().logDebug("I am {} received config for {} Channel {} Data: {}",
                     raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
                     upsert.getReActorSystemId().getReActorSystemName(),
                     upsert.getChannelId(), upsert.getChannelData().toString());
@@ -127,7 +127,7 @@ public class RemotingRoot {
         }
         raCtx.getReActorSystem().unregisterRoute(removed.getReActorSystem(),
                                                  removed.getChannelId());
-        raCtx.getReActorSystem().logDebug("I am [%s] received removal request for [%s] channel [%s]",
+        raCtx.getReActorSystem().logDebug("I am {} received removal request for {} channel {}",
                                           raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
                                           removed.getReActorSystem().getReActorSystemName(),
                                           removed.getChannelId());

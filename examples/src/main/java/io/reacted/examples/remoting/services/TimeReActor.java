@@ -58,17 +58,17 @@ public class TimeReActor implements ReActor {
                                                        .toCompletableFuture()
                                                        .thenAccept(result -> result.filter(DeliveryStatus::isDelivered)
                                                                                    .ifError(Throwable::printStackTrace)),
-                             () -> raCtx.getReActorSystem().logDebug("No response received"));
+                             () -> raCtx.getReActorSystem().logInfo("No response received"));
     }
 
     private void onServiceResponse(ReActorContext raCtx, ZonedDateTime time) {
-        raCtx.getReActorSystem().logDebug("Received %d response from service: %s%n", ++received, time.toString());
+        raCtx.getReActorSystem().logInfo("Received {} response from service: {}", ++received, time.toString());
         raCtx.stop();
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
         raCtx.getReActorSystem()
-             .logDebug("%s is exiting and exiting reactorsystem...", raCtx.getSelf().getReActorId().getReActorName());
+             .logInfo("{} is exiting and exiting reactorsystem...", raCtx.getSelf().getReActorId().getReActorName());
         CompletableFuture.supplyAsync(() -> Try.ofRunnable(() -> raCtx.getReActorSystem().shutDown())
                                                .ifError(Throwable::printStackTrace));
     }

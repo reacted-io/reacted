@@ -376,9 +376,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                            new SubscriptionReply(this.subscribers.add(subscription.getSubscriptionBackpressuringManager())))
                     .thenAccept(delivery -> delivery.filter(DeliveryStatus::isDelivered, IllegalStateException::new)
                                                     .ifError(error -> raCtx.getReActorSystem()
-                                                                           .logError("Unable to deliver subscription confirmation to %s",
-                                                                                     error,
-                                                                                     subscription.getSubscriptionBackpressuringManager())));
+                                                                           .logError("Unable to deliver subscription confirmation to {}",
+                                                                                     subscription.getSubscriptionBackpressuringManager(),
+                                                                                     error)));
     }
 
     private void onUnSubscriptionRequest(ReActorContext raCtx, UnsubscriptionRequest unsubscriptionRequest) {

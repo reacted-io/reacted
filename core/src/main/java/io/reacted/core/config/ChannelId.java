@@ -12,12 +12,13 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
 import javax.annotation.concurrent.Immutable;
+import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
 
 @Immutable
 @NonNullByDefault
-public class ChannelId {
+public class ChannelId implements Serializable {
     public static final ChannelId NO_CHANNEL_ID = new ChannelId(ChannelType.INVALID_CHANNEL_TYPE,"");
     private static final String SEPARATOR = "@";
     private final String channelId;

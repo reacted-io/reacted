@@ -124,6 +124,7 @@ public class GrpcDriver extends RemotingDriver {
             var payload = ReActedLinkProtocol.ReActedDatagram.newBuilder()
                                                              .setBinaryPayload(ByteString.copyFrom(byteArray.toByteArray()))
                                                              .build();
+            //noinspection SynchronizationOnLocalVariableOrMethodParameter
             synchronized (grpcLink) {
                 grpcLink.onNext(payload);
             }
@@ -131,7 +132,7 @@ public class GrpcDriver extends RemotingDriver {
 
         } catch (Exception error) {
             this.gatesStubs.remove(dstChannelIdName);
-            getLocalReActorSystem().logError("Error sending message %s", error, message.toString());
+            getLocalReActorSystem().logError("Error sending message {}", message.toString(), error);
             return Try.ofFailure(error);
         }
     }

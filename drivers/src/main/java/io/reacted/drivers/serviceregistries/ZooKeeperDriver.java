@@ -114,9 +114,9 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                                                                                           .build());
         this.serviceDiscovery = serviceDiscovery.orElse(null,
                                                         error -> { initInfo.getReActorSystem()
-                                                                           .logError("Error initializing %s driver",
-                                                                                     error,
-                                                                                     ZooKeeperDriver.class.getSimpleName());
+                                                                           .logError("Error initializing {} driver",
+                                                                                     ZooKeeperDriver.class.getSimpleName(),
+                                                                                     error);
                                                                    stop(); });
         if (this.serviceDiscovery != null) {
             initInfo.getReActorSystem().getSystemRemotingRoot().tell(initInfo.getDriverReActor(),
@@ -177,8 +177,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
             getServiceInstance(cancellationRequest.getServiceName(),
                                raCtx.getReActorSystem().getLocalReActorSystemId(), "")
                     .ifSuccessOrElse( this.serviceDiscovery::unregisterService,
-                                     error -> raCtx.getReActorSystem().logError("Unable to unregister service %s",
-                                                                                error, cancellationRequest.toString()));
+                                     error -> raCtx.getReActorSystem().logError("Unable to unregister service {}",
+                                                                                cancellationRequest.toString(), error));
         }
     }
 
@@ -198,8 +198,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     private void onServiceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
         if (this.serviceDiscovery != null) {
             Try.of(() -> this.serviceDiscovery.queryForInstances(request.getServiceName()))
-                    .peekFailure(error -> raCtx.getReActorSystem().logError("Error discovering service %s",
-                                                                            error, request.getServiceName()))
+                    .peekFailure(error -> raCtx.getReActorSystem().logError("Error discovering service {}",
+                                                                            request.getServiceName(), error))
                     .toOptional()
                     .filter(Predicate.not(Collection::isEmpty))
                     .map(serviceInstances -> toServiceDiscoveryReply(serviceInstances, raCtx.getReActorSystem()))
@@ -258,8 +258,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     }
 
     private static void onSpuriousMessage(ReActorContext raCtx, Object message) {
-        raCtx.getReActorSystem().logError(String.format("Unrecognized message received in %s",
-                                                        ZooKeeperDriver.class.getSimpleName()),
+        raCtx.getReActorSystem().logError("Unrecognized message received in {}", ZooKeeperDriver.class.getSimpleName(),
                                           new IllegalStateException(message.toString()));
     }
 
@@ -267,8 +266,9 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
         return (curatorFramework, treeCacheEvent) ->
                 cacheEventsRouter(curatorFramework, treeCacheEvent, reActorSystem, driverReActor)
                         .thenAccept(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
-                                                                      .ifError(error -> reActorSystem.logError("Error handling zookeeper event [%s]",
-                                                                                                               error, treeCacheEvent.toString())));
+                                                                      .ifError(error -> reActorSystem.logError("Error handling zookeeper event {}",
+                                                                                                               treeCacheEvent.toString(),
+                                                                                                               error)));
     }
 
     private static CompletionStage<Try<DeliveryStatus>>
@@ -371,8 +371,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
         var servicesReferences = serviceInstances.stream()
                                                          .map(ServiceInstance::getPayload)
                                                          .flatMap(serializedString -> Try.of(() -> RegistryServicePublicationRequest.fromSerializedString(serializedString))
-                                                                                         .peekFailure(error -> localReActorSystem.logError("Unable to decode service %s",
-                                                                                                                                           error, serializedString))
+                                                                                         .peekFailure(error -> localReActorSystem.logError("Unable to decode service {}",
+                                                                                                                                           serializedString, error))
                                                                                          .stream())
                                                          .map(RegistryServicePublicationRequest::getServiceGate)
                                                          .collect(Collectors.toUnmodifiableSet());

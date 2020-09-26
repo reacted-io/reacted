@@ -90,9 +90,8 @@ public abstract class ReActorSystemDriver {
         ThreadFactory driverThreadDetails = new ThreadFactoryBuilder()
                 .setNameFormat(localReActorSystem.getLocalReActorSystemId().getReActorSystemName() + "-" +
                                getChannelId() + "-" + getClass().getSimpleName() + "-driver-%d")
-                .setUncaughtExceptionHandler((thread, error) -> localReActorSystem.logError(String.format("Uncaught error in driver thread [%s] ",
-                                                                                                          thread.getName()),
-                                                                                            error))
+                .setUncaughtExceptionHandler((thread, error) -> localReActorSystem.logError("Uncaught error in driver thread {} ",
+                                                                                            thread.getName(), error))
                 .build();
         this.driverThread = Executors.newFixedThreadPool(1, driverThreadDetails);
 
