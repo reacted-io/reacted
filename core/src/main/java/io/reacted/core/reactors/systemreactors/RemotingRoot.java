@@ -100,7 +100,7 @@ public class RemotingRoot {
 
     private static void onRegistryServicePublicationFailure(ReActorContext raCtx,
                                                             RegistryServicePublicationFailed failure) {
-        raCtx.getReActorSystem().logError("Error publishing service {}", failure.getPublicationError(),
+        raCtx.getReActorSystem().logInfo("Error publishing service {}", failure.getPublicationError(),
                                           failure.getServiceName());
     }
 
