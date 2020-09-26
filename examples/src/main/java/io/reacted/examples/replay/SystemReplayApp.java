@@ -66,8 +66,9 @@ public class SystemReplayApp {
                  .forEachOrdered(echoReference::aTell);
         TimeUnit.SECONDS.sleep(1);
         recordedReactorSystem.shutDown();
+        TimeUnit.SECONDS.sleep(1);
         //Everything has been recorded, now let's try to replay it
-        System.out.println("Replay start!");
+        System.out.println("Replay engine setup");
         var replayDriverCfg = new ReplayLocalDriver(dumpingLocalDriverCfg);
         var replayedReActorSystem =
                 new ReActorSystem(ExampleUtils.getDefaultReActorSystemCfg(SystemReplayApp.class.getSimpleName(),
@@ -75,8 +76,10 @@ public class SystemReplayApp {
                                                                           ExampleUtils.NO_SERVICE_REGISTRIES,
                                                                           ExampleUtils.NO_REMOTING_DRIVERS))
                         .initReActorSystem();
+        System.out.println("Replay Start!");
         //Once the reactor will be created, the system will notify that and will begin its replay
         replayedReActorSystem.spawnReActor(echoReActions, echoReActorConfig).orElseSneakyThrow();
+        TimeUnit.SECONDS.sleep(1);
         replayedReActorSystem.shutDown();
     }
 }
