@@ -8,6 +8,8 @@
 
 package io.reacted.core.drivers.local;
 
+import static org.mockito.Mockito.mock;
+
 import io.reacted.core.CoreConstants;
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
@@ -23,13 +25,10 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
+import java.time.Duration;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import java.time.Duration;
-
-import static org.mockito.Mockito.mock;
 
 class LocalDriverTest {
     static ReActorSystem reActorSystem;
@@ -40,18 +39,19 @@ class LocalDriverTest {
 
     @BeforeAll
     static void prepareLocalDriver() throws Exception {
-        ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
-                                                                     .setMsgFanOutPoolSize(1)
-                                                                     .setRecordExecution(false)
-                                                                     .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
-                                                                     .addDispatcherConfig(DispatcherConfig.newBuilder()
-                                                                                                          .setDispatcherName("Dispatcher")
-                                                                                                          .setBatchSize(1_000)
-                                                                                                          .setDispatcherThreadsNum(1)
-                                                                                                          .build())
-                                                                     .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
-                                                                     .build();
+        ReActorSystemConfig reActorSystemConfig =
+                ReActorSystemConfig.newBuilder()
+                        .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                        .setMsgFanOutPoolSize(1)
+                        .setRecordExecution(false)
+                        .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
+                        .addDispatcherConfig(DispatcherConfig.newBuilder()
+                                                     .setDispatcherName(CoreConstants.DISPATCHER)
+                                                     .setBatchSize(1_000)
+                                                     .setDispatcherThreadsNum(1)
+                                                     .build())
+                        .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
+                        .build();
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();
 
@@ -61,30 +61,31 @@ class LocalDriverTest {
 
         SubscriptionPolicy.SniffSubscription subscribedTypes = SubscriptionPolicy.LOCAL.forType(Message.class);
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
-                                                   .setReActorName(CoreConstants.REACTOR_NAME)
-                                                   .setDispatcherName("Dispatcher")
-                                                   .setMailBoxProvider(BasicMbox::new)
-                                                   .setTypedSniffSubscriptions(subscribedTypes)
-                                                   .build();
+                .setReActorName(CoreConstants.REACTOR_NAME)
+                .setDispatcherName(CoreConstants.DISPATCHER)
+                .setMailBoxProvider(BasicMbox::new)
+                .setTypedSniffSubscriptions(subscribedTypes)
+                .build();
 
-        ReActorRef reActorRef = reActorSystem.spawnReActor(new MagicTestReActor(1, true, reActorConfig))
-                                             .orElseSneakyThrow();
+        ReActorRef reActorRef = reActorSystem
+                .spawnReActor(new MagicTestReActor(1, true, reActorConfig))
+                .orElseSneakyThrow();
 
         reActorSystem.registerReActorSystemDriver(localDriver);
 
 
         reActorContext = ReActorContext.newBuilder()
-                                       .setMbox(basicMbox)
-                                       .setReactorRef(reActorRef)
-                                       .setReActorSystem(reActorSystem)
-                                       .setParentActor(ReActorRef.NO_REACTOR_REF)
-                                       .setInterceptRules(subscribedTypes)
+                .setMbox(basicMbox)
+                .setReactorRef(reActorRef)
+                .setReActorSystem(reActorSystem)
+                .setParentActor(ReActorRef.NO_REACTOR_REF)
+                .setInterceptRules(subscribedTypes)
                 .setDispatcher(mock(Dispatcher.class))
                 .setReActions(mock(ReActions.class))
                 .build();
 
         originalMsg = new Message(ReActorRef.NO_REACTOR_REF, reActorRef, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
-                AckingPolicy.NONE, CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
+                                  AckingPolicy.NONE, CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
     }
 
     @Test
@@ -98,8 +99,11 @@ class LocalDriverTest {
 
     @Test
     void localDriverForwardsMessageToLocalActor() {
-        Assertions.assertTrue(LocalDriver.forwardMessageToLocalActor(reActorContext, originalMsg)
-                                         .toCompletableFuture().join().isSuccess());
+        Assertions.assertTrue(LocalDriver
+                                      .forwardMessageToLocalActor(reActorContext, originalMsg)
+                                      .toCompletableFuture()
+                                      .join()
+                                      .isSuccess());
         Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
     }
 

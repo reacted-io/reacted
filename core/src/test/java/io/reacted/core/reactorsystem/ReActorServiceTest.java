@@ -15,12 +15,11 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.time.Duration;
 
 class ReActorServiceTest {
     private static ReActorSystem reActorSystem;
@@ -29,29 +28,29 @@ class ReActorServiceTest {
     @BeforeEach
     void setUp() {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
-                                                                     .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
-                                                                     .setMsgFanOutPoolSize(2)
-                                                                     .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
-                                                                     .addDispatcherConfig(DispatcherConfig.newBuilder()
-                                                                                                          .setDispatcherName("TestDispatcher")
-                                                                                                          .setBatchSize(1_000)
-                                                                                                          .setDispatcherThreadsNum(1)
-                                                                                                          .build())
-                                                                     .build();
+                .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
+                .setMsgFanOutPoolSize(2)
+                .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
+                .addDispatcherConfig(DispatcherConfig.newBuilder()
+                                             .setDispatcherName("TestDispatcher")
+                                             .setBatchSize(1_000)
+                                             .setDispatcherThreadsNum(1)
+                                             .build())
+                .build();
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();
 
         reActorServiceConfig = ReActorServiceConfig.newBuilder()
-                                                   .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
-                                                   .setMailBoxProvider(BasicMbox::new)
-                                                   .setReActorName("TestRouter")
-                                                   .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                                   .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
-                                                   .setRouteesNum(1)
-                                                   .setRouteeProvider(() -> new MagicTestReActor(2, true,
-                                                                                                 "RouterChild"))
-                                                   .build();
+                .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
+                .setMailBoxProvider(BasicMbox::new)
+                .setReActorName("TestRouter")
+                .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                .setRouteesNum(1)
+                .setRouteeProvider(() -> new MagicTestReActor(2, true,
+                                                              "RouterChild"))
+                .build();
     }
 
     @AfterEach

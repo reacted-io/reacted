@@ -8,6 +8,9 @@
 
 package io.reacted.core.runtime;
 
+import static org.mockito.Mockito.mock;
+
+import io.reacted.core.CoreConstants;
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
@@ -18,8 +21,6 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-
-import static org.mockito.Mockito.mock;
 
 class DispatcherTest {
     static Dispatcher dispatcher;
@@ -32,7 +33,7 @@ class DispatcherTest {
     @BeforeAll
     static void prepareDispatcherWithConfig() {
         dispatcherConfig = DispatcherConfig.newBuilder()
-                .setDispatcherName("dispatcher")
+                .setDispatcherName(CoreConstants.DISPATCHER)
                 .setBatchSize(2)
                 .setDispatcherThreadsNum(2)
                 .build();
@@ -43,14 +44,14 @@ class DispatcherTest {
         parentReactor = ReactorHelper.generateReactor("parentReactor");
         reactor = ReactorHelper.generateReactor("reactor");
         reActorContext = ReActorContext.newBuilder()
-                                       .setDispatcher(dispatcher)
-                                       .setMbox(actorMbox)
-                                       .setParentActor(parentReactor)
-                                       .setReActorSystem(mock(ReActorSystem.class))
-                                       .setReactorRef(reactor)
-                                       .setInterceptRules(SubscriptionPolicy.LOCAL.forType(String.class))
-                                       .setReActions(ReActions.NO_REACTIONS)
-                                       .build();
+                .setDispatcher(dispatcher)
+                .setMbox(actorMbox)
+                .setParentActor(parentReactor)
+                .setReActorSystem(mock(ReActorSystem.class))
+                .setReactorRef(reactor)
+                .setInterceptRules(SubscriptionPolicy.LOCAL.forType(String.class))
+                .setReActions(ReActions.NO_REACTIONS)
+                .build();
     }
 
     @BeforeEach

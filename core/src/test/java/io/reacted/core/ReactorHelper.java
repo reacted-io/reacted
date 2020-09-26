@@ -14,7 +14,6 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.core.reactorsystem.ReActorSystemRef;
-
 import java.util.Properties;
 
 public class ReactorHelper {
@@ -24,7 +23,8 @@ public class ReactorHelper {
         return generateReactor(reActorName, TEST_REACTOR_SYSTEM_ID, SystemLocalDrivers.DIRECT_COMMUNICATION);
     }
 
-    public static ReActorRef generateReactor(String reActorName, ReActorSystemId reActorSystemId, LocalDriver localDriver) {
+    public static ReActorRef generateReactor(String reActorName, ReActorSystemId reActorSystemId,
+                                             LocalDriver localDriver) {
         ReActorSystemRef testReActorSystemRef = new ReActorSystemRef(localDriver, new Properties(), reActorSystemId);
         return new ReActorRef(new ReActorId(ReActorId.NO_REACTOR_ID, reActorName), testReActorSystemRef);
     }
