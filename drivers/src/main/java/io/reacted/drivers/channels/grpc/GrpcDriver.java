@@ -46,6 +46,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
 public class GrpcDriver extends RemotingDriver {
@@ -147,7 +148,9 @@ public class GrpcDriver extends RemotingDriver {
         int port = Integer.parseInt(channelIdProperties.getProperty(GrpcDriverConfig.PORT_PROPERTY_NAME));
         String host = channelIdProperties.getProperty(GrpcDriverConfig.HOST_PROPERTY_NAME);
         var managedChannel = ManagedChannelBuilder.forAddress(host, port)
+                                                  .keepAliveTime(5, TimeUnit.SECONDS)
                                                   .keepAliveWithoutCalls(true)
+                                                  .enableRetry()
                                                   .usePlaintext()
                                                   .build();
         return ReActedLinkGrpc.newStub(managedChannel);
