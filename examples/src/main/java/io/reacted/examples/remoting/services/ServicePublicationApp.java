@@ -50,7 +50,7 @@ public class ServicePublicationApp {
         var serviceName = "ClockService";
         //For simplicity let's use the default dispatcher. A new one could and should
         //be used for load partitioning
-        var serviceDisparcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
+        var serviceDispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         //Now let's publish a service in server reactor system
         var serviceCfg = ReActorServiceConfig.newBuilder()
                                              .setReActorName(serviceName)
@@ -58,23 +58,23 @@ public class ServicePublicationApp {
                                              .setRouteesNum(2)
                                              //For every new request select a different worker instance
                                              .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
-                                             .setDispatcherName(serviceDisparcherName)
+                                             .setDispatcherName(serviceDispatcherName)
                                              //Let's assume that we do not need any form of backpressure
                                              .setMailBoxProvider(BasicMbox::new)
                                              //We do not need to listen for ServiceDiscoveryRequests, we have the
                                              //Service Registry now
                                              .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
-                                             .setRouteeProvider(() -> new ClockReActor(serviceDisparcherName))
+                                             .setRouteeProvider(() -> new ClockReActor(serviceDispatcherName))
                                              .build();
 
         //Create a service. It will be published automatically on the service registry
         server.spawnService(serviceCfg).orElseSneakyThrow();
         //Give some time for the service propagation
-        TimeUnit.SECONDS.sleep(2);
+        TimeUnit.SECONDS.sleep(1);
         //Create a reactor in CLIENT reactor system that will query the service exported in SERVER
         //All the communication between the two reactor systems will be done using a GRPC channel
         client.spawnReActor(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
-        TimeUnit.SECONDS.sleep(2);
+        TimeUnit.SECONDS.sleep(1);
         server.shutDown();
     }
 }
