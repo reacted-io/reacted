@@ -18,6 +18,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 
+import javax.annotation.Nonnull;
 import java.util.concurrent.atomic.LongAdder;
 
 public class MagicTestReActor implements ReActor {
@@ -62,11 +63,13 @@ public class MagicTestReActor implements ReActor {
         RECEIVED.increment();
     }
 
+    @Nonnull
     @Override
     public ReActorConfig getConfig() {
         return reActorConfig;
     }
 
+    @Nonnull
     @Override
     public ReActions getReActions() { return reActions; }
 }

@@ -16,8 +16,8 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.examples.ExampleUtils;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
@@ -27,7 +27,7 @@ public class UpdateGeneratorApp {
         //Create a reactor that subscribes for Updates. Whenever a new Update is received by a reactor within
         //the reactorsystem, the TypeSubscriber reactor will receive a copy of it
         reActorSystem.spawnReActor(new ReActor() {
-            @NotNull
+            @Nonnull
             @Override
             public ReActions getReActions() {
                 return ReActions.newBuilder()
@@ -39,7 +39,7 @@ public class UpdateGeneratorApp {
                                 .build();
             }
 
-            @NotNull
+            @Nonnull
             @Override
             public ReActorConfig getConfig() {
                 return ReActorConfig.newBuilder()

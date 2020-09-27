@@ -26,8 +26,8 @@ import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -71,11 +71,11 @@ public class ServicePublicationApp {
                                        .build();
         //Here we define how a routee behaves. This is going to be the actual body of our servuce
         UnChecked.CheckedSupplier<ReActor> routeeProvider = () -> new ReActor() {
-            @NotNull
+            @Nonnull
             @Override
             public ReActions getReActions() { return routeeReActions; }
 
-            @NotNull
+            @Nonnull
             @Override
             public ReActorConfig getConfig() { return routeeConfig; }
         };

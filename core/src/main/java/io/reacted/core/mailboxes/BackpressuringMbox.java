@@ -16,8 +16,6 @@ import io.reacted.patterns.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
@@ -38,9 +36,7 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(BackpressuringMbox.class);
     private final Duration backpressureTimeout;
     private final MailBox realMbox;
-    @Nullable
     private final SubmissionPublisher<DeliveryRequest> backpressurer;
-    @Nullable
     private final BackpressuringSubscriber reliableBackpressuringSubscriber;
     private final Set<Class<? extends Serializable>> notDelayed;
     private final Set<Class<? extends Serializable>> notBackpressurable;
@@ -90,11 +86,9 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
     @Override
     public long getMaxSize() { return realMbox.getMaxSize(); }
 
-    @Nonnull
     @Override
     public Message getNextMessage() { return this.realMbox.getNextMessage(); }
 
-    @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) { return realMbox.deliver(message); }
 
@@ -119,9 +113,7 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
 
     @Override
     public void close() {
-        if (this.backpressurer != null) {
-            this.backpressurer.close();
-        }
+        this.backpressurer.close();
         this.asyncSerialExecutor.shutdownNow();
     }
 

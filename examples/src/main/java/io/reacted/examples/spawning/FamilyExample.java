@@ -13,6 +13,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
@@ -60,6 +61,7 @@ public class FamilyExample {
                                             .build();
         }
 
+        @Nonnull
         @Override
         public ReActions getReActions() { return fatherReactions; }
 
@@ -92,6 +94,7 @@ public class FamilyExample {
                                                                   .reAct(ReActorStop.class, FamilyExample::onStop)
                                                                   .reAct(ReActions::noReAction)
                                                                   .build();
+        @Nonnull
         @Override
         public ReActions getReActions() { return UNCLE_REACTIONS; }
 
@@ -117,9 +120,11 @@ public class FamilyExample {
                                             .build();
         }
 
+        @Nonnull
         @Override
         public ReActorConfig getConfig() { return childConfig; }
 
+        @Nonnull
         @Override
         public ReActions getReActions() {
             return ReActions.newBuilder()

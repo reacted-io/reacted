@@ -23,6 +23,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
@@ -58,6 +59,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
         this.request = Objects.requireNonNull(request);
     }
 
+    @Nonnull
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
@@ -67,6 +69,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
                         .build();
     }
 
+    @Nonnull
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()

@@ -16,15 +16,15 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class PongReActor implements ReActor {
     private final Timer pongTimer = new Timer();
 
-    @NotNull
+    @Nonnull
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
@@ -35,7 +35,7 @@ public class PongReActor implements ReActor {
                         .build();
     }
 
-    @NotNull
+    @Nonnull
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()

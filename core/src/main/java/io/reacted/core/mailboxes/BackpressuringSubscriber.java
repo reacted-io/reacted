@@ -2,19 +2,24 @@ package io.reacted.core.mailboxes;
 
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
+import javax.annotation.Nullable;
+import java.util.Objects;
 import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 
+@NonNullByDefault
 public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.DeliveryRequest> {
     private final long requestOnStartup;
     private final Function<Message, DeliveryStatus> realDeliveryCallback;
     private final SubmissionPublisher<BackpressuringMbox.DeliveryRequest> backpressurer;
     private final LongAdder preInitializationRequests;
     private volatile boolean isCompleted;
+    @Nullable
     private volatile Flow.Subscription subscription;
 
     BackpressuringSubscriber(long requestOnStartup,
@@ -71,6 +76,7 @@ public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringM
                 }
             }
         }
-        this.subscription.request(elementsToRequest);
+        Objects.requireNonNull(this.subscription)
+               .request(elementsToRequest);
     }
 }

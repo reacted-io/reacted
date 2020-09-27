@@ -21,6 +21,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
+import javax.annotation.Nonnull;
 import java.util.Objects;
 
 @NonNullByDefault
@@ -36,6 +37,7 @@ class SimpleTestReActor implements ReActor {
                                                             IllegalArgumentException::new);
     }
 
+    @Nonnull
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
@@ -56,6 +58,7 @@ class SimpleTestReActor implements ReActor {
         receivedPings++;
     }
 
+    @Nonnull
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)

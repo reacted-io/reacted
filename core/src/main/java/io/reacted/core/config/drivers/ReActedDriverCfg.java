@@ -51,7 +51,6 @@ public abstract class ReActedDriverCfg<BuilderT extends ReActedDriverCfg.Builder
             return getThis();
         }
 
-        @SuppressWarnings("unused")
         public abstract BuiltT build();
 
         @SuppressWarnings("unchecked")
