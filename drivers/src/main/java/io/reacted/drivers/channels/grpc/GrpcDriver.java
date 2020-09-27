@@ -91,20 +91,22 @@ public class GrpcDriver extends RemotingDriver {
 
     @Override
     public CompletableFuture<Try<Void>> cleanDriverLoop() {
-        return CompletableFuture.completedFuture(Try.ofRunnable(() -> {
-            Objects.requireNonNull(grpcServer).shutdownNow();
-            Objects.requireNonNull(grpcExecutor).shutdownNow();
-            gatesStubs.clear(); }));
+            Objects.requireNonNull(this.grpcServer).shutdown();
+            try {
+                this.grpcServer.awaitTermination(10, TimeUnit.SECONDS);
+            } catch (InterruptedException interruptedException) {
+                Thread.currentThread().interrupt();
+            } finally {
+                this.grpcServer.shutdownNow();
+            }
+            Objects.requireNonNull(this.grpcExecutor).shutdownNow();
+            this.gatesStubs.clear();
+            return CompletableFuture.completedFuture(Try.ofSuccess(null));
     }
 
     @Override
     public UnChecked.CheckedRunnable getDriverLoop() {
-        return () -> { Objects.requireNonNull(grpcServer).start();
-                       try {
-                           grpcServer.awaitTermination();
-                       } catch (InterruptedException shutdown) {
-                           Thread.currentThread().interrupt();
-                       }};
+        return () -> Objects.requireNonNull(this.grpcServer).start();
     }
 
     @Override
@@ -132,7 +134,7 @@ public class GrpcDriver extends RemotingDriver {
             return Try.ofSuccess(DeliveryStatus.DELIVERED);
 
         } catch (Exception error) {
-            this.gatesStubs.remove(dstChannelIdName);
+            this.gatesStubs.remove(dstChannelIdName, grpcLink);
             getLocalReActorSystem().logError("Error sending message {}", message.toString(), error);
             return Try.ofFailure(error);
         }
