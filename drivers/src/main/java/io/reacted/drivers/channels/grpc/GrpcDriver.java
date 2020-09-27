@@ -92,13 +92,12 @@ public class GrpcDriver extends RemotingDriver {
     @Override
     public CompletableFuture<Try<Void>> cleanDriverLoop() {
             Objects.requireNonNull(this.grpcServer).shutdown();
-            try {
-                this.grpcServer.awaitTermination(10, TimeUnit.SECONDS);
-            } catch (InterruptedException interruptedException) {
-                Thread.currentThread().interrupt();
-            } finally {
-                this.grpcServer.shutdownNow();
-            }
+
+            Try.of(() -> this.grpcServer.awaitTermination(10, TimeUnit.SECONDS))
+               .ifError(error -> Thread.currentThread().interrupt());
+
+            this.grpcServer.shutdownNow();
+
             Objects.requireNonNull(this.grpcExecutor).shutdownNow();
             this.gatesStubs.clear();
             return CompletableFuture.completedFuture(Try.ofSuccess(null));
