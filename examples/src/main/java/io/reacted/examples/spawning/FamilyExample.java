@@ -44,7 +44,7 @@ public class FamilyExample {
     }
 
     private static void onStop(ReActorContext raCtx, ReActorStop stop) {
-        raCtx.getReActorSystem().logInfo(raCtx.getSelf().getReActorId().getReActorName() + " is terminating");
+        raCtx.logInfo(raCtx.getSelf().getReActorId().getReActorName() + " is terminating");
     }
 
     @NonNullByDefault
@@ -99,10 +99,8 @@ public class FamilyExample {
         public ReActions getReActions() { return UNCLE_REACTIONS; }
 
         private static void onGreetingsFromChild(ReActorContext raCtx, Greetings greetingsMessage) {
-            raCtx.getReActorSystem().logInfo("{} received {}. Sending thank you to {}",
-                                              raCtx.getSelf().getReActorId().getReActorName(),
-                                              greetingsMessage.getGreetingsMessage(),
-                                              raCtx.getSender().getReActorId().getReActorName());
+            raCtx.logInfo("{} received {}. Sending thank you to {}", raCtx.getSelf().getReActorId().getReActorName(),
+                          greetingsMessage.getGreetingsMessage(), raCtx.getSender().getReActorId().getReActorName());
             raCtx.reply(new ThankYouFather());
         }
 

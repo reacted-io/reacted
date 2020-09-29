@@ -117,8 +117,8 @@ public class ServicePublicationApp {
     }
 
     private static void onTimeRequest(ReActorContext raCtx, TimeRequest timeRequest) {
-        raCtx.getReActorSystem().logInfo("{} received {}", raCtx.getSelf().getReActorId().getReActorName(),
-                                          timeRequest.getClass().getSimpleName());
+        raCtx.logInfo("{} received {}", raCtx.getSelf().getReActorId().getReActorName(),
+                      timeRequest.getClass().getSimpleName());
         raCtx.reply(ReActorRef.NO_REACTOR_REF, ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
     }
 }

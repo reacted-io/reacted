@@ -81,8 +81,7 @@ public class RemotingRoot {
     }
 
     private static void onSpuriousMessage(ReActorContext raCtx, Serializable payload) {
-        raCtx.getReActorSystem().logError("Spurious message received",
-                                          new IllegalStateException(payload.toString()));
+        raCtx.logError("Spurious message received", new IllegalStateException(payload.toString()));
     }
 
     private void onSubscriptionComplete(ReActorContext raCtx,
@@ -100,8 +99,7 @@ public class RemotingRoot {
 
     private static void onRegistryServicePublicationFailure(ReActorContext raCtx,
                                                             RegistryServicePublicationFailed failure) {
-        raCtx.getReActorSystem().logInfo("Error publishing service {}", failure.getPublicationError(),
-                                          failure.getServiceName());
+        raCtx.logError("Error publishing service {}", failure.getServiceName(), failure.getPublicationError());
     }
 
     private void onRegistryGateUpsert(ReActorContext raCtx, RegistryGateUpserted upsert) {
@@ -112,10 +110,10 @@ public class RemotingRoot {
             raCtx.getReActorSystem().registerNewRoute(upsert.getReActorSystemId(), upsert.getChannelId(),
                                                       upsert.getChannelData());
 
-            raCtx.getReActorSystem().logDebug("I am {} received config for {} Channel {} Data: {}",
-                    raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
-                    upsert.getReActorSystemId().getReActorSystemName(),
-                    upsert.getChannelId(), upsert.getChannelData().toString());
+            raCtx.logDebug("I am {} received config for {} Channel {} Data: {}",
+                           raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
+                           upsert.getReActorSystemId().getReActorSystemName(), upsert.getChannelId(),
+                           upsert.getChannelData().toString());
         }
     }
 
@@ -127,9 +125,8 @@ public class RemotingRoot {
         }
         raCtx.getReActorSystem().unregisterRoute(removed.getReActorSystem(),
                                                  removed.getChannelId());
-        raCtx.getReActorSystem().logDebug("I am {} received removal request for {} channel {}",
-                                          raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
-                                          removed.getReActorSystem().getReActorSystemName(),
-                                          removed.getChannelId());
+        raCtx.logDebug("I am {} received removal request for {} channel {}",
+                       raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
+                       removed.getReActorSystem().getReActorSystemName(), removed.getChannelId());
     }
 }

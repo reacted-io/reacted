@@ -177,8 +177,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
             getServiceInstance(cancellationRequest.getServiceName(),
                                raCtx.getReActorSystem().getLocalReActorSystemId(), "")
                     .ifSuccessOrElse( this.serviceDiscovery::unregisterService,
-                                     error -> raCtx.getReActorSystem().logError("Unable to unregister service {}",
-                                                                                cancellationRequest.toString(), error));
+                                     error -> raCtx.logError("Unable to unregister service {}",
+                                                             cancellationRequest.toString(), error));
         }
     }
 
@@ -198,8 +198,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     private void onServiceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
         if (this.serviceDiscovery != null) {
             Try.of(() -> this.serviceDiscovery.queryForInstances(request.getServiceName()))
-                    .peekFailure(error -> raCtx.getReActorSystem().logError("Error discovering service {}",
-                                                                            request.getServiceName(), error))
+                    .peekFailure(error -> raCtx.logError("Error discovering service {}",
+                                                         request.getServiceName(), error))
                     .toOptional()
                     .filter(Predicate.not(Collection::isEmpty))
                     .map(serviceInstances -> toServiceDiscoveryReply(serviceInstances, raCtx.getReActorSystem()))
@@ -227,9 +227,9 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                                 encodeProperties(pubRequest.getChannelIdData()));
             }
         } catch (KeeperException.NodeExistsException alreadyPublished) {
-            raCtx.getReActorSystem().logDebug("Trying to publish on something already there? ", alreadyPublished);
+            raCtx.logError("Trying to publish on something already there? ", alreadyPublished);
         } catch (Exception nodeCreationError) {
-            raCtx.getReActorSystem().logError("Unable to publish ReActorSystem ", nodeCreationError);
+            raCtx.logError("Unable to publish ReActorSystem ", nodeCreationError);
         }
     }
 
@@ -246,7 +246,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
             raCtx.getReActorSystem().getSystemRemotingRoot().tell(raCtx.getSelf(),
                                                                   new RegistrySubscriptionComplete());
         } catch (Exception subscriptionError) {
-            raCtx.getReActorSystem().logError("Error starting registry subscription", subscriptionError);
+            raCtx.logError("Error starting registry subscription", subscriptionError);
             raCtx.stop();
         }
     }
@@ -257,8 +257,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     }
 
     private static void onSpuriousMessage(ReActorContext raCtx, Object message) {
-        raCtx.getReActorSystem().logError("Unrecognized message received in {}", ZooKeeperDriver.class.getSimpleName(),
-                                          new IllegalStateException(message.toString()));
+        raCtx.logError("Unrecognized message received in {}", ZooKeeperDriver.class.getSimpleName(),
+                       new IllegalStateException(message.toString()));
     }
 
     private static TreeCacheListener getTreeListener(ReActorSystem reActorSystem, ReActorRef driverReActor) {

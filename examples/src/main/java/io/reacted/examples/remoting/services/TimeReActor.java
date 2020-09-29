@@ -58,11 +58,11 @@ public class TimeReActor implements ReActor {
                                                        .toCompletableFuture()
                                                        .thenAccept(result -> result.filter(DeliveryStatus::isDelivered)
                                                                                    .ifError(Throwable::printStackTrace)),
-                             () -> raCtx.getReActorSystem().logError("No response received"));
+                             () -> raCtx.logError("No service discovery response received"));
     }
 
     private void onServiceResponse(ReActorContext raCtx, ZonedDateTime time) {
-        raCtx.getReActorSystem().logInfo("Received {} response from service: {}", ++received, time.toString());
+        raCtx.logInfo("Received {} response from service: {}", ++received, time.toString());
         raCtx.stop();
     }
 

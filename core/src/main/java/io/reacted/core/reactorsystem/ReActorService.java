@@ -73,7 +73,7 @@ public class ReActorService {
                                                       .build();
                 spawnRoutee(raCtx, routeeReActions, newRouteeCfg);
             } catch (Throwable routeeSpawnError) {
-                raCtx.getReActorSystem().logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);
+                raCtx.logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);
             }
         }
 
