@@ -1,1 +1,1 @@
-![ReActed Logo](https://github.com/wireknight/reacted/doc/artwork/logo.png)
+![ReActed Logo](https://github.com/wireknight/reacted/blob/master/doc/artwork/logo.png)
