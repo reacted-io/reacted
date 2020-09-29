@@ -63,7 +63,7 @@ public class SystemReplayAskApp {
                                              .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                                              .build();
 
-        var echoReference = recordedReactorSystem.spawnReActor(echoReActions, echoReActorConfig)
+        var echoReference = recordedReactorSystem.spawn(echoReActions, echoReActorConfig)
                                                  .orElseSneakyThrow();
 
         echoReference.ask("I am an ask", String.class, "AskRequest")
@@ -82,7 +82,7 @@ public class SystemReplayAskApp {
                                                                           ExampleUtils.NO_REMOTING_DRIVERS))
                 .initReActorSystem();
         //Once the reactor will be created, the system will notify that and will begin its replay
-        echoReference = replayedReActorSystem.spawnReActor(echoReActions, echoReActorConfig).orElseSneakyThrow();
+        echoReference = replayedReActorSystem.spawn(echoReActions, echoReActorConfig).orElseSneakyThrow();
         echoReference.ask("I am an ask", String.class, "AskRequest")
                      .thenAccept(reply -> reply.ifSuccessOrElse(System.out::println,
                                                                 Throwable::printStackTrace))

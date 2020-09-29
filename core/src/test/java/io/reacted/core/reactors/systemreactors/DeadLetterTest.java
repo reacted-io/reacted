@@ -47,7 +47,7 @@ class DeadLetterTest {
                                                    .setMailBoxProvider(BasicMbox::new)
                                                    .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(DeadMessage.class))
                                                    .build();
-        reActorSystem.spawnReActor(new MagicTestReActor(2, true, reActorConfig))
+        reActorSystem.spawn(new MagicTestReActor(2, true, reActorConfig))
                      .orElseSneakyThrow();
         new ReActorRef(new ReActorId(ReActorId.NO_REACTOR_ID, CoreConstants.REACTOR_NAME),
                        reActorSystem.getLoopback()).tell(ReActorRef.NO_REACTOR_REF, "message");

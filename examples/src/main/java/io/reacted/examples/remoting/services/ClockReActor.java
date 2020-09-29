@@ -33,7 +33,7 @@ public class ClockReActor implements ReActor {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(TimeRequest.class,
-                               (raCtx, timeRequest) -> raCtx.getSender().tell(raCtx.getParent(), ZonedDateTime.now()))
+                               (raCtx, timeRequest) -> raCtx.reply(raCtx.getParent(), ZonedDateTime.now()))
                         .reAct(ReActions::noReAction)
                         .build();
     }

@@ -25,8 +25,8 @@ class SendMessagesApp {
         //Body/state of the reactor
         var newReActorInstance = new SimpleTestReActor(pingDelim, messagesToSend);
         //Reference of the reactor within the ReActorSystem (cluster)
-        var newReActorReference = simpleReActorSystem.spawnReActor(newReActorInstance.getReActions(),
-                                                                   newReActorInstance.getConfig())
+        var newReActorReference = simpleReActorSystem.spawn(newReActorInstance.getReActions(),
+                                                            newReActorInstance.getConfig())
                                                      .orElse(ReActorRef.NO_REACTOR_REF, error -> {
                                                          error.printStackTrace();
                                                          simpleReActorSystem.shutDown();

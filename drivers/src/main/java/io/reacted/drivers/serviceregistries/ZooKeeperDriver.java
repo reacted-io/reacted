@@ -204,8 +204,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                     .filter(Predicate.not(Collection::isEmpty))
                     .map(serviceInstances -> toServiceDiscoveryReply(serviceInstances, raCtx.getReActorSystem()))
                     .filter(serviceDiscoveryReply -> !serviceDiscoveryReply.getServiceGates().isEmpty())
-                    .ifPresent(serviceDiscoveryReply -> raCtx.getSender().tell(ReActorRef.NO_REACTOR_REF,
-                                                                               serviceDiscoveryReply));
+                    .ifPresent(serviceDiscoveryReply -> raCtx.reply(ReActorRef.NO_REACTOR_REF, serviceDiscoveryReply));
         }
     }
 

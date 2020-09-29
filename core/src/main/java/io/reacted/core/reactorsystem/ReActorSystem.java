@@ -405,9 +405,9 @@ public class ReActorSystem {
      * @param reActor a generic reactor
      * @return A successful Try containing the ReActorRef for the new reactor on success, a failed Try on failure
      */
-    public Try<ReActorRef> spawnReActor(ReActor reActor) {
-        return spawnReActor(Objects.requireNonNull(Objects.requireNonNull(reActor).getReActions()),
-                            Objects.requireNonNull(reActor.getConfig()));
+    public Try<ReActorRef> spawn(ReActor reActor) {
+        return spawn(Objects.requireNonNull(Objects.requireNonNull(reActor).getReActions()),
+                     Objects.requireNonNull(reActor.getConfig()));
     }
 
     /**
@@ -418,7 +418,7 @@ public class ReActorSystem {
      * @return A successful Try containing the ReActorRef for the new reactor on success,
      * a failed Try on failure
      */
-    public Try<ReActorRef> spawnReActor(ReActions reActions, ReActiveEntityConfig<?, ?> reActorConfig) {
+    public Try<ReActorRef> spawn(ReActions reActions, ReActiveEntityConfig<?, ?> reActorConfig) {
         return spawnChild(Objects.requireNonNull(reActions), Objects.requireNonNull(userReActorsRoot),
                           Objects.requireNonNull(reActorConfig));
     }
@@ -431,7 +431,7 @@ public class ReActorSystem {
      * @return A successful Try containing the ReActorRef for the new reactor on success,
      * a failed Try on failure
      */
-    public Try<ReActorRef> spawnReActor(ReActiveEntity reActiveEntity, ReActiveEntityConfig<?, ?> reActorConfig) {
+    public Try<ReActorRef> spawn(ReActiveEntity reActiveEntity, ReActiveEntityConfig<?, ?> reActorConfig) {
         return spawnChild(Objects.requireNonNull(Objects.requireNonNull(reActiveEntity).getReActions()),
                           Objects.requireNonNull(userReActorsRoot), Objects.requireNonNull(reActorConfig));
     }
@@ -447,8 +447,8 @@ public class ReActorSystem {
      */
     public Try<ReActorRef> spawnChild(ReActions reActions, ReActorRef father,
                                       ReActiveEntityConfig<?, ?> reActorConfig) {
-        Try<ReActorRef> spawned = spawnReActor(getLoopback(), Objects.requireNonNull(reActions),
-                                               Objects.requireNonNull(father), Objects.requireNonNull(reActorConfig));
+        Try<ReActorRef> spawned = spawn(getLoopback(), Objects.requireNonNull(reActions),
+                                        Objects.requireNonNull(father), Objects.requireNonNull(reActorConfig));
         spawned.ifSuccess(initMe -> initMe.tell(getSystemSink(), REACTOR_INIT));
         return spawned;
     }
@@ -460,8 +460,8 @@ public class ReActorSystem {
      * @return A successful Try containing the ReActorRef for the new service on success, a failed try on failure
      */
     public Try<ReActorRef> spawnService(ReActorServiceConfig reActorServiceConfig) {
-        return spawnReActor(new ReActorService(Objects.requireNonNull(reActorServiceConfig)).getReActions(),
-                            reActorServiceConfig);
+        return spawn(new ReActorService(Objects.requireNonNull(reActorServiceConfig)).getReActions(),
+                     reActorServiceConfig);
     }
 
     //XXX Get the ReActorSystemRef for the current reactor system
@@ -687,18 +687,18 @@ public class ReActorSystem {
     }
 
     private ReActorRef spawnSystemActorsRoot(ReActorRef rootActor) {
-        return spawnReActor(getLoopback(), ReActions.NO_REACTIONS, rootActor,
-                            DEFAULT_REACTOR_CONFIG.toBuilder()
+        return spawn(getLoopback(), ReActions.NO_REACTIONS, rootActor,
+                     DEFAULT_REACTOR_CONFIG.toBuilder()
                                                   .setReActorName("SystemActorsRoot")
                                                   .build())
                 .orElseSneakyThrow();
     }
 
     private ReActorRef spawnRemotingRoot(ReActorRef rootActor) {
-        return spawnReActor(getLoopback(),
-                            new RemotingRoot(localReActorSystemId,
+        return spawn(getLoopback(),
+                     new RemotingRoot(localReActorSystemId,
                                              getSystemConfig().getRemotingDrivers()).getReActions(),
-                                                rootActor, DEFAULT_REACTOR_CONFIG.toBuilder()
+                     rootActor, DEFAULT_REACTOR_CONFIG.toBuilder()
                                                                                  .setMailBoxProvider(BasicMbox::new)
                                                                                  .setReActorName("SystemRemotingRoot")
                                                                                  .build())
@@ -706,8 +706,8 @@ public class ReActorSystem {
     }
 
     private ReActorRef spawnSystemDeadLetters(ReActorRef systemActorsRoot) {
-        return spawnReActor(getLoopback(), DeadLetter.DEADLETTERS, systemActorsRoot,
-                            DEFAULT_REACTOR_CONFIG.toBuilder()
+        return spawn(getLoopback(), DeadLetter.DEADLETTERS, systemActorsRoot,
+                     DEFAULT_REACTOR_CONFIG.toBuilder()
                                                   .setReActorName("DeadLetters")
                                                   .setMailBoxProvider(BasicMbox::new)
                                                   .build())
@@ -715,8 +715,8 @@ public class ReActorSystem {
     }
 
     private ReActorRef spawnSystemLogging(ReActorRef systemActorsRoot) {
-        return spawnReActor(getLoopback(), SystemLogger.SYSTEM_LOGGER, systemActorsRoot,
-                            DEFAULT_REACTOR_CONFIG.toBuilder()
+        return spawn(getLoopback(), SystemLogger.SYSTEM_LOGGER, systemActorsRoot,
+                     DEFAULT_REACTOR_CONFIG.toBuilder()
                                                   .setReActorName("SystemLogging")
                                                   .setMailBoxProvider(BasicMbox::new)
                                                   .build())
@@ -724,23 +724,23 @@ public class ReActorSystem {
     }
 
     private ReActorRef spawnReActorsRoot(ReActorRef systemActorsRoot) {
-        return spawnReActor(getLoopback(), ReActions.NO_REACTIONS, systemActorsRoot,
-                            DEFAULT_REACTOR_CONFIG.toBuilder()
+        return spawn(getLoopback(), ReActions.NO_REACTIONS, systemActorsRoot,
+                     DEFAULT_REACTOR_CONFIG.toBuilder()
                                                   .setReActorName("ReActorSystemRoot")
                                                   .build())
                 .orElseSneakyThrow();
     }
 
     private ReActorRef spawnUserActorsRoot(ReActorRef actorSystemRootActor) {
-        return spawnReActor(getLoopback(), ReActions.NO_REACTIONS, actorSystemRootActor,
-                            DEFAULT_REACTOR_CONFIG.toBuilder()
+        return spawn(getLoopback(), ReActions.NO_REACTIONS, actorSystemRootActor,
+                     DEFAULT_REACTOR_CONFIG.toBuilder()
                                                   .setReActorName("UserActorsRoot")
                                                   .build())
                 .orElseSneakyThrow();
     }
 
-    private Try<ReActorRef> spawnReActor(ReActorSystemRef spawnerAs, ReActions reActions,
-                                         ReActorRef parent, ReActiveEntityConfig<?, ?> reActorConfig) {
+    private Try<ReActorRef> spawn(ReActorSystemRef spawnerAs, ReActions reActions,
+                                  ReActorRef parent, ReActiveEntityConfig<?, ?> reActorConfig) {
         var reActorCtx = createReActorCtx(spawnerAs, reActions, parent,
                                           new ReActorId(parent.getReActorId(), reActorConfig.getReActorName()),
                                           reActorConfig);

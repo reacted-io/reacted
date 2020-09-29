@@ -12,6 +12,7 @@ import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.Message;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
@@ -140,6 +141,26 @@ public final class ReActorContext {
         getDispatcher().dispatch(this);
     }
 
+    public CompletionStage<Try<DeliveryStatus>> reply(Serializable anyPayload) {
+        return reply(getSelf(), anyPayload);
+    }
+
+    public CompletionStage<Try<DeliveryStatus>> aReply(Serializable anyPayload) {
+        return aReply(getSelf(), anyPayload);
+    }
+
+    public CompletionStage<Try<DeliveryStatus>> reply(ReActorRef sender, Serializable anyPayload) {
+        return getSender().tell(sender, anyPayload);
+    }
+
+    public CompletionStage<Try<DeliveryStatus>> aReply(ReActorRef sender, Serializable anyPayload) {
+        return getSender().aTell(sender, anyPayload);
+    }
+
+    public CompletionStage<Try<DeliveryStatus>> tellme(Serializable anyPayload) {
+        return getSelf().tell(this.getSelf(), anyPayload);
+    }
+
     public Try<ReActorRef> spawnChild(ReActor reActor) {
         return getReActorSystem().spawnChild(reActor.getReActions(), getSelf(), reActor.getConfig());
     }
@@ -165,17 +186,29 @@ public final class ReActorContext {
     }
 
     public boolean isStop() {
-        return stop;
+        return this.stop;
+    }
+
+    public void logInfo(String descriptionFormat, Serializable ...args) {
+        getReActorSystem().logInfo(descriptionFormat, args);
+    }
+
+    public void logError(String descriptionFormat, Serializable ...args) {
+        getReActorSystem().logError(descriptionFormat, args);
+    }
+
+    public void logDebug(String descriptionFormat, Serializable ...args) {
+        getReActorSystem().logDebug(descriptionFormat, args);
     }
 
     public void reAct(Message msg) {
-        lastMsgSender = msg.getSender();
+        this.lastMsgSender = msg.getSender();
         BiConsumer<ReActorContext, Serializable> reAction = reActions.getReAction(msg.getPayload());
         reAction.accept(this, msg.getPayload());
     }
 
     public ReActorRef getSender() {
-        return lastMsgSender;
+        return this.lastMsgSender;
     }
 
     @Override

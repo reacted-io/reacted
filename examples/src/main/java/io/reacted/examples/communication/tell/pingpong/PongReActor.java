@@ -51,9 +51,7 @@ public class PongReActor implements ReActor {
         //Schedule a reply after 1 second
         this.pongTimer.schedule(new TimerTask() {
             @Override
-            public void run() {
-                raCtx.getSender().tell(raCtx.getSelf(), new Pong(ping.getPingValue()));
-            }
+            public void run() { raCtx.reply(new Pong(ping.getPingValue())); }
         }, 1000);
     }
 

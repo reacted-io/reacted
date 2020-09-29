@@ -64,7 +64,7 @@ class LocalDriverTest {
                                                    .setTypedSniffSubscriptions(subscribedTypes)
                                                    .build();
 
-        ReActorRef reActorRef = reActorSystem.spawnReActor(new MagicTestReActor(1, true, reActorConfig))
+        ReActorRef reActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))
                                              .orElseSneakyThrow();
 
         reActorSystem.registerReActorSystemDriver(localDriver);

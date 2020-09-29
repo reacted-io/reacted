@@ -172,6 +172,6 @@ public class Dispatcher {
         } catch (InterruptedException exc) {
             Thread.currentThread().interrupt();
         }
-        LOGGER.info("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
+        LOGGER.debug("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
     }
 }

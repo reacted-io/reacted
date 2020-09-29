@@ -81,16 +81,16 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                        .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                                        .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                        .build();
-        this.feedGate = localReActorSystem.spawnReActor(ReActions.newBuilder()
-                                                                 .reAct(ReActorInit.class, ReActions::noReAction)
-                                                                 .reAct(PublisherShutdown.class,
+        this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
+                                                          .reAct(ReActorInit.class, ReActions::noReAction)
+                                                          .reAct(PublisherShutdown.class,
                                                                         ReactedSubmissionPublisher::onPublisherShutdown)
-                                                                 .reAct(ReActorStop.class, this::onStop)
-                                                                 .reAct(SubscriptionRequest.class,
+                                                          .reAct(ReActorStop.class, this::onStop)
+                                                          .reAct(SubscriptionRequest.class,
                                                                         this::onSubscriptionRequest)
-                                                                 .reAct(UnsubscriptionRequest.class,
+                                                          .reAct(UnsubscriptionRequest.class,
                                                                         this::onUnSubscriptionRequest)
-                                                                 .build(), feedGateCfg)
+                                                          .build(), feedGateCfg)
                                           .orElseThrow(IllegalArgumentException::new);
     }
 

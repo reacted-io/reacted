@@ -77,7 +77,7 @@ public class RemotingRoot {
 
     private static void onInitComplete(ReActorContext raCtx,
                                        RegistryDriverInitComplete initComplete) {
-        raCtx.getSender().tell(raCtx.getSelf(), new RegistrySubscriptionRequest());
+        raCtx.reply(new RegistrySubscriptionRequest());
     }
 
     private static void onSpuriousMessage(ReActorContext raCtx, Serializable payload) {
@@ -91,7 +91,7 @@ public class RemotingRoot {
                        .map(remotingDriver -> new RegistryPublicationRequest(localReActorSystem,
                                                                              remotingDriver.getChannelId(),
                                                                              remotingDriver.getChannelProperties()))
-                       .map(pubRequest -> raCtx.getSender().tell(raCtx.getSelf(), pubRequest))
+                       .map(raCtx::reply)
                        .forEach(pubRequest -> pubRequest.thenAccept(result -> result.filter(DeliveryStatus::isDelivered)
                                                                                     .ifError(error -> raCtx.getReActorSystem()
                                                                                                            .logError("Unable to publish channel:",

@@ -26,7 +26,7 @@ public class UpdateGeneratorApp {
         var reActorSystem = ExampleUtils.getDefaultInitedReActorSystem(UpdateGeneratorApp.class.getSimpleName());
         //Create a reactor that subscribes for Updates. Whenever a new Update is received by a reactor within
         //the reactorsystem, the TypeSubscriber reactor will receive a copy of it
-        reActorSystem.spawnReActor(new ReActor() {
+        reActorSystem.spawn(new ReActor() {
             @Nonnull
             @Override
             public ReActions getReActions() {

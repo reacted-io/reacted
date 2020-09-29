@@ -99,7 +99,7 @@ class ReActorSystemTest {
 
     @Test
     void reactorSystemCanSpawnNewReactor() {
-        Try<ReActorRef> reActorRef = reActorSystem.spawnReActor(mock(ReActions.class), reActorConfig);
+        Try<ReActorRef> reActorRef = reActorSystem.spawn(mock(ReActions.class), reActorConfig);
 
         Assertions.assertTrue(reActorRef.isSuccess());
         ReActorId reActorId = reActorRef.get().getReActorId();
@@ -109,7 +109,7 @@ class ReActorSystemTest {
 
     @Test
     void reactorSystemCanStopReactor() {
-        Try<ReActorRef> reActorRef = reActorSystem.spawnReActor(mock(ReActions.class), reActorConfig);
+        Try<ReActorRef> reActorRef = reActorSystem.spawn(mock(ReActions.class), reActorConfig);
 
         ReActorId reActorId = reActorRef.get().getReActorId();
         reActorSystem.stopReActor(reActorId);
@@ -119,7 +119,7 @@ class ReActorSystemTest {
 
     @Test
     void reactorSystemCanSpawnNewChild() {
-        Try<ReActorRef> fatherActor = reActorSystem.spawnReActor(ReActions.NO_REACTIONS, reActorConfig);
+        Try<ReActorRef> fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
 
         Try<ReActorRef> childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor.get(),
                                                                 childReActorConfig);
@@ -143,7 +143,7 @@ class ReActorSystemTest {
 
     @Test
     void reactorSystemCanStopChild() {
-        Try<ReActorRef> fatherActor = reActorSystem.spawnReActor(mock(ReActions.class), reActorConfig);
+        Try<ReActorRef> fatherActor = reActorSystem.spawn(mock(ReActions.class), reActorConfig);
         Try<ReActorRef> childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor.get(),
                                                                 childReActorConfig);
 
@@ -166,11 +166,11 @@ class ReActorSystemTest {
                                                    .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
                                                    .build();
 
-        reActorSystem.spawnReActor(new MagicTestReActor(1, true, reActorConfig));
+        reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig));
 
-        reActorSystem.spawnReActor(new MagicTestReActor(1, true, reActorConfig.toBuilder()
-                                                                              .setReActorName("2nd reactor name")
-                                                                              .build()));
+        reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig.toBuilder()
+                                                                       .setReActorName("2nd reactor name")
+                                                                       .build()));
 
         Message originalMsg = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, 0x31337,
                                           reActorSystem.getLocalReActorSystemId(), AckingPolicy.NONE,

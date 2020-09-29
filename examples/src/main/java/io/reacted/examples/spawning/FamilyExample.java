@@ -26,12 +26,12 @@ public class FamilyExample {
                                                                                   .setReactorSystemName("ExampleSystem")
                                                                                   .build()).initReActorSystem();
         try {
-            var father = exampleReActorSystem.spawnReActor(new Father(),
-                                                                       ReActorConfig.newBuilder()
+            var father = exampleReActorSystem.spawn(new Father(),
+                                                    ReActorConfig.newBuilder()
                                                                                     .setReActorName("Father")
                                                                                     .build()).orElseSneakyThrow();
-            var uncle = exampleReActorSystem.spawnReActor(new Uncle(),
-                                                                      ReActorConfig.newBuilder()
+            var uncle = exampleReActorSystem.spawn(new Uncle(),
+                                                   ReActorConfig.newBuilder()
                                                                                    .setReActorName("Uncle")
                                                                                    .build()).orElseSneakyThrow();
             father.tell(uncle, new BreedRequest(3));
@@ -81,7 +81,7 @@ public class FamilyExample {
         private void onThankYou(ReActorContext raCtx, ThankYouFather thanks) {
             if (--this.requestedChildren == 0) {
                 raCtx.stop()
-                     .thenAcceptAsync(voidVal -> raCtx.getSender().tell(ReActorRef.NO_REACTOR_REF, new ByeByeUncle()));
+                     .thenAcceptAsync(voidVal -> raCtx.reply(ReActorRef.NO_REACTOR_REF, new ByeByeUncle()));
             }
         }
     }
@@ -103,7 +103,7 @@ public class FamilyExample {
                                               raCtx.getSelf().getReActorId().getReActorName(),
                                               greetingsMessage.getGreetingsMessage(),
                                               raCtx.getSender().getReActorId().getReActorName());
-            raCtx.getSender().tell(raCtx.getSelf(), new ThankYouFather());
+            raCtx.reply(new ThankYouFather());
         }
 
         private static void onByeByeUncle(ReActorContext raCtx, ByeByeUncle timeToDie) { raCtx.stop(); }

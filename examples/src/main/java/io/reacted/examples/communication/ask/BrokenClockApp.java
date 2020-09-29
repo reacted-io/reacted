@@ -32,7 +32,7 @@ public class BrokenClockApp {
                                                .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                                .build();
         //We did not set any reaction, this clock is not going to reply to anything
-        var brokenReactiveClock = reActorSystem.spawnReActor(ReActions.NO_REACTIONS, reactiveClockConfig)
+        var brokenReactiveClock = reActorSystem.spawn(ReActions.NO_REACTIONS, reactiveClockConfig)
                                                .orElseSneakyThrow();
         //Note: we do not need anoter reactor to intercept the answer
         brokenReactiveClock.ask(new TimeRequest(), Instant.class, Duration.ofSeconds(2), "What's the time?")

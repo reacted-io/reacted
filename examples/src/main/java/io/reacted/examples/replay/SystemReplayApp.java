@@ -58,7 +58,7 @@ public class SystemReplayApp {
                                              .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                                              .build();
 
-        var echoReference = recordedReactorSystem.spawnReActor(echoReActions, echoReActorConfig)
+        var echoReference = recordedReactorSystem.spawn(echoReActions, echoReActorConfig)
                                                  .orElseSneakyThrow();
 
         IntStream.range(0, 5)
@@ -78,7 +78,7 @@ public class SystemReplayApp {
                         .initReActorSystem();
         System.out.println("Replay Start!");
         //Once the reactor will be created, the system will notify that and will begin its replay
-        replayedReActorSystem.spawnReActor(echoReActions, echoReActorConfig).orElseSneakyThrow();
+        replayedReActorSystem.spawn(echoReActions, echoReActorConfig).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(1);
         replayedReActorSystem.shutDown();
     }

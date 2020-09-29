@@ -73,7 +73,7 @@ public class ServicePublicationApp {
         TimeUnit.SECONDS.sleep(1);
         //Create a reactor in CLIENT reactor system that will query the service exported in SERVER
         //All the communication between the two reactor systems will be done using a GRPC channel
-        client.spawnReActor(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
+        client.spawn(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(1);
         server.shutDown();
     }

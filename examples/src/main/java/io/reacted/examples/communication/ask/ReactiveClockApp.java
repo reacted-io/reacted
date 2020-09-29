@@ -41,7 +41,7 @@ public class ReactiveClockApp {
                                                .setReActorName("Reactive Clock")
                                                .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                                .build();
-        var reactiveClock = reActorSystem.spawnReActor(reactiveClockReactions, reactiveClockConfig)
+        var reactiveClock = reActorSystem.spawn(reactiveClockReactions, reactiveClockConfig)
                                          .orElseSneakyThrow();
         //Note: we do not need anoter reactor to intercept the answer
         reactiveClock.ask(new TimeRequest(), Instant.class, "What's the time?")
