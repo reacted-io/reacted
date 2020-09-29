@@ -1,8 +1,8 @@
 ![ReActed Logo](https://github.com/wireknight/reacted/blob/master/doc/artwork/logo.png)
 
-<div align="center">
-[Reactive Actor framework for flexible/distributed/scalable and monitorable applications](https://www.reacted.io)
-</div>
+<p align="center">
+<a href="https://www.reacted.io">Reactive Actor framework for flexible/distributed/scalable and monitorable applications</a>
+</p>
 
 # Introduction
  ReActed is an actor oriented framework for creating reactive applications. It naturally embraces the microcomponents
