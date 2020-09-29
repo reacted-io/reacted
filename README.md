@@ -36,5 +36,5 @@ ReActed provides you a flexible and dependable environment that allows the devel
 
 Getting Started
 
-If you want to jump into the code, you can give a look to the examples directory, otherwise give a look to the quickstart
+If you want to jump into the code, you can give a look to the [examples](https://github.com/wireknight/reacted/tree/master/examples) directory, otherwise give a look to the quickstart guide in the official documentation
 
