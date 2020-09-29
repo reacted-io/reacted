@@ -32,7 +32,7 @@ public class UpdateGeneratorApp {
             public ReActions getReActions() {
                 return ReActions.newBuilder()
                                 .reAct(Update.class,
-                                       (ctx, update) -> System.out.printf("Unpdates received %d%n",
+                                       (ctx, update) -> System.out.printf("Updates received %d%n",
                                                                           update.getUpdateId()))
                                 .reAct((ctx, any) -> {
                                 })

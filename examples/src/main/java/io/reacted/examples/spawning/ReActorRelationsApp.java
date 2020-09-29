@@ -19,7 +19,7 @@ import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.LongStream;
 
-public class FamilyExample {
+public class ReActorRelationsApp {
     public static void main(String[] args) {
 
         ReActorSystem exampleReActorSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
@@ -28,12 +28,12 @@ public class FamilyExample {
         try {
             var father = exampleReActorSystem.spawn(new Father(),
                                                     ReActorConfig.newBuilder()
-                                                                                    .setReActorName("Father")
-                                                                                    .build()).orElseSneakyThrow();
+                                                                 .setReActorName("Father")
+                                                                 .build()).orElseSneakyThrow();
             var uncle = exampleReActorSystem.spawn(new Uncle(),
                                                    ReActorConfig.newBuilder()
-                                                                                   .setReActorName("Uncle")
-                                                                                   .build()).orElseSneakyThrow();
+                                                                .setReActorName("Uncle")
+                                                                .build()).orElseSneakyThrow();
             father.tell(uncle, new BreedRequest(3));
             TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
@@ -56,7 +56,7 @@ public class FamilyExample {
             this.fatherReactions = ReActions.newBuilder()
                                             .reAct(BreedRequest.class, this::onBreedRequest)
                                             .reAct(ThankYouFather.class, this::onThankYou)
-                                            .reAct(ReActorStop.class, FamilyExample::onStop)
+                                            .reAct(ReActorStop.class, ReActorRelationsApp::onStop)
                                             .reAct(ReActions::noReAction)
                                             .build();
         }
@@ -91,7 +91,7 @@ public class FamilyExample {
         private static final ReActions UNCLE_REACTIONS = ReActions.newBuilder()
                                                                   .reAct(Greetings.class, Uncle::onGreetingsFromChild)
                                                                   .reAct(ByeByeUncle.class, Uncle::onByeByeUncle)
-                                                                  .reAct(ReActorStop.class, FamilyExample::onStop)
+                                                                  .reAct(ReActorStop.class, ReActorRelationsApp::onStop)
                                                                   .reAct(ReActions::noReAction)
                                                                   .build();
         @Nonnull
@@ -127,7 +127,7 @@ public class FamilyExample {
         public ReActions getReActions() {
             return ReActions.newBuilder()
                             .reAct(ReActorInit.class, this::onInit)
-                            .reAct(ReActorStop.class, FamilyExample::onStop)
+                            .reAct(ReActorStop.class, ReActorRelationsApp::onStop)
                             .reAct(ReActions::noReAction)
                             .build();
         }
