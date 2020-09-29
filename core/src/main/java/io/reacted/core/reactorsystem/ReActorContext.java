@@ -157,7 +157,7 @@ public final class ReActorContext {
         return getSender().aTell(sender, anyPayload);
     }
 
-    public CompletionStage<Try<DeliveryStatus>> tellme(Serializable anyPayload) {
+    public CompletionStage<Try<DeliveryStatus>> selfTell(Serializable anyPayload) {
         return getSelf().tell(this.getSelf(), anyPayload);
     }
 
