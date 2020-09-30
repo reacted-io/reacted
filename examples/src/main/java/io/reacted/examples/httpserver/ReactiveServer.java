@@ -46,7 +46,7 @@ public class ReactiveServer {
         }
 
         @Override
-        public void handle(HttpExchange exchange) throws IOException {
+        public void handle(HttpExchange exchange) {
             handleResponse(exchange, "GET".equals(exchange.getRequestMethod())
                                      ? handleGetRequest(exchange)
                                      : "No Value", this.requestCounter.incrementAndGet());
@@ -81,7 +81,7 @@ public class ReactiveServer {
         public ReActions getReActions() {
             return ReActions.newBuilder()
                             .reAct(ReActorInit.class, this::onInit)
-                            .reAct(IOException.class, ReactiveResponse::onError)
+                            .reAct(IOException.class, this::onError)
                             .reAct(HtmlPage.class, this::onHttpHeadersSent)
                             .reAct(ReActions::noReAction)
                             .build();
@@ -100,8 +100,10 @@ public class ReactiveServer {
                                                    .ifSuccessOrElse(noVal -> raCtx.stop(), raCtx::selfTell));
         }
 
-        private static void onError(ReActorContext raCtx, Throwable error) {
-            raCtx.logError("Error sending reply", error);
+        private void onError(ReActorContext raCtx, Throwable error) {
+            raCtx.logError("Error sending reply for {} to {}",
+                           httpCtx.getRequestURI(), httpCtx.getRemoteAddress(), error);
+            this.httpCtx.close();
             raCtx.stop();
         }
 
