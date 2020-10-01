@@ -95,7 +95,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
-                        .reAct(ReActorStop.class, this::onStop)
+                        .reAct(ReActorStop.class, ReActions::noReAction)
                         .reAct(SubscriptionReply.class, this::onSubscriptionReply)
                         .reAct(SubscriberError.class, this::onSubscriberError)
                         .reAct(SubscriberComplete.class, this::onSubscriberComplete)
@@ -133,10 +133,6 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                                                                     errorTermination(raCtx, error, this.subscriber); };
         requestDelivery.thenAccept(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered)
                                                                          .ifError(onSubscriptionError));
-    }
-
-    private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        this.backpressuredMailbox.close();
     }
 
     private void completeTermination(ReActorContext raCtx, Flow.Subscriber<? super PayloadT> localSubscriber) {

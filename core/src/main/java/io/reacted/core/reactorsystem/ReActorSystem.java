@@ -784,9 +784,9 @@ public class ReActorSystem {
                 updateMessageInterceptors(stopMe, stopMe.getInterceptRules(),
                                           SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS);
                 Try.ofRunnable(() -> stopMe.reAct(reActorStop))
-                   .ifError(error -> stopMe.getReActorSystem()
-                                           .logError("Unable to properly stop reactor: ", error));
-
+                   .ifError(error -> stopMe.logError("Unable to properly stop reactor: ", error));
+                Try.ofRunnable(() -> stopMe.getMbox().close())
+                   .ifError(error -> stopMe.logError("Unable to properly close mailbox", error));
                 var allChildrenTerminated = allChildrenTerminationFuture(stopMe.getChildren(), this);
                 CompletableFuture<Void> myTerminationHook = stopMe.getHierarchyTermination()
                                                                   .toCompletableFuture();

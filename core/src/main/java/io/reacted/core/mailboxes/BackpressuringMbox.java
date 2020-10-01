@@ -30,7 +30,7 @@ import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
-public class BackpressuringMbox implements MailBox, AutoCloseable {
+public class BackpressuringMbox implements MailBox {
     public static final Duration BEST_EFFORT_TIMEOUT = Duration.ofNanos(0);
     public static final Duration RELIABLE_DELIVERY_TIMEOUT = Duration.ofNanos(Long.MAX_VALUE);
     private static final Logger LOGGER = LoggerFactory.getLogger(BackpressuringMbox.class);
@@ -112,9 +112,10 @@ public class BackpressuringMbox implements MailBox, AutoCloseable {
     }
 
     @Override
-    public void close() {
+    public void close() throws Exception {
         this.backpressurer.close();
         this.asyncSerialExecutor.shutdownNow();
+        this.realMbox.close();
     }
 
     /*
