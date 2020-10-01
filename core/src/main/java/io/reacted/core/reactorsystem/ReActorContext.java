@@ -145,14 +145,31 @@ public final class ReActorContext {
         return getSender().aTell(sender, anyPayload);
     }
 
+    /**
+     * Tells to the current reactor the specified message setting itself as sender for the message
+     * @param anyPayload message that should be self-sent
+     * @return A {@link CompletionStage} that is going to be completed when the delivery attempt is
+     * complete
+     */
     public CompletionStage<Try<DeliveryStatus>> selfTell(Serializable anyPayload) {
         return getSelf().tell(this.getSelf(), anyPayload);
     }
 
+    /**
+     * Spawn a new {@link ReActor} child of the spawning one
+     * @param reActor the new {@link ReActor} definition
+     * @return a {@link Try} containing a {@link ReActorRef} for the new {@link ReActor}
+     */
     public Try<ReActorRef> spawnChild(ReActor reActor) {
         return getReActorSystem().spawnChild(reActor.getReActions(), getSelf(), reActor.getConfig());
     }
 
+    /**
+     * Spawn a new {@link ReActor} child of the spawning one
+     * @param reActiveEntity the {@link ReActiveEntity} definition for the new {@link ReActor}
+     * @param reActorConfig the {@link ReActorConfig} for the new {@link ReActor}
+     * @return a {@link Try} containing a {@link ReActorRef} for the new {@link ReActor}
+     */
     public Try<ReActorRef> spawnChild(ReActiveEntity reActiveEntity, ReActorConfig reActorConfig) {
         return getReActorSystem().spawnChild(reActiveEntity.getReActions(), getSelf(), reActorConfig);
     }
@@ -161,12 +178,21 @@ public final class ReActorContext {
         return getReActorSystem().spawnChild(reActions, getSelf(), reActorConfig);
     }
 
+    /**
+     * Set the message intercept rules for this reactor.
+     * @param interceptRules
+     */
     public final void setInterceptRules(SubscriptionPolicy.SniffSubscription... interceptRules) {
         refreshInterceptors(Objects.requireNonNull(interceptRules).length == 0
                             ? SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS
                             : Arrays.copyOf(interceptRules, interceptRules.length));
     }
 
+    /**
+     * Request termination for this reactor and the underlying hierachy
+     * @return a {@link CompletionStage} that is going to be completed when the last reactor in the hierarchy
+     * is terminated
+     */
     public CompletionStage<Void> stop() {
         this.stop = true;
         reschedule();
@@ -177,14 +203,32 @@ public final class ReActorContext {
         return this.stop;
     }
 
+    /**
+     * Send a logging request for info level to the centralized logger reactor
+     *
+     * @param descriptionFormat description in sl4j format
+     * @param args arguments list
+     */
     public void logInfo(String descriptionFormat, Serializable ...args) {
         getReActorSystem().logInfo(descriptionFormat, args);
     }
 
+    /**
+     * Send a logging request for error level to the centralized logger reactor
+     *
+     * @param descriptionFormat description in sl4j format
+     * @param args arguments list
+     */
     public void logError(String descriptionFormat, Serializable ...args) {
         getReActorSystem().logError(descriptionFormat, args);
     }
 
+    /**
+     * Send a logging request for debug level to the centralized logger reactor
+     *
+     * @param descriptionFormat description in sl4j format
+     * @param args arguments list
+     */
     public void logDebug(String descriptionFormat, Serializable ...args) {
         getReActorSystem().logDebug(descriptionFormat, args);
     }
@@ -195,6 +239,10 @@ public final class ReActorContext {
         reAction.accept(this, msg.getPayload());
     }
 
+    /**
+     * Get the sender of the last message processed by this reactor
+     * @return ReActorRef to the sender
+     */
     public ReActorRef getSender() {
         return this.lastMsgSender;
     }
