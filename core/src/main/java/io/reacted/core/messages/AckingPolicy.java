@@ -14,7 +14,7 @@ public enum AckingPolicy {
      */
     NONE,
     /**
-     * An ack will be sent back for each message containing the outcome of the delivery attempt.
+     * An ack containing the outcome of the delivery attempt will be sent back for each message
      * @see io.reacted.core.messages.reactors.DeliveryStatus
      */
     ONE_TO_ONE
