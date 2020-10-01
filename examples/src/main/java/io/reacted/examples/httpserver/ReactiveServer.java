@@ -8,6 +8,7 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -70,9 +71,9 @@ public class ReactiveServer {
         private final Executor backpressureExecutor;
 
         private ReactiveHttpHandler(ReActorSystem reactiveServerSystem, Executor backpressureExecutor) {
-            this.reactiveServerSystem = reactiveServerSystem;
+            this.reactiveServerSystem = Objects.requireNonNull(reactiveServerSystem);
             this.requestCounter = new AtomicLong();
-            this.backpressureExecutor = backpressureExecutor;
+            this.backpressureExecutor = Objects.requireNonNull(backpressureExecutor);
         }
 
         @Override
@@ -86,16 +87,8 @@ public class ReactiveServer {
             if (!filenames.isEmpty()) {
                 this.reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId),
                                                 ReActorConfig.newBuilder()
-                                                             .setMailBoxProvider(() -> new BackpressuringMbox(new BasicMbox(), Duration.ZERO,
-                                                                                                              Flow.defaultBufferSize(),
-                                                                                                              Flow.defaultBufferSize(),
-                                                                                                              this.backpressureExecutor,
-                                                                                                              Set.of(InternalError.class,
-                                                                                                                     ReActorInit.class),
-                                                                                                              Set.of(InternalError.class,
-                                                                                                                     PublishNewLineRequest.class,
-                                                                                                                     ProcessComplete.class)))
-                                                             .setReActorName("Req_" + requestId)
+                                                             .setMailBoxProvider(() -> newBackpressuredMailbox(backpressureExecutor))
+                                                             .setReActorName("Request " + requestId)
                                                              .build());
             }
         }
@@ -106,6 +99,14 @@ public class ReactiveServer {
                                             .split("\\?")[1].split("=")[1].split(","))
                       .map(Arrays::asList)
                       .orElse(List.of(), error -> SERVER_LOGGER.error("Invalid request ", error));
+        }
+
+        private static MailBox newBackpressuredMailbox(Executor backpressureExecutor) {
+            return new BackpressuringMbox(new BasicMbox(), Duration.ZERO, Flow.defaultBufferSize(),
+                                          Flow.defaultBufferSize(), backpressureExecutor,
+                                          Set.of(InternalError.class, ReActorInit.class),
+                                          Set.of(InternalError.class, PublishNewLineRequest.class,
+                                          ProcessComplete.class));
         }
     }
 
@@ -239,6 +240,9 @@ public class ReactiveServer {
                             .map(PublishNewLineRequest::new)
                             .map(pubRequest -> raCtx.getParent().tell(raCtx.getSelf(), pubRequest))
                             .map(CompletionStage::toCompletableFuture)
+                            //Backpressure! The backpressuring mailbox prevents the completion of a delivery
+                            //until the reactor has capacity. Since we are pulling data from this stream, waiting for
+                            //the delivery here means stopping retrieving and producing data
                             .map(CompletableFuture::join)
                             .anyMatch(deliveryStatusTry -> deliveryStatusTry.map(DeliveryStatus::isNotDelivered)
                                                                             .orElse(false))
