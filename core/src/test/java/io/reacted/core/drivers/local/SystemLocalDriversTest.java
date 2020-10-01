@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 class SystemLocalDriversTest {
     public static final String TMP_TEST_DIRECT_COMMUNICATION_TXT = "/tmp/testDirectCommunication.txt";
+    private BasicMbox actorMbox;
     private LocalDriver localDriver;
     private Message defaultMessage;
     private ReActorContext reActorContext;
@@ -32,8 +33,9 @@ class SystemLocalDriversTest {
     @BeforeEach
     void setUp() {
         localDriver = SystemLocalDrivers.getDirectCommunicationLogger(TMP_TEST_DIRECT_COMMUNICATION_TXT);
+        actorMbox = new BasicMbox();
         reActorContext = ReActorContext.newBuilder()
-                .setMbox(mock(BasicMbox.class))
+                .setMbox(actorMbox)
                 .setReactorRef(ReActorRef.NO_REACTOR_REF)
                 .setReActorSystem(mock(ReActorSystem.class))
                 .setParentActor(ReActorRef.NO_REACTOR_REF)
@@ -62,14 +64,28 @@ class SystemLocalDriversTest {
     }
 
     @Test
-    void messageNotSentWhenDestinationIsStoppedInDirectCommunicationLogger()
-            throws ExecutionException, InterruptedException {
+    void simpleAsyncMessageIsSent() throws ExecutionException, InterruptedException {
+        CompletionStage<Try<DeliveryStatus>> tryCompletionStage = localDriver.sendAsyncMessage(reActorContext,
+                                                                                               defaultMessage);
+
+        Assertions.assertTrue(
+                tryCompletionStage.toCompletableFuture().get().stream().findFirst().get().isDelivered());
+        Assertions.assertEquals(defaultMessage, actorMbox.getNextMessage());
+    }
+
+    @Test
+    void simpleAsyncMessageNotSentWhenDestinationIsStopped() throws ExecutionException, InterruptedException {
         reActorContext.stop();
         CompletionStage<Try<DeliveryStatus>> tryCompletionStage = localDriver.sendAsyncMessage(reActorContext,
                                                                                                defaultMessage);
 
         Assertions.assertTrue(
                 tryCompletionStage.toCompletableFuture().get().stream().findFirst().get().isNotDelivered());
+    }
 
+    @Test
+    void deliveryStatusIsDeliveredWhenMessageIsSent() {
+        Try<DeliveryStatus> deliveryStatusTry = localDriver.sendMessage(reActorContext, defaultMessage);
+        Assertions.assertTrue(deliveryStatusTry.get().isDelivered());
     }
 }

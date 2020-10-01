@@ -147,9 +147,9 @@ public abstract class ReActorSystemDriver {
         return isAckRequired(isAckRequiredByChannelProperty.compareToIgnoreCase("true") == 0, ackingPolicy);
     }
 
-    protected static Try<DeliveryStatus> sendDeliveyAck(ReActorSystemId localReActorSystemId,
-                                                        long ackSeqNum, ReActorSystemDriver gate,
-                                                        Try<DeliveryStatus> deliveryResult, Message originalMessage) {
+    protected static Try<DeliveryStatus> sendDeliveryAck(ReActorSystemId localReActorSystemId,
+                                                         long ackSeqNum, ReActorSystemDriver gate,
+                                                         Try<DeliveryStatus> deliveryResult, Message originalMessage) {
         var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
                                                            deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED));
         return gate.sendMessage(ReActorContext.NO_REACTOR_CTX,

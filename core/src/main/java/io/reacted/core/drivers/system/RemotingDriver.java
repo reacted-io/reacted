@@ -140,9 +140,9 @@ public abstract class RemotingDriver extends ReActorSystemDriver {
                                                                      .orElseGet(Properties::new));
         var deliverAttempt = (isAckRequired ? destination.tell(sender, payload) : destination.aTell(sender, payload)).toCompletableFuture();
         if (isAckRequired) {
-            deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
-                                                                       getLocalReActorSystem().getNewSeqNum(), this,
-                                                                       deliveryResult, message)
+            deliverAttempt.thenAccept(deliveryResult -> sendDeliveryAck(getLocalReActorSystem().getLocalReActorSystemId(),
+                                                                        getLocalReActorSystem().getNewSeqNum(), this,
+                                                                        deliveryResult, message)
                                   .ifError(error -> getLocalReActorSystem().logError("Unable to send ack", error)));
         }
     }
