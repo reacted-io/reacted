@@ -2,4 +2,6 @@
 
 ## Routers
 
-### Logical Load Balancing
+### Logical load balancing
+
+## Selection policies
