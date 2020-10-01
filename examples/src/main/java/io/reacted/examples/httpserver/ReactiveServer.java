@@ -227,15 +227,14 @@ public class ReactiveServer {
         private void readTextFile(ReActorContext raCtx, String filePath) {
             Try.withResources(() -> Files.lines(Path.of(filePath)),
                               lineStream -> processAllLines(lineStream, raCtx))
-               .ifSuccessOrElse(lastline -> lastline.thenAccept(delivery -> raCtx.getParent()
-                                                                                 .tell(raCtx.getSelf(),
-                                                                                       delivery.map(read -> (Serializable)new ProcessComplete())
-                                                                                               .orElseGet(InternalError::new))),
+               .ifSuccessOrElse(lastline -> raCtx.getParent()
+                                                 .tell(raCtx.getSelf(),
+                                                       lastline.map(read -> (Serializable)new ProcessComplete())
+                                                               .orElseGet(InternalError::new)),
                                 error -> raCtx.getParent().tell(raCtx.getSelf(), new InternalError(error)));
         }
 
-        private static CompletionStage<Try<DeliveryStatus>> processAllLines(Stream<String> fileLines,
-                                                                            ReActorContext raCtx) {
+        private static Try<DeliveryStatus> processAllLines(Stream<String> fileLines, ReActorContext raCtx) {
             return fileLines.map(String::toUpperCase)
                             .map(PublishNewLineRequest::new)
                             .map(pubRequest -> raCtx.getParent().tell(raCtx.getSelf(), pubRequest))
@@ -244,10 +243,10 @@ public class ReactiveServer {
                             //until the reactor has capacity. Since we are pulling data from this stream, waiting for
                             //the delivery here means stopping retrieving and producing data
                             .map(CompletableFuture::join)
-                            .anyMatch(deliveryStatusTry -> deliveryStatusTry.map(DeliveryStatus::isNotDelivered)
-                                                                            .orElse(false))
-                            ? CompletableFuture.completedFuture(Try.ofFailure(new IllegalStateException()))
-                            : CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
+                            .filter(deliveryStatus -> deliveryStatus.map(DeliveryStatus::isNotDelivered)
+                                                                    .orElse(false))
+                            .findAny()
+                            .orElse(Try.ofSuccess(DeliveryStatus.DELIVERED));
         }
     }
 
