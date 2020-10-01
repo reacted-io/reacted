@@ -99,6 +99,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
 
         /**
          * Every reactor is scheduled only on a single dispatcher. Here is set which one
+         * @param dispatcherName Name of the {@link io.reacted.core.runtime.Dispatcher} on which this reactor should run
          */
         public BuilderT setDispatcherName(String dispatcherName) {
             this.dispatcherName = dispatcherName;
@@ -107,6 +108,8 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
 
         /**
          * Every reactor needs a name that has to be unique among its siblings
+         *
+         * @param reActorName name of the reactor
          */
         public BuilderT setReActorName(String reActorName) {
             this.reActorName = reActorName;

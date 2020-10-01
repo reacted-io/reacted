@@ -42,6 +42,7 @@ public abstract class Try<T> {
     /**
      * Identity Try function. May be used as placeholder as mapper
      * @param value a Try
+     * @param <U> any type
      * @return the same try passed as argument
      */
     public static <U> Try<U> identity(Try<U> value) {
@@ -280,7 +281,7 @@ public abstract class Try<T> {
      * <pre>{@code
      * var result = Try.of(() -> performComputation())).orElseSneakyThrow();
      * }</pre>
-     *
+     * @param <X> any {@link Throwable}
      * @return the value contained in the Try if it is successful
      */
     public <X extends Throwable> T orElseSneakyThrow() throws X {
@@ -759,6 +760,7 @@ public abstract class Try<T> {
      * }</pre>
      *
      * @param ifError if Try is a failure, consumer will be applied to the contained exception
+     * @param throwableClass inspect if the failure belongs to the specified class
      * @return the untouched Try
      */
     @SuppressWarnings("UnusedReturnValue")

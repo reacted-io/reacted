@@ -44,8 +44,10 @@ public class RegistryServicePublicationRequest implements Serializable {
     public String getServiceName() { return serviceName; }
 
     /**
+     * Retrieve the information regarding a published service from a serialized string
      * @param serializedString String returned by toSerializedString
      * @throws RuntimeException Any runtime exception generated during the parsing of an illegal string
+     * @return A {@link RegistryServicePublicationRequest} containing the published information about a service
      */
     public static RegistryServicePublicationRequest fromSerializedString(String serializedString) {
         String[] serviceNameAndGate = serializedString.split(SERVICE_NAME_SEPARATOR);

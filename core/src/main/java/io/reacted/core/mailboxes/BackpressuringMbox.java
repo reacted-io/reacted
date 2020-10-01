@@ -53,7 +53,10 @@ public class BackpressuringMbox implements MailBox {
      * @param requestOnStartup    how main messages should be automatically made deliverable on startup.
      *                            Same semantic of Java Flow Subscription.request
      * @param ayncBackpressurer   Executor used to perform the potentially blocking delivery attempt
-     * @param notDelayed  Message types that cannot be backpressured by this wrapper
+     * @param notDelayed  Message types that cannot be wait or backpressured. The delivery will be attempted
+     *                    immediately
+     * @param notBackpressurable Messages that cannot be lost. If a delivery cannot be done immediately the system
+     *                           will wait till when necessary to deliver the message
      */
     public BackpressuringMbox(MailBox realMbox, Duration backpressureTimeout, int bufferSize, int requestOnStartup,
                               Executor ayncBackpressurer, Set<Class<? extends Serializable>> notDelayed,

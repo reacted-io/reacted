@@ -329,6 +329,8 @@ public class ReActorSystem {
     /**
      * Activate the reactorsystem. Before this call, the reactorsystem is not operational and does not require an
      * explicit shutdown
+     *
+     * @return An inited {@link ReActorSystem}
      */
     public ReActorSystem initReActorSystem() {
         Try.ofRunnable(this::initSystem)
@@ -471,6 +473,8 @@ public class ReActorSystem {
 
     /**
      * Sends a message to all the local subscribers for the message type
+     * @param msgSender A {@link ReActorRef} defining the sender of this message
+     * @param payload The payload that should be broadcasted
      */
     public <PayLoadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     broadcastToLocalSubscribers(ReActorRef msgSender, PayLoadT payload) {
