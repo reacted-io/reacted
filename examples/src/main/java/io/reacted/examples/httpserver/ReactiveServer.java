@@ -87,7 +87,7 @@ public class ReactiveServer {
             if (!filenames.isEmpty()) {
                 this.reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId),
                                                 ReActorConfig.newBuilder()
-                                                             .setMailBoxProvider(() -> newBackpressuredMailbox(backpressureExecutor))
+                                                             .setMailBoxProvider(() -> ReactiveResponse.newBackpressuredMailbox(backpressureExecutor))
                                                              .setReActorName("Request " + requestId)
                                                              .build());
             }
@@ -99,14 +99,6 @@ public class ReactiveServer {
                                             .split("\\?")[1].split("=")[1].split(","))
                       .map(Arrays::asList)
                       .orElse(List.of(), error -> SERVER_LOGGER.error("Invalid request ", error));
-        }
-
-        private static MailBox newBackpressuredMailbox(Executor backpressureExecutor) {
-            return new BackpressuringMbox(new BasicMbox(), Duration.ZERO, Flow.defaultBufferSize(),
-                                          Flow.defaultBufferSize(), backpressureExecutor,
-                                          Set.of(InternalError.class, ReActorInit.class),
-                                          Set.of(InternalError.class, PublishNewLineRequest.class,
-                                          ProcessComplete.class));
         }
     }
 
@@ -192,6 +184,14 @@ public class ReactiveServer {
 
         private static <PayloadT> Try<PayloadT> detectAnyError(Try<PayloadT> first, Try<PayloadT> second) {
             return first.flatMap(payload -> second);
+        }
+
+        private static MailBox newBackpressuredMailbox(Executor backpressureExecutor) {
+            return new BackpressuringMbox(new BasicMbox(), Duration.ZERO, Flow.defaultBufferSize(),
+                                          Flow.defaultBufferSize(), backpressureExecutor,
+                                          Set.of(InternalError.class, ReActorInit.class),
+                                          Set.of(InternalError.class, PublishNewLineRequest.class,
+                                                 ProcessComplete.class));
         }
     }
 
