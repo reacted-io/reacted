@@ -87,8 +87,6 @@ public final class ReActorContext {
 
     public Dispatcher getDispatcher() { return dispatcher; }
 
-    public ReadWriteLock getStructuralLock() { return structuralLock; }
-
     public MailBox getMbox() { return actorMbox; }
 
     public CompletionStage<Void> getHierarchyTermination() { return hierarchyTermination; }
@@ -105,16 +103,6 @@ public final class ReActorContext {
     public boolean acquireCoherence() { return !isAcquired; }
 
     public void releaseCoherence() { isAcquired = false; }
-
-    @SuppressWarnings("UnusedReturnValue")
-    public boolean registerChild(ReActorRef childActor) {
-        return children.add(childActor);
-    }
-
-    @SuppressWarnings("UnusedReturnValue")
-    public boolean unregisterChild(ReActorRef childActor) {
-        return children.remove(childActor);
-    }
 
     public void refreshInterceptors(SubscriptionPolicy.SniffSubscription... newInterceptedClasses) {
 
@@ -222,6 +210,18 @@ public final class ReActorContext {
     @Override
     public int hashCode() {
         return Objects.hash(getSelf());
+    }
+
+    ReadWriteLock getStructuralLock() { return structuralLock; }
+
+    @SuppressWarnings("UnusedReturnValue")
+    boolean registerChild(ReActorRef childActor) {
+        return children.add(childActor);
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
+    boolean unregisterChild(ReActorRef childActor) {
+        return children.remove(childActor);
     }
 
     @SuppressWarnings("NotNullFieldNotInitialized")
