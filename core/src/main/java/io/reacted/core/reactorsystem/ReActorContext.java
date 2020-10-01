@@ -141,14 +141,20 @@ public final class ReActorContext {
         return getSender().tell(sender, anyPayload);
     }
 
+    /**
+     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#aTell(Serializable)}
+     * @param sender {@link ReActorRef} identifying the sender of this reply
+     * @param anyPayload payload to be sent
+     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#aTell(ReActorRef, Serializable)}
+     */
     public CompletionStage<Try<DeliveryStatus>> aReply(ReActorRef sender, Serializable anyPayload) {
         return getSender().aTell(sender, anyPayload);
     }
 
     /**
-     * Tells to the current reactor the specified message setting itself as sender for the message
+     * {@link ReActorRef#tell(Serializable)} to the current reactor the specified message setting itself as sender for the message
      * @param anyPayload message that should be self-sent
-     * @return A {@link CompletionStage} that is going to be completed when the delivery attempt is
+     * @return A {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#tell(Serializable)}
      * complete
      */
     public CompletionStage<Try<DeliveryStatus>> selfTell(Serializable anyPayload) {
@@ -158,7 +164,7 @@ public final class ReActorContext {
     /**
      * Spawn a new {@link ReActor} child of the spawning one
      * @param reActor the new {@link ReActor} definition
-     * @return a {@link Try} containing a {@link ReActorRef} for the new {@link ReActor}
+     * @return a {@link Try}&lt;{@link ReActorRef}&gt; pointing to the new {@link ReActor}
      */
     public Try<ReActorRef> spawnChild(ReActor reActor) {
         return getReActorSystem().spawnChild(reActor.getReActions(), getSelf(), reActor.getConfig());
@@ -168,19 +174,25 @@ public final class ReActorContext {
      * Spawn a new {@link ReActor} child of the spawning one
      * @param reActiveEntity the {@link ReActiveEntity} definition for the new {@link ReActor}
      * @param reActorConfig the {@link ReActorConfig} for the new {@link ReActor}
-     * @return a {@link Try} containing a {@link ReActorRef} for the new {@link ReActor}
+     * @return a {@link Try}&lt;{@link ReActorRef}&gt; containing a {@link ReActorRef} pointing to the new {@link ReActor}
      */
     public Try<ReActorRef> spawnChild(ReActiveEntity reActiveEntity, ReActorConfig reActorConfig) {
         return getReActorSystem().spawnChild(reActiveEntity.getReActions(), getSelf(), reActorConfig);
     }
 
+    /**
+     * Spawn a new {@link ReActor} child of the spawning one
+     * @param reActions the {@link ReActions} for the new {@link ReActor}
+     * @param reActorConfig the {@link ReActorConfig} for the new {@link ReActor}
+     * @return a {@link Try}&lt;{@link ReActorRef}&gt; containing a {@link ReActorRef} pointing to the new {@link ReActor}
+     */
     public Try<ReActorRef> spawnChild(ReActions reActions, ReActorConfig reActorConfig) {
         return getReActorSystem().spawnChild(reActions, getSelf(), reActorConfig);
     }
 
     /**
-     * Set the message intercept rules for this reactor.
-     * @param interceptRules
+     * Set the message intercept rules for this reactor to enable passive message sniffing
+     * @param interceptRules {@link io.reacted.core.config.reactors.SubscriptionPolicy.SniffSubscription} array
      */
     public final void setInterceptRules(SubscriptionPolicy.SniffSubscription... interceptRules) {
         refreshInterceptors(Objects.requireNonNull(interceptRules).length == 0
@@ -241,7 +253,7 @@ public final class ReActorContext {
 
     /**
      * Get the sender of the last message processed by this reactor
-     * @return ReActorRef to the sender
+     * @return {@link ReActorRef} to the sender
      */
     public ReActorRef getSender() {
         return this.lastMsgSender;
