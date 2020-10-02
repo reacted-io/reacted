@@ -9,6 +9,7 @@
 package io.reacted.core.mailboxes;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.NonNullByDefault;
@@ -16,6 +17,7 @@ import io.reacted.patterns.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
@@ -40,42 +42,43 @@ public class BackpressuringMbox implements MailBox {
     private final BackpressuringSubscriber reliableBackpressuringSubscriber;
     private final Set<Class<? extends Serializable>> notDelayed;
     private final Set<Class<? extends Serializable>> notBackpressurable;
-    private final ExecutorService asyncSerialExecutor;
-    /**
+    private final ExecutorService sequencer;
+    private final boolean isPrivateSequencer;
+
+    /*
      * BackpressuringMbox wrapper for any other mailbox type.
-     *
-     * @param realMbox            Backing-up mailbox
-     * @param backpressureTimeout maximum time that should be waited whil attempting to deliver a new
-     *                            message to a saturated mailbox. 0 means immediate fail is delivery
-     *                            is not possible
-     * @param bufferSize          how many updates we can cache befor beginning to backpressure new updates.
-     *                            Must be a positive integer
-     * @param requestOnStartup    how main messages should be automatically made deliverable on startup.
-     *                            Same semantic of Java Flow Subscription.request
-     * @param ayncBackpressurer   Executor used to perform the potentially blocking delivery attempt
-     * @param notDelayed  Message types that cannot be wait or backpressured. The delivery will be attempted
-     *                    immediately
-     * @param notBackpressurable Messages that cannot be lost. If a delivery cannot be done immediately the system
-     *                           will wait till when necessary to deliver the message
      */
-    public BackpressuringMbox(MailBox realMbox, Duration backpressureTimeout, int bufferSize, int requestOnStartup,
-                              Executor ayncBackpressurer, Set<Class<? extends Serializable>> notDelayed,
-                              Set<Class<? extends Serializable>> notBackpressurable) {
-        this.backpressureTimeout = Objects.requireNonNull(backpressureTimeout);
-        this.realMbox = Objects.requireNonNull(realMbox);
-        this.notDelayed = Objects.requireNonNull(notDelayed);
-        this.notBackpressurable = Objects.requireNonNull(notBackpressurable);
+    private BackpressuringMbox(Builder builder) {
+        this.backpressureTimeout = Objects.requireNonNull(builder.backpressureTimeout);
+        this.realMbox = Objects.requireNonNull(builder.realMbox);
+        this.notDelayed = Objects.requireNonNull(builder.notDelayable);
+        this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable);
+        int bufferSize = ConfigUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
+                                                     IllegalArgumentException::new);
+        int requestOnStartup = ConfigUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
+                                                           IllegalArgumentException::new);
         var deliveryThreadFactory = new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> LOGGER.error("Uncaught exception in {} delivery thread",
                                                                                  BackpressuringMbox.class.getSimpleName(),
                                                                                  throwable))
                 .build();
-        this.asyncSerialExecutor = Executors.newSingleThreadExecutor(deliveryThreadFactory);
-        this.backpressurer = new SubmissionPublisher<>(ayncBackpressurer, bufferSize);
+
+        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.ayncBackpressurer), bufferSize);
+
+        if (builder.sequencer == null) {
+            this.isPrivateSequencer = true;
+            this.sequencer = Executors.newSingleThreadExecutor(deliveryThreadFactory);
+        } else {
+            this.sequencer = builder.sequencer;
+            this.isPrivateSequencer = false;
+        }
+
         this.reliableBackpressuringSubscriber = new BackpressuringSubscriber(requestOnStartup, realMbox::deliver,
                                                                              this.backpressurer);
         this.backpressurer.subscribe(reliableBackpressuringSubscriber);
     }
+
+    public static Builder newBuilder() { return new Builder(); }
 
     @Override
     public boolean isEmpty() { return realMbox.isEmpty(); }
@@ -102,10 +105,10 @@ public class BackpressuringMbox implements MailBox {
             return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
         }
         CompletableFuture<Try<DeliveryStatus>> trigger = new CompletableFuture<>();
-        Try.ofRunnable(() -> this.asyncSerialExecutor.execute(() -> reliableDelivery(message,
-                                                                                     shouldNotBeBackPressured(payloadType)
-                                                                                     ? RELIABLE_DELIVERY_TIMEOUT
-                                                                                     : backpressureTimeout, trigger)))
+        Try.ofRunnable(() -> this.sequencer.execute(() -> reliableDelivery(message,
+                                                                           shouldNotBeBackPressured(payloadType)
+                                                                           ? RELIABLE_DELIVERY_TIMEOUT
+                                                                           : backpressureTimeout, trigger)))
            .ifError(error -> trigger.complete(Try.ofFailure(error)));
         return trigger;
     }
@@ -117,7 +120,9 @@ public class BackpressuringMbox implements MailBox {
     @Override
     public void close() throws Exception {
         this.backpressurer.close();
-        this.asyncSerialExecutor.shutdownNow();
+        if (isPrivateSequencer) {
+            this.sequencer.shutdownNow();
+        }
         this.realMbox.close();
     }
 
@@ -148,6 +153,7 @@ public class BackpressuringMbox implements MailBox {
         return this.notBackpressurable.contains(payloadType);
     }
 
+    @SuppressWarnings("SameReturnValue")
     private static boolean onBackPressure(Flow.Subscriber<? super DeliveryRequest> subscriber,
                                           DeliveryRequest request) {
         request.pendingTrigger.complete(Try.ofSuccess(DeliveryStatus.BACKPRESSURED));
@@ -162,5 +168,105 @@ public class BackpressuringMbox implements MailBox {
             this.deliveryPayload = deliveryPayload;
             this.pendingTrigger = pendingTrigger;
         }
+    }
+
+    public static class Builder {
+        @SuppressWarnings("NotNullFieldNotInitialized")
+        private MailBox realMbox;
+        @SuppressWarnings("NotNullFieldNotInitialized")
+        private Duration backpressureTimeout;
+        private int bufferSize;
+        private int requestOnStartup;
+        @SuppressWarnings("NotNullFieldNotInitialized")
+        private Executor ayncBackpressurer;
+        @Nullable
+        private ExecutorService sequencer;
+        private Set<Class<? extends Serializable>> notDelayable = Set.of();
+        private Set<Class<? extends Serializable>> notBackpressurable = Set.of();
+
+        private Builder() { }
+
+        /**
+         *
+         * @param realMbox Backing-up mailbox
+         * @return this builder
+         */
+        public Builder setRealMbox(MailBox realMbox) {
+            this.realMbox = realMbox;
+            return this;
+        }
+
+        /**
+         *
+         * @param backpressureTimeout maximum time that should be waited while attempting to deliver a new
+         *                            message to a saturated mailbox. 0 means immediate fail is delivery
+         *                            is not possible
+         * @return this builder
+         */
+        public Builder setBackpressureTimeout(Duration backpressureTimeout) {
+            this.backpressureTimeout = backpressureTimeout;
+            return this;
+        }
+
+        /**
+         *
+         * @param bufferSize how many updates we can cache befor beginning to backpressure new updates.
+         *                   Must be a positive integer
+         * @return this builder
+         */
+        public Builder setBufferSize(int bufferSize) {
+            this.bufferSize = bufferSize;
+            return this;
+        }
+
+        /**
+         *
+         * @param requestOnStartup how main messages should be automatically made deliverable on startup.
+         *                         Same semantic of Java Flow Subscription.request
+         * @return this builder
+         */
+        public Builder setRequestOnStartup(int requestOnStartup) {
+            this.requestOnStartup = requestOnStartup;
+            return this;
+        }
+
+        /**
+         *
+         * @param asyncBackpressurer   Executor used to perform the potentially blocking delivery attempt
+         * @return this builder
+         */
+        public Builder setAsyncBackpressurer(Executor asyncBackpressurer) {
+            this.ayncBackpressurer = asyncBackpressurer;
+            return this;
+        }
+
+        public Builder setSequencer(@Nullable ExecutorService sequencer) {
+            this.sequencer = sequencer;
+            return this;
+        }
+
+        /**
+         *
+         * @param notDelayable Message types that cannot be wait or backpressured. The delivery will be attempted
+         *                     immediately
+         * @return this builder
+         */
+        public Builder setNonDelayable(Set<Class<? extends Serializable>> notDelayable) {
+            this.notDelayable = notDelayable;
+            return this;
+        }
+
+        /**
+         *
+         * @param notBackpressurable Messages that cannot be lost. If a delivery cannot be done immediately the system
+         *                           will wait till when necessary to deliver the message
+         * @return this builder
+         */
+        public Builder setNonBackpressurable(Set<Class<? extends Serializable>> notBackpressurable) {
+            this.notBackpressurable = notBackpressurable;
+            return this;
+        }
+
+        public BackpressuringMbox build() { return new BackpressuringMbox(this); }
     }
 }

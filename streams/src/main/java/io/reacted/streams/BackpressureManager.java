@@ -55,13 +55,19 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                         Executor asyncBackpressurer, Duration backpressureTimeout) {
         this.subscriber = Objects.requireNonNull(subscriber);
         this.feedGate = Objects.requireNonNull(feedGate);
-        this.backpressuredMailbox = new BackpressuringMbox(new BoundedBasicMbox(bufferSize),
-                                                           Objects.requireNonNull(backpressureTimeout),
-                                                           bufferSize, 0, Objects.requireNonNull(asyncBackpressurer),
-                                                           Set.of(ReActorInit.class, ReActorStop.class,
-                                                                  SubscriptionRequest.class, SubscriptionReply.class,
-                                                                  UnsubscriptionRequest.class, SubscriberError.class),
-                                                           Set.of(SubscriberComplete.class));
+        this.backpressuredMailbox = BackpressuringMbox.newBuilder()
+                                                      .setRealMbox(new BoundedBasicMbox(bufferSize))
+                                                      .setBackpressureTimeout(Objects.requireNonNull(backpressureTimeout))
+                                                      .setBufferSize(bufferSize)
+                                                      .setRequestOnStartup(0)
+                                                      .setAsyncBackpressurer(Objects.requireNonNull(asyncBackpressurer))
+                                                      .setNonDelayable(Set.of(ReActorInit.class, ReActorStop.class,
+                                                                              SubscriptionRequest.class,
+                                                                              SubscriptionReply.class,
+                                                                              UnsubscriptionRequest.class,
+                                                                              SubscriberError.class))
+                                                      .setNonBackpressurable(Set.of(SubscriberComplete.class))
+                                                      .build();
     }
 
     @Override
