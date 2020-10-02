@@ -5,7 +5,6 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.MailBox;
@@ -24,20 +23,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,7 +45,6 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 @NonNullByDefault
 public class ReactiveServer {
@@ -54,13 +53,15 @@ public class ReactiveServer {
     public static void main(String[] args) throws IOException {
         var serverReactorSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                        /* Use chronicle driver and record execution property for replay */
-                                                                       .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLogger(LOG_PATH))
+                                                                       //.setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLogger(LOG_PATH))
                                                                        .setReactorSystemName("ReactiveServer")
                                                                        .build()).initReActorSystem();
         ExecutorService serverPool = Executors.newSingleThreadExecutor();
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 8001), 10);
         server.createContext("/read", new ReactiveHttpHandler(serverReactorSystem,
-                                                              Executors.newSingleThreadExecutor()));
+                                                              Executors.newFixedThreadPool(5),
+                                                              Executors.newSingleThreadExecutor(),
+                                                              Executors.newFixedThreadPool(5)));
         server.setExecutor(serverPool);
         server.start();
     }
@@ -69,11 +70,16 @@ public class ReactiveServer {
         private final ReActorSystem reactiveServerSystem;
         private final AtomicLong requestCounter;
         private final Executor backpressureExecutor;
+        private final Executor outputExecutor;
+        private final ExecutorService singleThreadedSequencer;
 
-        private ReactiveHttpHandler(ReActorSystem reactiveServerSystem, Executor backpressureExecutor) {
+        private ReactiveHttpHandler(ReActorSystem reactiveServerSystem, Executor backpressureExecutor,
+                                    ExecutorService singleThreadedSequencer, Executor outputExecutor) {
             this.reactiveServerSystem = Objects.requireNonNull(reactiveServerSystem);
             this.requestCounter = new AtomicLong();
             this.backpressureExecutor = Objects.requireNonNull(backpressureExecutor);
+            this.outputExecutor = Objects.requireNonNull(outputExecutor);
+            this.singleThreadedSequencer = Objects.requireNonNull(singleThreadedSequencer);
         }
 
         @Override
@@ -85,9 +91,11 @@ public class ReactiveServer {
 
         private void handleResponse(HttpExchange exchange, List<String> filenames, long requestId) {
             if (!filenames.isEmpty()) {
-                this.reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId),
+                this.reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId,
+                                                                     this.outputExecutor),
                                                 ReActorConfig.newBuilder()
-                                                             .setMailBoxProvider(() -> ReactiveResponse.newBackpressuredMailbox(backpressureExecutor))
+                                                             .setMailBoxProvider(() -> ReactiveResponse.newBackpressuredMailbox(backpressureExecutor,
+                                                                                                                                singleThreadedSequencer))
                                                              .setReActorName("Request " + requestId)
                                                              .build());
             }
@@ -106,14 +114,17 @@ public class ReactiveServer {
         private final HttpExchange httpCtx;
         private final List<String> filePaths;
         private final OutputStream outputStream;
+        private final Executor outputExecutor;
         private final long requestId;
         private int processed = 0;
 
-        public ReactiveResponse(HttpExchange httpCtx, List<String> filePaths, long reqId) {
+        public ReactiveResponse(HttpExchange httpCtx, List<String> filePaths, long reqId,
+                                Executor outputExecutor) {
             this.httpCtx = Objects.requireNonNull(httpCtx);
             this.filePaths = Objects.requireNonNull(filePaths).stream()
                                     .sorted()
                                     .collect(Collectors.toUnmodifiableList());
+            this.outputExecutor = Objects.requireNonNull(outputExecutor);
             this.outputStream = httpCtx.getResponseBody();
             this.requestId = reqId;
         }
@@ -156,9 +167,10 @@ public class ReactiveServer {
         }
 
         private void publishNewLineRequest(ReActorContext raCtx, PublishNewLineRequest newLineRequest) {
+            this.outputExecutor.execute(() ->
             Try.ofRunnable(() -> sendData(newLineRequest.newLine+"<br>"))
                .ifSuccessOrElse(success -> ((BackpressuringMbox)raCtx.getMbox()).request(1),
-                                error -> handleError(raCtx, error));
+                                error -> handleError(raCtx, error)));
         }
 
         private void handleError(ReActorContext raCtx, Throwable anyError) {
@@ -186,25 +198,33 @@ public class ReactiveServer {
             return first.flatMap(payload -> second);
         }
 
-        private static MailBox newBackpressuredMailbox(Executor backpressureExecutor) {
-            return new BackpressuringMbox(new BasicMbox(), Duration.ZERO, Flow.defaultBufferSize(),
-                                          Flow.defaultBufferSize(), backpressureExecutor,
-                                          Set.of(InternalError.class, ReActorInit.class),
-                                          Set.of(InternalError.class, PublishNewLineRequest.class,
-                                                 ProcessComplete.class));
+        private static MailBox newBackpressuredMailbox(Executor backpressureExecutor,
+                                                       ExecutorService singleThreadedExecutor) {
+            return BackpressuringMbox.newBuilder()
+                                     .setRealMbox(new BasicMbox())
+                                     .setBackpressureTimeout(Duration.ofNanos(Long.MAX_VALUE))
+                                     .setBufferSize(Flow.defaultBufferSize())
+                                     .setRequestOnStartup(1)
+                                     .setAsyncBackpressurer(backpressureExecutor)
+                                     .setSequencer(singleThreadedExecutor)
+                                     .setNonDelayable(Set.of(InternalError.class, ReActorInit.class))
+                                     .build();
         }
     }
 
-    @Immutable
     private static class ReadFileWorker implements ReActor {
         private final ReActions readFileWorkerBehavior;
         private final ReActorConfig readFileWorkerCfg;
+        @Nullable
+        private BufferedReader fileLines;
         private ReadFileWorker(String filePath, long requestId, long workerId) {
             this.readFileWorkerBehavior = ReActions.newBuilder()
                                                    .reAct(ReActorInit.class,
                                                           ((raCtx, init) -> onInit(raCtx, filePath)))
                                                    .reAct(ReActorStop.class,
-                                                          (raCtx, stop) -> logOnStop(raCtx))
+                                                          (raCtx, stop) -> onStop(raCtx))
+                                                   .reAct(NextLineRequest.class,
+                                                          (raCtx, next) -> readFileLine(raCtx, this.fileLines))
                                                    .reAct(ReActions::noReAction)
                                                    .build();
             this.readFileWorkerCfg = ReActorConfig.newBuilder()
@@ -221,38 +241,46 @@ public class ReactiveServer {
         public ReActorConfig getConfig() { return readFileWorkerCfg; }
 
         private void onInit(ReActorContext raCtx, String filePath) {
-            CompletableFuture.runAsync(() -> readTextFile(raCtx, filePath));
+            this.fileLines = Try.of(() -> new BufferedReader(new InputStreamReader(new FileInputStream(filePath))))
+                                .orElse(null, error -> raCtx.getParent().tell(raCtx.getSelf(),
+                                                                              new InternalError(error)));
+            if (this.fileLines != null) {
+                CompletableFuture.runAsync(() -> raCtx.selfTell(new NextLineRequest()));
+            }
         }
 
-        private void readTextFile(ReActorContext raCtx, String filePath) {
-            Try.withResources(() -> Files.lines(Path.of(filePath)),
-                              lineStream -> processAllLines(lineStream, raCtx))
-               .ifSuccessOrElse(lastline -> raCtx.getParent()
-                                                 .tell(raCtx.getSelf(),
-                                                       lastline.map(read -> (Serializable)new ProcessComplete())
-                                                               .orElseGet(InternalError::new)),
-                                error -> raCtx.getParent().tell(raCtx.getSelf(), new InternalError(error)));
+        private void onStop(ReActorContext raCtx) {
+            if (this.fileLines != null) {
+                Try.ofRunnable(() -> this.fileLines.close());
+            }
+            logOnStop(raCtx);
         }
 
-        private static Try<DeliveryStatus> processAllLines(Stream<String> fileLines, ReActorContext raCtx) {
-            return fileLines.map(String::toUpperCase)
-                            .map(PublishNewLineRequest::new)
-                            .map(pubRequest -> raCtx.getParent().tell(raCtx.getSelf(), pubRequest))
-                            .map(CompletionStage::toCompletableFuture)
-                            //Backpressure! The backpressuring mailbox prevents the completion of a delivery
-                            //until the reactor has capacity. Since we are pulling data from this stream, waiting for
-                            //the delivery here means stopping retrieving and producing data
-                            .map(CompletableFuture::join)
-                            .filter(deliveryStatus -> deliveryStatus.map(DeliveryStatus::isNotDelivered)
-                                                                    .orElse(false))
-                            .findAny()
-                            .orElse(Try.ofSuccess(DeliveryStatus.DELIVERED));
+        private void readFileLine(ReActorContext raCtx, BufferedReader fileLines) {
+            String newLine;
+            try {
+                newLine = fileLines.readLine();
+                if (newLine == null) {
+                    raCtx.getParent().tell(raCtx.getSelf(), new ProcessComplete());
+                    return;
+                }
+                raCtx.getParent().tell(raCtx.getSelf(), new PublishNewLineRequest(newLine))
+                                 .thenAccept(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                                                                               .ifSuccessOrElse(success -> raCtx.selfTell(new NextLineRequest()),
+                                                                                                error -> raCtx.getParent().tell(raCtx.getSelf(),
+                                                                                                                                new InternalError(error))));
+            } catch (Exception exc) {
+                raCtx.getParent().tell(raCtx.getSelf(), new InternalError(exc));
+            }
         }
     }
 
     private static void logOnStop(ReActorContext raCtx) {
         raCtx.logInfo("Stopping {}", raCtx.getSelf().getReActorId().getReActorName());
     }
+
+    @Immutable
+    private static class NextLineRequest implements Serializable { }
 
     @Immutable
     private static class InternalError implements Serializable {
