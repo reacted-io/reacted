@@ -69,8 +69,7 @@ public class RemotingRoot {
         for(ReActorRef serviceRegistryDriver : raCtx.getChildren()) {
             var deliveryAttempt = serviceRegistryDriver.tell(raCtx.getSelf(), publishService);
             deliveryAttempt.thenAccept(attempt -> attempt.filter(DeliveryStatus::isDelivered)
-                                                         .ifError(error -> raCtx.getReActorSystem()
-                                                                                .logError("Unable to deliver service publish request",
+                                                         .ifError(error -> raCtx.logError("Unable to deliver service publish request",
                                                                                           error)));
         }
     }

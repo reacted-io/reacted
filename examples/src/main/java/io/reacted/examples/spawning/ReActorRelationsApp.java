@@ -68,8 +68,7 @@ public class ReActorRelationsApp {
         private void onBreedRequest(ReActorContext raCtx, BreedRequest breedRequest) {
             this.requestedChildren = breedRequest.getRequestedChildren();
 
-            raCtx.getReActorSystem()
-                 .logInfo("{} received a {} for {} from {}",
+            raCtx.logInfo("{} received a {} for {} from {}",
                            raCtx.getSelf().getReActorId().getReActorName(),
                            breedRequest.getClass().getSimpleName(), breedRequest.getRequestedChildren(),
                            raCtx.getSender().getReActorId().getReActorName());

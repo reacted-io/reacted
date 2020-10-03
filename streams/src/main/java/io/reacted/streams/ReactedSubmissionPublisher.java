@@ -375,8 +375,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                     .aTell(raCtx.getSelf(),
                            new SubscriptionReply(this.subscribers.add(subscription.getSubscriptionBackpressuringManager())))
                     .thenAccept(delivery -> delivery.filter(DeliveryStatus::isDelivered, IllegalStateException::new)
-                                                    .ifError(error -> raCtx.getReActorSystem()
-                                                                           .logError("Unable to deliver subscription confirmation to {}",
+                                                    .ifError(error -> raCtx.logError("Unable to deliver subscription confirmation to {}",
                                                                                      subscription.getSubscriptionBackpressuringManager(),
                                                                                      error)));
     }
@@ -391,6 +390,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     @SuppressWarnings("UnusedReturnValue")
     private ReactedSubmissionPublisher<PayloadT> setLocalReActorSystem(ReActorSystem localReActorSystem) {
-        return SerializationUtils.setObjectField(this, ReactedSubmissionPublisher.LOCAL_REACTOR_SYSTEM, localReActorSystem);
+        return SerializationUtils.setObjectField(this, ReactedSubmissionPublisher.LOCAL_REACTOR_SYSTEM,
+                                                 localReActorSystem);
     }
 }

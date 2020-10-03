@@ -103,8 +103,7 @@ public class ReActorService {
     private void routeMessage(ReActorContext raCtx, Serializable newMessage) {
         selectRoutee(raCtx, ++msgReceived)
                 .ifPresentOrElse(routee -> routee.tell(raCtx.getSender(), newMessage),
-                                 () -> raCtx.getReActorSystem()
-                                            .logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
+                                 () -> raCtx.logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
                                                       reActorServiceConfig.getReActorName(), new IllegalStateException()));
     }
 
@@ -113,12 +112,11 @@ public class ReActorService {
     }
 
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
-        BiConsumer<String, Throwable> systemLogger = raCtx.getReActorSystem()::logError;
         Try.of(() -> Objects.requireNonNull(reActorServiceConfig.getRouteeProvider()
                                                                 .get()))
-           .peekFailure(error -> systemLogger.accept(ROUTEE_REACTIONS_RETRIEVAL_ERROR, error))
+           .peekFailure(error -> raCtx.logError(ROUTEE_REACTIONS_RETRIEVAL_ERROR, error))
            .ifSuccess(routee -> spawnRoutee(raCtx, routee.getReActions(), reSpawnRequest.routeeConfig))
-           .ifError(spawnError -> systemLogger.accept(ROUTEE_SPAWN_ERROR, spawnError));
+           .ifError(spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR, spawnError));
     }
 
     private void spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions, ReActorConfig routeeConfig) {

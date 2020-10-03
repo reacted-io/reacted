@@ -67,8 +67,7 @@ public class TimeReActor implements ReActor {
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        raCtx.getReActorSystem()
-             .logInfo("{} is exiting and exiting reactorsystem...", raCtx.getSelf().getReActorId().getReActorName());
+        raCtx.logInfo("{} is exiting and exiting reactorsystem...", raCtx.getSelf().getReActorId().getReActorName());
 
         CompletableFuture.supplyAsync(() -> Try.ofRunnable(() -> raCtx.getReActorSystem().shutDown())
                                                .ifError(Throwable::printStackTrace));
