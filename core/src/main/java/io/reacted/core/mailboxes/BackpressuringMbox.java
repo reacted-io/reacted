@@ -35,7 +35,7 @@ import java.util.function.BiPredicate;
 
 @NonNullByDefault
 public class BackpressuringMbox implements MailBox {
-    public static final Duration BEST_EFFORT_TIMEOUT = Duration.ofNanos(0);
+    public static final Duration BEST_EFFORT_TIMEOUT = Duration.ZERO;
     public static final Duration RELIABLE_DELIVERY_TIMEOUT = Duration.ofNanos(Long.MAX_VALUE);
     private static final Logger LOGGER = LoggerFactory.getLogger(BackpressuringMbox.class);
     private final Duration backpressureTimeout;
@@ -52,7 +52,9 @@ public class BackpressuringMbox implements MailBox {
      *
      */
     private BackpressuringMbox(Builder builder) {
-        this.backpressureTimeout = Objects.requireNonNull(builder.backpressureTimeout);
+        this.backpressureTimeout = ConfigUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
+                                                                 timeout -> timeout.compareTo(BEST_EFFORT_TIMEOUT) <= 0,
+                                                                 IllegalArgumentException::new);
         this.realMbox = Objects.requireNonNull(builder.realMbox);
         this.notDelayed = Objects.requireNonNull(builder.notDelayable);
         this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable);
@@ -202,7 +204,7 @@ public class BackpressuringMbox implements MailBox {
          *
          * @param backpressureTimeout maximum time that should be waited while attempting to deliver a new
          *                            message to a saturated mailbox. 0 means immediate fail is delivery
-         *                            is not possible
+         *                            is not possible. Maximum value: Long.MAX_VALUE nanoseconds
          * @return this builder
          */
         public Builder setBackpressureTimeout(Duration backpressureTimeout) {

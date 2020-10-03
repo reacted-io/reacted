@@ -46,27 +46,26 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
      * It manages a backpressured reactive streams. A reactive stream can accept local (to the reactor system) or
      * remote subscribers
      *
-     * @param subscriber subscriber body
+     * @param subscription A {@link io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscription} containing the details of the subscriber
      * @param feedGate source of data for the managed stream
-     * @param bufferSize subscriber data buffer
-     * @param backpressureTimeout give up timeout on publication attempt
      */
-    BackpressureManager(Flow.Subscriber<? super PayloadT> subscriber, ReActorRef feedGate, int bufferSize,
-                        Executor asyncBackpressurer, Duration backpressureTimeout) {
-        this.subscriber = Objects.requireNonNull(subscriber);
+    BackpressureManager(ReactedSubmissionPublisher.ReActedSubscription<PayloadT> subscription,
+                        ReActorRef feedGate) {
+        this.subscriber = subscription.getSubscriber();
         this.feedGate = Objects.requireNonNull(feedGate);
         this.backpressuredMailbox = BackpressuringMbox.newBuilder()
-                                                      .setRealMbox(new BoundedBasicMbox(bufferSize))
-                                                      .setBackpressureTimeout(Objects.requireNonNull(backpressureTimeout))
-                                                      .setBufferSize(bufferSize)
+                                                      .setRealMbox(new BoundedBasicMbox(subscription.getBufferSize()))
+                                                      .setBackpressureTimeout(subscription.getBackpressureTimeout())
+                                                      .setBufferSize(subscription.getBufferSize())
                                                       .setRequestOnStartup(0)
-                                                      .setAsyncBackpressurer(Objects.requireNonNull(asyncBackpressurer))
+                                                      .setAsyncBackpressurer(subscription.getAsyncBackpressurer())
                                                       .setNonDelayable(Set.of(ReActorInit.class, ReActorStop.class,
                                                                               SubscriptionRequest.class,
                                                                               SubscriptionReply.class,
                                                                               UnsubscriptionRequest.class,
                                                                               SubscriberError.class))
                                                       .setNonBackpressurable(Set.of(SubscriberComplete.class))
+                                                      .setSequencer(subscription.getSequencer())
                                                       .build();
     }
 
