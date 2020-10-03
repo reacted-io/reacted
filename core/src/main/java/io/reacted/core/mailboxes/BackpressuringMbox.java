@@ -29,7 +29,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiPredicate;
 
 @NonNullByDefault
 public class BackpressuringMbox implements MailBox {
@@ -47,6 +49,7 @@ public class BackpressuringMbox implements MailBox {
 
     /*
      * BackpressuringMbox wrapper for any other mailbox type.
+     *
      */
     private BackpressuringMbox(Builder builder) {
         this.backpressureTimeout = Objects.requireNonNull(builder.backpressureTimeout);
@@ -63,16 +66,15 @@ public class BackpressuringMbox implements MailBox {
                                                                                  throwable))
                 .build();
 
-        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.ayncBackpressurer), bufferSize);
-
         if (builder.sequencer == null) {
             this.isPrivateSequencer = true;
-            this.sequencer = Executors.newSingleThreadExecutor(deliveryThreadFactory);
+            this.sequencer =  Executors.newSingleThreadExecutor(deliveryThreadFactory);
         } else {
+            ConfigUtils.requiredInRange(builder.sequencer.getMaximumPoolSize(), 1, 1, IllegalArgumentException::new);
             this.sequencer = builder.sequencer;
             this.isPrivateSequencer = false;
         }
-
+        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.ayncBackpressurer), bufferSize);
         this.reliableBackpressuringSubscriber = new BackpressuringSubscriber(requestOnStartup, realMbox::deliver,
                                                                              this.backpressurer);
         this.backpressurer.subscribe(reliableBackpressuringSubscriber);
@@ -180,7 +182,7 @@ public class BackpressuringMbox implements MailBox {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private Executor ayncBackpressurer;
         @Nullable
-        private ExecutorService sequencer;
+        private ThreadPoolExecutor sequencer;
         private Set<Class<? extends Serializable>> notDelayable = Set.of();
         private Set<Class<? extends Serializable>> notBackpressurable = Set.of();
 
@@ -240,7 +242,18 @@ public class BackpressuringMbox implements MailBox {
             return this;
         }
 
-        public Builder setSequencer(@Nullable ExecutorService sequencer) {
+        /**
+         * In order to be completely async, the submissions must be done using an executor. This class relies on
+         * {@link SubmissionPublisher} for backpressuring and its {@link SubmissionPublisher#offer(Object, long, TimeUnit, BiPredicate)}
+         * method may block. Such a block could case a block of the dispatcher too, leading to a deadlock.
+         * This executor is used for asynchronously attempting an {@link SubmissionPublisher#offer(Object, long, TimeUnit, BiPredicate)}
+         * without blocking the caller. If a {@code sequencer} is not provided, a new one will be automatically
+         * created. Providing this can be useful when a lot of {@link BackpressuringMbox} are going to be created and
+         * we are willing to lose some parallelism instead of creating a huge number of threads
+         * @param sequencer an executor that ensures the sequentiality of the tasks submitted
+         * @return this builder
+         */
+        public Builder setSequencer(@Nullable ThreadPoolExecutor sequencer) {
             this.sequencer = sequencer;
             return this;
         }
@@ -267,6 +280,14 @@ public class BackpressuringMbox implements MailBox {
             return this;
         }
 
+        /**
+         *
+         * @return a {@link BackpressuringMbox}
+         * @throws NullPointerException if any of the non null arguments is found to be null
+         * @throws IllegalArgumentException if {@code sequencer} can create more than one thread
+         *                                  if {@code bufferSize} is not positive
+         *                                  if {@code requestOnStartup} is negative
+         */
         public BackpressuringMbox build() { return new BackpressuringMbox(this); }
     }
 }
