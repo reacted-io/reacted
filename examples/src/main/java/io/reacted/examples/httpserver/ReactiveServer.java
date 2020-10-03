@@ -42,6 +42,9 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -60,7 +63,8 @@ public class ReactiveServer {
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 8001), 10);
         server.createContext("/read", new ReactiveHttpHandler(serverReactorSystem,
                                                               Executors.newFixedThreadPool(5),
-                                                              Executors.newSingleThreadExecutor(),
+                                                              new ThreadPoolExecutor(0, 1, 10, TimeUnit.SECONDS,
+                                                                                     new LinkedBlockingDeque<>()),
                                                               Executors.newFixedThreadPool(5)));
         server.setExecutor(serverPool);
         server.start();
@@ -71,10 +75,10 @@ public class ReactiveServer {
         private final AtomicLong requestCounter;
         private final Executor backpressureExecutor;
         private final Executor outputExecutor;
-        private final ExecutorService singleThreadedSequencer;
+        private final ThreadPoolExecutor singleThreadedSequencer;
 
         private ReactiveHttpHandler(ReActorSystem reactiveServerSystem, Executor backpressureExecutor,
-                                    ExecutorService singleThreadedSequencer, Executor outputExecutor) {
+                                    ThreadPoolExecutor singleThreadedSequencer, Executor outputExecutor) {
             this.reactiveServerSystem = Objects.requireNonNull(reactiveServerSystem);
             this.requestCounter = new AtomicLong();
             this.backpressureExecutor = Objects.requireNonNull(backpressureExecutor);
@@ -199,7 +203,7 @@ public class ReactiveServer {
         }
 
         private static MailBox newBackpressuredMailbox(Executor backpressureExecutor,
-                                                       ExecutorService singleThreadedExecutor) {
+                                                       ThreadPoolExecutor singleThreadedExecutor) {
             return BackpressuringMbox.newBuilder()
                                      .setRealMbox(new BasicMbox())
                                      .setBackpressureTimeout(Duration.ofNanos(Long.MAX_VALUE))
