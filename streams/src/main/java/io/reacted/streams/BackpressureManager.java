@@ -19,7 +19,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import io.reacted.streams.messages.SubscriberComplete;
+import io.reacted.streams.messages.PublisherComplete;
 import io.reacted.streams.messages.SubscriberError;
 import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
@@ -27,11 +27,11 @@ import io.reacted.streams.messages.UnsubscriptionRequest;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.Executor;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 @NonNullByDefault
@@ -39,6 +39,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     private final Flow.Subscriber<? super PayloadT> subscriber;
     private final ReActorRef feedGate;
     private final BackpressuringMbox backpressuredMailbox;
+    private final CompletionStage<Void> onSubscriptionCompleteTrigger;
     @Nullable
     private volatile ReActorContext backpressurerCtx;
 
@@ -50,7 +51,8 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
      * @param feedGate source of data for the managed stream
      */
     BackpressureManager(ReactedSubmissionPublisher.ReActedSubscription<PayloadT> subscription,
-                        ReActorRef feedGate) {
+                        ReActorRef feedGate, CompletionStage<Void> onSubscriptionCompleteTrigger) {
+        this.onSubscriptionCompleteTrigger = onSubscriptionCompleteTrigger;
         this.subscriber = subscription.getSubscriber();
         this.feedGate = Objects.requireNonNull(feedGate);
         this.backpressuredMailbox = BackpressuringMbox.newBuilder()
@@ -64,7 +66,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                                                                               SubscriptionReply.class,
                                                                               UnsubscriptionRequest.class,
                                                                               SubscriberError.class))
-                                                      .setNonBackpressurable(Set.of(SubscriberComplete.class))
+                                                      .setNonBackpressurable(Set.of(PublisherComplete.class))
                                                       .setSequencer(subscription.getSequencer())
                                                       .build();
     }
@@ -103,7 +105,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                         .reAct(ReActorStop.class, ReActions::noReAction)
                         .reAct(SubscriptionReply.class, this::onSubscriptionReply)
                         .reAct(SubscriberError.class, this::onSubscriberError)
-                        .reAct(SubscriberComplete.class, this::onSubscriberComplete)
+                        .reAct(PublisherComplete.class, this::onPublisherComplete)
                         .reAct(this::forwarder)
                         .build();
     }
@@ -115,6 +117,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     }
 
     private void onSubscriptionReply(ReActorContext raCtx, SubscriptionReply payload) {
+        this.onSubscriptionCompleteTrigger.toCompletableFuture().complete(null);
         if (payload.isSuccess()) {
             Try.ofRunnable(() -> this.subscriber.onSubscribe(this))
                .ifError(error -> errorTermination(raCtx, error, this.subscriber));
@@ -127,7 +130,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         errorTermination(raCtx, error.getError(), this.subscriber);
     }
 
-    private void onSubscriberComplete(ReActorContext raCtx, SubscriberComplete subscriberComplete) {
+    private void onPublisherComplete(ReActorContext raCtx, PublisherComplete publisherComplete) {
         completeTermination(raCtx, this.subscriber);
     }
 

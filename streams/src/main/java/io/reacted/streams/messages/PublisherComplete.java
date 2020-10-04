@@ -10,5 +10,5 @@ package io.reacted.streams.messages;
 
 import java.io.Serializable;
 
-public class SubscriberComplete implements Serializable {
+public class PublisherComplete implements Serializable {
 }

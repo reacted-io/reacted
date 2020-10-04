@@ -53,8 +53,8 @@ public class BackpressuringMbox implements MailBox {
      */
     private BackpressuringMbox(Builder builder) {
         this.backpressureTimeout = ConfigUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
-                                                                 timeout -> timeout.compareTo(BEST_EFFORT_TIMEOUT) <= 0,
-                                                                 IllegalArgumentException::new);
+                                                                 timeout -> timeout.compareTo(RELIABLE_DELIVERY_TIMEOUT) <= 0,
+                                                                 () -> new IllegalArgumentException("Invalid backpressure timeout"));
         this.realMbox = Objects.requireNonNull(builder.realMbox);
         this.notDelayed = Objects.requireNonNull(builder.notDelayable);
         this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable);
@@ -72,7 +72,8 @@ public class BackpressuringMbox implements MailBox {
             this.isPrivateSequencer = true;
             this.sequencer =  Executors.newSingleThreadExecutor(deliveryThreadFactory);
         } else {
-            ConfigUtils.requiredInRange(builder.sequencer.getMaximumPoolSize(), 1, 1, IllegalArgumentException::new);
+            ConfigUtils.requiredInRange(builder.sequencer.getMaximumPoolSize(), 0, 1,
+                                        IllegalArgumentException::new);
             this.sequencer = builder.sequencer;
             this.isPrivateSequencer = false;
         }
@@ -91,7 +92,7 @@ public class BackpressuringMbox implements MailBox {
     public boolean isFull() { return realMbox.isFull(); }
 
     @Override
-    public long getMsgNum() { return realMbox.getMsgNum(); }
+    public long getMsgNum() { return realMbox.getMsgNum() + Integer.max(this.backpressurer.estimateMaximumLag(), 0); }
 
     @Override
     public long getMaxSize() { return realMbox.getMaxSize(); }

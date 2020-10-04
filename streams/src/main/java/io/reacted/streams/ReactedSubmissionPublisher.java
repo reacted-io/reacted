@@ -25,7 +25,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.messages.PublisherShutdown;
-import io.reacted.streams.messages.SubscriberComplete;
+import io.reacted.streams.messages.PublisherComplete;
 import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
@@ -80,18 +80,16 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                        .setReActorName(ReactedSubmissionPublisher.class.getSimpleName() + "-" +
                                                        Objects.requireNonNull(feedName))
                                        .setMailBoxProvider(BasicMbox::new)
-                                       .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
-                                       .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                        .build();
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
                                                           .reAct(PublisherShutdown.class,
-                                                                        ReactedSubmissionPublisher::onPublisherShutdown)
+                                                                 ReactedSubmissionPublisher::onPublisherShutdown)
                                                           .reAct(ReActorStop.class, this::onStop)
                                                           .reAct(SubscriptionRequest.class,
-                                                                        this::onSubscriptionRequest)
+                                                                 this::onSubscriptionRequest)
                                                           .reAct(UnsubscriptionRequest.class,
-                                                                        this::onUnSubscriptionRequest)
+                                                                 this::onUnSubscriptionRequest)
                                                           .build(), feedGateCfg)
                                           .orElseThrow(IllegalArgumentException::new);
     }
@@ -373,9 +371,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param subscription A {@link ReActedSubscription}
      *
      */
-    public void subscribe(ReActedSubscription<PayloadT> subscription) {
-
-        var backpressureManager = new BackpressureManager<>(subscription, this.feedGate);
+    public CompletionStage<Void> subscribe(ReActedSubscription<PayloadT> subscription) {
+        CompletionStage<Void> subscriptionComplete = new CompletableFuture<>();
+        var backpressureManager = new BackpressureManager<>(subscription, this.feedGate, subscriptionComplete);
 
         var subscriberCfg = ReActorConfig.newBuilder()
                                          .setReActorName(this.feedGate.getReActorId().getReActorName() +
@@ -389,6 +387,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.localReActorSystem.spawnChild(backpressureManager.getReActions(), localReActorSystem.getUserReActorsRoot(),
                                            subscriberCfg)
                                .orElseSneakyThrow();
+        return subscriptionComplete;
     }
 
     /**
@@ -421,7 +420,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        this.subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), new SubscriberComplete()));
+        this.subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), new PublisherComplete()));
         this.subscribers.clear();
     }
 
@@ -492,7 +491,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         public static <PayloadT> Builder<PayloadT> newBuilder() { return new Builder<>(); }
 
         @SuppressWarnings("NotNullFieldNotInitialized")
-        private static final class Builder<PayloadT> {
+        public static final class Builder<PayloadT> {
             private Flow.Subscriber<? super PayloadT> subscriber;
             private int bufferSize;
             private Duration backpressureTimeout;
