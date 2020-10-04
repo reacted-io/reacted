@@ -54,6 +54,7 @@ import java.util.stream.Collectors;
 public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
                                                                                   AutoCloseable, Externalizable {
     public static final Duration RELIABLE_SUBSCRIPTION = BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT;
+    public static final Duration BEST_EFFORT_SUBSCRIPTION = BackpressuringMbox.BEST_EFFORT_TIMEOUT;
     private static final long FEED_GATE_OFFSET = SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class,
                                                                                    "feedGate")
                                                                    .orElseSneakyThrow();
@@ -84,7 +85,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
                                                           .reAct(PublisherShutdown.class,
-                                                                 ReactedSubmissionPublisher::onPublisherShutdown)
+                                                                 (raCtx, shutown) -> raCtx.stop())
                                                           .reAct(ReActorStop.class, this::onStop)
                                                           .reAct(SubscriptionRequest.class,
                                                                  this::onSubscriptionRequest)
@@ -148,7 +149,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(BackpressuringMbox.BEST_EFFORT_TIMEOUT)
+                          .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
                           .setSubscriberName(subscriberName)
                           .setAsyncBackpressurer(ForkJoinPool.commonPool())
                           .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
@@ -170,7 +171,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(bufferSize)
-                          .setBackpressureTimeout(BackpressuringMbox.BEST_EFFORT_TIMEOUT)
+                          .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
                           .setAsyncBackpressurer(ForkJoinPool.commonPool())
                           .setSubscriberName(UUID.randomUUID().toString())
                           .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
@@ -195,7 +196,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(bufferSize)
-                          .setBackpressureTimeout(BackpressuringMbox.BEST_EFFORT_TIMEOUT)
+                          .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
                           .setAsyncBackpressurer(ForkJoinPool.commonPool())
                           .setSubscriberName(subscriberName)
                           .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
@@ -415,10 +416,6 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.subscribers.forEach(subscribed -> subscribed.aTell(subscribed, message));
     }
 
-    private static void onPublisherShutdown(ReActorContext raCtx, PublisherShutdown shutdownRequest) {
-        raCtx.stop();
-    }
-
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
         this.subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), new PublisherComplete()));
         this.subscribers.clear();
@@ -528,9 +525,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
              *
              * @param backpressureTimeout At most this timeout will be waited while attempting a delivery. Once this
              *                            timeout is expired, the message is dropped.
-             *                            {@link BackpressuringMbox#BEST_EFFORT_TIMEOUT} for best effort subscriptions.
+             *                            {@link ReactedSubmissionPublisher#BEST_EFFORT_SUBSCRIPTION} for best effort subscriptions.
              *                            If the submission buffer is full, the new messages will be discarder
-             *                            {@link BackpressuringMbox#RELIABLE_DELIVERY_TIMEOUT} for subscriptions where
+             *                            {@link ReactedSubmissionPublisher#RELIABLE_SUBSCRIPTION} for subscriptions where
              *                            no message can be lost. Publisher will wait indefinitely.
              * @return this builder
              */
