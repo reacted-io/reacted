@@ -110,11 +110,14 @@ public class BackpressuringMbox implements MailBox {
             return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
         }
         CompletableFuture<Try<DeliveryStatus>> trigger = new CompletableFuture<>();
-        Try.ofRunnable(() -> this.sequencer.execute(() -> reliableDelivery(message,
-                                                                           shouldNotBeBackPressured(payloadType)
-                                                                           ? RELIABLE_DELIVERY_TIMEOUT
-                                                                           : backpressureTimeout, trigger)))
-           .ifError(error -> trigger.complete(Try.ofFailure(error)));
+        try {
+            this.sequencer.execute(() -> reliableDelivery(message,
+                                                          shouldNotBeBackPressured(payloadType)
+                                                          ? RELIABLE_DELIVERY_TIMEOUT
+                                                          : backpressureTimeout, trigger));
+        } catch (Exception anyException) {
+           trigger.complete(Try.ofFailure(anyException));
+        }
         return trigger;
     }
 

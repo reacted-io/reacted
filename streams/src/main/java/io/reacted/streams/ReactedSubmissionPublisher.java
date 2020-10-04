@@ -24,6 +24,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.PublisherShutdown;
 import io.reacted.streams.messages.PublisherComplete;
 import io.reacted.streams.messages.SubscriptionReply;
@@ -86,6 +87,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
                                                           .reAct(PublisherShutdown.class,
                                                                  (raCtx, shutown) -> raCtx.stop())
+                                                          .reAct(PublisherInterrupt.class,
+                                                                 this::onInterrupt)
                                                           .reAct(ReActorStop.class, this::onStop)
                                                           .reAct(SubscriptionRequest.class,
                                                                  this::onSubscriptionRequest)
@@ -118,8 +121,16 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                  .orElseThrow());
     }
 
+    /**
+     *  Stop the publisher. All the subscribers will be able to consume all the messages already sent
+     */
     @Override
     public void close() { this.feedGate.tell(feedGate, new PublisherShutdown()); }
+
+    /**
+     *  Stop the publisher. All the subscribers will be notified immediately of the termination
+     */
+    public void interrupt() { this.feedGate.tell(feedGate, new PublisherInterrupt()); }
 
     /**
      + Registers a best effort subscriber. All the updates sent to this subscriber that cannot be
@@ -414,6 +425,12 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     public void submit(PayloadT message) {
         this.subscribers.forEach(subscribed -> subscribed.aTell(subscribed, message));
+    }
+
+    private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
+        this.subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), interrupt));
+        this.subscribers.clear();
+        raCtx.stop();
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {

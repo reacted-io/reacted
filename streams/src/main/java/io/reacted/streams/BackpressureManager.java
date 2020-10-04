@@ -20,6 +20,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.messages.PublisherComplete;
+import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.SubscriberError;
 import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
@@ -31,7 +32,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 @NonNullByDefault
@@ -65,7 +65,8 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                                                                               SubscriptionRequest.class,
                                                                               SubscriptionReply.class,
                                                                               UnsubscriptionRequest.class,
-                                                                              SubscriberError.class))
+                                                                              SubscriberError.class,
+                                                                              PublisherInterrupt.class))
                                                       .setNonBackpressurable(Set.of(PublisherComplete.class))
                                                       .setSequencer(subscription.getSequencer())
                                                       .build();
@@ -106,14 +107,18 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                         .reAct(SubscriptionReply.class, this::onSubscriptionReply)
                         .reAct(SubscriberError.class, this::onSubscriberError)
                         .reAct(PublisherComplete.class, this::onPublisherComplete)
+                        .reAct(PublisherInterrupt.class, this::onPublisherInterrupt)
                         .reAct(this::forwarder)
                         .build();
     }
 
     private void forwarder(ReActorContext raCtx, Object anyPayload) {
-        //noinspection unchecked
-        Try.ofRunnable(() -> this.subscriber.onNext((PayloadT) anyPayload))
-           .ifError(error -> errorTermination(raCtx, error, this.subscriber));
+        try {
+            //noinspection unchecked
+            this.subscriber.onNext((PayloadT) anyPayload);
+        } catch (Exception anyException) {
+           errorTermination(raCtx, anyException, this.subscriber);
+        }
     }
 
     private void onSubscriptionReply(ReActorContext raCtx, SubscriptionReply payload) {
@@ -131,6 +136,10 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     }
 
     private void onPublisherComplete(ReActorContext raCtx, PublisherComplete publisherComplete) {
+        completeTermination(raCtx, this.subscriber);
+    }
+
+    private void onPublisherInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
         completeTermination(raCtx, this.subscriber);
     }
 

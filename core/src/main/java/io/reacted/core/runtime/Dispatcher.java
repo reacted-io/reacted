@@ -150,8 +150,8 @@ public class Dispatcher {
                         scheduledReActor.getReActorSystem()
                                         .logError(REACTIONS_EXECUTION_ERROR, anyExc, scheduledReActor.getSelf()
                                                                                                      .getReActorId(),
-                                                  newEvent.getPayload()
-                                                                                                                              .getClass(), newEvent.getSequenceNumber(), newEvent.toString());
+                                                  newEvent.getPayload().getClass(),
+                                                  newEvent.getSequenceNumber(), newEvent.toString());
                         scheduledReActor.stop();
                     }
                     processed++;
