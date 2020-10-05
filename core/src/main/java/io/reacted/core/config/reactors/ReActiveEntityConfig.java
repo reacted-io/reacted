@@ -19,7 +19,6 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 @NonNullByDefault
 public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<BuiltT, BuilderT>,

@@ -6,10 +6,6 @@ import com.sun.net.httpserver.HttpServer;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BackpressuringMbox;
-import io.reacted.core.mailboxes.BasicMbox;
-import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -22,26 +18,21 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
-import java.io.BufferedReader;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -202,7 +193,7 @@ public class ReactiveServer {
                     outputExecutor.execute(() -> {
                         try {
                             sendData(item + "<br>");
-                            subscription.request(1);
+                            Objects.requireNonNull(subscription).request(1);
                         } catch (Exception exc) {
                             onError(exc);
                         }
@@ -321,7 +312,8 @@ public class ReactiveServer {
                     return;
                 }
                 this.dataPublisher.backpressurableSubmit(new String(buffer, 0, read))
-                                  .thenAccept(noVal -> readFileLine(raCtx, fileLines, buffer));
+                                  .thenAccept(noVal -> readFileLine(raCtx,
+                                                                    Objects.requireNonNull(fileLines), buffer));
             } catch (Exception exc) {
                 raCtx.getParent().tell(raCtx.getSelf(), new InternalError(exc));
             }

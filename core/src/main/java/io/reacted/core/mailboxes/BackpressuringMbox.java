@@ -18,7 +18,6 @@ import io.reacted.patterns.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
@@ -207,6 +206,7 @@ public class BackpressuringMbox implements MailBox {
         private Executor ayncBackpressurer;
         @Nullable
         private ThreadPoolExecutor sequencer;
+        @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActorContext realMailboxOwner;
         private Set<Class<? extends Serializable>> notDelayable = Set.of();
         private Set<Class<? extends Serializable>> notBackpressurable = Set.of();

@@ -405,7 +405,7 @@ sent
                             .reAct(ReActorStop.class, FamilyExample::onStop)
                             .reAct(ReActions::noReAction)
                             .build();
-        };
+        }
 
         private void onInit(ReActorContext raCtx, ReActorInit init) {
             this.breedRequester.tell(raCtx.getParent(),

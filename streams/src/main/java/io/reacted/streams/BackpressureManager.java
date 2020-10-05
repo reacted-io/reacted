@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 @NonNullByDefault
 public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription, AutoCloseable {

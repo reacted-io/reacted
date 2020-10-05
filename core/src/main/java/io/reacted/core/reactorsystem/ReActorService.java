@@ -23,7 +23,6 @@ import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.BiConsumer;
 
 public class ReActorService {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
