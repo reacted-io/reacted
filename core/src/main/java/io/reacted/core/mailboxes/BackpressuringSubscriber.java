@@ -19,9 +19,8 @@ class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.Del
     private final SubmissionPublisher<BackpressuringMbox.DeliveryRequest> backpressurer;
     private final LongAdder preInitializationRequests;
     private final ReActorContext targetMailboxOwner;
-    private volatile boolean isOpen;
     @Nullable
-    private volatile Flow.Subscription subscription;
+    private Flow.Subscription subscription;
 
     BackpressuringSubscriber(long requestOnStartup,
                              ReActorContext raCtx,
@@ -32,7 +31,6 @@ class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.Del
         this.backpressurer = backpressurer;
         this.targetMailboxOwner = raCtx;
         this.preInitializationRequests = new LongAdder();
-        this.isOpen = true;
     }
 
     @Override
@@ -49,31 +47,16 @@ class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.Del
 
     @Override
     public void onNext(BackpressuringMbox.DeliveryRequest item) {
-        if (this.isOpen) {
-            try {
-                if (this.realDeliveryCallback.apply(item.deliveryPayload).isDelivered()) {
-                    this.targetMailboxOwner.reschedule();
-                }
-            } catch (Exception anyError) {
-                onError(anyError);
-            }
+        if (this.realDeliveryCallback.apply(item.deliveryPayload).isDelivered()) {
+            this.targetMailboxOwner.reschedule();
         }
     }
 
     @Override
-    public void onError(Throwable throwable) {
-        if (this.isOpen) {
-            this.isOpen = false;
-            backpressurer.close();
-        }
-    }
+    public void onError(Throwable throwable) { this.backpressurer.close(); }
 
     @Override
-    public void onComplete() {
-        if(this.isOpen) {
-            this.isOpen = false;
-        }
-    }
+    public void onComplete() { Objects.requireNonNull(this.subscription).cancel(); }
 
     public void request(long elementsToRequest) {
         if (this.subscription == null) {

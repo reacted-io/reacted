@@ -134,6 +134,7 @@ public class BackpressuringMbox implements MailBox {
 
     @Override
     public void close() throws Exception {
+        this.reliableBackpressuringSubscriber.onComplete();
         this.backpressurer.close();
         if (isPrivateSequencer) {
             this.sequencer.shutdownNow();
