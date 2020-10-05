@@ -35,7 +35,7 @@ public class MagicTestReActor implements ReActor {
     public MagicTestReActor(int maxMsgValue, boolean checkMsgOrdering, String reactorName) {
         this(maxMsgValue, checkMsgOrdering, ReActorConfig.newBuilder()
                                                          .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                                         .setMailBoxProvider(BasicMbox::new)
+                                                         .setMailBoxProvider(ctx -> new BasicMbox())
                                                          .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                                                          .setReActorName(reactorName)
                                                          .build());

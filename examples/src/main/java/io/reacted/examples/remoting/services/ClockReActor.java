@@ -44,7 +44,7 @@ public class ClockReActor implements ReActor {
         return ReActorConfig.newBuilder()
                             .setReActorName(ClockReActor.class.getSimpleName())
                             .setDispatcherName(workerDispatcherName)
-                            .setMailBoxProvider(BasicMbox::new)
+                            .setMailBoxProvider(ctx -> new BasicMbox())
                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }

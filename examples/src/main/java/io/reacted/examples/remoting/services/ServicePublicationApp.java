@@ -60,7 +60,7 @@ public class ServicePublicationApp {
                                              .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
                                              .setDispatcherName(serviceDispatcherName)
                                              //Let's assume that we do not need any form of backpressure
-                                             .setMailBoxProvider(BasicMbox::new)
+                                             .setMailBoxProvider(ctx -> new BasicMbox())
                                              //We do not need to listen for ServiceDiscoveryRequests, we have the
                                              //Service Registry now
                                              .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)

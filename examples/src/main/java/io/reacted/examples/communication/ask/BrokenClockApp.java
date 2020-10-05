@@ -27,7 +27,7 @@ public class BrokenClockApp {
                                                .setTypedSniffSubscriptions(NO_SUBSCRIPTIONS)
                                                //Accept at maximum 5 messages in the mailbox at the same time,
                                                //drop the ones in excess causing the delivery to fail
-                                               .setMailBoxProvider(() -> new BoundedBasicMbox(5))
+                                               .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
                                                .setReActorName("Reactive Clock")
                                                .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                                .build();

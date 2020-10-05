@@ -60,7 +60,7 @@ class SimpleTestReActor implements ReActor {
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                            .setMailBoxProvider(BasicMbox::new)
+                            .setMailBoxProvider(ctx -> new BasicMbox())
                             .setReActorName(SimpleTestReActor.class.getSimpleName())
                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                             .build();

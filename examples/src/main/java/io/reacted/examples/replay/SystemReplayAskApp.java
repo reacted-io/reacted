@@ -59,7 +59,7 @@ public class SystemReplayAskApp {
         var echoReActorConfig = ReActorConfig.newBuilder()
                                              .setReActorName("EchoReActor")
                                              .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                             .setMailBoxProvider(BasicMbox::new)
+                                             .setMailBoxProvider(ctx -> new BasicMbox())
                                              .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                                              .build();
 

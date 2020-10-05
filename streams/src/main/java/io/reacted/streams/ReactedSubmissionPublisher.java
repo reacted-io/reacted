@@ -81,7 +81,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         var feedGateCfg = ReActorConfig.newBuilder()
                                        .setReActorName(ReactedSubmissionPublisher.class.getSimpleName() + "-" +
                                                        Objects.requireNonNull(feedName))
-                                       .setMailBoxProvider(BasicMbox::new)
+                                       .setMailBoxProvider(ctx -> new BasicMbox())
                                        .build();
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
@@ -156,8 +156,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param subscriberName This name must be unique and if deterministic it allows cold replay
      * @throws NullPointerException if any of the arguments is null
      */
-    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, String subscriberName) {
-        subscribe(ReActedSubscription.<PayloadT>newBuilder()
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, String subscriberName) {
+        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
                           .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
@@ -178,8 +178,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
      */
-    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize) {
-        subscribe(ReActedSubscription.<PayloadT>newBuilder()
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize) {
+        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(bufferSize)
                           .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
@@ -203,8 +203,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
      */
-    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize, String subscriberName) {
-        subscribe(ReActedSubscription.<PayloadT>newBuilder()
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
+                                           String subscriberName) {
+        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(bufferSize)
                           .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
@@ -227,9 +228,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
      */
-    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, Executor asyncBackpressurer,
-                          Duration backpressureErrorTimeout) {
-        subscribe(ReActedSubscription.<PayloadT>newBuilder()
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, Executor asyncBackpressurer,
+                                           Duration backpressureErrorTimeout) {
+        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
                           .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
@@ -252,8 +253,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
      */
-    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, Duration backpressureErrorTimeout) {
-        subscribe(ReActedSubscription.<PayloadT>newBuilder()
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
+                                           Duration backpressureErrorTimeout) {
+        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
                           .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
@@ -277,9 +279,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
      */
-    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, Duration backpressureErrorTimeout,
-                          String subscriberName) {
-        subscribe(ReActedSubscription.<PayloadT>newBuilder()
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
+                                           Duration backpressureErrorTimeout, String subscriberName) {
+        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
                           .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
@@ -305,9 +307,10 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
      */
-    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, Duration backpressureErrorTimeout,
-                          Executor asyncBackpressurer, String subscriberName) {
-        subscribe(ReActedSubscription.<PayloadT>newBuilder()
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
+                                           Duration backpressureErrorTimeout, Executor asyncBackpressurer,
+                                           String subscriberName) {
+        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
                           .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
@@ -333,9 +336,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
      */
-    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
-                          Duration backpressureErrorTimeout) {
-        subscribe(ReActedSubscription.<PayloadT>newBuilder()
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
+                                           Duration backpressureErrorTimeout) {
+        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(bufferSize)
                           .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
@@ -362,9 +365,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
      */
-    public void subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize, Executor asyncBackpressurer,
-                          Duration backpressureErrorTimeout) {
-        subscribe(ReActedSubscription.<PayloadT>newBuilder()
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
+                                           Executor asyncBackpressurer, Duration backpressureErrorTimeout) {
+        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(bufferSize)
                           .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),

@@ -57,8 +57,8 @@ public class LoopbackDriver extends ReActorSystemDriver {
                              ? localDriver.newPendingAckTrigger(seqNum)
                              : null;
             tellResult = localDriver.sendAsyncMessage(dstCtx, new Message(src, dstCtx.getSelf(), seqNum,
-                                                                              localReActorSystem.getLocalReActorSystemId(),
-                                                                              ackingPolicy, payload));
+                                                                          localReActorSystem.getLocalReActorSystemId(),
+                                                                          ackingPolicy, payload));
             if (isAckRequired) {
                 tellResult.thenAccept(deliveryStatusTry -> localDriver.removePendingAckTrigger(seqNum)
                                                                       .ifPresent(deliveryAttempt -> deliveryAttempt.toCompletableFuture()

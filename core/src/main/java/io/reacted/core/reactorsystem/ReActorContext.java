@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 @NonNullByDefault
 public final class ReActorContext {
@@ -58,7 +59,7 @@ public final class ReActorContext {
     private ReActorRef lastMsgSender = ReActorRef.NO_REACTOR_REF;
 
     private ReActorContext(Builder reActorCtxBuilder) {
-        this.actorMbox = Objects.requireNonNull(reActorCtxBuilder.mbox);
+        this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider).apply(this));
         this.reactorRef = Objects.requireNonNull(reActorCtxBuilder.reactorRef);
         this.reActorSystem = Objects.requireNonNull(reActorCtxBuilder.reActorSystem);
         this.children = new CopyOnWriteArrayList<>();
@@ -286,7 +287,7 @@ public final class ReActorContext {
 
     @SuppressWarnings("NotNullFieldNotInitialized")
     public static class Builder {
-        private MailBox mbox;
+        private Function<ReActorContext, MailBox> mboxProvider;
         private ReActorRef reactorRef;
         private ReActorSystem reActorSystem;
         private ReActorRef parent;
@@ -294,8 +295,8 @@ public final class ReActorContext {
         private Dispatcher dispatcher;
         private ReActions reActions;
 
-        public Builder setMbox(MailBox actorMbox) {
-            this.mbox = actorMbox;
+        public Builder setMbox(Function<ReActorContext, MailBox> actorMboxProvider) {
+            this.mboxProvider = actorMboxProvider;
             return this;
         }
 

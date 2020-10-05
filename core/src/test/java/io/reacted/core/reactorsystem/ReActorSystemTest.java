@@ -39,14 +39,14 @@ class ReActorSystemTest {
     private static final String DISPATCHER_NAME = "TestDispatcher";
     private ReActorSystem reActorSystem;
     private final ReActorConfig reActorConfig = ReActorConfig.newBuilder()
-                                                             .setMailBoxProvider(BasicMbox::new)
+                                                             .setMailBoxProvider(ctx -> new BasicMbox())
                                                              .setDispatcherName(DISPATCHER_NAME)
                                                              .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                                                              .setReActorName("Reactor Name")
                                                              .build();
 
     private final ReActorConfig childReActorConfig = ReActorConfig.newBuilder()
-                                                                  .setMailBoxProvider(BasicMbox::new)
+                                                                  .setMailBoxProvider(ctx -> new BasicMbox())
                                                                   .setDispatcherName(DISPATCHER_NAME)
                                                                   .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                                                                   .setReActorName("Child reactor name")
@@ -162,7 +162,7 @@ class ReActorSystemTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("TR")
                                                    .setDispatcherName("TestDispatcher")
-                                                   .setMailBoxProvider(BasicMbox::new)
+                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                    .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
                                                    .build();
 

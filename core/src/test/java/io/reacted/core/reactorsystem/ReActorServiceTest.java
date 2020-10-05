@@ -41,7 +41,7 @@ class ReActorServiceTest {
 
         reActorServiceConfig = ReActorServiceConfig.newBuilder()
                                                    .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
-                                                   .setMailBoxProvider(BasicMbox::new)
+                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                    .setReActorName("TestRouter")
                                                    .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                                    .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)

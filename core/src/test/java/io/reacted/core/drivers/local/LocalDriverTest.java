@@ -60,7 +60,7 @@ class LocalDriverTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName(CoreConstants.REACTOR_NAME)
                                                    .setDispatcherName("Dispatcher")
-                                                   .setMailBoxProvider(BasicMbox::new)
+                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                    .setTypedSniffSubscriptions(subscribedTypes)
                                                    .build();
 
@@ -71,7 +71,7 @@ class LocalDriverTest {
 
 
         reActorContext = ReActorContext.newBuilder()
-                                       .setMbox(basicMbox)
+                                       .setMbox(ctx -> basicMbox)
                                        .setReactorRef(reActorRef)
                                        .setReActorSystem(reActorSystem)
                                        .setParentActor(ReActorRef.NO_REACTOR_REF)

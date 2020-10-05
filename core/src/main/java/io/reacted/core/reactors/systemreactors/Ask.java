@@ -77,7 +77,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
                                             request.getClass().getSimpleName() + "_" +
                                             expectedReplyType.getSimpleName())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                            .setMailBoxProvider(BasicMbox::new)
+                            .setMailBoxProvider(ctx -> new BasicMbox())
                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }

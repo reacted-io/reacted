@@ -32,14 +32,17 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @NonNullByDefault
 public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription, AutoCloseable {
     private final Flow.Subscriber<? super PayloadT> subscriber;
     private final ReActorRef feedGate;
-    private final BackpressuringMbox backpressuredMailbox;
+    private final BackpressuringMbox.Builder bpMailboxBuilder;
     private final CompletionStage<Void> onSubscriptionCompleteTrigger;
+    @Nullable
+    private BackpressuringMbox backpressuringMbox;
     @Nullable
     private volatile ReActorContext backpressurerCtx;
 
@@ -55,21 +58,20 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         this.onSubscriptionCompleteTrigger = onSubscriptionCompleteTrigger;
         this.subscriber = subscription.getSubscriber();
         this.feedGate = Objects.requireNonNull(feedGate);
-        this.backpressuredMailbox = BackpressuringMbox.newBuilder()
-                                                      .setRealMbox(new BoundedBasicMbox(subscription.getBufferSize()))
-                                                      .setBackpressureTimeout(subscription.getBackpressureTimeout())
-                                                      .setBufferSize(subscription.getBufferSize())
-                                                      .setRequestOnStartup(0)
-                                                      .setAsyncBackpressurer(subscription.getAsyncBackpressurer())
-                                                      .setNonDelayable(Set.of(ReActorInit.class, ReActorStop.class,
-                                                                              SubscriptionRequest.class,
-                                                                              SubscriptionReply.class,
-                                                                              UnsubscriptionRequest.class,
-                                                                              SubscriberError.class,
-                                                                              PublisherInterrupt.class))
-                                                      .setNonBackpressurable(Set.of(PublisherComplete.class))
-                                                      .setSequencer(subscription.getSequencer())
-                                                      .build();
+        this.bpMailboxBuilder = BackpressuringMbox.newBuilder()
+                                                  .setRealMbox(new BoundedBasicMbox(subscription.getBufferSize()))
+                                                  .setBackpressureTimeout(subscription.getBackpressureTimeout())
+                                                  .setBufferSize(subscription.getBufferSize())
+                                                  .setRequestOnStartup(0)
+                                                  .setAsyncBackpressurer(subscription.getAsyncBackpressurer())
+                                                  .setNonDelayable(Set.of(ReActorInit.class, ReActorStop.class,
+                                                                          SubscriptionRequest.class,
+                                                                          SubscriptionReply.class,
+                                                                          UnsubscriptionRequest.class,
+                                                                          SubscriberError.class,
+                                                                          PublisherInterrupt.class))
+                                                  .setNonBackpressurable(Set.of(PublisherComplete.class))
+                                                  .setSequencer(subscription.getSequencer());
     }
 
     @Override
@@ -78,8 +80,8 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
             errorTermination(Objects.requireNonNull(this.backpressurerCtx),
                              new IllegalArgumentException("non-positive subscription request"), this.subscriber);
         } else {
-            if (this.backpressurerCtx != null) {
-                this.backpressuredMailbox.request(elements);
+            if (this.backpressurerCtx != null && this.backpressuringMbox != null) {
+                this.backpressuringMbox.request(elements);
             }
         }
     }
@@ -92,24 +94,27 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         if (this.backpressurerCtx != null) {
             var ctx = Objects.requireNonNull(this.backpressurerCtx);
             ctx.stop();
-            this.feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(ctx.getSelf()));
         }
     }
 
-    Supplier<MailBox> getManagerMailbox() {
-        return () -> this.backpressuredMailbox;
+    Function<ReActorContext, MailBox> getManagerMailbox() {
+        return mboxOwner -> this.bpMailboxBuilder.setRealMailboxOwner(mboxOwner).build();
     }
 
     ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
-                        .reAct(ReActorStop.class, ReActions::noReAction)
+                        .reAct(ReActorStop.class, this::onStop)
                         .reAct(SubscriptionReply.class, this::onSubscriptionReply)
                         .reAct(SubscriberError.class, this::onSubscriberError)
                         .reAct(PublisherComplete.class, this::onPublisherComplete)
                         .reAct(PublisherInterrupt.class, this::onPublisherInterrupt)
                         .reAct(this::forwarder)
                         .build();
+    }
+
+    private void onStop(ReActorContext raCtx, ReActorStop stop) {
+        this.feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(raCtx.getSelf()));
     }
 
     private void forwarder(ReActorContext raCtx, Object anyPayload) {
@@ -145,7 +150,9 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         this.backpressurerCtx = raCtx;
-        var requestDelivery = this.feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf()));
+        this.backpressuringMbox = (BackpressuringMbox)raCtx.getMbox();
+        var requestDelivery = this.feedGate.tell(raCtx.getSelf(),
+                                                 new SubscriptionRequest(raCtx.getSelf()));
         Try.TryConsumer<Throwable> onSubscriptionError = error -> { this.subscriber.onSubscribe(this);
                                                                     errorTermination(raCtx, error, this.subscriber); };
         requestDelivery.thenAccept(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered)

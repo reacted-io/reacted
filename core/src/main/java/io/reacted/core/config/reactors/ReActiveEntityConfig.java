@@ -11,12 +11,14 @@ package io.reacted.core.config.reactors;
 import com.google.common.base.Strings;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.MailBox;
+import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @NonNullByDefault
@@ -24,13 +26,13 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
                                            BuilderT extends ReActiveEntityConfig.Builder<BuiltT, BuilderT>>
     implements Serializable {
 
-    public static final Supplier<MailBox> DEFAULT_MAILBOX_SUPPLIER = BasicMbox::new;
+    public static final Function<ReActorContext, MailBox> DEFAULT_MAILBOX_SUPPLIER = ctx -> new BasicMbox();
     public static final SubscriptionPolicy.SniffSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS =
             SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS;
     private final String dispatcherName;
     private final String reActorName;
     private final SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions;
-    private final Supplier<MailBox> mailBoxProvider;
+    private final Function<ReActorContext, MailBox> mailBoxProvider;
     private final ReActiveEntityType reActiveEntityType;
 
     protected ReActiveEntityConfig(Builder<BuiltT, BuilderT> builder) {
@@ -59,7 +61,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
         return Arrays.copyOf(typedSniffSubscriptions, typedSniffSubscriptions.length);
     }
 
-    public Supplier<MailBox> getMailBoxProvider() {
+    public Function<ReActorContext, MailBox> getMailBoxProvider() {
         return mailBoxProvider;
     }
 
@@ -83,7 +85,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reActorName;
         private SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
-        private Supplier<MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
+        private Function<ReActorContext, MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActiveEntityType entityType;
 
@@ -121,7 +123,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
          *
          * @param mailBoxProvider specify how to obtain a new mailbox. Used on reactor creation
          */
-        public BuilderT setMailBoxProvider(Supplier<MailBox> mailBoxProvider) {
+        public BuilderT setMailBoxProvider(Function<ReActorContext, MailBox> mailBoxProvider) {
             this.mailBoxProvider = mailBoxProvider;
             return getThis();
         }

@@ -2,8 +2,8 @@ package io.reacted.core.mailboxes;
 
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
@@ -13,22 +13,26 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.DeliveryRequest> {
+class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.DeliveryRequest> {
     private final long requestOnStartup;
     private final Function<Message, DeliveryStatus> realDeliveryCallback;
     private final SubmissionPublisher<BackpressuringMbox.DeliveryRequest> backpressurer;
     private final LongAdder preInitializationRequests;
-    private volatile boolean isCompleted;
+    private final ReActorContext targetMailboxOwner;
+    private volatile boolean isOpen;
     @Nullable
     private volatile Flow.Subscription subscription;
 
     BackpressuringSubscriber(long requestOnStartup,
+                             ReActorContext raCtx,
                              Function<Message, DeliveryStatus> realDeliveryCallback,
                              SubmissionPublisher<BackpressuringMbox.DeliveryRequest> backpressurer) {
         this.requestOnStartup = requestOnStartup;
         this.realDeliveryCallback = realDeliveryCallback;
         this.backpressurer = backpressurer;
+        this.targetMailboxOwner = raCtx;
         this.preInitializationRequests = new LongAdder();
+        this.isOpen = true;
     }
 
     @Override
@@ -45,25 +49,29 @@ public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringM
 
     @Override
     public void onNext(BackpressuringMbox.DeliveryRequest item) {
-        var deliveryResult = this.isCompleted
-                ? Try.ofSuccess(DeliveryStatus.NOT_DELIVERED)
-                : Try.of(() -> realDeliveryCallback.apply(item.deliveryPayload));
-        item.pendingTrigger.complete(deliveryResult);
-        deliveryResult.ifError(this::onError);
+        if (this.isOpen) {
+            try {
+                if (this.realDeliveryCallback.apply(item.deliveryPayload).isDelivered()) {
+                    this.targetMailboxOwner.reschedule();
+                }
+            } catch (Exception anyError) {
+                onError(anyError);
+            }
+        }
     }
 
     @Override
     public void onError(Throwable throwable) {
-        if (!this.isCompleted) {
-            this.isCompleted = true;
+        if (this.isOpen) {
+            this.isOpen = false;
             backpressurer.close();
         }
     }
 
     @Override
     public void onComplete() {
-        if(!this.isCompleted) {
-            this.isCompleted = true;
+        if(this.isOpen) {
+            this.isOpen = false;
         }
     }
 
@@ -76,7 +84,6 @@ public class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringM
                 }
             }
         }
-        Objects.requireNonNull(this.subscription)
-               .request(elementsToRequest);
+        Objects.requireNonNull(this.subscription).request(elementsToRequest);
     }
 }

@@ -57,7 +57,7 @@ class LoopbackDriverTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("ReActorName")
                                                    .setDispatcherName(testDispatcher)
-                                                   .setMailBoxProvider(BasicMbox::new)
+                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                    .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
                                                    .build();
 

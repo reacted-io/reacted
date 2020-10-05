@@ -44,7 +44,7 @@ class DispatcherTest {
         reactor = ReactorHelper.generateReactor("reactor");
         reActorContext = ReActorContext.newBuilder()
                                        .setDispatcher(dispatcher)
-                                       .setMbox(actorMbox)
+                                       .setMbox(ctx -> actorMbox)
                                        .setParentActor(parentReactor)
                                        .setReActorSystem(mock(ReActorSystem.class))
                                        .setReactorRef(reactor)

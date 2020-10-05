@@ -59,7 +59,7 @@ public class ServicePublicationApp {
 
         ReActorConfig routeeConfig = ReActorConfig.newBuilder()
                                                   .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
-                                                  .setMailBoxProvider(BasicMbox::new)
+                                                  .setMailBoxProvider(ctx -> new BasicMbox())
                                                   .setReActorName("ClockWorker")
                                                   //Not only the service, but we want also its workers to use the same
                                                   //dedicated dispatcher
@@ -92,7 +92,7 @@ public class ServicePublicationApp {
                                                      //We can have at maximum 5 pending messages in the
                                                      //service mailbox. The exceeding ones will be
                                                      //dropped win an error to the sender
-                                                     .setMailBoxProvider(() -> new BoundedBasicMbox(5))
+                                                     .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
                                                      //The service will intercept all the Service Discovery Requests
                                                      //generated locally to this reactor system
                                                      .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))

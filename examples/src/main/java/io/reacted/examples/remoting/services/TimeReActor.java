@@ -79,7 +79,7 @@ public class TimeReActor implements ReActor {
         return ReActorConfig.newBuilder()
                             .setReActorName(TimeReActor.class.getSimpleName() + "-" + reactorName)
                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
-                            .setMailBoxProvider(BasicMbox::new)
+                            .setMailBoxProvider(ctx -> new BasicMbox())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                             .build();
     }
