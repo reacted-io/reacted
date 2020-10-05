@@ -70,7 +70,7 @@ public class Dispatcher {
                                              executorService -> Executors.newFixedThreadPool(1, dispatcherFactory))
                                     .limit(getDispatcherConfig().getDispatcherThreadsNum())
                                     .toArray(ExecutorService[]::new);
-        int lifecyclePoolSize = Integer.max(1, getDispatcherConfig().getDispatcherThreadsNum() >> 2);
+        int lifecyclePoolSize = Integer.max(2, getDispatcherConfig().getDispatcherThreadsNum() >> 2);
 
         this.dispatcherLifeCyclePool = Executors.newFixedThreadPool(lifecyclePoolSize,lifecycleFactory);
 
