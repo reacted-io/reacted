@@ -118,6 +118,7 @@ public class BackpressuringMbox implements MailBox {
             reliableDelivery(message, backpressureTimeout, trigger);
         } else {
             try {
+                /* This one could stop but we cannot force the calling thread to stop */
                 this.sequencer.execute(() -> reliableDelivery(message, shouldNotBeBackPressured(payloadType)
                                                                        ? RELIABLE_DELIVERY_TIMEOUT
                                                                        : backpressureTimeout, trigger));
