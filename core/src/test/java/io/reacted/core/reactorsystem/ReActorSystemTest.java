@@ -11,6 +11,7 @@ package io.reacted.core.reactorsystem;
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
@@ -41,14 +42,14 @@ class ReActorSystemTest {
     private final ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                              .setMailBoxProvider(ctx -> new BasicMbox())
                                                              .setDispatcherName(DISPATCHER_NAME)
-                                                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                                             .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
                                                              .setReActorName("Reactor Name")
                                                              .build();
 
     private final ReActorConfig childReActorConfig = ReActorConfig.newBuilder()
                                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                                   .setDispatcherName(DISPATCHER_NAME)
-                                                                  .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                                                  .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
                                                                   .setReActorName("Child reactor name")
                                                                   .build();
 

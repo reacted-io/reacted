@@ -26,11 +26,10 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
     implements Serializable {
 
     public static final Function<ReActorContext, MailBox> DEFAULT_MAILBOX_SUPPLIER = ctx -> new BasicMbox();
-    public static final SubscriptionPolicy.SniffSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS =
-            SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS;
+    public static final SniffSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS = SniffSubscription.NO_SUBSCRIPTIONS;
     private final String dispatcherName;
     private final String reActorName;
-    private final SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions;
+    private final SniffSubscription[] typedSniffSubscriptions;
     private final Function<ReActorContext, MailBox> mailBoxProvider;
     private final ReActiveEntityType reActiveEntityType;
 
@@ -41,7 +40,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
         this.reActorName = Objects.requireNonNull(builder.reActorName);
         this.mailBoxProvider = Objects.requireNonNull(builder.mailBoxProvider);
         this.typedSniffSubscriptions = Objects.requireNonNull(builder.typedSniffSubscriptions).length == 0
-                                       ? SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS
+                                       ? SniffSubscription.NO_SUBSCRIPTIONS
                                        : Arrays.copyOf(builder.typedSniffSubscriptions,
                                                        builder.typedSniffSubscriptions.length);
         this.dispatcherName = builder.dispatcherName;
@@ -56,7 +55,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
         return reActorName;
     }
 
-    public SubscriptionPolicy.SniffSubscription[] getTypedSniffSubscriptions() {
+    public SniffSubscription[] getTypedSniffSubscriptions() {
         return Arrays.copyOf(typedSniffSubscriptions, typedSniffSubscriptions.length);
     }
 
@@ -83,7 +82,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
         private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reActorName;
-        private SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
+        private SniffSubscription[] typedSniffSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
         private Function<ReActorContext, MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActiveEntityType entityType;
@@ -133,7 +132,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
          *
          * @param typedSniffSubscriptions Sniffing subscriptions
          */
-        public BuilderT setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription... typedSniffSubscriptions) {
+        public BuilderT setTypedSniffSubscriptions(SniffSubscription... typedSniffSubscriptions) {
             this.typedSniffSubscriptions = typedSniffSubscriptions;
             return getThis();
         }

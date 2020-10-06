@@ -8,12 +8,12 @@
 
 package io.reacted.core.config.reactorsystem;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.HashSet;
@@ -35,12 +35,12 @@ public class ReActorSystemConfig {
 
     private ReActorSystemConfig(Builder reactorSystemConfig) {
         this.reactorSystemName = Objects.requireNonNull(reactorSystemConfig.reactorSystemName);
-        this.msgFanOutPoolSize = ConfigUtils.requiredInRange(reactorSystemConfig.msgFanOutPoolSize,
+        this.msgFanOutPoolSize = ObjectUtils.requiredInRange(reactorSystemConfig.msgFanOutPoolSize,
                                                              DEFAULT_FANOUT_POOL_SIZE, 10,
                                                              IllegalArgumentException::new);
         this.localDriver = Objects.requireNonNull(reactorSystemConfig.localDriver);
         this.recordedExecution = reactorSystemConfig.shallRecordExecution;
-        ConfigUtils.requiredInRange(reactorSystemConfig.dispatcherConfigs.size(), 0, MAX_DISPATCHER_CONFIGS,
+        ObjectUtils.requiredInRange(reactorSystemConfig.dispatcherConfigs.size(), 0, MAX_DISPATCHER_CONFIGS,
                                     IllegalArgumentException::new);
         this.dispatchersConfigs = Set.copyOf(reactorSystemConfig.dispatcherConfigs);
         this.remotingDrivers = Set.copyOf(reactorSystemConfig.remotingDrivers);

@@ -8,8 +8,8 @@
 
 package io.reacted.drivers.channels.kafka;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
@@ -26,7 +26,7 @@ public class KafkaDriverConfig extends ReActedDriverCfg<KafkaDriverConfig.Builde
         this.bootstrapEndpoint = Objects.requireNonNull(builder.bootstrapEndpoint);
         this.topic = Objects.requireNonNull(builder.topic);
         this.groupId = Objects.requireNonNull(builder.groupId);
-        this.maxPollRecords = ConfigUtils.requiredInRange(builder.maxPollRecords, 1, Integer.MAX_VALUE,
+        this.maxPollRecords = ObjectUtils.requiredInRange(builder.maxPollRecords, 1, Integer.MAX_VALUE,
                                                           IllegalArgumentException::new);
     }
 

@@ -9,7 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -51,7 +51,7 @@ public final class ReActorContext {
     private final AtomicLong msgExecutionId;
     private final ReActions reActions;
 
-    private SubscriptionPolicy.SniffSubscription[] interceptRules;
+    private SniffSubscription[] interceptRules;
 
     private volatile boolean stop = false;
     private volatile boolean isAcquired = false;
@@ -68,7 +68,7 @@ public final class ReActorContext {
         this.isScheduled = new AtomicBoolean(false);
         this.structuralLock = new ReentrantReadWriteLock();
         this.interceptRules = Objects.requireNonNull(reActorCtxBuilder.interceptRules).length == 0
-                              ? SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS
+                              ? SniffSubscription.NO_SUBSCRIPTIONS
                               : Arrays.copyOf(reActorCtxBuilder.interceptRules,
                                               reActorCtxBuilder.interceptRules.length);
         this.hierarchyTermination = new CompletableFuture<>();
@@ -105,7 +105,7 @@ public final class ReActorContext {
 
     public void releaseCoherence() { isAcquired = false; }
 
-    public void refreshInterceptors(SubscriptionPolicy.SniffSubscription... newInterceptedClasses) {
+    public void refreshInterceptors(SniffSubscription... newInterceptedClasses) {
 
         getStructuralLock().writeLock().lock();
         try {
@@ -116,8 +116,8 @@ public final class ReActorContext {
         }
     }
 
-    public SubscriptionPolicy.SniffSubscription[] getInterceptRules() {
-        SubscriptionPolicy.SniffSubscription[] interceptedMsgTypes;
+    public SniffSubscription[] getInterceptRules() {
+        SniffSubscription[] interceptedMsgTypes;
 
         getStructuralLock().readLock().lock();
         interceptedMsgTypes = Arrays.copyOf(this.interceptRules, this.interceptRules.length);
@@ -193,11 +193,11 @@ public final class ReActorContext {
 
     /**
      * Set the message intercept rules for this reactor to enable passive message sniffing
-     * @param interceptRules {@link io.reacted.core.config.reactors.SubscriptionPolicy.SniffSubscription} array
+     * @param interceptRules {@link SniffSubscription} array
      */
-    public final void setInterceptRules(SubscriptionPolicy.SniffSubscription... interceptRules) {
+    public final void setInterceptRules(SniffSubscription... interceptRules) {
         refreshInterceptors(Objects.requireNonNull(interceptRules).length == 0
-                            ? SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS
+                            ? SniffSubscription.NO_SUBSCRIPTIONS
                             : Arrays.copyOf(interceptRules, interceptRules.length));
     }
 
@@ -291,7 +291,7 @@ public final class ReActorContext {
         private ReActorRef reactorRef;
         private ReActorSystem reActorSystem;
         private ReActorRef parent;
-        private SubscriptionPolicy.SniffSubscription[] interceptRules;
+        private SniffSubscription[] interceptRules;
         private Dispatcher dispatcher;
         private ReActions reActions;
 
@@ -315,7 +315,7 @@ public final class ReActorContext {
             return this;
         }
 
-        public Builder setInterceptRules(SubscriptionPolicy.SniffSubscription... interceptRules) {
+        public Builder setInterceptRules(SniffSubscription... interceptRules) {
             this.interceptRules = interceptRules;
             return this;
         }

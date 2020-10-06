@@ -8,9 +8,8 @@
 
 package io.reacted.streams;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.mailboxes.BackpressuringMbox;
@@ -23,6 +22,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.PublisherShutdown;
@@ -233,7 +233,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
+                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
                                                                                 Predicate.not(Duration::isZero),
                                                                                 IllegalArgumentException::new))
                           .setAsyncBackpressurer(asyncBackpressurer)
@@ -258,7 +258,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
+                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
                                                                                 Predicate.not(Duration::isZero),
                                                                                 IllegalArgumentException::new))
                           .setAsyncBackpressurer(ForkJoinPool.commonPool())
@@ -284,7 +284,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
+                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
                                                                                 Predicate.not(Duration::isZero),
                                                                                 IllegalArgumentException::new))
                           .setAsyncBackpressurer(ForkJoinPool.commonPool())
@@ -313,7 +313,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
+                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
                                                                                 Predicate.not(Duration::isZero),
                                                                                 IllegalArgumentException::new))
                           .setAsyncBackpressurer(asyncBackpressurer)
@@ -341,7 +341,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(bufferSize)
-                          .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
+                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
                                                                                 Predicate.not(Duration::isZero),
                                                                                 IllegalArgumentException::new))
                           .setAsyncBackpressurer(ForkJoinPool.commonPool())
@@ -370,7 +370,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(bufferSize)
-                          .setBackpressureTimeout(ConfigUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
+                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
                                                                                 Predicate.not(Duration::isZero),
                                                                                 IllegalArgumentException::new))
                           .setAsyncBackpressurer(asyncBackpressurer)
@@ -395,7 +395,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                          "_subscriber_" + subscription.getSubscriberName() + "_" +
                                                          this.feedGate.getReActorId().getReActorUuid().toString())
                                          .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                         .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                         .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
                                          .setMailBoxProvider(backpressureManager.getManagerMailbox())
                                          .build();
 
@@ -478,16 +478,16 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
         private ReActedSubscription(Builder<PayloadT> builder) {
             this.subscriber = Objects.requireNonNull(builder.subscriber);
-            this.bufferSize = ConfigUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
+            this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                           IllegalArgumentException::new);
-            this.backpressureTimeout = ConfigUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
+            this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
                                                                      timeout -> timeout.compareTo(RELIABLE_SUBSCRIPTION) <= 0,
                                                                      IllegalArgumentException::new);
             this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer);
             this.subscriberName = Objects.requireNonNull(builder.subscriberName);
             this.sequencer = builder.sequencer == null
                              ? builder.sequencer
-                             : ConfigUtils.requiredCondition(builder.sequencer,
+                             : ObjectUtils.requiredCondition(builder.sequencer,
                                                              sequencer -> sequencer.getMaximumPoolSize() == 1,
                                                              IllegalArgumentException::new);
         }

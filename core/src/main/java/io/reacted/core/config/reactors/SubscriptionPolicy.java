@@ -21,19 +21,4 @@ public enum SubscriptionPolicy {
     public SniffSubscription forType(Class<? extends Serializable> payloadType) {
         return new SniffSubscription(this, payloadType);
     }
-
-    public static class SniffSubscription {
-        public static final SniffSubscription[] NO_SUBSCRIPTIONS = new SniffSubscription[]{};
-        private final SubscriptionPolicy subscriptionPolicy;
-        private final Class<? extends Serializable> payloadType;
-        private SniffSubscription(SubscriptionPolicy subscriptionPolicy,
-                                  Class<? extends Serializable> sniffedPayloadType) {
-            this.subscriptionPolicy = subscriptionPolicy;
-            this.payloadType = sniffedPayloadType;
-        }
-
-        public SubscriptionPolicy getSubscriptionPolicy() { return subscriptionPolicy; }
-
-        public Class<? extends Serializable> getPayloadType() { return payloadType; }
-    }
 }

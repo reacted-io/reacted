@@ -8,9 +8,9 @@
 
 package io.reacted.core.mailboxes;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -25,7 +25,7 @@ public class BoundedBasicMbox implements MailBox {
     private final int mailboxCapacity;
 
     public BoundedBasicMbox(int maxMsgs) {
-        this.mailboxCapacity = ConfigUtils.requiredInRange(maxMsgs, 1, Integer.MAX_VALUE,
+        this.mailboxCapacity = ObjectUtils.requiredInRange(maxMsgs, 1, Integer.MAX_VALUE,
                                                            IllegalArgumentException::new);
         this.inbox = new LinkedBlockingDeque<>(this.mailboxCapacity);
     }

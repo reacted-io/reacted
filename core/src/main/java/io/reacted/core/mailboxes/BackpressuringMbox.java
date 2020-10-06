@@ -9,10 +9,10 @@
 package io.reacted.core.mailboxes;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.slf4j.Logger;
@@ -54,15 +54,15 @@ public class BackpressuringMbox implements MailBox {
      */
     private BackpressuringMbox(Builder builder) {
         ReActorContext mboxOwner = Objects.requireNonNull(builder.realMailboxOwner);
-        this.backpressureTimeout = ConfigUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
+        this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
                                                                  timeout -> timeout.compareTo(RELIABLE_DELIVERY_TIMEOUT) <= 0,
                                                                  () -> new IllegalArgumentException("Invalid backpressure timeout"));
         this.realMbox = Objects.requireNonNull(builder.realMbox);
         this.notDelayed = Objects.requireNonNull(builder.notDelayable);
         this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable);
-        int bufferSize = ConfigUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
+        int bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                      IllegalArgumentException::new);
-        int requestOnStartup = ConfigUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
+        int requestOnStartup = ObjectUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
                                                            IllegalArgumentException::new);
         var deliveryThreadFactory = new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> LOGGER.error("Uncaught exception in {} delivery thread",
@@ -74,7 +74,7 @@ public class BackpressuringMbox implements MailBox {
             this.isPrivateSequencer = true;
             this.sequencer =  Executors.newSingleThreadExecutor(deliveryThreadFactory);
         } else {
-            ConfigUtils.requiredInRange(builder.sequencer.getMaximumPoolSize(), 0, 1,
+            ObjectUtils.requiredInRange(builder.sequencer.getMaximumPoolSize(), 0, 1,
                                         IllegalArgumentException::new);
             this.sequencer = builder.sequencer;
             this.isPrivateSequencer = false;

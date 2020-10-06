@@ -8,9 +8,9 @@
 
 package io.reacted.core.reactorsystem;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.reactors.ReActor;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;
 
@@ -26,7 +26,7 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
 
     private ReActorServiceConfig(Builder reActorServiceConfig) {
         super(reActorServiceConfig);
-        this.routeesNum = ConfigUtils.requiredInRange(reActorServiceConfig.routeesNum, 1, 10_000,
+        this.routeesNum = ObjectUtils.requiredInRange(reActorServiceConfig.routeesNum, 1, 10_000,
                                                       IllegalArgumentException::new);
         this.routeeProvider = Objects.requireNonNull(reActorServiceConfig.routeeProvider);
         this.loadBalancingPolicy = Objects.requireNonNull(reActorServiceConfig.loadBalancingPolicy);

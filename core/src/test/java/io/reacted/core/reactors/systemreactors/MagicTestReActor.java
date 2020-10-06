@@ -9,7 +9,7 @@
 package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
@@ -36,7 +36,7 @@ public class MagicTestReActor implements ReActor {
         this(maxMsgValue, checkMsgOrdering, ReActorConfig.newBuilder()
                                                          .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                                          .setMailBoxProvider(ctx -> new BasicMbox())
-                                                         .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                                         .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
                                                          .setReActorName(reactorName)
                                                          .build());
     }

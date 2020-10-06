@@ -9,7 +9,8 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.MultiMaps;
+import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.datastructure.MultiMaps;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
@@ -85,7 +86,7 @@ public class ReActorSystem {
     private static final ReActorConfig DEFAULT_REACTOR_CONFIG = ReActorConfig.newBuilder()
                                                                              .setMailBoxProvider(ctx -> new NullMailbox())
                                                                              .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                                                             .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
                                                                              .setReActorName("ReActorConfigTemplate")
                                                                              .build();
 
@@ -515,8 +516,8 @@ public class ReActorSystem {
 
     //Runtime update of the typed sniff subscriptions for a given reactor
     //Guarded by structural lock on target actor
-    void updateMessageInterceptors(ReActorContext targetActor, SubscriptionPolicy.SniffSubscription[] oldIntercepted,
-                                   SubscriptionPolicy.SniffSubscription[] newIntercepted) {
+    void updateMessageInterceptors(ReActorContext targetActor, SniffSubscription[] oldIntercepted,
+                                   SniffSubscription[] newIntercepted) {
 
         Arrays.stream(oldIntercepted)
               .forEach(sniffSubscription -> typedSubscribers.remove(sniffSubscription.getPayloadType(),
@@ -782,7 +783,7 @@ public class ReActorSystem {
         try {
             if (reActors.remove(stopMe.getSelf().getReActorId()) != null) {
                 updateMessageInterceptors(stopMe, stopMe.getInterceptRules(),
-                                          SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS);
+                                          SniffSubscription.NO_SUBSCRIPTIONS);
                 Try.ofRunnable(() -> stopMe.reAct(reActorStop))
                    .ifError(error -> stopMe.logError("Unable to properly stop reactor: ", error));
                 Try.ofRunnable(() -> stopMe.getMbox().close())

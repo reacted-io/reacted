@@ -8,7 +8,7 @@
 
 package io.reacted.core.config.drivers;
 
-import io.reacted.core.config.ConfigUtils;
+import io.reacted.core.utils.ConfigUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;

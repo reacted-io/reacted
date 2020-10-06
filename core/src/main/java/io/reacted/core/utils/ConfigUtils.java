@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.config;
+package io.reacted.core.utils;
 
 import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.patterns.NonNullByDefault;
@@ -45,23 +45,4 @@ public final class ConfigUtils {
         return cfgProperties;
     }
 
-    public static <ElementT extends Comparable<ElementT>, ExceptionT extends RuntimeException>
-    ElementT requiredInRange(ElementT element, ElementT inclusiveRangeStart, ElementT inclusiveRangeEnd,
-                             Supplier<ExceptionT> onError) {
-        if (!(Objects.requireNonNull(inclusiveRangeEnd).compareTo(Objects.requireNonNull(inclusiveRangeStart)) < 0) &&
-            Objects.requireNonNull(element).compareTo(inclusiveRangeStart) >= 0 &&
-                element.compareTo(inclusiveRangeEnd) <= 0) {
-            return element;
-        }
-        throw onError.get();
-    }
-
-    public static <ReturnT, OnErrorT extends RuntimeException>  ReturnT
-    requiredCondition(ReturnT element, Predicate<ReturnT> controlPredicate,
-                      Supplier<OnErrorT> onControlPredicateFailure) {
-        if (controlPredicate.negate().test(element)) {
-            throw onControlPredicateFailure.get();
-        }
-        return element;
-    }
 }
