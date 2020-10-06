@@ -61,10 +61,10 @@ class StreamToMultipleSubscribersApp {
     private static class TestSubscriber<PayloadT> implements Flow.Subscriber<PayloadT> {
         private final Comparator<PayloadT> payloadTComparator;
         private final LongAdder updatesReceived;
-        private volatile boolean isTerminated = false;
+        private boolean isTerminated = false;
         @SuppressWarnings("NotNullFieldNotInitialized")
-        private volatile Flow.Subscription subscription;
-        private volatile PayloadT lastItem;
+        private Flow.Subscription subscription;
+        private PayloadT lastItem;
 
         private TestSubscriber(PayloadT baseItem, Comparator<PayloadT> payloadComparator) {
             this.payloadTComparator = Objects.requireNonNull(payloadComparator);
