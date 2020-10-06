@@ -56,7 +56,10 @@ class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.Del
     public void onError(Throwable throwable) { this.backpressurer.close(); }
 
     @Override
-    public void onComplete() { Objects.requireNonNull(this.subscription).cancel(); }
+    public void onComplete() {
+        //https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8254060
+        Objects.requireNonNull(this.subscription).cancel();
+    }
 
     public void request(long elementsToRequest) {
         if (this.subscription == null) {

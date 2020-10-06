@@ -134,6 +134,7 @@ public class BackpressuringMbox implements MailBox {
 
     @Override
     public void close() throws Exception {
+        //https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8254060
         this.reliableBackpressuringSubscriber.onComplete();
         this.backpressurer.close();
         if (isPrivateSequencer) {
