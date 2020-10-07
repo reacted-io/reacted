@@ -146,10 +146,9 @@ public class Dispatcher {
                     }
                     try {
                         scheduledReActor.reAct(newEvent);
-                    } catch (Throwable anyExc) {
-                        scheduledReActor.getReActorSystem()
-                                        .logError(REACTIONS_EXECUTION_ERROR, anyExc, scheduledReActor.getSelf()
-                                                                                                     .getReActorId(),
+                    } catch (Exception anyExc) {
+                        scheduledReActor.logError(REACTIONS_EXECUTION_ERROR, anyExc,
+                                                  scheduledReActor.getSelf().getReActorId(),
                                                   newEvent.getPayload().getClass(),
                                                   newEvent.getSequenceNumber(), newEvent.toString());
                         scheduledReActor.stop();
