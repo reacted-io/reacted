@@ -9,6 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import io.reacted.core.config.reactors.ServiceDiscoverySearchConfig;
 import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.datastructure.MultiMaps;
 import io.reacted.core.config.ChannelId;
@@ -375,33 +376,31 @@ public class ReActorSystem {
     /**
      * Request a reactor reference for the specified service.
      *
-     * @param serviceName   Service name
-     * @param selectionType Type or reference required
+     * @param searchFilter A {@link ServiceDiscoverySearchConfig} describing the feature of the services that should be
+     *                     found
      * @return On success a future containing the result of the request
      * On failure a future containing the exception that caused the failure
      */
     public CompletionStage<Try<ServiceDiscoveryReply>>
-    serviceDiscovery(String serviceName, SelectionType selectionType) {
-        return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(serviceName),
-                                                               Objects.requireNonNull(selectionType)),
-                                   ServiceDiscoveryReply.class, serviceName + "_" + selectionType.name());
+    serviceDiscovery(ServiceDiscoverySearchConfig searchFilter) {
+        return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
+                                   ServiceDiscoveryReply.class, searchFilter.getServiceName() + "|" +
+                                                                searchFilter.getSelectionType().name());
     }
 
     /**
      * Request a reactor reference for the specified service
      *
-     * @param serviceName   Service name
-     * @param selectionType Type or reference required
+     * @param searchFilter A {@link ServiceDiscoverySearchConfig} describing the feature of the services that should
+     *                     be found
      * @param requester     source of this request
      * @return The outcome of the request
      */
     @SuppressWarnings("UnusedReturnValue")
-    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(String serviceName,
-                                                                 SelectionType selectionType,
+    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(ServiceDiscoverySearchConfig searchFilter,
                                                                  ReActorRef requester) {
         return broadcastToLocalSubscribers(Objects.requireNonNull(requester),
-                                           new ServiceDiscoveryRequest(Objects.requireNonNull(serviceName),
-                                                                       Objects.requireNonNull(selectionType)));
+                                           new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)));
     }
 
     /**
