@@ -8,7 +8,7 @@
 
 package io.reacted.core.utils;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.InheritableBuilder;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;
 
@@ -24,7 +24,7 @@ import java.util.function.Predicate;
 @NonNullByDefault
 public final class ConfigUtils {
     private ConfigUtils() { /* No instances allowed */ }
-    public static Properties toProperties(ReActedDriverCfg<?, ?> config, Set<String> skipFields) {
+    public static Properties toProperties(InheritableBuilder<?, ?> config, Set<String> skipFields) {
         Properties cfgProperties = new Properties();
         Class<?> configLevel = Objects.requireNonNull(config).getClass();
         do {

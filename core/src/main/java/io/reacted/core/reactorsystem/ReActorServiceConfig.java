@@ -10,6 +10,7 @@ package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.reactors.ReActor;
+import io.reacted.core.services.ReActorService;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;

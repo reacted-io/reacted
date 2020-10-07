@@ -8,6 +8,7 @@
 
 package io.reacted.core.messages.services;
 
+import io.reacted.core.services.SelectionType;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
@@ -30,15 +31,4 @@ public class ServiceDiscoveryRequest implements Serializable {
     public String getServiceName() { return serviceName; }
 
     public SelectionType getSelectionType() { return selectionType; }
-
-    public enum SelectionType {
-        /**
-         * Request a reference to a router providing the service
-         */
-        ROUTED,
-        /**
-         * Request a reference to a reactor providing the service
-         */
-        DIRECT
-    }
 }

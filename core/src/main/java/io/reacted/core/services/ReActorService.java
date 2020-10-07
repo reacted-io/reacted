@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.reactorsystem;
+package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -16,15 +16,20 @@ import io.reacted.core.messages.serviceregistry.RegistryServicePublicationReques
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
+import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
+import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.patterns.Try;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
 
-public class ReActorService {
+public class ReActorService implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
     private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router {}";
@@ -37,6 +42,7 @@ public class ReActorService {
         this.msgReceived = 1;
     }
 
+    @Nonnull
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(this::routeMessage)

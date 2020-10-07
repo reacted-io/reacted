@@ -36,6 +36,7 @@ import io.reacted.core.messages.reactors.ReActedError;
 import io.reacted.core.messages.reactors.ReActedInfo;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.services.SelectionType;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
@@ -46,6 +47,7 @@ import io.reacted.core.reactors.systemreactors.DeadLetter;
 import io.reacted.core.reactors.systemreactors.RemotingRoot;
 import io.reacted.core.reactors.systemreactors.SystemLogger;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.services.ReActorService;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.slf4j.Logger;
@@ -379,7 +381,7 @@ public class ReActorSystem {
      * On failure a future containing the exception that caused the failure
      */
     public CompletionStage<Try<ServiceDiscoveryReply>>
-    serviceDiscovery(String serviceName, ServiceDiscoveryRequest.SelectionType selectionType) {
+    serviceDiscovery(String serviceName, SelectionType selectionType) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(serviceName),
                                                                Objects.requireNonNull(selectionType)),
                                    ServiceDiscoveryReply.class, serviceName + "_" + selectionType.name());
@@ -395,7 +397,7 @@ public class ReActorSystem {
      */
     @SuppressWarnings("UnusedReturnValue")
     public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(String serviceName,
-                                                                 ServiceDiscoveryRequest.SelectionType selectionType,
+                                                                 SelectionType selectionType,
                                                                  ReActorRef requester) {
         return broadcastToLocalSubscribers(Objects.requireNonNull(requester),
                                            new ServiceDiscoveryRequest(Objects.requireNonNull(serviceName),

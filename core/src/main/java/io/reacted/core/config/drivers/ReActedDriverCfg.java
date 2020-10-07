@@ -8,6 +8,7 @@
 
 package io.reacted.core.config.drivers;
 
+import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.utils.ConfigUtils;
 import io.reacted.patterns.NonNullByDefault;
 
@@ -16,14 +17,16 @@ import java.util.Properties;
 import java.util.Set;
 
 @NonNullByDefault
-public abstract class ReActedDriverCfg<BuilderT extends ReActedDriverCfg.Builder<BuilderT, BuiltT>,
-                                       BuiltT extends ReActedDriverCfg<BuilderT, BuiltT>> {
+public abstract class ReActedDriverCfg<BuilderT extends InheritableBuilder.Builder<BuilderT, BuiltT>,
+                                       BuiltT extends InheritableBuilder<BuilderT, BuiltT>>
+        extends InheritableBuilder<BuilderT, BuiltT> {
     public static final String CHANNEL_ID_PROPERTY_NAME = "channelName";
     public static final String IS_DELIVERY_ACK_REQUIRED_BY_CHANNEL_PROPERTY_NAME = "deliveryAckRequiredByChannel";
     private final String channelName;
     private final boolean deliveryAckRequiredByChannel;
 
     protected ReActedDriverCfg(Builder<BuilderT, BuiltT> builder) {
+        super(builder);
         this.channelName = Objects.requireNonNull(builder.channelName);
         this.deliveryAckRequiredByChannel = builder.deliveryAckRequiredByChannel;
     }
@@ -36,7 +39,8 @@ public abstract class ReActedDriverCfg<BuilderT extends ReActedDriverCfg.Builder
 
     public boolean isDeliveryAckRequiredByChannel() { return deliveryAckRequiredByChannel; }
 
-    public static abstract class Builder<BuilderT, BuiltT> {
+    public static abstract class Builder<BuilderT, BuiltT>
+            extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String channelName;
         private boolean deliveryAckRequiredByChannel;
@@ -50,10 +54,5 @@ public abstract class ReActedDriverCfg<BuilderT extends ReActedDriverCfg.Builder
             this.deliveryAckRequiredByChannel = isDeliveryAckRequiredByChannel;
             return getThis();
         }
-
-        public abstract BuiltT build();
-
-        @SuppressWarnings("unchecked")
-        protected BuilderT getThis() { return (BuilderT)this; }
     }
 }

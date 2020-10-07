@@ -73,8 +73,8 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
-                            .setReActorName(requestName + "_" + target.getReActorId().getReActorUuid() + "_" +
-                                            request.getClass().getSimpleName() + "_" +
+                            .setReActorName(requestName + "|" + target.getReActorId().getReActorUuid() + "|" +
+                                            request.getClass().getSimpleName() + "|" +
                                             expectedReplyType.getSimpleName())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                             .setMailBoxProvider(ctx -> new BasicMbox())
