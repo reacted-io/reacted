@@ -9,6 +9,7 @@
 package io.reacted.drivers.serviceregistries;
 
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryInit;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -33,6 +34,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.cache.ChildData;
@@ -80,7 +82,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     @Nullable
     private CuratorFramework client;
     @Nullable
-    private ServiceDiscovery<String> serviceDiscovery;
+    private ServiceDiscovery<RegistryServicePublicationRequest> serviceDiscovery;
     @Nullable
     private AsyncCuratorFramework asyncClient;
     @Nullable
@@ -108,7 +110,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                                                                                                    .forPath(CLUSTER_REGISTRY_SERVICES_ROOT_PATH))
                                                                             .recover(KeeperException.NodeExistsException.class,
                                                                                      Try.VOID));
-        var serviceDiscovery = servicesPathCreation.map(success -> ServiceDiscoveryBuilder.builder(String.class)
+        var serviceDiscovery = servicesPathCreation.map(success -> ServiceDiscoveryBuilder.builder(RegistryServicePublicationRequest.class)
                                                                                           .basePath(CLUSTER_REGISTRY_SERVICES_ROOT_PATH)
                                                                                           .client(this.client)
                                                                                           .build());
@@ -157,7 +159,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
 
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, (raCtx, init) -> {})
+                        .reAct(ReActorInit.class, ReActions::noReAction)
                         .reAct(ReActorStop.class, this::onStop)
                         .reAct(RegistryPublicationRequest.class, this::onPublicationRequest)
                         .reAct(RegistrySubscriptionRequest.class, this::onRegistrySubscriptionRequest)
@@ -177,20 +179,25 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
             return;
         }
         getServiceInstance(cancellationRequest.getServiceName(),
-                           raCtx.getReActorSystem().getLocalReActorSystemId(), "")
+                           raCtx.getReActorSystem().getLocalReActorSystemId(), (RegistryServicePublicationRequest)null)
                 .ifSuccessOrElse(this.serviceDiscovery::unregisterService,
                                  error -> raCtx.logError("Unable to unregister service {}",
                                                          cancellationRequest.toString(), error));
     }
 
-    private void onServicePublicationRequest(ReActorContext raCtx, RegistryServicePublicationRequest publishService) {
+    private void onServicePublicationRequest(ReActorContext raCtx, RegistryServicePublicationRequest serviceInfo) {
         if (this.serviceDiscovery == null) {
             return;
         }
-        getServiceInstance(publishService.getServiceName(), raCtx.getReActorSystem().getLocalReActorSystemId(),
-                           publishService.toSerializedString())
-                .map(service -> { this.serviceDiscovery.registerService(service); return null; })
-                .ifError(registeringError -> raCtx.reply(new RegistryServicePublicationFailed(publishService.getServiceName(),
+        String serviceName = serviceInfo.getServiceProperties()
+                                        .getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME);
+        if (StringUtils.isBlank(serviceName)) {
+            raCtx.logError("Skipping publication attempt of an invalid service name {}", serviceName);
+            return;
+        }
+        getServiceInstance(serviceName, raCtx.getReActorSystem().getLocalReActorSystemId(), serviceInfo)
+                .ifSuccess(this.serviceDiscovery::registerService)
+                .ifError(registeringError -> raCtx.reply(new RegistryServicePublicationFailed(serviceName,
                                                                                               registeringError)));
     }
 
@@ -198,10 +205,20 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
         if (this.serviceDiscovery == null) {
             return;
         }
-        Try.of(() -> this.serviceDiscovery.queryForInstances(request.getServiceName()))
-           .peekFailure(error -> raCtx.logError("Error discovering service {}", request.getServiceName(), error))
+        ServiceDiscoverySearchFilter filter = request.getSearchFilter();
+        Try.of(() -> this.serviceDiscovery.queryForInstances(filter.getServiceName()))
+           .peekFailure(error -> raCtx.logError("Error discovering service {}",
+                                                request.getSearchFilter().getServiceName(), error))
            .toOptional()
            .filter(Predicate.not(Collection::isEmpty))
+           .map(results -> results.stream()
+                                                                            //Side effect on input object!!!
+                                  .filter(serviceInstance -> filter.matches(patchServiceProperties(serviceInstance.getPayload()
+                                                                                                                  .getServiceProperties(),
+                                                                                                   ServiceDiscoverySearchFilter.FIELD_NAME_IP_ADDRESS,
+                                                                                                   serviceInstance.getAddress())))
+                                  .map(ServiceInstance::getPayload)
+                                  .collect(Collectors.toUnmodifiableList()))
            .map(serviceInstances -> toServiceDiscoveryReply(serviceInstances, raCtx.getReActorSystem()))
            .filter(serviceDiscoveryReply -> !serviceDiscoveryReply.getServiceGates().isEmpty())
            .ifPresent(serviceDiscoveryReply -> raCtx.reply(ReActorRef.NO_REACTOR_REF, serviceDiscoveryReply));
@@ -354,26 +371,27 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
 
     private static <PayloadT> Try<ServiceInstance<PayloadT>> getServiceInstance(String serviceName,
                                                                                 ReActorSystemId localReActorSystemId,
-                                                                                PayloadT servicePayload) {
+                                                                                @Nullable PayloadT servicePayload) {
         return Try.of(() -> ServiceInstance.<PayloadT>builder()
                                            .serviceType(ServiceType.DYNAMIC)
                                            .name(serviceName)
                                            .payload(servicePayload)
-                                           .id(localReActorSystemId.getReActorSystemName() + "_" + serviceName)
+                                           .id(localReActorSystemId.getReActorSystemName() + "|" + serviceName)
                                            .build());
     }
 
-    private static ServiceDiscoveryReply toServiceDiscoveryReply(Collection<ServiceInstance<String>> serviceInstances,
-                                                                 ReActorSystem localReActorSystem) {
-
-        var servicesReferences = serviceInstances.stream()
-                                                         .map(ServiceInstance::getPayload)
-                                                         .flatMap(serializedString -> Try.of(() -> RegistryServicePublicationRequest.fromSerializedString(serializedString))
-                                                                                         .peekFailure(error -> localReActorSystem.logError("Unable to decode service {}",
-                                                                                                                                           serializedString, error))
-                                                                                         .stream())
+    private static ServiceDiscoveryReply
+    toServiceDiscoveryReply(Collection<RegistryServicePublicationRequest> serviceInstances,
+                            ReActorSystem localReActorSystem) {
+        return new ServiceDiscoveryReply(serviceInstances.stream()
                                                          .map(RegistryServicePublicationRequest::getServiceGate)
-                                                         .collect(Collectors.toUnmodifiableSet());
-        return new ServiceDiscoveryReply(servicesReferences, localReActorSystem);
+                                                         .collect(Collectors.toUnmodifiableSet()), localReActorSystem);
+    }
+
+    //Side effect on the input properties
+    private static Properties patchServiceProperties(Properties serviceProperties,
+                                                     String key, Object value) {
+        serviceProperties.merge(key, value, (oldObj, newObj) -> value);
+        return serviceProperties;
     }
 }

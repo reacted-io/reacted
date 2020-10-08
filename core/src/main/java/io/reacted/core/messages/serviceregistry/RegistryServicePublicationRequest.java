@@ -8,59 +8,62 @@
 
 package io.reacted.core.messages.serviceregistry;
 
-import io.reacted.core.reactors.ReActorId;
+import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystemId;
-import io.reacted.core.reactorsystem.ReActorSystemRef;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
-import java.util.Objects;
-import java.util.UUID;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Properties;
 
 
 @NonNullByDefault
-public class RegistryServicePublicationRequest implements Serializable {
-    private static final String SERVICE_NAME_SEPARATOR = ";";
-    private static final String NAME_TO_ID_SEPARATOR = ":";
-    private static final String REACTORSYSTEM_REF_SEPARATOR = "@";
-    private final String serviceName;
+public class RegistryServicePublicationRequest implements Externalizable {
+    private static final long serialVersionUID = 1;
+    private static final long SERVICE_GATE_OFFSET = SerializationUtils.getFieldOffset(RegistryServicePublicationRequest.class,
+                                                                                      "serviceGate")
+                                                                      .orElseSneakyThrow();
+    private static final long SERVICE_PROPERTIES_OFFSET = SerializationUtils.getFieldOffset(RegistryServicePublicationRequest.class,
+                                                                                            "serviceProperties")
+                                                                            .orElseSneakyThrow();
     private final ReActorRef serviceGate;
+    private final Properties instanceProperties;
 
-    public RegistryServicePublicationRequest(ReActorRef serviceGate, String serviceName) {
+    public RegistryServicePublicationRequest(ReActorRef serviceGate, Properties serviceProperties) {
         this.serviceGate = serviceGate;
-        this.serviceName = serviceName;
+        this.instanceProperties = serviceProperties;
     }
 
-    public String toSerializedString() {
-        return serviceName + SERVICE_NAME_SEPARATOR +
-               serviceGate.getReActorId().getReActorName() + NAME_TO_ID_SEPARATOR +
-               serviceGate.getReActorId().getReActorUuid().toString() + REACTORSYSTEM_REF_SEPARATOR +
-               serviceGate.getReActorSystemRef().getReActorSystemId().getReActorSystemName();
+    public RegistryServicePublicationRequest() {
+        this.serviceGate = ReActorRef.NO_REACTOR_REF;
+        this.instanceProperties = new Properties();
     }
 
-    public ReActorRef getServiceGate() { return serviceGate; }
+    public ReActorRef getServiceGate() { return this.serviceGate; }
 
-    public String getServiceName() { return serviceName; }
+    public Properties getServiceProperties() { return this.instanceProperties; }
 
-    /**
-     * Retrieve the information regarding a published service from a serialized string
-     * @param serializedString String returned by toSerializedString
-     * @throws RuntimeException Any runtime exception generated during the parsing of an illegal string
-     * @return A {@link RegistryServicePublicationRequest} containing the published information about a service
-     */
-    public static RegistryServicePublicationRequest fromSerializedString(String serializedString) {
-        String[] serviceNameAndGate = serializedString.split(SERVICE_NAME_SEPARATOR);
-        String[] reActorAndReActorSystem = serviceNameAndGate[1].split(REACTORSYSTEM_REF_SEPARATOR);
-        String[] reActorNameAndUuid = reActorAndReActorSystem[0].split(NAME_TO_ID_SEPARATOR);
-        String reActorSystemName = reActorAndReActorSystem[1];
-        UUID reActorUuid = UUID.fromString(reActorNameAndUuid[1]);
-        ReActorId reActorId = new ReActorId().setReActorName(reActorNameAndUuid[0])
-                                             .setUuid(reActorUuid)
-                                             .setHashCode(Objects.hash(reActorUuid, reActorNameAndUuid[0]));
-        ReActorSystemId reActorSystemId = new ReActorSystemId(reActorSystemName);
-        return new RegistryServicePublicationRequest(new ReActorRef(reActorId,
-                                                                    new ReActorSystemRef(null, null, reActorSystemId)),
-                                                     serviceNameAndGate[0]);
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        out.writeObject(this.serviceGate);
+        out.writeObject(this.instanceProperties);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        setServiceGate((ReActorRef) in.readObject())
+                .setInstanceProperties((Properties)in.readObject());
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
+    private RegistryServicePublicationRequest setServiceGate(ReActorRef reactorRef) {
+        return SerializationUtils.setObjectField(this, SERVICE_GATE_OFFSET, reactorRef);
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
+    private RegistryServicePublicationRequest setInstanceProperties(Properties instanceProperties) {
+        return SerializationUtils.setObjectField(this, SERVICE_PROPERTIES_OFFSET, instanceProperties);
     }
 }

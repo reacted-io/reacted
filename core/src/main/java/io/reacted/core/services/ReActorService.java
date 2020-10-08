@@ -90,10 +90,11 @@ public class ReActorService implements ReActiveEntity {
             }
         }
 
+        var serviceInfo = new Properties();
+        serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME, reActorServiceConfig.getReActorName());
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(),
-                                                                          reActorServiceConfig.getReActorName()));
+             .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(), serviceInfo));
     }
 
     public void serviceDiscovery(ReActorContext routerActorCtx, ServiceDiscoveryRequest request) {
