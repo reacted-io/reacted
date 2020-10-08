@@ -29,26 +29,26 @@ public class RegistryServicePublicationRequest implements Serializable {
     private final ReActorRef serviceGate;
     private final Properties serviceProperties;
 
+    private RegistryServicePublicationRequest() {
+        this.serviceGate = ReActorRef.NO_REACTOR_REF;
+        this.serviceProperties = new Properties();
+    }
+
     public RegistryServicePublicationRequest(ReActorRef serviceGate, Properties serviceProperties) {
         this.serviceGate = Objects.requireNonNull(serviceGate);
         this.serviceProperties = Objects.requireNonNull(serviceProperties);
-    }
-
-    public RegistryServicePublicationRequest() {
-        this.serviceGate = ReActorRef.NO_REACTOR_REF;
-        this.serviceProperties = new Properties();
     }
 
     public ReActorRef getServiceGate() { return this.serviceGate; }
 
     public Properties getServiceProperties() { return this.serviceProperties; }
 
-    @SuppressWarnings("UnusedReturnValue")
+    @SuppressWarnings({"UnusedReturnValue", "unused"})
     private RegistryServicePublicationRequest setServiceGate(ReActorRef reactorRef) {
         return SerializationUtils.setObjectField(this, SERVICE_GATE_OFFSET, reactorRef);
     }
 
-    @SuppressWarnings("UnusedReturnValue")
+    @SuppressWarnings({"UnusedReturnValue", "unused"})
     private RegistryServicePublicationRequest setServiceProperties(Properties serviceProperties) {
         return SerializationUtils.setObjectField(this, SERVICE_PROPERTIES_OFFSET, serviceProperties);
     }
