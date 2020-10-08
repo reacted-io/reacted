@@ -9,6 +9,7 @@
 package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -47,7 +48,10 @@ public class TimeReActor implements ReActor {
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
-        raCtx.getReActorSystem().serviceDiscovery(serviceToQuery, SelectionType.DIRECT,
+        raCtx.getReActorSystem().serviceDiscovery(ServiceDiscoverySearchFilter.newBuilder()
+                                                                              .setServiceName(serviceToQuery)
+                                                                              .setSelectionType(SelectionType.DIRECT)
+                                                                              .build(),
                                                   raCtx.getSelf());
     }
 

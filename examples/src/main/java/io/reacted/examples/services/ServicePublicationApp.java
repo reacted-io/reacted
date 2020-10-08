@@ -10,6 +10,7 @@ package io.reacted.examples.services;
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
@@ -103,7 +104,10 @@ public class ServicePublicationApp {
         System.out.println("Service published");
         //Ask for a reference to a service called Clock Service. A reference to the service itself will be returned
         //This means that all the requests sent to the returned reference will be routed to one of the available workers
-        reActorSystem.serviceDiscovery(serviceName, SelectionType.ROUTED)
+        reActorSystem.serviceDiscovery(ServiceDiscoverySearchFilter.newBuilder()
+                                                                   .setServiceName(serviceName)
+                                                                   .setSelectionType(SelectionType.ROUTED)
+                                                                   .build())
                      .thenApply(discovery -> discovery.map(ServiceDiscoveryReply::getServiceGates))
                      .thenApply(services -> services.filter(list -> !list.isEmpty()))
                      //get the first gate available
