@@ -12,7 +12,6 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import sun.misc.Unsafe;
 
-import java.io.Externalizable;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 

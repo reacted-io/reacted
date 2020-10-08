@@ -11,7 +11,6 @@ package io.reacted.examples.replay;
 import com.google.common.base.Strings;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.SniffSubscription;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;

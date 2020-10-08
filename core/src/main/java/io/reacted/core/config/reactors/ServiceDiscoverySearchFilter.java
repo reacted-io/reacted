@@ -148,7 +148,7 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
 
         /**
          *
-         * @param hostName
+         * @param hostName regexp defining the hostname that the service should run onto
          * @return this builder
          */
         public final Builder setHostName(@Nullable Pattern hostName) {
