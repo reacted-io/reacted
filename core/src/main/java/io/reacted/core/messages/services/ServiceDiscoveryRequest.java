@@ -8,7 +8,7 @@
 
 package io.reacted.core.messages.services;
 
-import io.reacted.core.config.reactors.ServiceDiscoverySearchConfig;
+import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
 import io.reacted.patterns.NonNullByDefault;
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
@@ -16,10 +16,10 @@ import java.io.Serializable;
 @Immutable
 @NonNullByDefault
 public class ServiceDiscoveryRequest implements Serializable {
-    private final ServiceDiscoverySearchConfig searchFilter;
-    public ServiceDiscoveryRequest(ServiceDiscoverySearchConfig searchFilter) {
+    private final ServiceDiscoverySearchFilter searchFilter;
+    public ServiceDiscoveryRequest(ServiceDiscoverySearchFilter searchFilter) {
         this.searchFilter = searchFilter;
     }
 
-    public ServiceDiscoverySearchConfig getSearchFilter() { return searchFilter; }
+    public ServiceDiscoverySearchFilter getSearchFilter() { return searchFilter; }
 }

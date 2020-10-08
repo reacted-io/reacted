@@ -18,8 +18,8 @@ import io.reacted.patterns.UnChecked;
 import java.util.Objects;
 
 @NonNullByDefault
-public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceConfig,
-                                                               ReActorServiceConfig.Builder> {
+public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceConfig.Builder,
+                                                               ReActorServiceConfig> {
 
     private final int routeesNum;
     private final UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
@@ -42,7 +42,7 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
     }
 
     @Override
-    public ReActiveEntityConfig.Builder<ReActorServiceConfig, Builder> toBuilder() {
+    public ReActiveEntityConfig.Builder<Builder, ReActorServiceConfig> toBuilder() {
         return fillBuilder(newBuilder());
     }
 
@@ -54,7 +54,7 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
         return routeeProvider;
     }
 
-    public static class Builder extends ReActiveEntityConfig.Builder<ReActorServiceConfig, Builder> {
+    public static class Builder extends ReActiveEntityConfig.Builder<Builder, ReActorServiceConfig> {
         private int routeesNum;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;

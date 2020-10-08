@@ -9,6 +9,7 @@
 package io.reacted.core.config.reactors;
 
 import com.google.common.base.Strings;
+import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -21,9 +22,9 @@ import java.util.Objects;
 import java.util.function.Function;
 
 @NonNullByDefault
-public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<BuiltT, BuilderT>,
-                                           BuilderT extends ReActiveEntityConfig.Builder<BuiltT, BuilderT>>
-    implements Serializable {
+public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig.Builder<BuilderT, BuiltT>,
+                                           BuiltT extends ReActiveEntityConfig<BuilderT, BuiltT>>
+        extends InheritableBuilder<BuilderT, BuiltT> {
 
     public static final Function<ReActorContext, MailBox> DEFAULT_MAILBOX_SUPPLIER = ctx -> new BasicMbox();
     public static final SniffSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS = SniffSubscription.NO_SUBSCRIPTIONS;
@@ -33,7 +34,8 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
     private final Function<ReActorContext, MailBox> mailBoxProvider;
     private final ReActiveEntityType reActiveEntityType;
 
-    protected ReActiveEntityConfig(Builder<BuiltT, BuilderT> builder) {
+    protected ReActiveEntityConfig(Builder<BuilderT, BuiltT> builder) {
+        super(builder);
         if (Strings.isNullOrEmpty(builder.dispatcherName)) {
             throw new IllegalArgumentException("DispatcherName cannot be empty or null");
         }
@@ -67,7 +69,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
         return reActiveEntityType;
     }
 
-    public BuilderT fillBuilder(BuilderT realBuilder) {
+    public BuilderT fillBuilder(Builder<BuilderT, BuiltT> realBuilder) {
         return realBuilder.setDispatcherName(getDispatcherName())
                           .setMailBoxProvider(getMailBoxProvider())
                           .setReActorName(getReActorName())
@@ -75,10 +77,10 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
                           .setEntityType(getReActiveEntityType());
     }
 
-    abstract public Builder<BuiltT, BuilderT> toBuilder();
+    abstract public Builder<BuilderT, BuiltT> toBuilder();
 
-    public abstract static class Builder<BuiltT extends ReActiveEntityConfig<BuiltT, BuilderT>,
-                                         BuilderT extends Builder<BuiltT, BuilderT>> {
+    public abstract static class Builder<BuilderT, BuiltT>
+            extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reActorName;
@@ -90,18 +92,11 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
         protected Builder() {
         }
 
-        abstract public BuiltT build();
-
-        @SuppressWarnings("unchecked")
-        public BuilderT getThis() {
-            return (BuilderT) this;
-        }
-
         /**
          * Every reactor is scheduled only on a single dispatcher. Here is set which one
          * @param dispatcherName Name of the {@link io.reacted.core.runtime.Dispatcher} on which this reactor should run
          */
-        public BuilderT setDispatcherName(String dispatcherName) {
+        public final BuilderT setDispatcherName(String dispatcherName) {
             this.dispatcherName = dispatcherName;
             return getThis();
         }
@@ -111,7 +106,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
          *
          * @param reActorName name of the reactor
          */
-        public BuilderT setReActorName(String reActorName) {
+        public final BuilderT setReActorName(String reActorName) {
             this.reActorName = reActorName;
             return getThis();
         }
@@ -121,7 +116,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
          *
          * @param mailBoxProvider specify how to obtain a new mailbox. Used on reactor creation
          */
-        public BuilderT setMailBoxProvider(Function<ReActorContext, MailBox> mailBoxProvider) {
+        public final BuilderT setMailBoxProvider(Function<ReActorContext, MailBox> mailBoxProvider) {
             this.mailBoxProvider = mailBoxProvider;
             return getThis();
         }
@@ -132,12 +127,12 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
          *
          * @param typedSniffSubscriptions Sniffing subscriptions
          */
-        public BuilderT setTypedSniffSubscriptions(SniffSubscription... typedSniffSubscriptions) {
+        public final BuilderT setTypedSniffSubscriptions(SniffSubscription... typedSniffSubscriptions) {
             this.typedSniffSubscriptions = typedSniffSubscriptions;
             return getThis();
         }
 
-        protected BuilderT setEntityType(ReActiveEntityType reActiveEntityType) {
+        protected final BuilderT setEntityType(ReActiveEntityType reActiveEntityType) {
             this.entityType = reActiveEntityType;
             return getThis();
         }

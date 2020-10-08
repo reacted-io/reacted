@@ -11,7 +11,7 @@ package io.reacted.core.config.reactors;
 import io.reacted.patterns.NonNullByDefault;
 
 @NonNullByDefault
-public class ReActorConfig extends ReActiveEntityConfig<ReActorConfig, ReActorConfig.Builder> {
+public class ReActorConfig extends ReActiveEntityConfig<ReActorConfig.Builder, ReActorConfig> {
 
     public ReActorConfig(Builder reActorConfig) {
         super(reActorConfig);
@@ -24,7 +24,7 @@ public class ReActorConfig extends ReActiveEntityConfig<ReActorConfig, ReActorCo
         return fillBuilder(newBuilder());
     }
 
-    public static class Builder extends ReActiveEntityConfig.Builder<ReActorConfig, Builder> {
+    public static class Builder extends ReActiveEntityConfig.Builder<Builder, ReActorConfig> {
         private Builder() { setEntityType(ReActiveEntityType.REACTOR); }
         @Override
         public ReActorConfig build() {

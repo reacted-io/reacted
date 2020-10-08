@@ -9,6 +9,7 @@
 package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.serviceregistry.RegistryServiceCancellationRequest;
@@ -22,24 +23,31 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.patterns.Try;
-
 import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
+
+import static io.reacted.core.services.SelectionType.DIRECT;
+import static io.reacted.core.services.SelectionType.ROUTED;
 
 public class ReActorService implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
     private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router {}";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
+    private final Properties serviceInfos;
     private final ReActorServiceConfig reActorServiceConfig;
     private long msgReceived;
 
     public ReActorService(ReActorServiceConfig reActorServiceConfig) {
+        this.serviceInfos = new Properties();
         this.reActorServiceConfig = Objects.requireNonNull(reActorServiceConfig);
         this.msgReceived = 1;
+        this.serviceInfos.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME,
+                              reActorServiceConfig.getReActorName());
     }
 
     @Nonnull
@@ -86,16 +94,14 @@ public class ReActorService implements ReActiveEntity {
              .getSystemRemotingRoot()
              .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(),
                                                                           reActorServiceConfig.getReActorName()));
-
-
     }
 
     public void serviceDiscovery(ReActorContext routerActorCtx, ServiceDiscoveryRequest request) {
-        if (!request.matchRequest(reActorServiceConfig.getReActorName())) {
+        if (!request.getSearchFilter().matches(this.serviceInfos)) {
             return;
         }
 
-        Optional<ReActorRef> serviceSelection = switch (request.getSelectionType()) {
+        Optional<ReActorRef> serviceSelection = switch (request.getSearchFilter().getSelectionType()) {
             case ROUTED -> Optional.of(routerActorCtx.getSelf());
             case DIRECT -> selectRoutee(routerActorCtx, msgReceived);
         };

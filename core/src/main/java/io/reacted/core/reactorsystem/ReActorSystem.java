@@ -9,7 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.config.reactors.ServiceDiscoverySearchConfig;
+import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.datastructure.MultiMaps;
 import io.reacted.core.config.ChannelId;
@@ -37,7 +37,6 @@ import io.reacted.core.messages.reactors.ReActedError;
 import io.reacted.core.messages.reactors.ReActedInfo;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
-import io.reacted.core.services.SelectionType;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
@@ -376,13 +375,13 @@ public class ReActorSystem {
     /**
      * Request a reactor reference for the specified service.
      *
-     * @param searchFilter A {@link ServiceDiscoverySearchConfig} describing the feature of the services that should be
+     * @param searchFilter A {@link ServiceDiscoverySearchFilter} describing the feature of the services that should be
      *                     found
      * @return On success a future containing the result of the request
      * On failure a future containing the exception that caused the failure
      */
     public CompletionStage<Try<ServiceDiscoveryReply>>
-    serviceDiscovery(ServiceDiscoverySearchConfig searchFilter) {
+    serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
                                    ServiceDiscoveryReply.class, searchFilter.getServiceName() + "|" +
                                                                 searchFilter.getSelectionType().name());
@@ -391,13 +390,13 @@ public class ReActorSystem {
     /**
      * Request a reactor reference for the specified service
      *
-     * @param searchFilter A {@link ServiceDiscoverySearchConfig} describing the feature of the services that should
+     * @param searchFilter A {@link ServiceDiscoverySearchFilter} describing the feature of the services that should
      *                     be found
      * @param requester     source of this request
      * @return The outcome of the request
      */
     @SuppressWarnings("UnusedReturnValue")
-    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(ServiceDiscoverySearchConfig searchFilter,
+    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(ServiceDiscoverySearchFilter searchFilter,
                                                                  ReActorRef requester) {
         return broadcastToLocalSubscribers(Objects.requireNonNull(requester),
                                            new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)));

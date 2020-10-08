@@ -45,12 +45,12 @@ public abstract class ReActedDriverCfg<BuilderT extends InheritableBuilder.Build
         private String channelName;
         private boolean deliveryAckRequiredByChannel;
 
-        public BuilderT setChannelName(String channelName) {
+        public final BuilderT setChannelName(String channelName) {
             this.channelName = channelName;
             return getThis();
         }
 
-        public BuilderT setChannelRequiresDeliveryAck(boolean isDeliveryAckRequiredByChannel) {
+        public final BuilderT setChannelRequiresDeliveryAck(boolean isDeliveryAckRequiredByChannel) {
             this.deliveryAckRequiredByChannel = isDeliveryAckRequiredByChannel;
             return getThis();
         }
