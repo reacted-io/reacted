@@ -173,13 +173,14 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
 
     private void onServiceCancellationRequest(ReActorContext raCtx,
                                               RegistryServiceCancellationRequest cancellationRequest) {
-        if (this.serviceDiscovery != null) {
-            getServiceInstance(cancellationRequest.getServiceName(),
-                               raCtx.getReActorSystem().getLocalReActorSystemId(), "")
-                    .ifSuccessOrElse( this.serviceDiscovery::unregisterService,
-                                     error -> raCtx.logError("Unable to unregister service {}",
-                                                             cancellationRequest.toString(), error));
+        if (this.serviceDiscovery == null) {
+            return;
         }
+        getServiceInstance(cancellationRequest.getServiceName(),
+                           raCtx.getReActorSystem().getLocalReActorSystemId(), "")
+                .ifSuccessOrElse(this.serviceDiscovery::unregisterService,
+                                 error -> raCtx.logError("Unable to unregister service {}",
+                                                         cancellationRequest.toString(), error));
     }
 
     private void onServicePublicationRequest(ReActorContext raCtx, RegistryServicePublicationRequest publishService) {
@@ -189,31 +190,29 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
         getServiceInstance(publishService.getServiceName(), raCtx.getReActorSystem().getLocalReActorSystemId(),
                            publishService.toSerializedString())
                 .map(service -> { this.serviceDiscovery.registerService(service); return null; })
-                .ifError(registeringError -> raCtx.getSender()
-                                                  .tell(raCtx.getSelf(),
-                                                  new RegistryServicePublicationFailed(publishService.getServiceName(),
-                                                                                       registeringError)));
+                .ifError(registeringError -> raCtx.reply(new RegistryServicePublicationFailed(publishService.getServiceName(),
+                                                                                              registeringError)));
     }
 
     private void onServiceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
-        if (this.serviceDiscovery != null) {
-            Try.of(() -> this.serviceDiscovery.queryForInstances(request.getServiceName()))
-                    .peekFailure(error -> raCtx.logError("Error discovering service {}",
-                                                         request.getServiceName(), error))
-                    .toOptional()
-                    .filter(Predicate.not(Collection::isEmpty))
-                    .map(serviceInstances -> toServiceDiscoveryReply(serviceInstances, raCtx.getReActorSystem()))
-                    .filter(serviceDiscoveryReply -> !serviceDiscoveryReply.getServiceGates().isEmpty())
-                    .ifPresent(serviceDiscoveryReply -> raCtx.reply(ReActorRef.NO_REACTOR_REF, serviceDiscoveryReply));
+        if (this.serviceDiscovery == null) {
+            return;
         }
+        Try.of(() -> this.serviceDiscovery.queryForInstances(request.getServiceName()))
+           .peekFailure(error -> raCtx.logError("Error discovering service {}", request.getServiceName(), error))
+           .toOptional()
+           .filter(Predicate.not(Collection::isEmpty))
+           .map(serviceInstances -> toServiceDiscoveryReply(serviceInstances, raCtx.getReActorSystem()))
+           .filter(serviceDiscoveryReply -> !serviceDiscoveryReply.getServiceGates().isEmpty())
+           .ifPresent(serviceDiscoveryReply -> raCtx.reply(ReActorRef.NO_REACTOR_REF, serviceDiscoveryReply));
     }
 
     private void onChannelCancel(ReActorContext raCtx, RegistryUnregisterChannel cancelRequest) {
-        if (this.asyncClient != null) {
-            this.asyncClient.delete()
-                    .forPath(ZooKeeperDriver.getGatePublicationPath(cancelRequest.getReActorSystemId(),
-                            cancelRequest.getChannelId()));
+        if (this.asyncClient == null) {
+            return;
         }
+        this.asyncClient.delete().forPath(ZooKeeperDriver.getGatePublicationPath(cancelRequest.getReActorSystemId(),
+                                                                                 cancelRequest.getChannelId()));
     }
 
     private void onPublicationRequest(ReActorContext raCtx, RegistryPublicationRequest pubRequest) {
