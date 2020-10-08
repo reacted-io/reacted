@@ -8,6 +8,7 @@
 
 package io.reacted.core.reactorsystem;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
@@ -74,8 +75,10 @@ public class ReActorSystemRef implements Externalizable {
         return this.reActorSystemId;
     }
 
+    @JsonIgnore
     public ReActorSystemDriver getBackingDriver() { return this.backingDriver; }
 
+    @JsonIgnore
     public Properties getGateProperties() { return this.gateProperties; }
 
     public boolean equals(@Nullable Object o) {

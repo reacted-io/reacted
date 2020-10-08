@@ -16,11 +16,13 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serializable;
+import java.util.Objects;
 import java.util.Properties;
 
 
 @NonNullByDefault
-public class RegistryServicePublicationRequest implements Externalizable {
+public class RegistryServicePublicationRequest implements Serializable {
     private static final long serialVersionUID = 1;
     private static final long SERVICE_GATE_OFFSET = SerializationUtils.getFieldOffset(RegistryServicePublicationRequest.class,
                                                                                       "serviceGate")
@@ -32,8 +34,8 @@ public class RegistryServicePublicationRequest implements Externalizable {
     private final Properties serviceProperties;
 
     public RegistryServicePublicationRequest(ReActorRef serviceGate, Properties serviceProperties) {
-        this.serviceGate = serviceGate;
-        this.serviceProperties = serviceProperties;
+        this.serviceGate = Objects.requireNonNull(serviceGate);
+        this.serviceProperties = Objects.requireNonNull(serviceProperties);
     }
 
     public RegistryServicePublicationRequest() {
@@ -44,20 +46,6 @@ public class RegistryServicePublicationRequest implements Externalizable {
     public ReActorRef getServiceGate() { return this.serviceGate; }
 
     public Properties getServiceProperties() { return this.serviceProperties; }
-
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        this.serviceGate.writeExternal(out);
-        out.writeObject(this.serviceProperties);
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        var serviceGate = new ReActorRef();
-        serviceGate.readExternal(in);
-        setServiceGate(serviceGate)
-                .setServiceProperties((Properties)in.readObject());
-    }
 
     @SuppressWarnings("UnusedReturnValue")
     private RegistryServicePublicationRequest setServiceGate(ReActorRef reactorRef) {
