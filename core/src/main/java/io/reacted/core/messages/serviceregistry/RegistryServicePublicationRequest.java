@@ -47,13 +47,15 @@ public class RegistryServicePublicationRequest implements Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeObject(this.serviceGate);
+        this.serviceGate.writeExternal(out);
         out.writeObject(this.serviceProperties);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        setServiceGate((ReActorRef) in.readObject())
+        var serviceGate = new ReActorRef();
+        serviceGate.readExternal(in);
+        setServiceGate(serviceGate)
                 .setServiceProperties((Properties)in.readObject());
     }
 
