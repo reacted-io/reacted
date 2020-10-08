@@ -393,7 +393,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         var subscriberCfg = ReActorConfig.newBuilder()
                                          .setReActorName(this.feedGate.getReActorId().getReActorName() +
                                                          "_subscriber_" + subscription.getSubscriberName() + "_" +
-                                                         this.feedGate.getReActorId().getReActorUuid().toString())
+                                                         this.feedGate.getReActorId().getReActorUUID().toString())
                                          .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                          .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
                                          .setMailBoxProvider(backpressureManager.getManagerMailbox())

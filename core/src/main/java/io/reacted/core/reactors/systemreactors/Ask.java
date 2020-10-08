@@ -73,7 +73,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
-                            .setReActorName(requestName + "|" + target.getReActorId().getReActorUuid() + "|" +
+                            .setReActorName(requestName + "|" + target.getReActorId().getReActorUUID() + "|" +
                                             request.getClass().getSimpleName() + "|" +
                                             expectedReplyType.getSimpleName())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)

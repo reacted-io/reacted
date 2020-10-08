@@ -221,7 +221,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                                   .collect(Collectors.toUnmodifiableList()))
            .map(serviceInstances -> toServiceDiscoveryReply(serviceInstances, raCtx.getReActorSystem()))
            .filter(serviceDiscoveryReply -> !serviceDiscoveryReply.getServiceGates().isEmpty())
-           .ifPresent(serviceDiscoveryReply -> raCtx.reply(ReActorRef.NO_REACTOR_REF, serviceDiscoveryReply));
+           .ifPresentOrElse(serviceDiscoveryReply -> raCtx.reply(ReActorRef.NO_REACTOR_REF, serviceDiscoveryReply),
+                            () -> raCtx.logInfo("No services found?"));
     }
 
     private void onChannelCancel(ReActorContext raCtx, RegistryUnregisterChannel cancelRequest) {
