@@ -9,12 +9,12 @@
 package io.reacted.examples.remoting.services;
 
 import com.google.common.base.Strings;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
-import io.reacted.core.reactorsystem.ReActorService;
 import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.services.ReActorService;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.serviceregistries.ZooKeeperDriver;
 import io.reacted.examples.ExampleUtils;
@@ -63,7 +63,7 @@ public class ServicePublicationApp {
                                              .setMailBoxProvider(ctx -> new BasicMbox())
                                              //We do not need to listen for ServiceDiscoveryRequests, we have the
                                              //Service Registry now
-                                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                             .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
                                              .setRouteeProvider(() -> new ClockReActor(serviceDispatcherName))
                                              .build();
 

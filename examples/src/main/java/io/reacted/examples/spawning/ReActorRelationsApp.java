@@ -1,6 +1,5 @@
 package io.reacted.examples.spawning;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -11,6 +10,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
@@ -141,7 +141,7 @@ public class ReActorRelationsApp {
     private static final class BreedRequest implements Serializable {
         private final long requestedChildren;
         private BreedRequest(long requestedChildren) {
-            this.requestedChildren = ConfigUtils.requiredInRange(requestedChildren, 1L, Long.MAX_VALUE,
+            this.requestedChildren = ObjectUtils.requiredInRange(requestedChildren, 1L, Long.MAX_VALUE,
                                                                  IllegalArgumentException::new);
         }
         private long getRequestedChildren() { return requestedChildren; }

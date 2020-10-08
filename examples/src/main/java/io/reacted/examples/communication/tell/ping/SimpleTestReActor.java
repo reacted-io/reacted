@@ -8,8 +8,8 @@
 
 package io.reacted.examples.communication.tell.ping;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -18,6 +18,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -33,7 +34,7 @@ class SimpleTestReActor implements ReActor {
 
     public SimpleTestReActor(String splitter, int expectedMessages) {
         this.splitter = Objects.requireNonNull(splitter);
-        this.expectedMessages = ConfigUtils.requiredInRange(expectedMessages, 0, Integer.MAX_VALUE,
+        this.expectedMessages = ObjectUtils.requiredInRange(expectedMessages, 0, Integer.MAX_VALUE,
                                                             IllegalArgumentException::new);
     }
 
@@ -62,7 +63,7 @@ class SimpleTestReActor implements ReActor {
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                             .setMailBoxProvider(ctx -> new BasicMbox())
                             .setReActorName(SimpleTestReActor.class.getSimpleName())
-                            .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                            .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }
 }

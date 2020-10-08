@@ -29,32 +29,32 @@ public class RegistryServicePublicationRequest implements Externalizable {
                                                                                             "serviceProperties")
                                                                             .orElseSneakyThrow();
     private final ReActorRef serviceGate;
-    private final Properties instanceProperties;
+    private final Properties serviceProperties;
 
     public RegistryServicePublicationRequest(ReActorRef serviceGate, Properties serviceProperties) {
         this.serviceGate = serviceGate;
-        this.instanceProperties = serviceProperties;
+        this.serviceProperties = serviceProperties;
     }
 
     public RegistryServicePublicationRequest() {
         this.serviceGate = ReActorRef.NO_REACTOR_REF;
-        this.instanceProperties = new Properties();
+        this.serviceProperties = new Properties();
     }
 
     public ReActorRef getServiceGate() { return this.serviceGate; }
 
-    public Properties getServiceProperties() { return this.instanceProperties; }
+    public Properties getServiceProperties() { return this.serviceProperties; }
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         out.writeObject(this.serviceGate);
-        out.writeObject(this.instanceProperties);
+        out.writeObject(this.serviceProperties);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         setServiceGate((ReActorRef) in.readObject())
-                .setInstanceProperties((Properties)in.readObject());
+                .setServiceProperties((Properties)in.readObject());
     }
 
     @SuppressWarnings("UnusedReturnValue")
@@ -63,7 +63,7 @@ public class RegistryServicePublicationRequest implements Externalizable {
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    private RegistryServicePublicationRequest setInstanceProperties(Properties instanceProperties) {
-        return SerializationUtils.setObjectField(this, SERVICE_PROPERTIES_OFFSET, instanceProperties);
+    private RegistryServicePublicationRequest setServiceProperties(Properties serviceProperties) {
+        return SerializationUtils.setObjectField(this, SERVICE_PROPERTIES_OFFSET, serviceProperties);
     }
 }

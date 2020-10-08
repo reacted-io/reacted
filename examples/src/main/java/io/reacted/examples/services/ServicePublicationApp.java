@@ -10,6 +10,7 @@ package io.reacted.examples.services;
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.SniffSubscription;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
@@ -21,9 +22,10 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorService;
 import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.services.ReActorService;
+import io.reacted.core.services.SelectionType;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
@@ -58,7 +60,7 @@ public class ServicePublicationApp {
         var reActorSystem = new ReActorSystem(systemConfig).initReActorSystem();
 
         ReActorConfig routeeConfig = ReActorConfig.newBuilder()
-                                                  .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                                  .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                   .setReActorName("ClockWorker")
                                                   //Not only the service, but we want also its workers to use the same
@@ -101,7 +103,7 @@ public class ServicePublicationApp {
         System.out.println("Service published");
         //Ask for a reference to a service called Clock Service. A reference to the service itself will be returned
         //This means that all the requests sent to the returned reference will be routed to one of the available workers
-        reActorSystem.serviceDiscovery(serviceName, ServiceDiscoveryRequest.SelectionType.ROUTED)
+        reActorSystem.serviceDiscovery(serviceName, SelectionType.ROUTED)
                      .thenApply(discovery -> discovery.map(ServiceDiscoveryReply::getServiceGates))
                      .thenApply(services -> services.filter(list -> !list.isEmpty()))
                      //get the first gate available
