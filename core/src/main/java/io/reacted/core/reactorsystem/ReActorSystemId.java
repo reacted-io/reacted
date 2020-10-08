@@ -24,10 +24,10 @@ public class ReActorSystemId implements Externalizable  {
     public static final String NO_REACTORSYSTEM_ID_NAME = "NO_REACTORSYSTEM_ID";
     private static final long serialVersionUID = 1;
     private static final long REACTORSYSTEM_UUID_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemId.class,
-                                                                                       "reActorSysUUID")
+                                                                                            "reActorSysUUID")
                                                                             .orElseSneakyThrow();
     private static final long REACTORSYSTEM_NAME_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemId.class,
-                                                                                  "reActorSystemName")
+                                                                                            "reActorSystemName")
                                                                             .orElseSneakyThrow();
     private static final long HASHCODE_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemId.class, "hashCode")
                                                                   .orElseSneakyThrow();
