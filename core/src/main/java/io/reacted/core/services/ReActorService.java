@@ -9,7 +9,7 @@
 package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -25,7 +25,6 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorServiceConfig;
-import io.reacted.core.utils.ConfigUtils;
 import io.reacted.patterns.Try;
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -33,7 +32,6 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
 
 public class ReActorService implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
@@ -48,7 +46,7 @@ public class ReActorService implements ReActiveEntity {
         this.serviceInfo = new Properties();
         this.reActorServiceConfig = Objects.requireNonNull(reActorServiceConfig);
         this.msgReceived = 1;
-        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME,
+        this.serviceInfo.put(BasicServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME,
                              reActorServiceConfig.getReActorName());
     }
 
@@ -65,7 +63,8 @@ public class ReActorService implements ReActiveEntity {
     }
 
     private void onSystemInfoReport(ReActorContext raCtx, SystemMonitorReport report) {
-        this.serviceInfo.putAll(ConfigUtils.toProperties(report, Set.of()));
+        this.serviceInfo.put(BasicServiceDiscoverySearchFilter.FIELD_NAME_CPU_LOAD, report.getCpuLoad());
+        this.serviceInfo.put(BasicServiceDiscoverySearchFilter.FIELD_NAME_FREE_MEMORY_SIZE, report.getFreeMemorySize());
         updateServiceRegistry(raCtx, this.serviceInfo);
     }
 
@@ -101,11 +100,9 @@ public class ReActorService implements ReActiveEntity {
             }
         }
 
-        var serviceInfo = new Properties();
-        serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME, reActorServiceConfig.getReActorName());
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(), serviceInfo));
+             .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(), this.serviceInfo));
     }
 
     private void serviceDiscovery(ReActorContext routerActorCtx, ServiceDiscoveryRequest request) {
@@ -161,7 +158,7 @@ public class ReActorService implements ReActiveEntity {
              .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
                                                                 .ifError(error -> raCtx.logError("Unable to refresh " +
                                                                                                  "service info {}",
-                                                                                                 serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME),
+                                                                                                 serviceInfo.getProperty(BasicServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME),
                                                                                                  error)));
     }
 

@@ -9,7 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.datastructure.MultiMaps;
 import io.reacted.core.config.ChannelId;
@@ -383,13 +383,13 @@ public class ReActorSystem {
     /**
      * Request a reactor reference for the specified service.
      *
-     * @param searchFilter A {@link ServiceDiscoverySearchFilter} describing the feature of the services that should be
+     * @param searchFilter A {@link BasicServiceDiscoverySearchFilter} describing the feature of the services that should be
      *                     found
      * @return On success a future containing the result of the request
      * On failure a future containing the exception that caused the failure
      */
     public CompletionStage<Try<ServiceDiscoveryReply>>
-    serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
+    serviceDiscovery(BasicServiceDiscoverySearchFilter searchFilter) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
                                    ServiceDiscoveryReply.class, searchFilter.getServiceName() + "|" +
                                                                 searchFilter.getSelectionType().name());
@@ -398,13 +398,13 @@ public class ReActorSystem {
     /**
      * Request a reactor reference for the specified service
      *
-     * @param searchFilter A {@link ServiceDiscoverySearchFilter} describing the feature of the services that should
+     * @param searchFilter A {@link BasicServiceDiscoverySearchFilter} describing the feature of the services that should
      *                     be found
      * @param requester     source of this request
      * @return The outcome of the request
      */
     @SuppressWarnings("UnusedReturnValue")
-    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(ServiceDiscoverySearchFilter searchFilter,
+    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(BasicServiceDiscoverySearchFilter searchFilter,
                                                                  ReActorRef requester) {
         return broadcastToLocalSubscribers(Objects.requireNonNull(requester),
                                            new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)));

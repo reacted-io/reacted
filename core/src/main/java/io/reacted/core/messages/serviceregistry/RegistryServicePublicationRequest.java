@@ -19,6 +19,7 @@ import java.util.Properties;
 
 @NonNullByDefault
 public class RegistryServicePublicationRequest implements Serializable {
+
     private static final long serialVersionUID = 1;
     private static final long SERVICE_GATE_OFFSET = SerializationUtils.getFieldOffset(RegistryServicePublicationRequest.class,
                                                                                       "serviceGate")

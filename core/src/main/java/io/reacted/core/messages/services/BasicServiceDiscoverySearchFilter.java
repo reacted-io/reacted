@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.config.reactors;
+package io.reacted.core.messages.services;
 
 import com.google.common.collect.Range;
 import io.reacted.core.config.ChannelId;
@@ -24,11 +24,12 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 
 @NonNullByDefault
-public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDiscoverySearchFilter.Builder,
-                                                                     ServiceDiscoverySearchFilter>
-        implements Serializable {
+public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicServiceDiscoverySearchFilter.Builder,
+                                                                          BasicServiceDiscoverySearchFilter>
+        implements Serializable, ServiceDiscoverySearchFilter {
     public static final String FIELD_NAME_SERVICE_NAME = "serviceName";
     public static final String FIELD_NAME_CPU_LOAD = "cpuLoad";
+    public static final String FIELD_NAME_FREE_MEMORY_SIZE = "freeMemorySize";
     public static final String FIELD_NAME_CHANNEL_TYPE = "channelType";
     public static final String FIELD_NAME_IP_ADDRESS = "ipAddress";
     public static final String FIELD_NAME_HOSTNAME = "hostName";
@@ -44,7 +45,7 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
     @Nullable
     private final Pattern hostName;
 
-    protected ServiceDiscoverySearchFilter(Builder builder) {
+    protected BasicServiceDiscoverySearchFilter(Builder builder) {
         super(builder);
         this.serviceName = Objects.requireNonNull(builder.serviceName);
         this.selectionType = Objects.requireNonNull(builder.selectionType);
@@ -68,6 +69,7 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
 
     public static Builder newBuilder() { return new Builder(); }
 
+    @Override
     public boolean matches(Properties serviceInfos) {
         return isServiceNameMatching(serviceInfos.getProperty(FIELD_NAME_SERVICE_NAME)) &&
                isCpuLoadMatching(serviceInfos.getProperty(FIELD_NAME_CPU_LOAD)) &&
@@ -110,7 +112,7 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
                             .orElse(true);
     }
 
-    public static class Builder extends InheritableBuilder.Builder<Builder, ServiceDiscoverySearchFilter> {
+    public static class Builder extends InheritableBuilder.Builder<Builder, BasicServiceDiscoverySearchFilter> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String serviceName;
         private SelectionType selectionType = SelectionType.ROUTED;
@@ -189,8 +191,8 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
         }
 
         @Override
-        public ServiceDiscoverySearchFilter build() {
-            return new ServiceDiscoverySearchFilter(this);
+        public BasicServiceDiscoverySearchFilter build() {
+            return new BasicServiceDiscoverySearchFilter(this);
         }
     }
 }

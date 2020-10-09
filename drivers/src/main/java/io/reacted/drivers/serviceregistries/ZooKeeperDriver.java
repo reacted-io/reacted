@@ -9,7 +9,7 @@
 package io.reacted.drivers.serviceregistries;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryInit;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -190,7 +190,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
             return;
         }
         String serviceName = serviceInfo.getServiceProperties()
-                                        .getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME);
+                                        .getProperty(BasicServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME);
         if (StringUtils.isBlank(serviceName)) {
             raCtx.logError("Skipping publication attempt of an invalid service name {}", serviceName);
             return;
@@ -205,7 +205,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
         if (this.serviceDiscovery == null) {
             return;
         }
-        ServiceDiscoverySearchFilter filter = request.getSearchFilter();
+        BasicServiceDiscoverySearchFilter filter = request.getSearchFilter();
         Try.of(() -> this.serviceDiscovery.queryForInstances(filter.getServiceName()))
            .peekFailure(error -> raCtx.logError("Error discovering service {}",
                                                 request.getSearchFilter().getServiceName(), error))
@@ -215,7 +215,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                                                                             //Side effect on input object!!!
                                   .filter(serviceInstance -> filter.matches(patchServiceProperties(serviceInstance.getPayload()
                                                                                                                   .getServiceProperties(),
-                                                                                                   ServiceDiscoverySearchFilter.FIELD_NAME_IP_ADDRESS,
+                                                                                                   BasicServiceDiscoverySearchFilter.FIELD_NAME_IP_ADDRESS,
                                                                                                    serviceInstance.getAddress())))
                                   .map(ServiceInstance::getPayload)
                                   .collect(Collectors.toUnmodifiableList()))
