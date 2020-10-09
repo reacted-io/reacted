@@ -152,7 +152,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                         .reAct(ReActorStop.class, this::onStop)
                         .reAct(ReActorSystemChannelIdPublicationRequest.class, this::onChannelIdPublicationRequest)
                         .reAct(ReActorSystemChannelIdCancellationRequest.class, this::onChannelIdCancellationRequest)
-                        .reAct(SynchronizationWithServiceRegistryRequest.class, this::onRegistrySynchrnizationRequest)
+                        .reAct(SynchronizationWithServiceRegistryRequest.class, this::onSynchronizationWithRegistryRequest)
                         .reAct(ServiceServicePublicationRequest.class, this::onServicePublicationRequest)
                         .reAct(ServiceCancellationRequest.class, this::onServiceCancellationRequest)
                         .reAct(ServiceDiscoveryRequest.class, this::onServiceDiscovery)
@@ -244,7 +244,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
         }
     }
 
-    private void onRegistrySynchrnizationRequest(ReActorContext raCtx, SynchronizationWithServiceRegistryRequest subRequest) {
+    private void onSynchronizationWithRegistryRequest(ReActorContext raCtx,
+                                                      SynchronizationWithServiceRegistryRequest subRequest) {
         if (this.client == null) {
             return;
         }
@@ -258,7 +259,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                                                                   new RegistrySubscriptionComplete());
         } catch (Exception subscriptionError) {
             raCtx.logError("Error starting registry subscription", subscriptionError);
-            raCtx.stop();
+            XXX reattempt!
         }
     }
 
