@@ -218,7 +218,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                                                                                                  error)));
     }
 
-    private void onChannelIdCancellationRequest(ReActorContext raCtx, ReActorSystemChannelIdCancellationRequest cancelRequest) {
+    private void onChannelIdCancellationRequest(ReActorContext raCtx,
+                                                ReActorSystemChannelIdCancellationRequest cancelRequest) {
         if (this.asyncClient == null) {
             return;
         }
@@ -226,7 +227,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                                                                                  cancelRequest.getChannelId()));
     }
 
-    private void onChannelIdPublicationRequest(ReActorContext raCtx, ReActorSystemChannelIdPublicationRequest pubRequest) {
+    private void onChannelIdPublicationRequest(ReActorContext raCtx,
+                                               ReActorSystemChannelIdPublicationRequest pubRequest) {
         if (this.client == null) {
             XXX reattempt!
             return;
