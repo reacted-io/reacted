@@ -12,4 +12,4 @@ import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 
 @Immutable
-public class RegistrySubscriptionRequest implements Serializable { }
+public class SynchronizationWithServiceRegistryRequest implements Serializable { }

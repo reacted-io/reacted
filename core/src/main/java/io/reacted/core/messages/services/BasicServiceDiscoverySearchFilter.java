@@ -30,7 +30,7 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
     public static final String FIELD_NAME_SERVICE_NAME = "serviceName";
     public static final String FIELD_NAME_CPU_LOAD = "cpuLoad";
     public static final String FIELD_NAME_FREE_MEMORY_SIZE = "freeMemorySize";
-    public static final String FIELD_NAME_CHANNEL_TYPE = "channelType";
+    public static final String FIELD_NAME_CHANNEL_TYPE = "channelId";
     public static final String FIELD_NAME_IP_ADDRESS = "ipAddress";
     public static final String FIELD_NAME_HOSTNAME = "hostName";
 
@@ -39,7 +39,7 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
     @Nullable
     private final Range<Double> cpuLoad;
     @Nullable
-    private final ChannelId.ChannelType channelType;
+    private final ChannelId channelId;
     @Nullable
     private final InetAddress ipAddress;
     @Nullable
@@ -52,7 +52,7 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
         this.cpuLoad = builder.cpuLoad;
         this.ipAddress = builder.ipAddress;
         this.hostName = builder.hostName;
-        this.channelType = builder.channelType;
+        this.channelId = builder.channelId;
     }
 
     public String getServiceName() { return serviceName; }
@@ -61,7 +61,7 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
 
     public Optional<Range<Double>> getCpuLoad() { return Optional.ofNullable(cpuLoad); }
 
-    public Optional<ChannelId.ChannelType> getChannelType() { return Optional.ofNullable(channelType); }
+    public Optional<ChannelId> getChannelId() { return Optional.ofNullable(channelId); }
 
     public Optional<InetAddress> getIpAddress() { return Optional.ofNullable(ipAddress); }
 
@@ -92,10 +92,10 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
 
     private boolean isChannelTypeMatching(@Nullable String channelType) {
         return channelType == null ||
-               getChannelType().map(reqChannelType -> Try.of(() -> ChannelId.ChannelType.valueOf(channelType))
-                                                      .filter(reqChannelType::equals)
-                                                      .isSuccess())
-                               .orElse(true);
+               getChannelId().map(reqChannelType -> Try.of(() -> ChannelId.ChannelType.valueOf(channelType))
+                                                       .filter(reqChannelType::equals)
+                                                       .isSuccess())
+                             .orElse(true);
     }
 
     private boolean isIpAddressMatching(@Nullable String ipAddress) {
@@ -119,7 +119,7 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
         @Nullable
         private Range<Double> cpuLoad;
         @Nullable
-        private ChannelId.ChannelType channelType;
+        private ChannelId channelId;
         @Nullable
         private InetAddress ipAddress;
         @Nullable
@@ -181,12 +181,12 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
 
         /**
          *
-         * @param channelType Definition of the requested {@link io.reacted.core.config.ChannelId.ChannelType} used to
+         * @param channelId Definition of the requested {@link io.reacted.core.config.ChannelId} used to
          *                    communicate with the discovered {@link io.reacted.core.reactorsystem.ReActorRef}
          * @return this builder
          */
-        public final Builder setChannelType(@Nullable ChannelId.ChannelType channelType) {
-            this.channelType = channelType;
+        public final Builder setChannelId(@Nullable ChannelId channelId) {
+            this.channelId = channelId;
             return getThis();
         }
 

@@ -15,8 +15,8 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.reactors.SystemMonitorReport;
-import io.reacted.core.messages.serviceregistry.RegistryServiceCancellationRequest;
-import io.reacted.core.messages.serviceregistry.RegistryServicePublicationRequest;
+import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
+import io.reacted.core.messages.serviceregistry.ServiceServicePublicationRequest;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
@@ -71,9 +71,9 @@ public class ReActorService implements ReActiveEntity {
     private void stopService(ReActorContext raCtx, ReActorStop stop) {
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new RegistryServiceCancellationRequest(raCtx.getReActorSystem()
-                                                                                .getLocalReActorSystemId(),
-                                                                           reActorServiceConfig.getReActorName()));
+             .tell(raCtx.getSelf(), new ServiceCancellationRequest(raCtx.getReActorSystem()
+                                                                        .getLocalReActorSystemId(),
+                                                                   reActorServiceConfig.getReActorName()));
     }
 
     private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
@@ -102,7 +102,7 @@ public class ReActorService implements ReActiveEntity {
 
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(), this.serviceInfo));
+             .tell(raCtx.getSelf(), new ServiceServicePublicationRequest(raCtx.getSelf(), this.serviceInfo));
     }
 
     private void serviceDiscovery(ReActorContext routerActorCtx, ServiceDiscoveryRequest request) {
@@ -154,7 +154,7 @@ public class ReActorService implements ReActiveEntity {
     private static void updateServiceRegistry(ReActorContext raCtx, Properties serviceInfo) {
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(), serviceInfo))
+             .tell(raCtx.getSelf(), new ServiceServicePublicationRequest(raCtx.getSelf(), serviceInfo))
              .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
                                                                 .ifError(error -> raCtx.logError("Unable to refresh " +
                                                                                                  "service info {}",

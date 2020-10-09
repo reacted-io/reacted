@@ -15,12 +15,12 @@ import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
 import io.reacted.core.messages.serviceregistry.RegistryGateRemoved;
 import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
-import io.reacted.core.messages.serviceregistry.RegistryPublicationRequest;
-import io.reacted.core.messages.serviceregistry.RegistryServiceCancellationRequest;
+import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicationRequest;
+import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
 import io.reacted.core.messages.serviceregistry.RegistryServicePublicationFailed;
-import io.reacted.core.messages.serviceregistry.RegistryServicePublicationRequest;
+import io.reacted.core.messages.serviceregistry.ServiceServicePublicationRequest;
 import io.reacted.core.messages.serviceregistry.RegistrySubscriptionComplete;
-import io.reacted.core.messages.serviceregistry.RegistrySubscriptionRequest;
+import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
@@ -48,9 +48,9 @@ public class RemotingRoot {
                         .reAct(RegistrySubscriptionComplete.class, this::onSubscriptionComplete)
                         .reAct(RegistryGateUpserted.class, this::onRegistryGateUpsert)
                         .reAct(RegistryGateRemoved.class, this::onRegistryGateRemoval)
-                        .reAct(RegistryServicePublicationRequest.class, RemotingRoot::onPublishService)
+                        .reAct(ServiceServicePublicationRequest.class, RemotingRoot::onPublishService)
                         .reAct(RegistryServicePublicationFailed.class, RemotingRoot::onRegistryServicePublicationFailure)
-                        .reAct(RegistryServiceCancellationRequest.class, RemotingRoot::onCancelService)
+                        .reAct(ServiceCancellationRequest.class, RemotingRoot::onCancelService)
                         .reAct(ReActorStop.class, RemotingRoot::onStop)
                         .reAct(RemotingRoot::onSpuriousMessage)
                         .build();
@@ -60,12 +60,12 @@ public class RemotingRoot {
     private static void onStop(ReActorContext raCtx, ReActorStop stop) { /* Nothing to do */ }
 
     private static void onCancelService(ReActorContext raCtx,
-                                        RegistryServiceCancellationRequest serviceCancellationRequest) {
+                                        ServiceCancellationRequest serviceCancellationRequest) {
         raCtx.getChildren().forEach(serviceRegistryDriver -> serviceRegistryDriver.tell(raCtx.getSelf(),
                                                                                         serviceCancellationRequest));
     }
 
-    private static void onPublishService(ReActorContext raCtx, RegistryServicePublicationRequest publishService) {
+    private static void onPublishService(ReActorContext raCtx, ServiceServicePublicationRequest publishService) {
         for(ReActorRef serviceRegistryDriver : raCtx.getChildren()) {
             var deliveryAttempt = serviceRegistryDriver.tell(raCtx.getSelf(), publishService);
             deliveryAttempt.thenAccept(attempt -> attempt.filter(DeliveryStatus::isDelivered)
@@ -76,7 +76,7 @@ public class RemotingRoot {
 
     private static void onInitComplete(ReActorContext raCtx,
                                        RegistryDriverInitComplete initComplete) {
-        raCtx.reply(new RegistrySubscriptionRequest());
+        raCtx.reply(new SynchronizationWithServiceRegistryRequest());
     }
 
     private static void onSpuriousMessage(ReActorContext raCtx, Serializable payload) {
@@ -86,9 +86,9 @@ public class RemotingRoot {
     private void onSubscriptionComplete(ReActorContext raCtx,
                                         RegistrySubscriptionComplete subCompleted) {
         remotingDrivers.stream()
-                       .map(remotingDriver -> new RegistryPublicationRequest(localReActorSystem,
-                                                                             remotingDriver.getChannelId(),
-                                                                             remotingDriver.getChannelProperties()))
+                       .map(remotingDriver -> new ReActorSystemChannelIdPublicationRequest(localReActorSystem,
+                                                                                           remotingDriver.getChannelId(),
+                                                                                           remotingDriver.getChannelProperties()))
                        .map(raCtx::reply)
                        .forEach(pubRequest -> pubRequest.thenAccept(result -> result.filter(DeliveryStatus::isDelivered)
                                                                                     .ifError(error -> raCtx.getReActorSystem()
