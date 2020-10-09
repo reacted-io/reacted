@@ -58,7 +58,7 @@ class LoopbackDriverTest {
                                                    .setReActorName("ReActorName")
                                                    .setDispatcherName(testDispatcher)
                                                    .setMailBoxProvider(ctx -> new BasicMbox())
-                                                   .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
                                                    .build();
 
         destReActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))

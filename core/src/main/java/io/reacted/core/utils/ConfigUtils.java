@@ -8,7 +8,6 @@
 
 package io.reacted.core.utils;
 
-import io.reacted.core.config.InheritableBuilder;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;
 
@@ -24,9 +23,9 @@ import java.util.function.Predicate;
 @NonNullByDefault
 public final class ConfigUtils {
     private ConfigUtils() { /* No instances allowed */ }
-    public static Properties toProperties(InheritableBuilder<?, ?> config, Set<String> skipFields) {
+    public static Properties toProperties(Object anyObject, Set<String> skipFields) {
         Properties cfgProperties = new Properties();
-        Class<?> configLevel = Objects.requireNonNull(config).getClass();
+        Class<?> configLevel = Objects.requireNonNull(anyObject).getClass();
         do {
             Field[] configFields = configLevel.getDeclaredFields();
             Arrays.stream(configFields)
@@ -34,7 +33,7 @@ public final class ConfigUtils {
                   .filter(Predicate.not(field -> Modifier.isStatic(field.getModifiers())))
                   .forEach(field -> {
                       field.setAccessible(true);
-                      Optional.ofNullable(UnChecked.function(field::get).apply(config))
+                      Optional.ofNullable(UnChecked.function(field::get).apply(anyObject))
                               .map(Object::toString)
                               .ifPresent(fieldValue -> cfgProperties.setProperty(field.getName(),
                                                                                  fieldValue));

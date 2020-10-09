@@ -46,7 +46,7 @@ public class UpdateGeneratorApp {
                                     .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                     .setReActorName("PassiveUpdatesListener")
                                     .setMailBoxProvider(ctx -> new BasicMbox())
-                                    .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Update.class))
+                                    .setTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(Update.class))
                                     .build();
             }
         }).orElseSneakyThrow();

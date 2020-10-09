@@ -18,7 +18,7 @@ public enum SubscriptionPolicy {
     public boolean isLocal() { return this != REMOTE; }
     public boolean isRemote() { return this != LOCAL; }
 
-    public SniffSubscription forType(Class<? extends Serializable> payloadType) {
-        return new SniffSubscription(this, payloadType);
+    public TypedSubscription forType(Class<? extends Serializable> payloadType) {
+        return new TypedSubscription(this, payloadType);
     }
 }

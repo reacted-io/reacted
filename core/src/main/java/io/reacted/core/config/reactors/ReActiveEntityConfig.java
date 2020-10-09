@@ -26,10 +26,10 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         extends InheritableBuilder<BuilderT, BuiltT> {
 
     public static final Function<ReActorContext, MailBox> DEFAULT_MAILBOX_SUPPLIER = ctx -> new BasicMbox();
-    public static final SniffSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS = SniffSubscription.NO_SUBSCRIPTIONS;
+    public static final TypedSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS = TypedSubscription.NO_SUBSCRIPTIONS;
     private final String dispatcherName;
     private final String reActorName;
-    private final SniffSubscription[] typedSniffSubscriptions;
+    private final TypedSubscription[] typedTypedSubscriptions;
     private final Function<ReActorContext, MailBox> mailBoxProvider;
     private final ReActiveEntityType reActiveEntityType;
 
@@ -40,10 +40,10 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         }
         this.reActorName = Objects.requireNonNull(builder.reActorName);
         this.mailBoxProvider = Objects.requireNonNull(builder.mailBoxProvider);
-        this.typedSniffSubscriptions = Objects.requireNonNull(builder.typedSniffSubscriptions).length == 0
-                                       ? SniffSubscription.NO_SUBSCRIPTIONS
-                                       : Arrays.copyOf(builder.typedSniffSubscriptions,
-                                                       builder.typedSniffSubscriptions.length);
+        this.typedTypedSubscriptions = Objects.requireNonNull(builder.typedTypedSubscriptions).length == 0
+                                       ? TypedSubscription.NO_SUBSCRIPTIONS
+                                       : Arrays.copyOf(builder.typedTypedSubscriptions,
+                                                       builder.typedTypedSubscriptions.length);
         this.dispatcherName = builder.dispatcherName;
         this.reActiveEntityType = builder.entityType;
     }
@@ -56,8 +56,8 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         return reActorName;
     }
 
-    public SniffSubscription[] getTypedSniffSubscriptions() {
-        return Arrays.copyOf(typedSniffSubscriptions, typedSniffSubscriptions.length);
+    public TypedSubscription[] getTypedSniffSubscriptions() {
+        return Arrays.copyOf(typedTypedSubscriptions, typedTypedSubscriptions.length);
     }
 
     public Function<ReActorContext, MailBox> getMailBoxProvider() {
@@ -72,7 +72,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         return realBuilder.setDispatcherName(getDispatcherName())
                           .setMailBoxProvider(getMailBoxProvider())
                           .setReActorName(getReActorName())
-                          .setTypedSniffSubscriptions(getTypedSniffSubscriptions())
+                          .setTypedSubscriptions(getTypedSniffSubscriptions())
                           .setEntityType(getReActiveEntityType());
     }
 
@@ -83,7 +83,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reActorName;
-        private SniffSubscription[] typedSniffSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
+        private TypedSubscription[] typedTypedSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
         private Function<ReActorContext, MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActiveEntityType entityType;
@@ -124,10 +124,10 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
          * Reactors can subscribe to message types to receive a copy of of a message if it matches the subscription
          * criteria
          *
-         * @param typedSniffSubscriptions Sniffing subscriptions
+         * @param typedTypedSubscriptions Sniffing subscriptions
          */
-        public final BuilderT setTypedSniffSubscriptions(SniffSubscription... typedSniffSubscriptions) {
-            this.typedSniffSubscriptions = typedSniffSubscriptions;
+        public BuilderT setTypedSubscriptions(TypedSubscription... typedTypedSubscriptions) {
+            this.typedTypedSubscriptions = typedTypedSubscriptions;
             return getThis();
         }
 

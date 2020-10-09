@@ -28,7 +28,7 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
                                                                      ServiceDiscoverySearchFilter>
         implements Serializable {
     public static final String FIELD_NAME_SERVICE_NAME = "serviceName";
-    public static final String FIELD_NAME_SYSTEM_LOAD = "systemLoad";
+    public static final String FIELD_NAME_CPU_LOAD = "cpuLoad";
     public static final String FIELD_NAME_CHANNEL_TYPE = "channelType";
     public static final String FIELD_NAME_IP_ADDRESS = "ipAddress";
     public static final String FIELD_NAME_HOSTNAME = "hostName";
@@ -36,7 +36,7 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
     private final String serviceName;
     private final SelectionType selectionType;
     @Nullable
-    private final Range<Double> systemLoad;
+    private final Range<Double> cpuLoad;
     @Nullable
     private final ChannelId.ChannelType channelType;
     @Nullable
@@ -44,22 +44,21 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
     @Nullable
     private final Pattern hostName;
 
-    private ServiceDiscoverySearchFilter(Builder builder) {
+    protected ServiceDiscoverySearchFilter(Builder builder) {
         super(builder);
         this.serviceName = Objects.requireNonNull(builder.serviceName);
         this.selectionType = Objects.requireNonNull(builder.selectionType);
-        this.systemLoad = builder.systemLoad;
+        this.cpuLoad = builder.cpuLoad;
         this.ipAddress = builder.ipAddress;
         this.hostName = builder.hostName;
         this.channelType = builder.channelType;
-
     }
 
     public String getServiceName() { return serviceName; }
 
     public SelectionType getSelectionType() { return selectionType; }
 
-    public Optional<Range<Double>> getSystemLoad() { return Optional.ofNullable(systemLoad); }
+    public Optional<Range<Double>> getCpuLoad() { return Optional.ofNullable(cpuLoad); }
 
     public Optional<ChannelId.ChannelType> getChannelType() { return Optional.ofNullable(channelType); }
 
@@ -71,43 +70,43 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
 
     public boolean matches(Properties serviceInfos) {
         return isServiceNameMatching(serviceInfos.getProperty(FIELD_NAME_SERVICE_NAME)) &&
-               isLoadMatching(serviceInfos.getProperty(FIELD_NAME_SYSTEM_LOAD)) &&
+               isCpuLoadMatching(serviceInfos.getProperty(FIELD_NAME_CPU_LOAD)) &&
                isChannelTypeMatching(serviceInfos.getProperty(FIELD_NAME_CHANNEL_TYPE)) &&
                isIpAddressMatching(serviceInfos.getProperty(FIELD_NAME_IP_ADDRESS)) &&
                isHostNameMatching(serviceInfos.getProperty(FIELD_NAME_HOSTNAME));
     }
 
-    private boolean isServiceNameMatching(@Nullable String reqServiceName) {
-        return Objects.equals(getServiceName(), reqServiceName);
+    private boolean isServiceNameMatching(@Nullable String serviceName) {
+        return Objects.equals(getServiceName(), serviceName);
     }
 
-    private boolean isLoadMatching(@Nullable String reqLoad) {
-        return reqLoad == null ||
-               getSystemLoad().map(systemLoad -> Try.of(() -> Double.parseDouble(reqLoad))
-                                                    .filter(systemLoad::contains)
-                                                    .isSuccess())
-                              .orElse(true);
+    private boolean isCpuLoadMatching(@Nullable String cpuLoad) {
+        return cpuLoad == null ||
+               getCpuLoad().map(reqCpuLoad -> Try.of(() -> Double.parseDouble(cpuLoad))
+                                                 .filter(reqCpuLoad::contains)
+                                                 .isSuccess())
+                           .orElse(true);
     }
 
-    private boolean isChannelTypeMatching(@Nullable String reqChannelType) {
-        return reqChannelType == null ||
-               getChannelType().map(channelType -> Try.of(() -> ChannelId.ChannelType.valueOf(reqChannelType))
-                                                      .filter(channelType::equals)
+    private boolean isChannelTypeMatching(@Nullable String channelType) {
+        return channelType == null ||
+               getChannelType().map(reqChannelType -> Try.of(() -> ChannelId.ChannelType.valueOf(channelType))
+                                                      .filter(reqChannelType::equals)
                                                       .isSuccess())
                                .orElse(true);
     }
 
-    private boolean isIpAddressMatching(@Nullable String reqIpAddress) {
-        return reqIpAddress == null ||
-               getIpAddress().map(ipAddress -> Try.of(() -> InetAddress.getByName(reqIpAddress))
-                                                  .filter(ipAddress::equals)
+    private boolean isIpAddressMatching(@Nullable String ipAddress) {
+        return ipAddress == null ||
+               getIpAddress().map(reqIpAddress -> Try.of(() -> InetAddress.getByName(ipAddress))
+                                                  .filter(reqIpAddress::equals)
                                                   .isSuccess())
                              .orElse(true);
     }
 
-    private boolean isHostNameMatching(@Nullable String reqHostName) {
-        return reqHostName == null ||
-               getHostName().map(hostName -> hostName.matcher(reqHostName).matches())
+    private boolean isHostNameMatching(@Nullable String hostName) {
+        return hostName == null ||
+               getHostName().map(reqHostName -> reqHostName.matcher(hostName).matches())
                             .orElse(true);
     }
 
@@ -116,7 +115,7 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
         private String serviceName;
         private SelectionType selectionType = SelectionType.ROUTED;
         @Nullable
-        private Range<Double> systemLoad;
+        private Range<Double> cpuLoad;
         @Nullable
         private ChannelId.ChannelType channelType;
         @Nullable
@@ -124,7 +123,7 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
         @Nullable
         private Pattern hostName;
 
-        private Builder() { /* Nothing to do */ }
+        protected Builder() { /* Nothing to do */ }
 
         /**
          *
@@ -158,11 +157,11 @@ public class ServiceDiscoverySearchFilter extends InheritableBuilder<ServiceDisc
 
         /**
          *
-         * @param systemLoad load range of the host on which the service is running on
+         * @param cpuLoad load range of the host on which the service is running on
          * @return this builder
          */
-        public final Builder setSystemLoad(@Nullable Range<Double> systemLoad) {
-            this.systemLoad = systemLoad;
+        public final Builder setCpuLoad(@Nullable Range<Double> cpuLoad) {
+            this.cpuLoad = cpuLoad;
             return getThis();
         }
 

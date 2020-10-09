@@ -9,6 +9,9 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
+import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.messages.reactors.SystemMonitorReport;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.services.ReActorService;
 import io.reacted.core.utils.ObjectUtils;
@@ -61,9 +64,7 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActorService.LoadBalancingPolicy loadBalancingPolicy;
 
-        private Builder() {
-            setEntityType(ReActiveEntityType.REACTORSERVICE);
-        }
+        private Builder() { setEntityType(ReActiveEntityType.REACTORSERVICE); }
 
         /**
          * A Service exposes the behavior of a reactor in a resilient and load balanced manneer. Here we specify

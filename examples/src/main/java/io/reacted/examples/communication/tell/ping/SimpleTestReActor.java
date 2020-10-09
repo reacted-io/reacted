@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.tell.ping;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -62,7 +62,7 @@ class SimpleTestReActor implements ReActor {
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                             .setMailBoxProvider(ctx -> new BasicMbox())
                             .setReActorName(SimpleTestReActor.class.getSimpleName())
-                            .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }
 }

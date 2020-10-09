@@ -10,12 +10,12 @@ package io.reacted.core.config.reactors;
 
 import java.io.Serializable;
 
-public class SniffSubscription {
-    public static final SniffSubscription[] NO_SUBSCRIPTIONS = new SniffSubscription[]{};
+public class TypedSubscription {
+    public static final TypedSubscription[] NO_SUBSCRIPTIONS = new TypedSubscription[]{};
     private final SubscriptionPolicy subscriptionPolicy;
     private final Class<? extends Serializable> payloadType;
 
-    public SniffSubscription(SubscriptionPolicy subscriptionPolicy, Class<? extends Serializable> sniffedPayloadType) {
+    public TypedSubscription(SubscriptionPolicy subscriptionPolicy, Class<? extends Serializable> sniffedPayloadType) {
         this.subscriptionPolicy = subscriptionPolicy;
         this.payloadType = sniffedPayloadType;
     }

@@ -10,7 +10,7 @@ package io.reacted.core.reactorsystem;
 
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
@@ -45,7 +45,7 @@ class ReActorServiceTest {
                                                    .setMailBoxProvider(ctx -> new BasicMbox())
                                                    .setReActorName("TestRouter")
                                                    .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                                   .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                                                   .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                    .setRouteesNum(1)
                                                    .setRouteeProvider(() -> new MagicTestReActor(2, true,
                                                                                                  "RouterChild"))

@@ -12,7 +12,7 @@ import io.reacted.core.CoreConstants;
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.BasicMbox;
@@ -57,12 +57,12 @@ class LocalDriverTest {
         localDriver = SystemLocalDrivers.DIRECT_COMMUNICATION;
         localDriver.initDriverLoop(reActorSystem);
 
-        SniffSubscription subscribedTypes = SubscriptionPolicy.LOCAL.forType(Message.class);
+        TypedSubscription subscribedTypes = SubscriptionPolicy.LOCAL.forType(Message.class);
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName(CoreConstants.REACTOR_NAME)
                                                    .setDispatcherName("Dispatcher")
                                                    .setMailBoxProvider(ctx -> new BasicMbox())
-                                                   .setTypedSniffSubscriptions(subscribedTypes)
+                                                   .setTypedSubscriptions(subscribedTypes)
                                                    .build();
 
         ReActorRef reActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))

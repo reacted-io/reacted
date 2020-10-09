@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.ask;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
@@ -23,7 +23,7 @@ public class BrokenClockApp {
         var reActorSystem = ExampleUtils.getDefaultInitedReActorSystem(BrokenClockApp.class.getSimpleName());
 
         var reactiveClockConfig = ReActorConfig.newBuilder()
-                                               .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                                               .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                //Accept at maximum 5 messages in the mailbox at the same time,
                                                //drop the ones in excess causing the delivery to fail
                                                .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))

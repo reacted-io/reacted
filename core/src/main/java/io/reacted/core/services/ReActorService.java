@@ -10,8 +10,11 @@ package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
+import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.reactors.SystemMonitorReport;
 import io.reacted.core.messages.serviceregistry.RegistryServiceCancellationRequest;
 import io.reacted.core.messages.serviceregistry.RegistryServicePublicationRequest;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
@@ -22,6 +25,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorServiceConfig;
+import io.reacted.core.utils.ConfigUtils;
 import io.reacted.patterns.Try;
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -29,25 +33,23 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-
-import static io.reacted.core.services.SelectionType.DIRECT;
-import static io.reacted.core.services.SelectionType.ROUTED;
+import java.util.Set;
 
 public class ReActorService implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
     private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router {}";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
-    private final Properties serviceInfos;
+    private final Properties serviceInfo;
     private final ReActorServiceConfig reActorServiceConfig;
     private long msgReceived;
 
     public ReActorService(ReActorServiceConfig reActorServiceConfig) {
-        this.serviceInfos = new Properties();
+        this.serviceInfo = new Properties();
         this.reActorServiceConfig = Objects.requireNonNull(reActorServiceConfig);
         this.msgReceived = 1;
-        this.serviceInfos.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME,
-                              reActorServiceConfig.getReActorName());
+        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME,
+                             reActorServiceConfig.getReActorName());
     }
 
     @Nonnull
@@ -58,10 +60,16 @@ public class ReActorService implements ReActiveEntity {
                         .reAct(RouteeReSpawnRequest.class, this::respawnRoutee)
                         .reAct(ReActorInit.class, this::initService)
                         .reAct(ReActorStop.class, this::stopService)
+                        .reAct(SystemMonitorReport.class, this::onSystemInfoReport)
                         .build();
     }
 
-    public void stopService(ReActorContext raCtx, ReActorStop stop) {
+    private void onSystemInfoReport(ReActorContext raCtx, SystemMonitorReport report) {
+        this.serviceInfo.putAll(ConfigUtils.toProperties(report, Set.of()));
+        updateServiceRegistry(raCtx, this.serviceInfo);
+    }
+
+    private void stopService(ReActorContext raCtx, ReActorStop stop) {
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
              .tell(raCtx.getSelf(), new RegistryServiceCancellationRequest(raCtx.getReActorSystem()
@@ -69,7 +77,10 @@ public class ReActorService implements ReActiveEntity {
                                                                            reActorServiceConfig.getReActorName()));
     }
 
-    public void initService(ReActorContext raCtx, ReActorInit reActorInit) {
+    private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
+        //All the services can receive service stats
+        raCtx.addTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class));
+
         //spawn the minimum number or routees
         for (int currentRoutee = 0; currentRoutee < reActorServiceConfig.getRouteesNum(); currentRoutee++) {
             try {
@@ -97,8 +108,8 @@ public class ReActorService implements ReActiveEntity {
              .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(), serviceInfo));
     }
 
-    public void serviceDiscovery(ReActorContext routerActorCtx, ServiceDiscoveryRequest request) {
-        if (!request.getSearchFilter().matches(this.serviceInfos)) {
+    private void serviceDiscovery(ReActorContext routerActorCtx, ServiceDiscoveryRequest request) {
+        if (!request.getSearchFilter().matches(this.serviceInfo)) {
             return;
         }
 
@@ -141,6 +152,17 @@ public class ReActorService implements ReActiveEntity {
                  .thenAccept(terminated -> { if (!routeeCtx.isStop()) {
                                                   routerCtx.getSelf().tell(ReActorRef.NO_REACTOR_REF,
                                                                            new RouteeReSpawnRequest(routeeConfig)); }});
+    }
+
+    private static void updateServiceRegistry(ReActorContext raCtx, Properties serviceInfo) {
+        raCtx.getReActorSystem()
+             .getSystemRemotingRoot()
+             .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(), serviceInfo))
+             .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                                                                .ifError(error -> raCtx.logError("Unable to refresh " +
+                                                                                                 "service info {}",
+                                                                                                 serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME),
+                                                                                                 error)));
     }
 
     public static class RouteeReSpawnRequest implements Serializable {

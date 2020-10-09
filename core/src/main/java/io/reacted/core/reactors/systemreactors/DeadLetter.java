@@ -24,12 +24,12 @@ public class DeadLetter {
     private static final Logger LOGGER = LoggerFactory.getLogger(DeadLetter.class);
     public static final ReActions DEADLETTERS = ReActions.newBuilder()
                                                          .reAct(DeadMessage.class,
-                                                                (ctx, payload) -> ctx.getSelf().tell(ctx.getSender(),
-                                                                                                     payload.getPayload()))
+                                                                (ctx, payload) -> ctx.reply(ctx.getSender(),
+                                                                                            payload.getPayload()))
                                                          .reAct(ReActorService.RouteeReSpawnRequest.class,
-                                                                (ctx, payload) -> {})
-                                                         .reAct(ReActorInit.class, (ctx, payload) -> {})
-                                                         .reAct(ReActorStop.class, (ctx, payload) -> {})
+                                                                ReActions::noReAction)
+                                                         .reAct(ReActorInit.class, ReActions::noReAction)
+                                                         .reAct(ReActorStop.class, ReActions::noReAction)
                                                          .reAct(new DeadLetter()::onMessage)
                                                          .build();
     /* All messages for reactors not found will be rerouted here */

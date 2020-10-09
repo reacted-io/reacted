@@ -109,10 +109,6 @@ public class ReActorSystemRef implements Externalizable {
         ReActorSystemId reActorSystemId = new ReActorSystemId();
         reActorSystemId.readExternal(in);
         setReActorSystemId(reActorSystemId);
-        /* Here is where the location abstraction magic happens: on deserialization, we check in which driver the
-           deserialization is taking place. Then we set the driver instance as methods provider for communicating
-           for the reactor system pointed out by this reference
-         */
         RemotingDriver.getDriverCtx()
                       .flatMap(driverCtx -> driverCtx.getLocalReActorSystem().findGate(reActorSystemId,
                                                                                        driverCtx.getDecodingDriver()

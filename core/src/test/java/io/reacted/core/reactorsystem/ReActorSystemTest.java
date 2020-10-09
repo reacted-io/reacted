@@ -11,7 +11,7 @@ package io.reacted.core.reactorsystem;
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
@@ -42,14 +42,14 @@ class ReActorSystemTest {
     private final ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                              .setMailBoxProvider(ctx -> new BasicMbox())
                                                              .setDispatcherName(DISPATCHER_NAME)
-                                                             .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                              .setReActorName("Reactor Name")
                                                              .build();
 
     private final ReActorConfig childReActorConfig = ReActorConfig.newBuilder()
                                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                                   .setDispatcherName(DISPATCHER_NAME)
-                                                                  .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                                                                  .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                                   .setReActorName("Child reactor name")
                                                                   .build();
 
@@ -164,7 +164,7 @@ class ReActorSystemTest {
                                                    .setReActorName("TR")
                                                    .setDispatcherName("TestDispatcher")
                                                    .setMailBoxProvider(ctx -> new BasicMbox())
-                                                   .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
                                                    .build();
 
         reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig));

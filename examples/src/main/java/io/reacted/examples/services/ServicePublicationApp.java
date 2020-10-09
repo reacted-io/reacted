@@ -11,7 +11,7 @@ package io.reacted.examples.services;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
@@ -61,7 +61,7 @@ public class ServicePublicationApp {
         var reActorSystem = new ReActorSystem(systemConfig).initReActorSystem();
 
         ReActorConfig routeeConfig = ReActorConfig.newBuilder()
-                                                  .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                                                  .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                   .setReActorName("ClockWorker")
                                                   //Not only the service, but we want also its workers to use the same
@@ -98,7 +98,7 @@ public class ServicePublicationApp {
                                                      .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
                                                      //The service will intercept all the Service Discovery Requests
                                                      //generated locally to this reactor system
-                                                     .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                     .setTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                      .build();
         reActorSystem.spawnService(clockServiceConfig).orElseSneakyThrow();
         System.out.println("Service published");

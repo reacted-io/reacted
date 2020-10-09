@@ -10,7 +10,7 @@ package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.reactors.ServiceDiscoverySearchFilter;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.datastructure.MultiMaps;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
@@ -45,6 +45,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.DeadLetter;
 import io.reacted.core.reactors.systemreactors.RemotingRoot;
+import io.reacted.core.reactors.systemreactors.SystemMonitor;
 import io.reacted.core.reactors.systemreactors.SystemLogger;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.services.ReActorService;
@@ -88,7 +89,7 @@ public class ReActorSystem {
     private static final ReActorConfig DEFAULT_REACTOR_CONFIG = ReActorConfig.newBuilder()
                                                                              .setMailBoxProvider(ctx -> new NullMailbox())
                                                                              .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                                             .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                                                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                                              .setReActorName("ReActorConfigTemplate")
                                                                              .build();
 
@@ -136,6 +137,8 @@ public class ReActorSystem {
     private ReActorRef systemDeadLetters;
     @Nullable
     private ReActorRef systemLoggingReActor;
+    @Nullable
+    private ReActorRef systemMonitor;
     @Nullable
     private ReActorSystemRef loopback;
 
@@ -204,6 +207,11 @@ public class ReActorSystem {
     public ReActorRef getSystemLogger() {
         return Objects.requireNonNull(this.systemLoggingReActor);
     }
+
+    /**
+     * @return A {@link ReActorRef} to the {@link SystemMonitor}
+     */
+    public ReActorRef getSystemMonitor() { return Objects.requireNonNull(this.systemMonitor); }
 
     /**
      * Log an error using the centralized logging system
@@ -516,8 +524,8 @@ public class ReActorSystem {
 
     //Runtime update of the typed sniff subscriptions for a given reactor
     //Guarded by structural lock on target actor
-    void updateMessageInterceptors(ReActorContext targetActor, SniffSubscription[] oldIntercepted,
-                                   SniffSubscription[] newIntercepted) {
+    void updateMessageInterceptors(ReActorContext targetActor, TypedSubscription[] oldIntercepted,
+                                   TypedSubscription[] newIntercepted) {
 
         Arrays.stream(oldIntercepted)
               .forEach(sniffSubscription -> typedSubscribers.remove(sniffSubscription.getPayloadType(),
@@ -564,7 +572,7 @@ public class ReActorSystem {
                                                      .setReActorName(serviceRegistryDriver.getClass()
                                                                                           .getSimpleName())
                                                      .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                     .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                     .setTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                      .build();
             var serviceRegistryDriverInit = spawnChild(serviceRegistryDriver.getReActions(), getSystemRemotingRoot(),
                                                        serviceRegistryConfig)
@@ -591,6 +599,7 @@ public class ReActorSystem {
         this.systemRemotingRoot = spawnRemotingRoot(reActorSystemRoot);
         this.systemReActorsRoot = spawnSystemActorsRoot(reActorSystemRoot);
         this.systemDeadLetters = spawnSystemDeadLetters(systemReActorsRoot);
+        this.systemMonitor = spawnSystemMonitor(systemReActorsRoot);
         this.systemLoggingReActor = spawnSystemLogging(systemReActorsRoot);
         this.userReActorsRoot = spawnUserActorsRoot(reActorSystemRoot);
     }
@@ -716,6 +725,15 @@ public class ReActorSystem {
                                            .build()).orElseSneakyThrow();
     }
 
+    private ReActorRef spawnSystemMonitor(ReActorRef systemActorsRoot) {
+        return spawn(getLoopback(), new SystemMonitor(getSystemConfig().getSystemMonitorRefreshInterval(),
+                                                      getSystemTimerService()).getReActions(),
+                     systemActorsRoot, DEFAULT_REACTOR_CONFIG.toBuilder()
+                                                             .setReActorName("SystemMonitor")
+                                                             .setMailBoxProvider(ctx -> new NullMailbox())
+                                                             .build()).orElseSneakyThrow();
+    }
+
     private ReActorRef spawnSystemLogging(ReActorRef systemActorsRoot) {
         return spawn(getLoopback(), SystemLogger.SYSTEM_LOGGER, systemActorsRoot,
                      DEFAULT_REACTOR_CONFIG.toBuilder()
@@ -782,8 +800,8 @@ public class ReActorSystem {
         stopMe.getStructuralLock().writeLock().lock();
         try {
             if (reActors.remove(stopMe.getSelf().getReActorId()) != null) {
-                updateMessageInterceptors(stopMe, stopMe.getInterceptRules(),
-                                          SniffSubscription.NO_SUBSCRIPTIONS);
+                updateMessageInterceptors(stopMe, stopMe.getTypedSubscriptions(),
+                                          TypedSubscription.NO_SUBSCRIPTIONS);
                 Try.ofRunnable(() -> stopMe.reAct(reActorStop))
                    .ifError(error -> stopMe.logError("Unable to properly stop reactor: ", error));
                 Try.ofRunnable(() -> stopMe.getMbox().close())
@@ -827,7 +845,7 @@ public class ReActorSystem {
                 if (!isSelfAdd) {
                     parentReActorCtx.registerChild(newActor.getSelf());
                 }
-                updateMessageInterceptors(newActor, newActor.getInterceptRules(), newActor.getInterceptRules());
+                updateMessageInterceptors(newActor, newActor.getTypedSubscriptions(), newActor.getTypedSubscriptions());
                 hasBeenRegistered = true;
             }
         } finally {
