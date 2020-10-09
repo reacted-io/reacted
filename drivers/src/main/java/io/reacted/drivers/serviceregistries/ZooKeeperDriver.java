@@ -21,7 +21,7 @@ import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
 import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicationRequest;
 import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
 import io.reacted.core.messages.serviceregistry.RegistryServicePublicationFailed;
-import io.reacted.core.messages.serviceregistry.ServiceServicePublicationRequest;
+import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
 import io.reacted.core.messages.serviceregistry.RegistrySubscriptionComplete;
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
 import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdCancellationRequest;
@@ -84,7 +84,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     @Nullable
     private CuratorFramework client;
     @Nullable
-    private ServiceDiscovery<ServiceServicePublicationRequest> serviceDiscovery;
+    private ServiceDiscovery<ServicePublicationRequest> serviceDiscovery;
     @Nullable
     private AsyncCuratorFramework asyncClient;
     @Nullable
@@ -113,7 +113,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                                                                                                    .forPath(CLUSTER_REGISTRY_SERVICES_ROOT_PATH))
                                                                             .recover(KeeperException.NodeExistsException.class,
                                                                                      Try.VOID));
-        var serviceDiscovery = servicesPathCreation.map(success -> ServiceDiscoveryBuilder.builder(ServiceServicePublicationRequest.class)
+        var serviceDiscovery = servicesPathCreation.map(success -> ServiceDiscoveryBuilder.builder(ServicePublicationRequest.class)
                                                                                           .basePath(CLUSTER_REGISTRY_SERVICES_ROOT_PATH)
                                                                                           .client(this.client)
                                                                                           .build());
@@ -155,7 +155,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                         .reAct(ReActorSystemChannelIdPublicationRequest.class, this::onChannelIdPublicationRequest)
                         .reAct(ReActorSystemChannelIdCancellationRequest.class, this::onChannelIdCancellationRequest)
                         .reAct(SynchronizationWithServiceRegistryRequest.class, this::onSynchronizationWithRegistryRequest)
-                        .reAct(ServiceServicePublicationRequest.class, this::onServicePublicationRequest)
+                        .reAct(ServicePublicationRequest.class, this::onServicePublicationRequest)
                         .reAct(ServiceCancellationRequest.class, this::onServiceCancellationRequest)
                         .reAct(ServiceDiscoveryRequest.class, this::onServiceDiscovery)
                         .reAct(ZooKeeperDriver::onSpuriousMessage)
@@ -170,13 +170,13 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
             return;
         }
         getServiceInstance(cancellationRequest.getServiceName(),
-                           raCtx.getReActorSystem().getLocalReActorSystemId(), (ServiceServicePublicationRequest)null)
+                           raCtx.getReActorSystem().getLocalReActorSystemId(), (ServicePublicationRequest)null)
                 .ifSuccessOrElse(this.serviceDiscovery::unregisterService,
                                  error -> raCtx.logError("Unable to unregister service {}",
                                                          cancellationRequest.toString(), error));
     }
 
-    private void onServicePublicationRequest(ReActorContext raCtx, ServiceServicePublicationRequest serviceInfo) {
+    private void onServicePublicationRequest(ReActorContext raCtx, ServicePublicationRequest serviceInfo) {
         if (this.serviceDiscovery == null) {
             return;
         }
@@ -381,10 +381,10 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     }
 
     private static ServiceDiscoveryReply
-    toServiceDiscoveryReply(Collection<ServiceServicePublicationRequest> serviceInstances,
+    toServiceDiscoveryReply(Collection<ServicePublicationRequest> serviceInstances,
                             ReActorSystem localReActorSystem) {
         return new ServiceDiscoveryReply(serviceInstances.stream()
-                                                         .map(ServiceServicePublicationRequest::getServiceGate)
+                                                         .map(ServicePublicationRequest::getServiceGate)
                                                          .collect(Collectors.toUnmodifiableSet()), localReActorSystem);
     }
 

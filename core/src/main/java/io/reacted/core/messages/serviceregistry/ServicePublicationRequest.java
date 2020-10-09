@@ -18,24 +18,24 @@ import java.util.Properties;
 
 
 @NonNullByDefault
-public class ServiceServicePublicationRequest implements Serializable {
+public class ServicePublicationRequest implements Serializable {
 
     private static final long serialVersionUID = 1;
-    private static final long SERVICE_GATE_OFFSET = SerializationUtils.getFieldOffset(ServiceServicePublicationRequest.class,
+    private static final long SERVICE_GATE_OFFSET = SerializationUtils.getFieldOffset(ServicePublicationRequest.class,
                                                                                       "serviceGate")
                                                                       .orElseSneakyThrow();
-    private static final long SERVICE_PROPERTIES_OFFSET = SerializationUtils.getFieldOffset(ServiceServicePublicationRequest.class,
+    private static final long SERVICE_PROPERTIES_OFFSET = SerializationUtils.getFieldOffset(ServicePublicationRequest.class,
                                                                                             "serviceProperties")
                                                                             .orElseSneakyThrow();
     private final ReActorRef serviceGate;
     private final Properties serviceProperties;
 
-    private ServiceServicePublicationRequest() {
+    private ServicePublicationRequest() {
         this.serviceGate = ReActorRef.NO_REACTOR_REF;
         this.serviceProperties = new Properties();
     }
 
-    public ServiceServicePublicationRequest(ReActorRef serviceGate, Properties serviceProperties) {
+    public ServicePublicationRequest(ReActorRef serviceGate, Properties serviceProperties) {
         this.serviceGate = Objects.requireNonNull(serviceGate);
         this.serviceProperties = Objects.requireNonNull(serviceProperties);
     }
@@ -45,12 +45,12 @@ public class ServiceServicePublicationRequest implements Serializable {
     public Properties getServiceProperties() { return this.serviceProperties; }
 
     @SuppressWarnings({"UnusedReturnValue", "unused"})
-    private ServiceServicePublicationRequest setServiceGate(ReActorRef reactorRef) {
+    private ServicePublicationRequest setServiceGate(ReActorRef reactorRef) {
         return SerializationUtils.setObjectField(this, SERVICE_GATE_OFFSET, reactorRef);
     }
 
     @SuppressWarnings({"UnusedReturnValue", "unused"})
-    private ServiceServicePublicationRequest setServiceProperties(Properties serviceProperties) {
+    private ServicePublicationRequest setServiceProperties(Properties serviceProperties) {
         return SerializationUtils.setObjectField(this, SERVICE_PROPERTIES_OFFSET, serviceProperties);
     }
 }

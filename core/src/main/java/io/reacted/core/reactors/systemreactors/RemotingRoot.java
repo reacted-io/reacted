@@ -18,7 +18,7 @@ import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
 import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicationRequest;
 import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
 import io.reacted.core.messages.serviceregistry.RegistryServicePublicationFailed;
-import io.reacted.core.messages.serviceregistry.ServiceServicePublicationRequest;
+import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
 import io.reacted.core.messages.serviceregistry.RegistrySubscriptionComplete;
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
 import io.reacted.core.reactors.ReActions;
@@ -48,7 +48,7 @@ public class RemotingRoot {
                         .reAct(RegistrySubscriptionComplete.class, this::onSubscriptionComplete)
                         .reAct(RegistryGateUpserted.class, this::onRegistryGateUpsert)
                         .reAct(RegistryGateRemoved.class, this::onRegistryGateRemoval)
-                        .reAct(ServiceServicePublicationRequest.class, RemotingRoot::onPublishService)
+                        .reAct(ServicePublicationRequest.class, RemotingRoot::onPublishService)
                         .reAct(RegistryServicePublicationFailed.class, RemotingRoot::onRegistryServicePublicationFailure)
                         .reAct(ServiceCancellationRequest.class, RemotingRoot::onCancelService)
                         .reAct(ReActorStop.class, RemotingRoot::onStop)
@@ -65,7 +65,7 @@ public class RemotingRoot {
                                                                                         serviceCancellationRequest));
     }
 
-    private static void onPublishService(ReActorContext raCtx, ServiceServicePublicationRequest publishService) {
+    private static void onPublishService(ReActorContext raCtx, ServicePublicationRequest publishService) {
         for(ReActorRef serviceRegistryDriver : raCtx.getChildren()) {
             var deliveryAttempt = serviceRegistryDriver.tell(raCtx.getSelf(), publishService);
             deliveryAttempt.thenAccept(attempt -> attempt.filter(DeliveryStatus::isDelivered)

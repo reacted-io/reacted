@@ -16,7 +16,7 @@ import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.reactors.SystemMonitorReport;
 import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
-import io.reacted.core.messages.serviceregistry.ServiceServicePublicationRequest;
+import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
@@ -102,7 +102,7 @@ public class ReActorService implements ReActiveEntity {
 
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new ServiceServicePublicationRequest(raCtx.getSelf(), this.serviceInfo));
+             .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), this.serviceInfo));
     }
 
     private void serviceDiscovery(ReActorContext routerActorCtx, ServiceDiscoveryRequest request) {
@@ -154,7 +154,7 @@ public class ReActorService implements ReActiveEntity {
     private static void updateServiceRegistry(ReActorContext raCtx, Properties serviceInfo) {
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new ServiceServicePublicationRequest(raCtx.getSelf(), serviceInfo))
+             .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), serviceInfo))
              .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
                                                                 .ifError(error -> raCtx.logError("Unable to refresh " +
                                                                                                  "service info {}",
