@@ -13,20 +13,25 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
+import java.util.concurrent.ScheduledExecutorService;
 
 @NonNullByDefault
 public class ServiceRegistryInit {
     private final ReActorSystem reActorSystem;
     private final ReActorRef driverReActor;
+    private final ScheduledExecutorService timerService;
 
     private ServiceRegistryInit(Builder builder) {
         this.reActorSystem = Objects.requireNonNull(builder.reActorSystem);
         this.driverReActor = Objects.requireNonNull(builder.driverActor);
+        this.timerService = Objects.requireNonNull(builder.timerService);
     }
 
-    public ReActorSystem getReActorSystem() { return reActorSystem; }
+    public ReActorSystem getReActorSystem() { return this.reActorSystem; }
 
-    public ReActorRef getDriverReActor() { return driverReActor; }
+    public ReActorRef getDriverReActor() { return this.driverReActor; }
+
+    public ScheduledExecutorService getTimerService() { return this.timerService; }
 
     public static Builder newBuilder() { return new Builder(); }
 
@@ -35,6 +40,8 @@ public class ServiceRegistryInit {
         private ReActorSystem reActorSystem;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActorRef driverActor;
+        @SuppressWarnings("NotNullFieldNotInitialized")
+        private ScheduledExecutorService timerService;
 
         private Builder() { }
 
@@ -45,6 +52,11 @@ public class ServiceRegistryInit {
 
         public Builder setDriverReActor(ReActorRef driverActor) {
             this.driverActor = driverActor;
+            return this;
+        }
+
+        public Builder setTimerService(ScheduledExecutorService timerService) {
+            this.timerService = timerService;
             return this;
         }
 

@@ -63,6 +63,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
@@ -78,8 +79,8 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     private static final String CLUSTER_GATE_PUBLICATION_PATH = ZKPaths.makePath(CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH,
                                                                                  "%s","%s");
     private static final CompletionStage<Try<DeliveryStatus>> SUCCESS = CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
-
     private final Properties config;
+    private ScheduledExecutorService timerService;
     @Nullable
     private CuratorFramework client;
     @Nullable
@@ -95,6 +96,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
 
     @Override
     public void init(ServiceRegistryInit initInfo) {
+        this.timerService = initInfo.getTimerService();
         this.client = CuratorFrameworkFactory.newClient(getZkConnectionString(),
                                                         new ExponentialBackoffRetry(1000, 20));
         this.client.start();
