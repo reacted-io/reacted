@@ -15,10 +15,10 @@ import java.io.Serializable;
 @Immutable
 @NonNullByDefault
 public class ServiceDiscoveryRequest implements Serializable {
-    private final BasicServiceDiscoverySearchFilter searchFilter;
-    public ServiceDiscoveryRequest(BasicServiceDiscoverySearchFilter searchFilter) {
+    private final ServiceDiscoverySearchFilter searchFilter;
+    public ServiceDiscoveryRequest(ServiceDiscoverySearchFilter searchFilter) {
         this.searchFilter = searchFilter;
     }
 
-    public BasicServiceDiscoverySearchFilter getSearchFilter() { return searchFilter; }
+    public ServiceDiscoverySearchFilter getSearchFilter() { return searchFilter; }
 }

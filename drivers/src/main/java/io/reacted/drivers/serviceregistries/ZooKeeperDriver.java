@@ -27,6 +27,7 @@ import io.reacted.core.messages.serviceregistry.RegistrySubscriptionRequest;
 import io.reacted.core.messages.serviceregistry.RegistryUnregisterChannel;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
+import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
@@ -56,6 +57,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
@@ -89,7 +91,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     private TreeCache reActedHierarchy;
 
     public ZooKeeperDriver(Properties config) {
-        this.config = config;
+        this.config = Objects.requireNonNull(config);
     }
 
     @Override
@@ -100,10 +102,10 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
         this.asyncClient = AsyncCuratorFramework.wrap(client);
 
         var gatesPathCreation = Try.ofRunnable(() -> client.create()
-                                                           .creatingParentsIfNeeded()
-                                                           .withMode(CreateMode.PERSISTENT)
-                                                           .forPath(CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH))
-                                                           .recover(KeeperException.NodeExistsException.class, Try.VOID);
+                                                                      .creatingParentsIfNeeded()
+                                                                      .withMode(CreateMode.PERSISTENT)
+                                                                      .forPath(CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH))
+                                              .recover(KeeperException.NodeExistsException.class, Try.VOID);
         var servicesPathCreation = gatesPathCreation.flatMap(success -> Try.ofRunnable(() -> client.create()
                                                                                                    .creatingParentsIfNeeded()
                                                                                                    .withMode(CreateMode.PERSISTENT)
@@ -205,24 +207,24 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
         if (this.serviceDiscovery == null) {
             return;
         }
-        BasicServiceDiscoverySearchFilter filter = request.getSearchFilter();
-        Try.of(() -> this.serviceDiscovery.queryForInstances(filter.getServiceName()))
-           .peekFailure(error -> raCtx.logError("Error discovering service {}",
-                                                request.getSearchFilter().getServiceName(), error))
-           .toOptional()
-           .filter(Predicate.not(Collection::isEmpty))
-           .map(results -> results.stream()
-                                                                            //Side effect on input object!!!
-                                  .filter(serviceInstance -> filter.matches(patchServiceProperties(serviceInstance.getPayload()
-                                                                                                                  .getServiceProperties(),
-                                                                                                   BasicServiceDiscoverySearchFilter.FIELD_NAME_IP_ADDRESS,
-                                                                                                   serviceInstance.getAddress())))
-                                  .map(ServiceInstance::getPayload)
-                                  .collect(Collectors.toUnmodifiableList()))
-           .map(serviceInstances -> toServiceDiscoveryReply(serviceInstances, raCtx.getReActorSystem()))
-           .filter(serviceDiscoveryReply -> !serviceDiscoveryReply.getServiceGates().isEmpty())
-           .ifPresentOrElse(serviceDiscoveryReply -> raCtx.reply(ReActorRef.NO_REACTOR_REF, serviceDiscoveryReply),
-                            () -> raCtx.logInfo("No services found?"));
+        ServiceDiscoverySearchFilter filter = request.getSearchFilter();
+        var nameMatchingServices = Try.of(() -> this.serviceDiscovery.queryForInstances(filter.getServiceName()))
+           .orElse(List.of(),
+                   error -> raCtx.logError("Error discovering service {}",
+                                           request.getSearchFilter().getServiceName(), error));
+
+        var matchingServices = nameMatchingServices.stream()
+                            //WARNING! side effect on input properties!
+                            .filter(serviceInstance -> filter.matches(patchServiceProperties(serviceInstance.getPayload()
+                                                                                                            .getServiceProperties(),
+                                                                                             BasicServiceDiscoverySearchFilter.FIELD_NAME_IP_ADDRESS,
+                                                                                             serviceInstance.getAddress())))
+                            .map(ServiceInstance::getPayload)
+                            .collect(Collectors.toUnmodifiableList());
+        raCtx.aReply(ReActorRef.NO_REACTOR_REF, toServiceDiscoveryReply(matchingServices, raCtx.getReActorSystem()))
+             .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                                                                .ifError(error -> raCtx.logDebug("Service discovery reply not delivered to",
+                                                                                                 error)));
     }
 
     private void onChannelCancel(ReActorContext raCtx, RegistryUnregisterChannel cancelRequest) {

@@ -11,5 +11,7 @@ package io.reacted.core.messages.services;
 import java.util.Properties;
 
 public interface ServiceDiscoverySearchFilter {
+
+    String getServiceName();
     boolean matches(Properties serviceProperties);
 }
