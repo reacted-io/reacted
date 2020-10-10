@@ -33,6 +33,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 
+import static io.reacted.core.services.SelectionType.DIRECT;
+import static io.reacted.core.services.SelectionType.ROUTED;
+
 public class ReActorService implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
@@ -115,7 +118,7 @@ public class ReActorService implements ReActiveEntity {
             case DIRECT -> selectRoutee(routerActorCtx, msgReceived);
         };
 
-        serviceSelection.map(service -> new ServiceDiscoveryReply(service, routerActorCtx.getReActorSystem()))
+        serviceSelection.map(ServiceDiscoveryReply::new)
                         .ifPresent(discoveryReply -> routerActorCtx.getSender().tell(routerActorCtx.getSelf(),
                                                                                      discoveryReply));
     }

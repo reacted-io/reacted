@@ -48,27 +48,27 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         this.reActiveEntityType = builder.entityType;
     }
 
-    public String getDispatcherName() {
+    public final String getDispatcherName() {
         return dispatcherName;
     }
 
-    public String getReActorName() {
+    public final String getReActorName() {
         return reActorName;
     }
 
-    public TypedSubscription[] getTypedSniffSubscriptions() {
+    public final TypedSubscription[] getTypedSniffSubscriptions() {
         return Arrays.copyOf(typedTypedSubscriptions, typedTypedSubscriptions.length);
     }
 
-    public Function<ReActorContext, MailBox> getMailBoxProvider() {
+    public final Function<ReActorContext, MailBox> getMailBoxProvider() {
         return mailBoxProvider;
     }
 
-    public ReActiveEntityType getReActiveEntityType() {
+    public final ReActiveEntityType getReActiveEntityType() {
         return reActiveEntityType;
     }
 
-    public BuilderT fillBuilder(Builder<BuilderT, BuiltT> realBuilder) {
+    protected BuilderT fillBuilder(Builder<BuilderT, BuiltT> realBuilder) {
         return realBuilder.setDispatcherName(getDispatcherName())
                           .setMailBoxProvider(getMailBoxProvider())
                           .setReActorName(getReActorName())
@@ -88,8 +88,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActiveEntityType entityType;
 
-        protected Builder() {
-        }
+        protected Builder() { }
 
         /**
          * Every reactor is scheduled only on a single dispatcher. Here is set which one
@@ -126,7 +125,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
          *
          * @param typedTypedSubscriptions Sniffing subscriptions
          */
-        public BuilderT setTypedSubscriptions(TypedSubscription... typedTypedSubscriptions) {
+        public final BuilderT setTypedSubscriptions(TypedSubscription... typedTypedSubscriptions) {
             this.typedTypedSubscriptions = typedTypedSubscriptions;
             return getThis();
         }

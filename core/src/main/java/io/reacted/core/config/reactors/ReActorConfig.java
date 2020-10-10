@@ -11,21 +11,21 @@ package io.reacted.core.config.reactors;
 import io.reacted.patterns.NonNullByDefault;
 
 @NonNullByDefault
-public class ReActorConfig extends ReActiveEntityConfig<ReActorConfig.Builder, ReActorConfig> {
+public class ReActorConfig extends GenericReActorConfig<ReActorConfig.Builder, ReActorConfig> {
 
-    public ReActorConfig(Builder reActorConfig) {
+    protected ReActorConfig(Builder reActorConfig) {
         super(reActorConfig);
     }
-
-    public static Builder newBuilder() { return new Builder(); }
 
     @Override
     public Builder toBuilder() {
         return fillBuilder(newBuilder());
     }
 
-    public static class Builder extends ReActiveEntityConfig.Builder<Builder, ReActorConfig> {
-        private Builder() { setEntityType(ReActiveEntityType.REACTOR); }
+    public static Builder newBuilder() { return new Builder(); }
+
+    public static class Builder extends GenericReActorConfig.Builder<Builder, ReActorConfig> {
+        protected Builder() { }
         @Override
         public ReActorConfig build() {
             return new ReActorConfig(this);

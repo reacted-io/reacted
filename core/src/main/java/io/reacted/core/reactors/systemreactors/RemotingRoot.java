@@ -12,6 +12,7 @@ import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.serviceregistry.FilterServiceDiscoveryRequest;
 import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
 import io.reacted.core.messages.serviceregistry.RegistryGateRemoved;
 import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
@@ -19,16 +20,21 @@ import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicatio
 import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
 import io.reacted.core.messages.serviceregistry.RegistryServicePublicationFailed;
 import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
-import io.reacted.core.messages.serviceregistry.RegistrySubscriptionComplete;
+import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryComplete;
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
+import io.reacted.core.messages.services.FilterItem;
+import io.reacted.core.messages.services.ServiceDiscoveryReply;
+import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 @Immutable
 public class RemotingRoot {
@@ -43,14 +49,15 @@ public class RemotingRoot {
 
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, (raCtx, init) -> {})
+                        .reAct(ReActorInit.class, ReActions::noReAction)
                         .reAct(RegistryDriverInitComplete.class, RemotingRoot::onInitComplete)
-                        .reAct(RegistrySubscriptionComplete.class, this::onSubscriptionComplete)
+                        .reAct(SynchronizationWithServiceRegistryComplete.class, this::onSubscriptionComplete)
                         .reAct(RegistryGateUpserted.class, this::onRegistryGateUpsert)
                         .reAct(RegistryGateRemoved.class, this::onRegistryGateRemoval)
                         .reAct(ServicePublicationRequest.class, RemotingRoot::onPublishService)
                         .reAct(RegistryServicePublicationFailed.class, RemotingRoot::onRegistryServicePublicationFailure)
                         .reAct(ServiceCancellationRequest.class, RemotingRoot::onCancelService)
+                        .reAct(FilterServiceDiscoveryRequest.class, RemotingRoot::onFilterServiceDiscoveryRequest)
                         .reAct(ReActorStop.class, RemotingRoot::onStop)
                         .reAct(RemotingRoot::onSpuriousMessage)
                         .build();
@@ -84,7 +91,7 @@ public class RemotingRoot {
     }
 
     private void onSubscriptionComplete(ReActorContext raCtx,
-                                        RegistrySubscriptionComplete subCompleted) {
+                                        SynchronizationWithServiceRegistryComplete subCompleted) {
         remotingDrivers.stream()
                        .map(remotingDriver -> new ReActorSystemChannelIdPublicationRequest(localReActorSystem,
                                                                                            remotingDriver.getChannelId(),
@@ -119,7 +126,7 @@ public class RemotingRoot {
     private void onRegistryGateRemoval(ReActorContext raCtx, RegistryGateRemoved removed) {
         if (raCtx.getReActorSystem().getLocalReActorSystemId().equals(removed.getReActorSystem())) {
             //if for any reason we got removed from remove service registry, refresh subscription
-            raCtx.getSelf().tell(raCtx.getSender(), new RegistrySubscriptionComplete());
+            raCtx.getSelf().tell(raCtx.getSender(), new SynchronizationWithServiceRegistryComplete());
             return;
         }
         raCtx.getReActorSystem().unregisterRoute(removed.getReActorSystem(),
@@ -127,5 +134,23 @@ public class RemotingRoot {
         raCtx.logDebug("I am {} received removal request for {} channel {}",
                        raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
                        removed.getReActorSystem().getReActorSystemName(), removed.getChannelId());
+    }
+
+    private static void onFilterServiceDiscoveryRequest(ReActorContext raCtx,
+                                                        FilterServiceDiscoveryRequest filterThis) {
+        var foundServices = filterThis.getServiceDiscoveryResult().stream()
+                  .flatMap(filterItem -> ReActorSystem.getRoutedReference(filterItem.getServiceGate(),
+                                                                          raCtx.getReActorSystem()).stream()
+                                                      .map(routedGate -> new FilterItem(routedGate,
+                                                                                        filterItem.getServiceProperties())))
+                  .filter(filterItem -> filterThis.getFilteringRuleToApply().matches(filterItem.getServiceProperties(),
+                                                                                     filterItem.getServiceGate()))
+                  .map(FilterItem::getServiceGate)
+                  .collect(Collectors.toUnmodifiableSet());
+        raCtx.aReply(new ServiceDiscoveryReply(foundServices))
+             .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                                                                .ifError(error -> raCtx.logError("Unable to answer with a {}",
+                                                                                                 ServiceDiscoveryReply.class.getSimpleName(),
+                                                                                                 error)));
     }
 }

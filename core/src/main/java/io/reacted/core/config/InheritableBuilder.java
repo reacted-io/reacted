@@ -17,6 +17,6 @@ public abstract class InheritableBuilder<BuilderT extends InheritableBuilder.Bui
         public abstract BuiltT build();
 
         @SuppressWarnings("unchecked")
-        protected <SubBuilderT> SubBuilderT getThis() { return (SubBuilderT) this; }
+        protected BuilderT getThis() { return (BuilderT)this; }
     }
 }

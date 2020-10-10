@@ -9,6 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import io.reacted.core.config.drivers.ServiceRegistryDriverCfg;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.datastructure.MultiMaps;
@@ -19,7 +20,7 @@ import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
-import io.reacted.core.drivers.serviceregistries.ServiceRegistryInit;
+import io.reacted.core.drivers.serviceregistries.ServiceRegistryInitData;
 import io.reacted.core.drivers.system.LoopbackDriver;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
@@ -565,23 +566,16 @@ public class ReActorSystem {
         initReActorSystemReActors();
         getSystemConfig().getRemotingDrivers().forEach(remotingDriver -> this.registerReActorSystemDriver(remotingDriver)
                                                                              .orElseSneakyThrow());
-        for (ServiceRegistryDriver serviceRegistryDriver : getSystemConfig().getServiceRegistryDrivers()) {
-            var serviceRegistryConfig = ReActorConfig.newBuilder()
-                                                     .setMailBoxProvider(ctx -> new BasicMbox())
-                                                     .setReActorName(serviceRegistryDriver.getClass()
-                                                                                          .getSimpleName())
-                                                     .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                     .setTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                     .build();
-            var serviceRegistryDriverInit = spawnChild(serviceRegistryDriver.getReActions(), getSystemRemotingRoot(),
-                                                       serviceRegistryConfig)
-                                                .map(reActor -> ServiceRegistryInit.newBuilder()
-                                                                                   .setDriverReActor(reActor)
-                                                                                   .setReActorSystem(this)
-                                                                                   .build())
-                                                .orElseSneakyThrow();
-            serviceRegistryDriver.init(serviceRegistryDriverInit);
-        }
+        initServiceRegistryDrivers(getSystemConfig().getServiceRegistryDrivers());
+    }
+
+    /* SneakyThrows */
+    private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryDriverCfg.Builder<?, ?>,
+                                                                             ? extends ServiceRegistryDriverCfg<?, ?>>> drivers) throws Exception {
+        ServiceRegistryInitData driverInitData = new ServiceRegistryInitData(getSystemTimerService());
+        drivers.forEach(driver -> driver.onServiceRegistryInit(driverInitData));
+        drivers.forEach( driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())
+                                                .orElseSneakyThrow());
     }
 
     private void initReActorSystemReActors() throws ReActorSystemInitException {

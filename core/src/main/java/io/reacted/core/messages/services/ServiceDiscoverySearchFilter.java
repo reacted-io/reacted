@@ -22,5 +22,5 @@ public interface ServiceDiscoverySearchFilter {
     String FIELD_NAME_HOSTNAME = "hostName";
 
     String getServiceName();
-    boolean matches(Properties serviceProperties, ReActorRef serviceGate, ReActorSystem localReActorSystem);
+    boolean matches(Properties serviceProperties, ReActorRef serviceGate);
 }
