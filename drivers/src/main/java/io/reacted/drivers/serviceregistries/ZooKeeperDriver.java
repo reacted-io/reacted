@@ -9,7 +9,6 @@
 package io.reacted.drivers.serviceregistries;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryInit;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -181,7 +180,7 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
             return;
         }
         String serviceName = serviceInfo.getServiceProperties()
-                                        .getProperty(BasicServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME);
+                                        .getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME);
         if (StringUtils.isBlank(serviceName)) {
             raCtx.logError("Skipping publication attempt of an invalid service name {}", serviceName);
             raCtx.reply(new RegistryServicePublicationFailed(serviceName,
@@ -208,8 +207,10 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
                             //WARNING! side effect on input properties!
                             .filter(serviceInstance -> filter.matches(patchServiceProperties(serviceInstance.getPayload()
                                                                                                             .getServiceProperties(),
-                                                                                             BasicServiceDiscoverySearchFilter.FIELD_NAME_IP_ADDRESS,
-                                                                                             serviceInstance.getAddress())))
+                                                                                             ServiceDiscoverySearchFilter.FIELD_NAME_IP_ADDRESS,
+                                                                                             serviceInstance.getAddress()),
+                                                                      serviceInstance.getPayload().getServiceGate(),
+                                                                      raCtx.getReActorSystem()))
                             .map(ServiceInstance::getPayload)
                             .collect(Collectors.toUnmodifiableList());
         raCtx.aReply(ReActorRef.NO_REACTOR_REF, toServiceDiscoveryReply(matchingServices, raCtx.getReActorSystem()))
@@ -280,10 +281,9 @@ public class ZooKeeperDriver implements ServiceRegistryDriver {
     private static TreeCacheListener getTreeListener(ReActorSystem reActorSystem, ReActorRef driverReActor) {
         return (curatorFramework, treeCacheEvent) ->
                 cacheEventsRouter(curatorFramework, treeCacheEvent, reActorSystem, driverReActor)
-                        .thenAccept(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
-                                                                      .ifError(error -> reActorSystem.logError("Error handling zookeeper event {}",
-                                                                                                               treeCacheEvent.toString(),
-                                                                                                               error)));
+                        .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                                                                           .ifError(error -> reActorSystem.logError("Error handling zookeeper event {}",
+                                                                                                                    treeCacheEvent.toString(), error)));
     }
 
     private static CompletionStage<Try<DeliveryStatus>>

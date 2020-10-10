@@ -11,9 +11,10 @@ package io.reacted.core.messages.services;
 import com.google.common.collect.Range;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.InheritableBuilder;
+import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.SelectionType;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -27,12 +28,6 @@ import java.util.regex.Pattern;
 public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicServiceDiscoverySearchFilter.Builder,
                                                                           BasicServiceDiscoverySearchFilter>
         implements Serializable, ServiceDiscoverySearchFilter {
-    public static final String FIELD_NAME_SERVICE_NAME = "serviceName";
-    public static final String FIELD_NAME_CPU_LOAD = "cpuLoad";
-    public static final String FIELD_NAME_FREE_MEMORY_SIZE = "freeMemorySize";
-    public static final String FIELD_NAME_CHANNEL_TYPE = "channelId";
-    public static final String FIELD_NAME_IP_ADDRESS = "ipAddress";
-    public static final String FIELD_NAME_HOSTNAME = "hostName";
 
     private final String serviceName;
     private final SelectionType selectionType;
@@ -70,11 +65,12 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
     public static Builder newBuilder() { return new Builder(); }
 
     @Override
-    public boolean matches(Properties serviceInfos) {
+    public boolean matches(Properties serviceInfos, ReActorRef serviceGate,
+                           ReActorSystem localReActorSystem) {
         return isServiceNameMatching(serviceInfos.getProperty(FIELD_NAME_SERVICE_NAME)) &&
-               isCpuLoadMatching(serviceInfos.getProperty(FIELD_NAME_CPU_LOAD)) &&
-               isChannelTypeMatching(serviceInfos.getProperty(FIELD_NAME_CHANNEL_TYPE)) &&
-               isIpAddressMatching(serviceInfos.getProperty(FIELD_NAME_IP_ADDRESS)) &&
+               isCpuLoadMatching((Double)serviceInfos.get(FIELD_NAME_CPU_LOAD)) &&
+               isChannelIdMatching(serviceGate, localReActorSystem) &&
+               isIpAddressMatching((InetAddress)serviceInfos.get(FIELD_NAME_IP_ADDRESS)) &&
                isHostNameMatching(serviceInfos.getProperty(FIELD_NAME_HOSTNAME));
     }
 
@@ -82,27 +78,23 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
         return Objects.equals(getServiceName(), serviceName);
     }
 
-    private boolean isCpuLoadMatching(@Nullable String cpuLoad) {
+    private boolean isCpuLoadMatching(@Nullable Double cpuLoad) {
         return cpuLoad == null ||
-               getCpuLoad().map(reqCpuLoad -> Try.of(() -> Double.parseDouble(cpuLoad))
-                                                 .filter(reqCpuLoad::contains)
-                                                 .isSuccess())
+               getCpuLoad().map(reqCpuLoad -> reqCpuLoad.contains(cpuLoad))
                            .orElse(true);
     }
 
-    private boolean isChannelTypeMatching(@Nullable String channelType) {
-        return channelType == null ||
-               getChannelId().map(reqChannelType -> Try.of(() -> ChannelId.ChannelType.valueOf(channelType))
-                                                       .filter(reqChannelType::equals)
-                                                       .isSuccess())
+    private boolean isChannelIdMatching(ReActorRef serviceGate, ReActorSystem localReActorSystem) {
+        return getChannelId().map(reqChannelId -> localReActorSystem.findGate(serviceGate.getReActorSystemRef()
+                                                                                         .getReActorSystemId(),
+                                                                              reqChannelId)
+                                                                    .isPresent())
                              .orElse(true);
     }
 
-    private boolean isIpAddressMatching(@Nullable String ipAddress) {
+    private boolean isIpAddressMatching(@Nullable InetAddress ipAddress) {
         return ipAddress == null ||
-               getIpAddress().map(reqIpAddress -> Try.of(() -> InetAddress.getByName(ipAddress))
-                                                  .filter(reqIpAddress::equals)
-                                                  .isSuccess())
+               getIpAddress().map(reqIpAddress -> reqIpAddress.equals(ipAddress))
                              .orElse(true);
     }
 

@@ -329,7 +329,6 @@ public class ReActorSystem {
     }
 
     //XXX Returns the ReActorSystemReference for a given ReActorSystem/Channel Id.
-    //If a gate for the specific channel is not available, just returns a valid gate, if any
     public Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId, ChannelId decodingDriverChannelId) {
         return Optional.ofNullable(RemotingDriver.isLocalReActorSystem(getLocalReActorSystemId(), reActorSystemId)
                                    ? getLoopback()

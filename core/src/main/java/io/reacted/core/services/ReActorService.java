@@ -9,7 +9,6 @@
 package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -19,6 +18,7 @@ import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
 import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
+import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
@@ -46,7 +46,7 @@ public class ReActorService implements ReActiveEntity {
         this.serviceInfo = new Properties();
         this.reActorServiceConfig = Objects.requireNonNull(reActorServiceConfig);
         this.msgReceived = 1;
-        this.serviceInfo.put(BasicServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME,
+        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME,
                              reActorServiceConfig.getReActorName());
     }
 
@@ -63,8 +63,8 @@ public class ReActorService implements ReActiveEntity {
     }
 
     private void onSystemInfoReport(ReActorContext raCtx, SystemMonitorReport report) {
-        this.serviceInfo.put(BasicServiceDiscoverySearchFilter.FIELD_NAME_CPU_LOAD, report.getCpuLoad());
-        this.serviceInfo.put(BasicServiceDiscoverySearchFilter.FIELD_NAME_FREE_MEMORY_SIZE, report.getFreeMemorySize());
+        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_CPU_LOAD, report.getCpuLoad());
+        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_FREE_MEMORY_SIZE, report.getFreeMemorySize());
         updateServiceRegistry(raCtx, this.serviceInfo);
     }
 
@@ -158,7 +158,7 @@ public class ReActorService implements ReActiveEntity {
              .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
                                                                 .ifError(error -> raCtx.logError("Unable to refresh " +
                                                                                                  "service info {}",
-                                                                                                 serviceInfo.getProperty(BasicServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME),
+                                                                                                 serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME),
                                                                                                  error)));
     }
 
