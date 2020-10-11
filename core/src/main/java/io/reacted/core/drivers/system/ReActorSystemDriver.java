@@ -11,7 +11,7 @@ package io.reacted.core.drivers.system;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.DataLink;
@@ -63,7 +63,6 @@ public abstract class ReActorSystemDriver {
     abstract public Properties getChannelProperties();
     abstract public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message);
     abstract public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message);
-    abstract public void stop(ReActorId dst);
     abstract public boolean channelRequiresDeliveryAck();
     /**
      * @param src source of the message
@@ -132,8 +131,8 @@ public abstract class ReActorSystemDriver {
 
     protected static boolean isTypeSniffed(ReActorSystem localReActorSystem, Class<? extends Serializable> payloadType) {
         var subscribersGroup = localReActorSystem.getTypedSubscribers().getKeyGroup(payloadType);
-        return !(subscribersGroup.get(SubscriptionPolicy.LOCAL).isEmpty() &&
-                 subscribersGroup.get(SubscriptionPolicy.REMOTE).isEmpty());
+        return !(subscribersGroup.get(TypedSubscriptionPolicy.LOCAL).isEmpty() &&
+                 subscribersGroup.get(TypedSubscriptionPolicy.REMOTE).isEmpty());
     }
 
     protected static boolean isAckRequired(boolean isAckRequiredByChannel, AckingPolicy messageAckingPolicy) {

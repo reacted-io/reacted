@@ -11,7 +11,7 @@ package io.reacted.core.drivers.system;
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
@@ -39,7 +39,7 @@ class LoopbackDriverTest {
     void prepareEnvironment() throws Exception {
         // Prepare & init ReActorSystem
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(1)
                                                                      .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                                      .addDispatcherConfig(DispatcherConfig.newBuilder()
@@ -57,8 +57,7 @@ class LoopbackDriverTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("ReActorName")
                                                    .setDispatcherName(testDispatcher)
-                                                   .setMailBoxProvider(ctx -> new BasicMbox())
-                                                   .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(Message.class))
                                                    .build();
 
         destReActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))

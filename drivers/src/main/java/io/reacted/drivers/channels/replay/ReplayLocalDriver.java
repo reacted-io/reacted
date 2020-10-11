@@ -56,9 +56,6 @@ public class ReplayLocalDriver extends LocalDriver {
     }
 
     @Override
-    public void stop(ReActorId dst) { }
-
-    @Override
     public void initDriverLoop(ReActorSystem replayedActorSystem) {
         this.chronicle = ChronicleQueue.singleBuilder(driverConfig.getChronicleFilesDir()).build();
         this.replayedActorSystem = replayedActorSystem;

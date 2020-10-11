@@ -22,12 +22,15 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 @NonNullByDefault
@@ -55,7 +58,8 @@ public class Dispatcher {
 
     public String getName() { return dispatcherConfig.getDispatcherName(); }
 
-    public void initDispatcher(ReActorRef devNull, boolean isExecutionRecorded) {
+    public void initDispatcher(ReActorRef devNull, boolean isExecutionRecorded,
+                               Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
         ThreadFactory dispatcherFactory = new ThreadFactoryBuilder()
                 .setNameFormat("ReActed-Dispatcher-Thread-" + getName() + "-%d")
                 .setUncaughtExceptionHandler((thread, error) -> LOGGER.error(String.format(UNCAUGHT_EXCEPTION_IN_DISPATCHER,
@@ -82,7 +86,8 @@ public class Dispatcher {
             dispatcherThread.submit(() -> Try.ofRunnable(() -> dispatcherLoop(threadLocalSchedulingQueue,
                                                                               dispatcherConfig.getBatchSize(),
                                                                               dispatcherLifeCyclePool,
-                                                                              isExecutionRecorded, devNull))
+                                                                              isExecutionRecorded, devNull,
+                                                                              reActorUnregister))
                                              .ifError(error -> LOGGER.error("Error running dispatcher: ", error)));
         }
     }
@@ -109,7 +114,8 @@ public class Dispatcher {
 
     private void dispatcherLoop(BlockingDeque<ReActorContext> scheduledList, int dispatcherBatchSize,
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
-                                ReActorRef devNull) {
+                                ReActorRef devNull,
+                                Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
         int processed = 0;
         try {
             while (!Thread.currentThread().isInterrupted()) {
@@ -160,9 +166,7 @@ public class Dispatcher {
                 //now this reactor can be scheduled by some other thread if required
                 scheduledReActor.releaseScheduling();
                 if (scheduledReActor.isStop()) {
-                    dispatcherLifeCyclePool.submit(() -> scheduledReActor.getReActorSystem()
-                                                                         .getLoopback().stop(scheduledReActor.getSelf()
-                                                                                                             .getReActorId()));
+                    dispatcherLifeCyclePool.submit(() -> reActorUnregister.apply(scheduledReActor));
                 } else if (!scheduledReActor.getMbox().isEmpty()) {
                     //If there are other messages to be processed, request another schedulation fo the dispatcher
                     dispatch(scheduledReActor);

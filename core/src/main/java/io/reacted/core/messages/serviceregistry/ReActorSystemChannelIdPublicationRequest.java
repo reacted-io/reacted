@@ -8,24 +8,29 @@
 
 package io.reacted.core.messages.serviceregistry;
 
+import io.reacted.core.config.ChannelId;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
+import java.util.Properties;
 
 @Immutable
 @NonNullByDefault
-public class RegistryServiceCancellationRequest implements Serializable {
+public class ReActorSystemChannelIdPublicationRequest implements Serializable {
     private final ReActorSystemId reActorSystemId;
-    private final String serviceName;
+    private final ChannelId channelId;
+    private final Properties channelIdData;
 
-    public RegistryServiceCancellationRequest(ReActorSystemId reActorSystemId, String serviceName) {
+    public ReActorSystemChannelIdPublicationRequest(ReActorSystemId reActorSystemId, ChannelId channelId,
+                                                    Properties channelIdData) {
         this.reActorSystemId = reActorSystemId;
-        this.serviceName = serviceName;
+        this.channelId = channelId;
+        this.channelIdData = channelIdData;
     }
 
     public ReActorSystemId getReActorSystemId() { return reActorSystemId; }
-
-    public String getServiceName() { return serviceName; }
+    public ChannelId getChannelId() { return channelId; }
+    public Properties getChannelIdData() { return channelIdData; }
 }

@@ -8,8 +8,6 @@
 
 package io.reacted.core.messages.serviceregistry;
 
-import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 
-@Immutable
-public class RegistrySubscriptionRequest implements Serializable { }
+public class ServiceRegistryNotAvailable implements Serializable {}

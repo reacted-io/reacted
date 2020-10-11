@@ -11,7 +11,6 @@ package io.reacted.core.drivers.local;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
@@ -56,9 +55,6 @@ public final class SystemLocalDrivers {
         public CompletionStage<Try<Void>> cleanDriverLoop() { return CompletableFuture.completedFuture(Try.VOID); }
 
         @Override
-        public void stop(ReActorId reActorId) { }
-
-        @Override
         public UnChecked.CheckedRunnable getDriverLoop() { return () -> {}; }
 
         @Override
@@ -97,9 +93,6 @@ public final class SystemLocalDrivers {
 
             @Override
             public void initDriverLoop(ReActorSystem localReActorSystem) { logFile.flush();}
-
-            @Override
-            public void stop(ReActorId reActorId) { }
 
             @Override
             public CompletionStage<Try<Void>> cleanDriverLoop() {
@@ -155,9 +148,6 @@ public final class SystemLocalDrivers {
 
             @Override
             public void initDriverLoop(ReActorSystem localReActorSystem) { logFile.flush();}
-
-            @Override
-            public void stop(ReActorId reActorId) { }
 
             @Override
             public CompletionStage<Try<Void>> cleanDriverLoop() {

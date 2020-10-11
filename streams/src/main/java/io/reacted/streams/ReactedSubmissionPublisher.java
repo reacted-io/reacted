@@ -9,7 +9,7 @@
 package io.reacted.streams;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.mailboxes.BackpressuringMbox;
@@ -393,9 +393,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         var subscriberCfg = ReActorConfig.newBuilder()
                                          .setReActorName(this.feedGate.getReActorId().getReActorName() +
                                                          "_subscriber_" + subscription.getSubscriberName() + "_" +
-                                                         this.feedGate.getReActorId().getReActorUuid().toString())
+                                                         this.feedGate.getReActorId().getReActorUUID().toString())
                                          .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                         .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                                         .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                          .setMailBoxProvider(backpressureManager.getManagerMailbox())
                                          .build();
 

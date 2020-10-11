@@ -9,7 +9,7 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.AckingPolicy;
@@ -26,6 +26,7 @@ import io.reacted.patterns.UnChecked;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -38,12 +39,9 @@ public class LoopbackDriver extends ReActorSystemDriver {
     private final ReActorSystem localReActorSystem;
 
     public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver localDriver) {
-        this.localDriver = localDriver;
-        this.localReActorSystem = reActorSystem;
+        this.localDriver = Objects.requireNonNull(localDriver);
+        this.localReActorSystem = Objects.requireNonNull(reActorSystem);
     }
-
-    @Override
-    public void stop(ReActorId dst) { localReActorSystem.stopReActor(dst); }
 
     @Override
     public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
@@ -127,7 +125,7 @@ public class LoopbackDriver extends ReActorSystemDriver {
 
     private void propagateMessage(ReActorId originalDst, Serializable msgPayload, ReActorRef src) {
         var subscribers = localReActorSystem.getTypedSubscribers().get(msgPayload.getClass(),
-                                                                       SubscriptionPolicy.LOCAL);
+                                                                       TypedSubscriptionPolicy.LOCAL);
         if (!subscribers.isEmpty()) {
             localReActorSystem.getMsgFanOutPool()
                               .submit(() -> propagateToSubscribers(localDriver, subscribers, originalDst,

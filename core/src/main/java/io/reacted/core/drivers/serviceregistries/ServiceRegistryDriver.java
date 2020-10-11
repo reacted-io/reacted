@@ -8,16 +8,23 @@
 
 package io.reacted.core.drivers.serviceregistries;
 
-import io.reacted.core.reactors.ReActions;
-import io.reacted.patterns.Try;
+import io.reacted.core.config.reactors.ServiceRegistryCfg;
+import io.reacted.core.reactors.GenericReActor;
 
 import javax.annotation.Nonnull;
-import java.util.Properties;
 
-public interface ServiceRegistryDriver {
-    ReActions getReActions();
-    Properties getConfiguration();
-    void init(@Nonnull ServiceRegistryInit initInfo) throws Exception;
+public abstract class ServiceRegistryDriver<BuilderT extends ServiceRegistryCfg.Builder<BuilderT, BuiltT>,
+                                            BuiltT extends ServiceRegistryCfg<BuilderT, BuiltT>>
+        implements GenericReActor<BuilderT, BuiltT> {
     @Nonnull
-    Try<Void> stop() throws Exception;
+    private final BuiltT driverCfg;
+    protected ServiceRegistryDriver(@Nonnull BuiltT driverCfg) {
+        this.driverCfg = driverCfg;
+    }
+
+    @Nonnull
+    @Override
+    public final BuiltT getConfig() { return driverCfg;  }
+
+    public abstract void onServiceRegistryInit(@Nonnull ServiceRegistryInitData initInfo);
 }

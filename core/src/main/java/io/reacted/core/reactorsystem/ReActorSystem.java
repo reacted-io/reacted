@@ -9,16 +9,18 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.ServiceRegistryCfg;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.datastructure.MultiMaps;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
-import io.reacted.core.drivers.serviceregistries.ServiceRegistryInit;
+import io.reacted.core.drivers.serviceregistries.ServiceRegistryInitData;
 import io.reacted.core.drivers.system.LoopbackDriver;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
@@ -26,7 +28,6 @@ import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.exceptions.ReActorRegistrationException;
 import io.reacted.core.exceptions.ReActorSystemInitException;
 import io.reacted.core.exceptions.ReActorSystemStructuralInconsistencyError;
-import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.NullMailbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -38,14 +39,17 @@ import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
+import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.DeadLetter;
 import io.reacted.core.reactors.systemreactors.RemotingRoot;
+import io.reacted.core.reactors.systemreactors.SystemMonitor;
 import io.reacted.core.reactors.systemreactors.SystemLogger;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.services.ReActorService;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.slf4j.Logger;
@@ -83,12 +87,6 @@ public class ReActorSystem {
     /* Default dispatcher. Used by system internals */
     public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
     private static final int SYSTEM_TASK_SCHEDULER_POOL_SIZE = 2;
-    private static final ReActorConfig DEFAULT_REACTOR_CONFIG = ReActorConfig.newBuilder()
-                                                                             .setMailBoxProvider(ctx -> new NullMailbox())
-                                                                             .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                                             .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
-                                                                             .setReActorName("ReActorConfigTemplate")
-                                                                             .build();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
     private static final Serializable REACTOR_INIT = new ReActorInit();
@@ -105,7 +103,7 @@ public class ReActorSystem {
     /* All the reactors spawned by a specific reactor system instance */
     private final Map<ReActorId, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
-    private final MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, SubscriptionPolicy,
+    private final MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, TypedSubscriptionPolicy,
                                                          ReActorContext> typedSubscribers;
     private final Map<String, Dispatcher> dispatchers;
     private final ReActorSystemConfig systemConfig;
@@ -135,6 +133,8 @@ public class ReActorSystem {
     @Nullable
     private ReActorRef systemLoggingReActor;
     @Nullable
+    private ReActorRef systemMonitor;
+    @Nullable
     private ReActorSystemRef loopback;
 
     /**
@@ -144,7 +144,7 @@ public class ReActorSystem {
         this.reActorSystemsGates = new ConcurrentHashMap<>();
         this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
         this.reActors = new ConcurrentHashMap<>(10_000_000, 0.5f);
-        this.typedSubscribers = new MultiMaps.CopyOnWriteHashMapOfEnumMaps<>(1000, 0.5f, SubscriptionPolicy.class);
+        this.typedSubscribers = new MultiMaps.CopyOnWriteHashMapOfEnumMaps<>(1000, 0.5f, TypedSubscriptionPolicy.class);
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.systemConfig = Objects.requireNonNull(config);
         this.localReActorSystemId = new ReActorSystemId(config.getReActorSystemName());
@@ -204,6 +204,11 @@ public class ReActorSystem {
     }
 
     /**
+     * @return A {@link ReActorRef} to the {@link SystemMonitor}
+     */
+    public ReActorRef getSystemMonitor() { return Objects.requireNonNull(this.systemMonitor); }
+
+    /**
      * Log an error using the centralized logging system
      *
      * @param errorDescription Sl4j Format error description
@@ -252,7 +257,7 @@ public class ReActorSystem {
     }
 
     //XXX Get all the typed (sniff) subscribers. Used as a cache for the propagations
-    public MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, SubscriptionPolicy,
+    public MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, TypedSubscriptionPolicy,
             ReActorContext> getTypedSubscribers() {
         return typedSubscribers;
     }
@@ -319,7 +324,6 @@ public class ReActorSystem {
     }
 
     //XXX Returns the ReActorSystemReference for a given ReActorSystem/Channel Id.
-    //If a gate for the specific channel is not available, just returns a valid gate, if any
     public Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId, ChannelId decodingDriverChannelId) {
         return Optional.ofNullable(RemotingDriver.isLocalReActorSystem(getLocalReActorSystemId(), reActorSystemId)
                                    ? getLoopback()
@@ -373,33 +377,31 @@ public class ReActorSystem {
     /**
      * Request a reactor reference for the specified service.
      *
-     * @param serviceName   Service name
-     * @param selectionType Type or reference required
+     * @param searchFilter A {@link BasicServiceDiscoverySearchFilter} describing the feature of the services that should be
+     *                     found
      * @return On success a future containing the result of the request
      * On failure a future containing the exception that caused the failure
      */
     public CompletionStage<Try<ServiceDiscoveryReply>>
-    serviceDiscovery(String serviceName, ServiceDiscoveryRequest.SelectionType selectionType) {
-        return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(serviceName),
-                                                               Objects.requireNonNull(selectionType)),
-                                   ServiceDiscoveryReply.class, serviceName + "_" + selectionType.name());
+    serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
+        return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
+                                   ServiceDiscoveryReply.class, searchFilter.getServiceName() + "|" +
+                                                                searchFilter.getSelectionType().name());
     }
 
     /**
      * Request a reactor reference for the specified service
      *
-     * @param serviceName   Service name
-     * @param selectionType Type or reference required
+     * @param searchFilter A {@link BasicServiceDiscoverySearchFilter} describing the feature of the services that should
+     *                     be found
      * @param requester     source of this request
      * @return The outcome of the request
      */
     @SuppressWarnings("UnusedReturnValue")
-    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(String serviceName,
-                                                                 ServiceDiscoveryRequest.SelectionType selectionType,
+    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(ServiceDiscoverySearchFilter searchFilter,
                                                                  ReActorRef requester) {
         return broadcastToLocalSubscribers(Objects.requireNonNull(requester),
-                                           new ServiceDiscoveryRequest(Objects.requireNonNull(serviceName),
-                                                                       Objects.requireNonNull(selectionType)));
+                                           new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)));
     }
 
     /**
@@ -449,7 +451,8 @@ public class ReActorSystem {
      * a failed Try on failure
      */
     public Try<ReActorRef> spawnChild(ReActions reActions, ReActorRef father,
-                                      ReActiveEntityConfig<?, ?> reActorConfig) {
+                                      ReActiveEntityConfig<? extends ReActiveEntityConfig.Builder<?, ?>,
+                                                           ? extends ReActiveEntityConfig<?, ?>> reActorConfig) {
         Try<ReActorRef> spawned = spawn(getLoopback(), Objects.requireNonNull(reActions),
                                         Objects.requireNonNull(father), Objects.requireNonNull(reActorConfig));
         spawned.ifSuccess(initMe -> initMe.tell(getSystemSink(), REACTOR_INIT));
@@ -493,12 +496,6 @@ public class ReActorSystem {
         return reActors.get(Objects.requireNonNull(reActorId));
     }
 
-    /* This is called when the actor has already been stopped by the dispatcher */
-    @SuppressWarnings("UnusedReturnValue")
-    public Optional<CompletionStage<Void>> stopReActor(ReActorId reActorIdToStop) {
-        return getReActor(Objects.requireNonNull(reActorIdToStop)).flatMap(this::unRegisterReActor);
-    }
-
     //Create a ReActorRef with the appropriate driver attached for the specified reactor system / channel id
     //This allow location transparent communication with the ReActorRef identified by the input argument
     public static Set<ReActorRef> getRoutedReference(ReActorRef referenceWithNoRoute, ReActorSystem reActorSystem) {
@@ -506,6 +503,16 @@ public class ReActorSystem {
                             .map(reActorSystemRef -> new ReActorRef(referenceWithNoRoute.getReActorId(),
                                                                     reActorSystemRef))
                             .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
+     * Request a reactor to stop.
+     * @param reActorToStop {@link ReActorId} of the local reactor to stop
+     * @return If the reactor exists, a completion stage that is going to be complete once the hierarchy has been
+     * terminated. An empty optional otherwise
+     */
+    public Optional<CompletionStage<Void>> stop(ReActorId reActorToStop) {
+        return getReActor(reActorToStop).map(ReActorContext::stop);
     }
 
     ScheduledExecutorService getSystemTimerService() { return Objects.requireNonNull(systemTimerService); }
@@ -516,8 +523,8 @@ public class ReActorSystem {
 
     //Runtime update of the typed sniff subscriptions for a given reactor
     //Guarded by structural lock on target actor
-    void updateMessageInterceptors(ReActorContext targetActor, SniffSubscription[] oldIntercepted,
-                                   SniffSubscription[] newIntercepted) {
+    void updateMessageInterceptors(ReActorContext targetActor, TypedSubscription[] oldIntercepted,
+                                   TypedSubscription[] newIntercepted) {
 
         Arrays.stream(oldIntercepted)
               .forEach(sniffSubscription -> typedSubscribers.remove(sniffSubscription.getPayloadType(),
@@ -554,27 +561,22 @@ public class ReActorSystem {
         registerReActorSystemDriver(NullDriver.NULL_DRIVER).orElseSneakyThrow();
         registerNewRoute(ReActorSystemId.NO_REACTORSYSTEM_ID, NullDriver.NULL_DRIVER, new Properties());
         spawnReActorSystemReActors();
-        initAllDispatchers(dispatchers.values(), getSystemSink(), systemConfig.isRecordedExecution());
+        initAllDispatchers(dispatchers.values(), getSystemSink(), systemConfig.isRecordedExecution(),
+                           this::unRegisterReActor);
         initReActorSystemReActors();
         getSystemConfig().getRemotingDrivers().forEach(remotingDriver -> this.registerReActorSystemDriver(remotingDriver)
                                                                              .orElseSneakyThrow());
-        for (ServiceRegistryDriver serviceRegistryDriver : getSystemConfig().getServiceRegistryDrivers()) {
-            var serviceRegistryConfig = ReActorConfig.newBuilder()
-                                                     .setMailBoxProvider(ctx -> new BasicMbox())
-                                                     .setReActorName(serviceRegistryDriver.getClass()
-                                                                                          .getSimpleName())
-                                                     .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                     .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                     .build();
-            var serviceRegistryDriverInit = spawnChild(serviceRegistryDriver.getReActions(), getSystemRemotingRoot(),
-                                                       serviceRegistryConfig)
-                                                .map(reActor -> ServiceRegistryInit.newBuilder()
-                                                                                   .setDriverReActor(reActor)
-                                                                                   .setReActorSystem(this)
-                                                                                   .build())
-                                                .orElseSneakyThrow();
-            serviceRegistryDriver.init(serviceRegistryDriverInit);
-        }
+        initServiceRegistryDrivers(getSystemConfig().getServiceRegistryDrivers());
+    }
+
+    /* SneakyThrows */
+    @SuppressWarnings("RedundantThrows")
+    private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                                                                             ? extends ServiceRegistryCfg<?, ?>>> drivers) throws Exception {
+        ServiceRegistryInitData driverInitData = new ServiceRegistryInitData(getSystemTimerService());
+        drivers.forEach(driver -> driver.onServiceRegistryInit(driverInitData));
+        drivers.forEach( driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())
+                                                .orElseSneakyThrow());
     }
 
     private void initReActorSystemReActors() throws ReActorSystemInitException {
@@ -591,6 +593,7 @@ public class ReActorSystem {
         this.systemRemotingRoot = spawnRemotingRoot(reActorSystemRoot);
         this.systemReActorsRoot = spawnSystemActorsRoot(reActorSystemRoot);
         this.systemDeadLetters = spawnSystemDeadLetters(systemReActorsRoot);
+        this.systemMonitor = spawnSystemMonitor(systemReActorsRoot);
         this.systemLoggingReActor = spawnSystemLogging(systemReActorsRoot);
         this.userReActorsRoot = spawnUserActorsRoot(reActorSystemRoot);
     }
@@ -685,7 +688,11 @@ public class ReActorSystem {
         /* we manually build the first reactor */
         return createReActorCtx(getLoopback(), ReActions.NO_REACTIONS,
                                 new ReActorRef(ReActorId.NO_REACTOR_ID, getLoopback()),
-                                ReActorId.NO_REACTOR_ID, DEFAULT_REACTOR_CONFIG)
+                                ReActorId.NO_REACTOR_ID,
+                                ReActorConfig.newBuilder()
+                                             .setMailBoxProvider(ctx -> new NullMailbox())
+                                             .setReActorName(ReActorId.NO_REACTOR_ID.getReActorName())
+                                             .build())
                 .filter(reActor -> registerNewReActor(reActor, reActor), ReActorRegistrationException::new)
                 .map(ReActorContext::getSelf)
                 .orElseSneakyThrow();
@@ -693,51 +700,58 @@ public class ReActorSystem {
 
     private ReActorRef spawnSystemActorsRoot(ReActorRef rootActor) {
         return spawn(getLoopback(), ReActions.NO_REACTIONS, rootActor,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                           .setReActorName("SystemActorsRoot")
-                                           .build()).orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setMailBoxProvider(ctx -> new NullMailbox())
+                                  .setReActorName("SystemActorsRoot")
+                                  .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnRemotingRoot(ReActorRef rootActor) {
         return spawn(getLoopback(),
                      new RemotingRoot(localReActorSystemId,
                                       getSystemConfig().getRemotingDrivers()).getReActions(),
-                     rootActor, DEFAULT_REACTOR_CONFIG.toBuilder()
-                                                      .setMailBoxProvider(ctx -> new BasicMbox())
-                                                      .setReActorName("SystemRemotingRoot")
-                                                      .build()).orElseSneakyThrow();
+                     rootActor, ReActorConfig.newBuilder()
+                                             .setReActorName("SystemRemotingRoot")
+                                             .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnSystemDeadLetters(ReActorRef systemActorsRoot) {
         return spawn(getLoopback(), DeadLetter.DEADLETTERS, systemActorsRoot,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                           .setReActorName("DeadLetters")
-                                           .setMailBoxProvider(ctx -> new BasicMbox())
-                                           .build()).orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setReActorName("DeadLetters")
+                                  .build()).orElseSneakyThrow();
+    }
+
+    private ReActorRef spawnSystemMonitor(ReActorRef systemActorsRoot) {
+        return spawn(getLoopback(), new SystemMonitor(getSystemConfig().getSystemMonitorRefreshInterval(),
+                                                      getSystemTimerService()).getReActions(),
+                     systemActorsRoot, ReActorConfig.newBuilder()
+                                                    .setReActorName("SystemMonitor")
+                                                    .setMailBoxProvider(ctx -> new NullMailbox())
+                                                    .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnSystemLogging(ReActorRef systemActorsRoot) {
         return spawn(getLoopback(), SystemLogger.SYSTEM_LOGGER, systemActorsRoot,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                           .setReActorName("SystemLogging")
-                                           .setMailBoxProvider(ctx -> new BasicMbox())
-                                           .build()).orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setReActorName("SystemLogging")
+                                  .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnReActorsRoot(ReActorRef systemActorsRoot) {
         return spawn(getLoopback(), ReActions.NO_REACTIONS, systemActorsRoot,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                                  .setReActorName("ReActorSystemRoot")
-                                                  .build())
-                .orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setMailBoxProvider(ctx -> new NullMailbox())
+                                  .setReActorName("ReActorSystemRoot")
+                                  .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnUserActorsRoot(ReActorRef actorSystemRootActor) {
         return spawn(getLoopback(), ReActions.NO_REACTIONS, actorSystemRootActor,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                                  .setReActorName("UserActorsRoot")
-                                                  .build())
-                .orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setMailBoxProvider(ctx -> new NullMailbox())
+                                  .setReActorName("UserActorsRoot")
+                                  .build()).orElseSneakyThrow();
     }
 
     private Try<ReActorRef> spawn(ReActorSystemRef spawnerAs, ReActions reActions,
@@ -782,8 +796,8 @@ public class ReActorSystem {
         stopMe.getStructuralLock().writeLock().lock();
         try {
             if (reActors.remove(stopMe.getSelf().getReActorId()) != null) {
-                updateMessageInterceptors(stopMe, stopMe.getInterceptRules(),
-                                          SniffSubscription.NO_SUBSCRIPTIONS);
+                updateMessageInterceptors(stopMe, stopMe.getTypedSubscriptions(),
+                                          TypedSubscription.NO_SUBSCRIPTIONS);
                 Try.ofRunnable(() -> stopMe.reAct(reActorStop))
                    .ifError(error -> stopMe.logError("Unable to properly stop reactor: ", error));
                 Try.ofRunnable(() -> stopMe.getMbox().close())
@@ -827,7 +841,7 @@ public class ReActorSystem {
                 if (!isSelfAdd) {
                     parentReActorCtx.registerChild(newActor.getSelf());
                 }
-                updateMessageInterceptors(newActor, newActor.getInterceptRules(), newActor.getInterceptRules());
+                updateMessageInterceptors(newActor, newActor.getTypedSubscriptions(), newActor.getTypedSubscriptions());
                 hasBeenRegistered = true;
             }
         } finally {
@@ -841,8 +855,10 @@ public class ReActorSystem {
     }
 
     private static void initAllDispatchers(Collection<Dispatcher> dispatchers, ReActorRef systemSink,
-                                           boolean recordedExecution) {
-        dispatchers.forEach(dispatcher -> dispatcher.initDispatcher(systemSink, recordedExecution));
+                                           boolean recordedExecution,
+                                           Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
+        dispatchers.forEach(dispatcher -> dispatcher.initDispatcher(systemSink, recordedExecution,
+                                                                    reActorUnregister));
     }
 
     private static Stream<Dispatcher> getAllDispatchers(Collection<DispatcherConfig> configuredDispatchers) {

@@ -9,7 +9,7 @@
 package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SniffSubscription;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -73,12 +73,12 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
-                            .setReActorName(requestName + "_" + target.getReActorId().getReActorUuid() + "_" +
-                                            request.getClass().getSimpleName() + "_" +
+                            .setReActorName(requestName + "|" + target.getReActorId().getReActorUUID() + "|" +
+                                            request.getClass().getSimpleName() + "|" +
                                             expectedReplyType.getSimpleName())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                             .setMailBoxProvider(ctx -> new BasicMbox())
-                            .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }
 

@@ -36,7 +36,7 @@ public final class ReActorRef implements Externalizable {
     private static final long HASHCODE_OFFSET = SerializationUtils.getFieldOffset(ReActorRef.class, "hashCode")
                                                                   .orElseSneakyThrow();
     private static final long REACTORSYSTEMREF_OFFSET = SerializationUtils.getFieldOffset(ReActorRef.class,
-                                                                               "reActorSystemRef")
+                                                                                          "reActorSystemRef")
                                                                           .orElseSneakyThrow();
     private static final Duration NO_TIMEOUT = Duration.ofDays(Integer.MAX_VALUE);
 

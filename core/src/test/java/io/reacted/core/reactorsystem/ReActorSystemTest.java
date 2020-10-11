@@ -11,8 +11,8 @@ package io.reacted.core.reactorsystem;
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SniffSubscription;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.system.LoopbackDriver;
@@ -33,6 +33,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.mock;
 
@@ -42,21 +45,21 @@ class ReActorSystemTest {
     private final ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                              .setMailBoxProvider(ctx -> new BasicMbox())
                                                              .setDispatcherName(DISPATCHER_NAME)
-                                                             .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                              .setReActorName("Reactor Name")
                                                              .build();
 
     private final ReActorConfig childReActorConfig = ReActorConfig.newBuilder()
                                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                                   .setDispatcherName(DISPATCHER_NAME)
-                                                                  .setTypedSniffSubscriptions(SniffSubscription.NO_SUBSCRIPTIONS)
+                                                                  .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                                   .setReActorName("Child reactor name")
                                                                   .build();
 
     @BeforeEach
     void prepareReactorSystem() {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(2)
                                                                      .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                                      .addDispatcherConfig(DispatcherConfig.newBuilder()
@@ -109,16 +112,6 @@ class ReActorSystemTest {
     }
 
     @Test
-    void reactorSystemCanStopReactor() {
-        Try<ReActorRef> reActorRef = reActorSystem.spawn(mock(ReActions.class), reActorConfig);
-
-        ReActorId reActorId = reActorRef.get().getReActorId();
-        reActorSystem.stopReActor(reActorId);
-        Assertions.assertFalse(reActorSystem.getReActor(reActorId).isPresent());
-        Assertions.assertTrue(reActorSystem.getReActor(reActorId).isEmpty());
-    }
-
-    @Test
     void reactorSystemCanSpawnNewChild() {
         Try<ReActorRef> fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
 
@@ -144,16 +137,21 @@ class ReActorSystemTest {
 
     @Test
     void reactorSystemCanStopChild() {
-        Try<ReActorRef> fatherActor = reActorSystem.spawn(mock(ReActions.class), reActorConfig);
-        Try<ReActorRef> childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor.get(),
-                                                                childReActorConfig);
+        ReActorRef fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig)
+                                              .orElseSneakyThrow();
+        ReActorRef childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor,
+                                                           childReActorConfig)
+                                               .orElseSneakyThrow();
 
-        Optional<ReActorContext> reActor = reActorSystem.getReActor(fatherActor.get().getReActorId());
+        Optional<ReActorContext> fatherCtx = reActorSystem.getReActor(fatherActor.getReActorId());
 
-        List<ReActorRef> children = reActor.get().getChildren();
+        List<ReActorRef> children = fatherCtx.map(ReActorContext::getChildren)
+                                             .orElse(List.of());
         Assertions.assertEquals(1, children.size());
-
-        reActorSystem.stopReActor(childReActor.get().getReActorId());
+        reActorSystem.stop(childReActor.getReActorId())
+                     .map(CompletionStage::toCompletableFuture)
+                     .ifPresentOrElse(CompletableFuture::join,
+                                      () -> Assertions.fail("No ReActor found!?"));
         Assertions.assertEquals(0, children.size());
     }
 
@@ -163,13 +161,12 @@ class ReActorSystemTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("TR")
                                                    .setDispatcherName("TestDispatcher")
-                                                   .setMailBoxProvider(ctx -> new BasicMbox())
-                                                   .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(Message.class))
                                                    .build();
 
         reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig));
 
-        reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig.toBuilder()
+        reActorSystem.spawn(new MagicTestReActor(1, true, ReActorConfig.fromConfig(reActorConfig)
                                                                        .setReActorName("2nd reactor name")
                                                                        .build()));
 

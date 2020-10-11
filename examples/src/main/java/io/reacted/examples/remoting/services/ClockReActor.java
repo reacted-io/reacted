@@ -9,7 +9,7 @@
 package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
@@ -45,7 +45,7 @@ public class ClockReActor implements ReActor {
                             .setReActorName(ClockReActor.class.getSimpleName())
                             .setDispatcherName(workerDispatcherName)
                             .setMailBoxProvider(ctx -> new BasicMbox())
-                            .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }
 }

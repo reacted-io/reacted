@@ -65,10 +65,11 @@ public class GrpcDriver extends RemotingDriver {
     public void initDriverLoop(ReActorSystem localReActorSystem) {
         DriverCtx grpcDriverCtx = RemotingDriver.REACTOR_SYSTEM_CTX.get();
         this.grpcExecutor = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder()
-                                                             .setNameFormat("Grpc-Executor-" + grpcDriverCtx.getLocalReActorSystem()
-                                                                                                            .getLocalReActorSystemId()
-                                                                                                            .getReActorSystemName() +
-                                                                            "-%d").build());
+                .setUncaughtExceptionHandler((thread, throwable) -> localReActorSystem.logError("Uncaught exception in {}",
+                                                                                                thread.getName(), throwable))
+                .setNameFormat("Grpc-Executor-" + grpcDriverCtx.getLocalReActorSystem().getLocalReActorSystemId()
+                                                               .getReActorSystemName() + "-%d")
+                .build());
         this.grpcExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
         this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.grpcDriverConfig.getHostName(),
                                                         this.grpcDriverConfig.getPort()))
@@ -108,7 +109,7 @@ public class GrpcDriver extends RemotingDriver {
         var grpcLink = this.gatesStubs.computeIfAbsent(dstChannelIdName,
                                                        channelName -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties),
                                                                                                     ReActedLinkGrpc::newStub,
-                                                                                                    stub -> stub.link(GrpcServer.EMPTY_MESSAGE_HANDLER)));
+                                                                                                    stub -> stub.link(getEmptyMessageHandler(getLocalReActorSystem()))));
         var byteArray = new ByteArrayOutputStream();
 
         try(ObjectOutputStream oos = new ObjectOutputStream(byteArray)) {
@@ -148,7 +149,6 @@ public class GrpcDriver extends RemotingDriver {
     }
 
     private static class GrpcServer extends ReActedLinkGrpc.ReActedLinkImplBase {
-        public static final StreamObserver<Empty> EMPTY_MESSAGE_HANDLER = getEmptyMessageHandler();
         private final GrpcDriver thisDriver;
 
         public GrpcServer(GrpcDriver thisDriver) {
@@ -179,13 +179,15 @@ public class GrpcDriver extends RemotingDriver {
         }
     }
 
-    private static StreamObserver<Empty> getEmptyMessageHandler() {
+    private static StreamObserver<Empty> getEmptyMessageHandler(ReActorSystem localReActorSystem) {
         return new StreamObserver<>() {
             @Override
             public void onNext(Empty empty) { }
 
             @Override
-            public void onError(Throwable throwable) { }
+            public void onError(Throwable throwable) {
+                localReActorSystem.logError("Unable to communicate with the remote host", throwable);
+            }
 
             @Override
             public void onCompleted() { }

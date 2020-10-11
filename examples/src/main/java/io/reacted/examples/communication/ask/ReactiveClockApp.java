@@ -9,6 +9,7 @@
 package io.reacted.examples.communication.ask;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
@@ -18,8 +19,6 @@ import io.reacted.patterns.Try;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-
-import static io.reacted.core.config.reactors.SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS;
 
 public class ReactiveClockApp {
     public static void main(String[] args) {
@@ -34,7 +33,7 @@ public class ReactiveClockApp {
                                               })
                                               .build();
         var reactiveClockConfig = ReActorConfig.newBuilder()
-                                               .setTypedSniffSubscriptions(NO_SUBSCRIPTIONS)
+                                               .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                //Accept at maximum 5 messages in the mailbox at the same time,
                                                //drop the ones in excess causing the delivery to fail
                                                .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))

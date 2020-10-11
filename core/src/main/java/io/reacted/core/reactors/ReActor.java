@@ -10,9 +10,4 @@ package io.reacted.core.reactors;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 
-import javax.annotation.Nonnull;
-
-public interface ReActor extends ReActiveEntity {
-    @Nonnull
-    ReActorConfig getConfig();
-}
+public interface ReActor extends GenericReActor<ReActorConfig.Builder, ReActorConfig> { }

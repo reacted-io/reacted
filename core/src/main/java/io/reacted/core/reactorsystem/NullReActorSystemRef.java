@@ -12,7 +12,6 @@ import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.reactors.ReActorId;
 import io.reacted.patterns.Try;
 
 import java.io.IOException;
@@ -39,9 +38,6 @@ public final class NullReActorSystemRef extends ReActorSystemRef {
                                                                                      PayloadT message) {
         return NullDriver.NULL_DRIVER.tell(src, dst,ackingPolicy, message);
     }
-
-    @Override
-    public void stop(ReActorId dst) { }
 
     @Override
     public ReActorSystemId getReActorSystemId() { return ReActorSystemId.NO_REACTORSYSTEM_ID; }

@@ -9,23 +9,23 @@
 package io.reacted.core.messages.services;
 
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystem;
 
 import java.io.Serializable;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class ServiceDiscoveryReply implements Serializable {
     private final Set<ReActorRef> serviceRefs;
-    public ServiceDiscoveryReply(ReActorRef serviceRef, ReActorSystem reActorSystem) {
-        this.serviceRefs = ReActorSystem.getRoutedReference(serviceRef, reActorSystem);
+    public ServiceDiscoveryReply(ReActorRef serviceRef) {
+        this.serviceRefs = Set.of(serviceRef);
     }
-    public ServiceDiscoveryReply(Collection<ReActorRef> serviceRefs, ReActorSystem reActorSystem) {
-        this.serviceRefs = serviceRefs.stream()
-                                      .flatMap(serviceRef -> ReActorSystem.getRoutedReference(serviceRef,
-                                                                                              reActorSystem).stream())
-                                      .collect(Collectors.toUnmodifiableSet());
+    public ServiceDiscoveryReply(Set<ReActorRef> serviceRefs) {
+        this.serviceRefs = Collections.unmodifiableSet(serviceRefs);
     }
     public Set<ReActorRef> getServiceGates() { return serviceRefs; }
+
+    @Override
+    public String toString() {
+        return "ServiceDiscoveryReply{" + "serviceRefs=" + serviceRefs + '}';
+    }
 }
