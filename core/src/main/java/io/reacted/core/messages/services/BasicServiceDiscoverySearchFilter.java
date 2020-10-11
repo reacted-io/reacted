@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @NonNullByDefault
@@ -33,8 +34,7 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
     private final SelectionType selectionType;
     @Nullable
     private final Range<Double> cpuLoad;
-    @Nullable
-    private final ChannelId channelId;
+    private final Set<ChannelId> channelIdSet;
     @Nullable
     private final InetAddress ipAddress;
     @Nullable
@@ -47,20 +47,20 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
         this.cpuLoad = builder.cpuLoad;
         this.ipAddress = builder.ipAddress;
         this.hostName = builder.hostName;
-        this.channelId = builder.channelId;
+        this.channelIdSet = Objects.requireNonNull(builder.channelIdSet);
     }
 
-    public String getServiceName() { return serviceName; }
+    public String getServiceName() { return this.serviceName; }
 
-    public SelectionType getSelectionType() { return selectionType; }
+    public SelectionType getSelectionType() { return this.selectionType; }
 
-    public Optional<Range<Double>> getCpuLoad() { return Optional.ofNullable(cpuLoad); }
+    public Optional<Range<Double>> getCpuLoad() { return Optional.ofNullable(this.cpuLoad); }
 
-    public Optional<ChannelId> getChannelId() { return Optional.ofNullable(channelId); }
+    public Set<ChannelId> getChannelIdSet() { return this.channelIdSet; }
 
-    public Optional<InetAddress> getIpAddress() { return Optional.ofNullable(ipAddress); }
+    public Optional<InetAddress> getIpAddress() { return Optional.ofNullable(this.ipAddress); }
 
-    public Optional<Pattern> getHostName() { return Optional.ofNullable(hostName); }
+    public Optional<Pattern> getHostName() { return Optional.ofNullable(this.hostName); }
 
     public static Builder newBuilder() { return new Builder(); }
 
@@ -84,11 +84,10 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
     }
 
     private boolean isChannelIdMatching(ReActorRef serviceGate) {
-        return getChannelId().map(reqChannelId -> serviceGate.getReActorSystemRef()
-                                                             .getBackingDriver()
-                                                             .getChannelId()
-                                                             .equals(reqChannelId))
-                             .orElse(true);
+        return getChannelIdSet().isEmpty() ||
+               getChannelIdSet().contains(serviceGate.getReActorSystemRef()
+                                                     .getBackingDriver()
+                                                     .getChannelId());
     }
 
     private boolean isIpAddressMatching(@Nullable String ipAddress) {
@@ -108,7 +107,7 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
     @Override
     public String toString() {
         return "BasicServiceDiscoverySearchFilter{" + "serviceName='" + serviceName + '\'' + ", selectionType=" +
-               selectionType + ", cpuLoad=" + cpuLoad + ", channelId=" + channelId + ", ipAddress=" + ipAddress +
+               selectionType + ", cpuLoad=" + cpuLoad + ", channelId=" + channelIdSet + ", ipAddress=" + ipAddress +
                ", hostName=" + hostName + '}';
     }
 
@@ -118,14 +117,13 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
         private SelectionType selectionType = SelectionType.ROUTED;
         @Nullable
         private Range<Double> cpuLoad;
-        @Nullable
-        private ChannelId channelId;
+        private Set<ChannelId> channelIdSet;
         @Nullable
         private InetAddress ipAddress;
         @Nullable
         private Pattern hostName;
 
-        protected Builder() { /* Nothing to do */ }
+        protected Builder() { this.channelIdSet = Set.of(); }
 
         /**
          *
@@ -181,12 +179,17 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
 
         /**
          *
-         * @param channelId Definition of the requested {@link io.reacted.core.config.ChannelId} used to
-         *                    communicate with the discovered {@link io.reacted.core.reactorsystem.ReActorRef}
+         * @param channelIdSet Definition of the requested {@link io.reacted.core.config.ChannelId} used to
+         *                     communicate with the discovered {@link io.reacted.core.reactorsystem.ReActorRef}
          * @return this builder
          */
-        public final Builder setChannelId(@Nullable ChannelId channelId) {
-            this.channelId = channelId;
+        public final Builder setChannelId(Set<ChannelId> channelIdSet) {
+            this.channelIdSet = channelIdSet;
+            return getThis();
+        }
+
+        public final Builder setChannelId(ChannelId channelId) {
+            this.channelIdSet = Set.of(channelId);
             return getThis();
         }
 
