@@ -136,14 +136,10 @@ class ReActorSystemTest {
 
 
     @Test
-    void reactorSystemCanStopChild() throws InterruptedException {
+    void reactorSystemCanStopChild() {
         ReActorRef fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig)
                                               .orElseSneakyThrow();
-        ReActorRef childReActor = reActorSystem.spawnChild(ReActions.newBuilder()
-                                                                    .reAct(String.class,
-                                                                           (raCtx, message) -> raCtx.stop())
-                                                                    .reAct(ReActions::noReAction)
-                                                                    .build(), fatherActor,
+        ReActorRef childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor,
                                                            childReActorConfig)
                                                .orElseSneakyThrow();
 
@@ -152,8 +148,10 @@ class ReActorSystemTest {
         List<ReActorRef> children = fatherCtx.map(ReActorContext::getChildren)
                                              .orElse(List.of());
         Assertions.assertEquals(1, children.size());
-        childReActor.aTell(ReActorRef.NO_REACTOR_REF, "Die now!").toCompletableFuture().join();
-        TimeUnit.MILLISECONDS.sleep(100);
+        reActorSystem.stop(childReActor.getReActorId())
+                     .map(CompletionStage::toCompletableFuture)
+                     .ifPresentOrElse(CompletableFuture::join,
+                                      () -> Assertions.fail("No ReActor found!?"));
         Assertions.assertEquals(0, children.size());
     }
 

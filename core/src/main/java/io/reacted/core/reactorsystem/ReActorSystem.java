@@ -504,6 +504,16 @@ public class ReActorSystem {
                             .collect(Collectors.toUnmodifiableSet());
     }
 
+    /**
+     * Request a reactor to stop.
+     * @param reActorToStop {@link ReActorId} of the local reactor to stop
+     * @return If the reactor exists, a completion stage that is going to be complete once the hierarchy has been
+     * terminated. An empty optional otherwise
+     */
+    public Optional<CompletionStage<Void>> stop(ReActorId reActorToStop) {
+        return getReActor(reActorToStop).map(ReActorContext::stop);
+    }
+
     ScheduledExecutorService getSystemTimerService() { return Objects.requireNonNull(systemTimerService); }
 
     Set<ReActorSystemDriver> getReActorSystemDrivers() {
@@ -524,12 +534,6 @@ public class ReActorSystem {
               .forEach(sniffSubscription -> typedSubscribers.add(sniffSubscription.getPayloadType(),
                                                                  sniffSubscription.getSubscriptionPolicy(),
                                                                  targetActor));
-    }
-
-    /* This is called when the actor has already been stopped by the dispatcher */
-    @SuppressWarnings("UnusedReturnValue")
-    private Optional<CompletionStage<Void>> stopReActor(ReActorId reActorIdToStop) {
-        return getReActor(Objects.requireNonNull(reActorIdToStop)).flatMap(this::unRegisterReActor);
     }
 
     private Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {
@@ -557,7 +561,7 @@ public class ReActorSystem {
         registerNewRoute(ReActorSystemId.NO_REACTORSYSTEM_ID, NullDriver.NULL_DRIVER, new Properties());
         spawnReActorSystemReActors();
         initAllDispatchers(dispatchers.values(), getSystemSink(), systemConfig.isRecordedExecution(),
-                           this::stopReActor);
+                           this::unRegisterReActor);
         initReActorSystemReActors();
         getSystemConfig().getRemotingDrivers().forEach(remotingDriver -> this.registerReActorSystemDriver(remotingDriver)
                                                                              .orElseSneakyThrow());
@@ -851,9 +855,9 @@ public class ReActorSystem {
 
     private static void initAllDispatchers(Collection<Dispatcher> dispatchers, ReActorRef systemSink,
                                            boolean recordedExecution,
-                                           Function<ReActorId, Optional<CompletionStage<Void>>> reActorStopFinisher) {
+                                           Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
         dispatchers.forEach(dispatcher -> dispatcher.initDispatcher(systemSink, recordedExecution,
-                                                                    reActorStopFinisher));
+                                                                    reActorUnregister));
     }
 
     private static Stream<Dispatcher> getAllDispatchers(Collection<DispatcherConfig> configuredDispatchers) {
