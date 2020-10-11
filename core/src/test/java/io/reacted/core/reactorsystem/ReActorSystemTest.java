@@ -163,13 +163,12 @@ class ReActorSystemTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("TR")
                                                    .setDispatcherName("TestDispatcher")
-                                                   .setMailBoxProvider(ctx -> new BasicMbox())
                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(Message.class))
                                                    .build();
 
         reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig));
 
-        reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig.toBuilder()
+        reActorSystem.spawn(new MagicTestReActor(1, true, ReActorConfig.fromConfig(reActorConfig)
                                                                        .setReActorName("2nd reactor name")
                                                                        .build()));
 
