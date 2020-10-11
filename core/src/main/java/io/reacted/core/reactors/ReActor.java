@@ -9,7 +9,6 @@
 package io.reacted.core.reactors;
 
 import io.reacted.core.config.reactors.GenericReActorConfig;
-import io.reacted.core.config.reactors.ReActorConfig;
 
 import javax.annotation.Nonnull;
 

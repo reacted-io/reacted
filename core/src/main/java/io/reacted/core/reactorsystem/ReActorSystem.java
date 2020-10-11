@@ -87,12 +87,6 @@ public class ReActorSystem {
     /* Default dispatcher. Used by system internals */
     public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
     private static final int SYSTEM_TASK_SCHEDULER_POOL_SIZE = 2;
-    private static final ReActorConfig DEFAULT_REACTOR_CONFIG = ReActorConfig.newBuilder()
-                                                                             .setMailBoxProvider(ctx -> new NullMailbox())
-                                                                             .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
-                                                                             .setReActorName("ReActorConfigTemplate")
-                                                                             .build();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
     private static final Serializable REACTOR_INIT = new ReActorInit();
@@ -687,7 +681,11 @@ public class ReActorSystem {
         /* we manually build the first reactor */
         return createReActorCtx(getLoopback(), ReActions.NO_REACTIONS,
                                 new ReActorRef(ReActorId.NO_REACTOR_ID, getLoopback()),
-                                ReActorId.NO_REACTOR_ID, DEFAULT_REACTOR_CONFIG)
+                                ReActorId.NO_REACTOR_ID,
+                                ReActorConfig.newBuilder()
+                                             .setMailBoxProvider(ctx -> new NullMailbox())
+                                             .setReActorName(ReActorId.NO_REACTOR_ID.getReActorName())
+                                             .build())
                 .filter(reActor -> registerNewReActor(reActor, reActor), ReActorRegistrationException::new)
                 .map(ReActorContext::getSelf)
                 .orElseSneakyThrow();
@@ -695,60 +693,58 @@ public class ReActorSystem {
 
     private ReActorRef spawnSystemActorsRoot(ReActorRef rootActor) {
         return spawn(getLoopback(), ReActions.NO_REACTIONS, rootActor,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                           .setReActorName("SystemActorsRoot")
-                                           .build()).orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setMailBoxProvider(ctx -> new NullMailbox())
+                                  .setReActorName("SystemActorsRoot")
+                                  .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnRemotingRoot(ReActorRef rootActor) {
         return spawn(getLoopback(),
                      new RemotingRoot(localReActorSystemId,
                                       getSystemConfig().getRemotingDrivers()).getReActions(),
-                     rootActor, DEFAULT_REACTOR_CONFIG.toBuilder()
-                                                      .setMailBoxProvider(ctx -> new BasicMbox())
-                                                      .setReActorName("SystemRemotingRoot")
-                                                      .build()).orElseSneakyThrow();
+                     rootActor, ReActorConfig.newBuilder()
+                                             .setReActorName("SystemRemotingRoot")
+                                             .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnSystemDeadLetters(ReActorRef systemActorsRoot) {
         return spawn(getLoopback(), DeadLetter.DEADLETTERS, systemActorsRoot,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                           .setReActorName("DeadLetters")
-                                           .setMailBoxProvider(ctx -> new BasicMbox())
-                                           .build()).orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setReActorName("DeadLetters")
+                                  .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnSystemMonitor(ReActorRef systemActorsRoot) {
         return spawn(getLoopback(), new SystemMonitor(getSystemConfig().getSystemMonitorRefreshInterval(),
                                                       getSystemTimerService()).getReActions(),
-                     systemActorsRoot, DEFAULT_REACTOR_CONFIG.toBuilder()
-                                                             .setReActorName("SystemMonitor")
-                                                             .setMailBoxProvider(ctx -> new NullMailbox())
-                                                             .build()).orElseSneakyThrow();
+                     systemActorsRoot, ReActorConfig.newBuilder()
+                                                    .setReActorName("SystemMonitor")
+                                                    .setMailBoxProvider(ctx -> new NullMailbox())
+                                                    .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnSystemLogging(ReActorRef systemActorsRoot) {
         return spawn(getLoopback(), SystemLogger.SYSTEM_LOGGER, systemActorsRoot,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                           .setReActorName("SystemLogging")
-                                           .setMailBoxProvider(ctx -> new BasicMbox())
-                                           .build()).orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setReActorName("SystemLogging")
+                                  .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnReActorsRoot(ReActorRef systemActorsRoot) {
         return spawn(getLoopback(), ReActions.NO_REACTIONS, systemActorsRoot,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                                  .setReActorName("ReActorSystemRoot")
-                                                  .build())
-                .orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setMailBoxProvider(ctx -> new NullMailbox())
+                                  .setReActorName("ReActorSystemRoot")
+                                  .build()).orElseSneakyThrow();
     }
 
     private ReActorRef spawnUserActorsRoot(ReActorRef actorSystemRootActor) {
         return spawn(getLoopback(), ReActions.NO_REACTIONS, actorSystemRootActor,
-                     DEFAULT_REACTOR_CONFIG.toBuilder()
-                                                  .setReActorName("UserActorsRoot")
-                                                  .build())
-                .orElseSneakyThrow();
+                     ReActorConfig.newBuilder()
+                                  .setMailBoxProvider(ctx -> new NullMailbox())
+                                  .setReActorName("UserActorsRoot")
+                                  .build()).orElseSneakyThrow();
     }
 
     private Try<ReActorRef> spawn(ReActorSystemRef spawnerAs, ReActions reActions,

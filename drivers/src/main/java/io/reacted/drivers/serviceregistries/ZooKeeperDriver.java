@@ -26,7 +26,6 @@ import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegist
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
 import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdCancellationRequest;
 import io.reacted.core.messages.services.FilterItem;
-import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
@@ -58,7 +57,6 @@ import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;

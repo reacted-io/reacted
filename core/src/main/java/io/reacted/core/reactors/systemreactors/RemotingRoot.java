@@ -24,7 +24,6 @@ import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegist
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
 import io.reacted.core.messages.services.FilterItem;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
-import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;

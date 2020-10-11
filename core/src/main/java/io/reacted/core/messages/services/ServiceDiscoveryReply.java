@@ -9,13 +9,10 @@
 package io.reacted.core.messages.services;
 
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystem;
 
 import java.io.Serializable;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class ServiceDiscoveryReply implements Serializable {
     private final Set<ReActorRef> serviceRefs;

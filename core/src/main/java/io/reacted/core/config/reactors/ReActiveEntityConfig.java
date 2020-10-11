@@ -68,16 +68,6 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         return reActiveEntityType;
     }
 
-    protected BuilderT fillBuilder(Builder<BuilderT, BuiltT> realBuilder) {
-        return realBuilder.setDispatcherName(getDispatcherName())
-                          .setMailBoxProvider(getMailBoxProvider())
-                          .setReActorName(getReActorName())
-                          .setTypedSubscriptions(getTypedSniffSubscriptions())
-                          .setEntityType(getReActiveEntityType());
-    }
-
-    abstract public Builder<BuilderT, BuiltT> toBuilder();
-
     public abstract static class Builder<BuilderT, BuiltT>
             extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;

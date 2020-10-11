@@ -91,9 +91,9 @@ public class ReActorService implements ReActiveEntity {
                 String routeeNewName = String.format(REACTOR_SERVICE_NAME_FORMAT,
                                                      reActorServiceConfig.getReActorName(),
                                                      routeeCfg.getReActorName(), currentRoutee);
-                ReActorConfig newRouteeCfg = routeeCfg.toBuilder()
-                                                      .setReActorName(routeeNewName)
-                                                      .build();
+                ReActorConfig newRouteeCfg = ReActorConfig.fromConfig(routeeCfg)
+                                                          .setReActorName(routeeNewName)
+                                                          .build();
                 spawnRoutee(raCtx, routeeReActions, newRouteeCfg);
             } catch (Throwable routeeSpawnError) {
                 raCtx.logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);

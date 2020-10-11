@@ -17,12 +17,15 @@ public class ReActorConfig extends GenericReActorConfig<ReActorConfig.Builder, R
         super(reActorConfig);
     }
 
-    @Override
-    public Builder toBuilder() {
-        return fillBuilder(newBuilder());
-    }
-
     public static Builder newBuilder() { return new Builder(); }
+
+    public static Builder fromConfig(ReActorConfig reActorConfig) {
+        return newBuilder().setMailBoxProvider(reActorConfig.getMailBoxProvider())
+                           .setDispatcherName(reActorConfig.getDispatcherName())
+                           .setEntityType(reActorConfig.getReActiveEntityType())
+                           .setTypedSubscriptions(reActorConfig.getTypedSniffSubscriptions())
+                           .setReActorName(reActorConfig.getReActorName());
+    }
 
     public static class Builder extends GenericReActorConfig.Builder<Builder, ReActorConfig> {
         protected Builder() { }

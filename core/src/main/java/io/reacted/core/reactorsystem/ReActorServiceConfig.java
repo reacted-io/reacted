@@ -41,11 +41,6 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
         return loadBalancingPolicy;
     }
 
-    @Override
-    public ReActiveEntityConfig.Builder<Builder, ReActorServiceConfig> toBuilder() {
-        return fillBuilder(newBuilder());
-    }
-
     public static Builder newBuilder() {
         return new Builder();
     }

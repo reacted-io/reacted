@@ -10,7 +10,6 @@ package io.reacted.core.config.drivers;
 
 import io.reacted.core.config.reactors.GenericReActorConfig;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
-import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
@@ -30,12 +29,6 @@ public abstract class ServiceRegistryDriverCfg<BuilderT extends ServiceRegistryD
 
     @NonNullByDefault
     public final Properties getServiceRegistryProperties() { return serviceRegistryProperties; }
-
-    @Nonnull
-    @Override
-    protected BuilderT fillBuilder(@Nonnull ReActiveEntityConfig.Builder<BuilderT, BuiltT> realBuilder) {
-        return super.fillBuilder(realBuilder).setServiceRegistryProperties(getServiceRegistryProperties());
-    }
 
     public abstract static class Builder<BuilderT, BuiltT> extends GenericReActorConfig.Builder<BuilderT, BuiltT> {
         private Properties serviceRegistryProperties;

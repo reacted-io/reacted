@@ -12,7 +12,6 @@ import com.google.common.collect.Range;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.SelectionType;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;

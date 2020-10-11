@@ -8,7 +8,6 @@
 
 package io.reacted.core.config.reactors;
 
-import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.patterns.NonNullByDefault;
 
 @NonNullByDefault
