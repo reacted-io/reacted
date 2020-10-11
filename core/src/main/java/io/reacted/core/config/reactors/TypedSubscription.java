@@ -15,7 +15,8 @@ public class TypedSubscription {
     private final TypedSubscriptionPolicy typedSubscriptionPolicy;
     private final Class<? extends Serializable> payloadType;
 
-    public TypedSubscription(TypedSubscriptionPolicy typedSubscriptionPolicy, Class<? extends Serializable> sniffedPayloadType) {
+    public TypedSubscription(TypedSubscriptionPolicy typedSubscriptionPolicy,
+                             Class<? extends Serializable> sniffedPayloadType) {
         this.typedSubscriptionPolicy = typedSubscriptionPolicy;
         this.payloadType = sniffedPayloadType;
     }

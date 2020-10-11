@@ -14,7 +14,10 @@ import java.io.Serializable;
 
 @NonNullByDefault
 public enum TypedSubscriptionPolicy {
-    LOCAL, REMOTE;
+    /** Messages will be intercepted if sent within the local ReactorSystem */
+    LOCAL,
+    /** Messages will be intercepted if received from a remote ReActorSystem */
+    REMOTE;
     public boolean isLocal() { return this != REMOTE; }
     public boolean isRemote() { return this != LOCAL; }
 
