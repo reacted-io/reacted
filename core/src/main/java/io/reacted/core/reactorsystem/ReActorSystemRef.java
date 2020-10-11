@@ -67,10 +67,6 @@ public class ReActorSystemRef implements Externalizable {
         return this.backingDriver.tell(src, dst, ackingPolicy, message);
     }
 
-    public void stop(ReActorId dst) {
-        this.backingDriver.stop(dst);
-    }
-
     public ReActorSystemId getReActorSystemId() {
         return this.reActorSystemId;
     }

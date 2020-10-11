@@ -26,9 +26,12 @@ import io.reacted.patterns.UnChecked;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
 @NonNullByDefault
 public class LoopbackDriver extends ReActorSystemDriver {
@@ -38,12 +41,9 @@ public class LoopbackDriver extends ReActorSystemDriver {
     private final ReActorSystem localReActorSystem;
 
     public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver localDriver) {
-        this.localDriver = localDriver;
-        this.localReActorSystem = reActorSystem;
+        this.localDriver = Objects.requireNonNull(localDriver);
+        this.localReActorSystem = Objects.requireNonNull(reActorSystem);
     }
-
-    @Override
-    public void stop(ReActorId dst) { localReActorSystem.stopReActor(dst); }
 
     @Override
     public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>

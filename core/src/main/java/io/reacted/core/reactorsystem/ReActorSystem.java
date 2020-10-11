@@ -495,12 +495,6 @@ public class ReActorSystem {
         return reActors.get(Objects.requireNonNull(reActorId));
     }
 
-    /* This is called when the actor has already been stopped by the dispatcher */
-    @SuppressWarnings("UnusedReturnValue")
-    public Optional<CompletionStage<Void>> stopReActor(ReActorId reActorIdToStop) {
-        return getReActor(Objects.requireNonNull(reActorIdToStop)).flatMap(this::unRegisterReActor);
-    }
-
     //Create a ReActorRef with the appropriate driver attached for the specified reactor system / channel id
     //This allow location transparent communication with the ReActorRef identified by the input argument
     public static Set<ReActorRef> getRoutedReference(ReActorRef referenceWithNoRoute, ReActorSystem reActorSystem) {
@@ -532,6 +526,12 @@ public class ReActorSystem {
                                                                  targetActor));
     }
 
+    /* This is called when the actor has already been stopped by the dispatcher */
+    @SuppressWarnings("UnusedReturnValue")
+    private Optional<CompletionStage<Void>> stopReActor(ReActorId reActorIdToStop) {
+        return getReActor(Objects.requireNonNull(reActorIdToStop)).flatMap(this::unRegisterReActor);
+    }
+
     private Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {
         return RemotingDriver.isLocalReActorSystem(getLocalReActorSystemId(), reActorSystemId)
                ? List.of(getLoopback())
@@ -556,7 +556,8 @@ public class ReActorSystem {
         registerReActorSystemDriver(NullDriver.NULL_DRIVER).orElseSneakyThrow();
         registerNewRoute(ReActorSystemId.NO_REACTORSYSTEM_ID, NullDriver.NULL_DRIVER, new Properties());
         spawnReActorSystemReActors();
-        initAllDispatchers(dispatchers.values(), getSystemSink(), systemConfig.isRecordedExecution());
+        initAllDispatchers(dispatchers.values(), getSystemSink(), systemConfig.isRecordedExecution(),
+                           this::stopReActor);
         initReActorSystemReActors();
         getSystemConfig().getRemotingDrivers().forEach(remotingDriver -> this.registerReActorSystemDriver(remotingDriver)
                                                                              .orElseSneakyThrow());
@@ -849,8 +850,10 @@ public class ReActorSystem {
     }
 
     private static void initAllDispatchers(Collection<Dispatcher> dispatchers, ReActorRef systemSink,
-                                           boolean recordedExecution) {
-        dispatchers.forEach(dispatcher -> dispatcher.initDispatcher(systemSink, recordedExecution));
+                                           boolean recordedExecution,
+                                           Function<ReActorId, Optional<CompletionStage<Void>>> reActorStopFinisher) {
+        dispatchers.forEach(dispatcher -> dispatcher.initDispatcher(systemSink, recordedExecution,
+                                                                    reActorStopFinisher));
     }
 
     private static Stream<Dispatcher> getAllDispatchers(Collection<DispatcherConfig> configuredDispatchers) {

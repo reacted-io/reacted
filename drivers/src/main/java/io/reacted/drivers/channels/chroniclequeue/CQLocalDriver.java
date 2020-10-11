@@ -59,9 +59,6 @@ public class CQLocalDriver extends LocalDriver {
     }
 
     @Override
-    public void stop(ReActorId dst) { }
-
-    @Override
     public ChannelId getChannelId() {
         return new ChannelId(ChannelId.ChannelType.LOCAL_CHRONICLE_QUEUE, driverConfig.getChannelName());
     }

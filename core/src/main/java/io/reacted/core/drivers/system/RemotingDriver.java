@@ -34,10 +34,6 @@ public abstract class RemotingDriver extends ReActorSystemDriver {
         return CompletableFuture.completedFuture(sendMessage(destination, message));
     }
 
-    @Override
-    public final void stop(ReActorId reActorId) {
-    }
-
     /**
      * Sends a message over a remoting channel
      *

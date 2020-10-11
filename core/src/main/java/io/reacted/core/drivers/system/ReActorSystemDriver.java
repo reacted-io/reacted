@@ -63,7 +63,6 @@ public abstract class ReActorSystemDriver {
     abstract public Properties getChannelProperties();
     abstract public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message);
     abstract public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message);
-    abstract public void stop(ReActorId dst);
     abstract public boolean channelRequiresDeliveryAck();
     /**
      * @param src source of the message

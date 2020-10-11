@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.mock;
 
@@ -111,16 +112,6 @@ class ReActorSystemTest {
     }
 
     @Test
-    void reactorSystemCanStopReactor() {
-        Try<ReActorRef> reActorRef = reActorSystem.spawn(mock(ReActions.class), reActorConfig);
-
-        ReActorId reActorId = reActorRef.get().getReActorId();
-        reActorSystem.stopReActor(reActorId);
-        Assertions.assertFalse(reActorSystem.getReActor(reActorId).isPresent());
-        Assertions.assertTrue(reActorSystem.getReActor(reActorId).isEmpty());
-    }
-
-    @Test
     void reactorSystemCanSpawnNewChild() {
         Try<ReActorRef> fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
 
@@ -145,10 +136,14 @@ class ReActorSystemTest {
 
 
     @Test
-    void reactorSystemCanStopChild() {
+    void reactorSystemCanStopChild() throws InterruptedException {
         ReActorRef fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig)
                                               .orElseSneakyThrow();
-        ReActorRef childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor,
+        ReActorRef childReActor = reActorSystem.spawnChild(ReActions.newBuilder()
+                                                                    .reAct(String.class,
+                                                                           (raCtx, message) -> raCtx.stop())
+                                                                    .reAct(ReActions::noReAction)
+                                                                    .build(), fatherActor,
                                                            childReActorConfig)
                                                .orElseSneakyThrow();
 
@@ -157,12 +152,9 @@ class ReActorSystemTest {
         List<ReActorRef> children = fatherCtx.map(ReActorContext::getChildren)
                                              .orElse(List.of());
         Assertions.assertEquals(1, children.size());
-
-        reActorSystem.stopReActor(childReActor.getReActorId())
-                     .map(CompletionStage::toCompletableFuture)
-                     .ifPresentOrElse(onStop -> { onStop.join();
-                                                  Assertions.assertEquals(0, children.size()); },
-                                      () -> Assertions.fail("No Reactor found!?"));
+        childReActor.aTell(ReActorRef.NO_REACTOR_REF, "Die now!").toCompletableFuture().join();
+        TimeUnit.MILLISECONDS.sleep(100);
+        Assertions.assertEquals(0, children.size());
     }
 
     @Test

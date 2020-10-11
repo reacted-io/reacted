@@ -56,9 +56,6 @@ public final class SystemLocalDrivers {
         public CompletionStage<Try<Void>> cleanDriverLoop() { return CompletableFuture.completedFuture(Try.VOID); }
 
         @Override
-        public void stop(ReActorId reActorId) { }
-
-        @Override
         public UnChecked.CheckedRunnable getDriverLoop() { return () -> {}; }
 
         @Override
@@ -97,9 +94,6 @@ public final class SystemLocalDrivers {
 
             @Override
             public void initDriverLoop(ReActorSystem localReActorSystem) { logFile.flush();}
-
-            @Override
-            public void stop(ReActorId reActorId) { }
 
             @Override
             public CompletionStage<Try<Void>> cleanDriverLoop() {
@@ -155,9 +149,6 @@ public final class SystemLocalDrivers {
 
             @Override
             public void initDriverLoop(ReActorSystem localReActorSystem) { logFile.flush();}
-
-            @Override
-            public void stop(ReActorId reActorId) { }
 
             @Override
             public CompletionStage<Try<Void>> cleanDriverLoop() {

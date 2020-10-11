@@ -41,9 +41,6 @@ public final class NullReActorSystemRef extends ReActorSystemRef {
     }
 
     @Override
-    public void stop(ReActorId dst) { }
-
-    @Override
     public ReActorSystemId getReActorSystemId() { return ReActorSystemId.NO_REACTORSYSTEM_ID; }
 
     @Override

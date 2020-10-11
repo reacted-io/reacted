@@ -75,9 +75,6 @@ public final class NullDriver extends ReActorSystemDriver {
     public boolean channelRequiresDeliveryAck() { return false; }
 
     @Override
-    public void stop(ReActorId dst) { }
-
-    @Override
     public ChannelId getChannelId() {
         return ChannelId.NO_CHANNEL_ID;
     }
