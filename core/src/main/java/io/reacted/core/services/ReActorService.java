@@ -71,8 +71,7 @@ public class ReActorService implements ReActiveEntity {
     private void stopService(ReActorContext raCtx, ReActorStop stop) {
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new ServiceCancellationRequest(raCtx.getReActorSystem()
-                                                                        .getLocalReActorSystemId(),
+             .tell(raCtx.getSelf(), new ServiceCancellationRequest(raCtx.getReActorSystem().getLocalReActorSystemId(),
                                                                    reActorServiceConfig.getReActorName()));
     }
 
