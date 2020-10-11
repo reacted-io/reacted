@@ -27,7 +27,6 @@ import io.reacted.core.messages.services.FilterItem;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 

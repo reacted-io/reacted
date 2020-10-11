@@ -15,7 +15,6 @@ import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
