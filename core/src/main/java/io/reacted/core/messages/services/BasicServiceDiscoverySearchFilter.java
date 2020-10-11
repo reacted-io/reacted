@@ -106,6 +106,13 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
                             .orElse(true);
     }
 
+    @Override
+    public String toString() {
+        return "BasicServiceDiscoverySearchFilter{" + "serviceName='" + serviceName + '\'' + ", selectionType=" +
+               selectionType + ", cpuLoad=" + cpuLoad + ", channelId=" + channelId + ", ipAddress=" + ipAddress +
+               ", hostName=" + hostName + '}';
+    }
+
     public static class Builder extends InheritableBuilder.Builder<Builder, BasicServiceDiscoverySearchFilter> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String serviceName;

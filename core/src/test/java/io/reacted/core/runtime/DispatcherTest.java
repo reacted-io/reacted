@@ -10,7 +10,7 @@ package io.reacted.core.runtime;
 
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -48,7 +48,7 @@ class DispatcherTest {
                                        .setParentActor(parentReactor)
                                        .setReActorSystem(mock(ReActorSystem.class))
                                        .setReactorRef(reactor)
-                                       .setInterceptRules(SubscriptionPolicy.LOCAL.forType(String.class))
+                                       .setInterceptRules(TypedSubscriptionPolicy.LOCAL.forType(String.class))
                                        .setReActions(ReActions.NO_REACTIONS)
                                        .build();
     }

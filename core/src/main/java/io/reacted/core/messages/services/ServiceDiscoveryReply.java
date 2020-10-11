@@ -26,4 +26,9 @@ public class ServiceDiscoveryReply implements Serializable {
         this.serviceRefs = Collections.unmodifiableSet(serviceRefs);
     }
     public Set<ReActorRef> getServiceGates() { return serviceRefs; }
+
+    @Override
+    public String toString() {
+        return "ServiceDiscoveryReply{" + "serviceRefs=" + serviceRefs + '}';
+    }
 }

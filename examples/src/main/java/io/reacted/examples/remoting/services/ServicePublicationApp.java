@@ -9,10 +9,11 @@
 package io.reacted.examples.remoting.services;
 
 import com.google.common.base.Strings;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.SystemMonitorReport;
+import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.ReActorService;
@@ -37,16 +38,18 @@ public class ServicePublicationApp {
         var clientReActorSystem = "CLIENT_REACTORSYSTEM";
         var clientGatePort = 54321;
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(serverReActorSystem,
-                                                                      SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                                      SystemLocalDrivers.getDirectCommunicationSimplifiedLogger("/tmp/server"),
                                                                       List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
+                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                     .setServiceRegistryProperties(serviceRegistryProperties)
                                                                                                                     .setReActorName("ZooKeeperDriver")
                                                                                                                     .build())),
                                                                       List.of(new GrpcDriver(ExampleUtils.getGrpcDriverCfg(serverGatePort))));
 
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(clientReActorSystem,
-                                                                      SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                                      SystemLocalDrivers.getDirectCommunicationSimplifiedLogger("/tmp/client"),
                                                                       List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
+                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                     .setServiceRegistryProperties(serviceRegistryProperties)
                                                                                                                     .setReActorName("ZooKeeperDriver")
                                                                                                                     .build())),
@@ -71,18 +74,18 @@ public class ServicePublicationApp {
                                              .setMailBoxProvider(ctx -> new BasicMbox())
                                              //We do not need to listen for ServiceDiscoveryRequests, we have the
                                              //Service Registry now
-                                             .setTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class))
+                                             .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class))
                                              .setRouteeProvider(() -> new ClockReActor(serviceDispatcherName))
                                              .build();
 
         //Create a service. It will be published automatically on the service registry
         server.spawnService(serviceCfg).orElseSneakyThrow();
         //Give some time for the service propagation
-        TimeUnit.SECONDS.sleep(1000);
+        TimeUnit.SECONDS.sleep(10);
         //Create a reactor in CLIENT reactor system that will query the service exported in SERVER
         //All the communication between the two reactor systems will be done using a GRPC channel
         client.spawn(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
-        TimeUnit.SECONDS.sleep(100000);
+        TimeUnit.SECONDS.sleep(10);
         server.shutDown();
     }
 }

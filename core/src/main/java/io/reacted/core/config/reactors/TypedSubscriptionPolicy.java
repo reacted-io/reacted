@@ -13,7 +13,7 @@ import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 
 @NonNullByDefault
-public enum SubscriptionPolicy {
+public enum TypedSubscriptionPolicy {
     LOCAL, REMOTE;
     public boolean isLocal() { return this != REMOTE; }
     public boolean isRemote() { return this != LOCAL; }

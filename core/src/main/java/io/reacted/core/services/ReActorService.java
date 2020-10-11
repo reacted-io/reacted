@@ -9,7 +9,7 @@
 package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -32,9 +32,6 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-
-import static io.reacted.core.services.SelectionType.DIRECT;
-import static io.reacted.core.services.SelectionType.ROUTED;
 
 public class ReActorService implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
@@ -81,7 +78,7 @@ public class ReActorService implements ReActiveEntity {
 
     private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
         //All the services can receive service stats
-        raCtx.addTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class));
+        raCtx.addTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class));
 
         //spawn the minimum number or routees
         for (int currentRoutee = 0; currentRoutee < reActorServiceConfig.getRouteesNum(); currentRoutee++) {
@@ -108,18 +105,18 @@ public class ReActorService implements ReActiveEntity {
              .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), this.serviceInfo));
     }
 
-    private void serviceDiscovery(ReActorContext routerActorCtx, ServiceDiscoveryRequest request) {
-        if (!request.getSearchFilter().matches(this.serviceInfo)) {
+    private void serviceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
+        if (!request.getSearchFilter().matches(this.serviceInfo, raCtx.getSelf())) {
             return;
         }
 
         Optional<ReActorRef> serviceSelection = switch (request.getSearchFilter().getSelectionType()) {
-            case ROUTED -> Optional.of(routerActorCtx.getSelf());
-            case DIRECT -> selectRoutee(routerActorCtx, msgReceived);
+            case ROUTED -> Optional.of(raCtx.getSelf());
+            case DIRECT -> selectRoutee(raCtx, msgReceived);
         };
 
         serviceSelection.map(ServiceDiscoveryReply::new)
-                        .ifPresent(discoveryReply -> routerActorCtx.getSender().tell(routerActorCtx.getSelf(),
+                        .ifPresent(discoveryReply -> raCtx.getSender().tell(raCtx.getSelf(),
                                                                                      discoveryReply));
     }
 

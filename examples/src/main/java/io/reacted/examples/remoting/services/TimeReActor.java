@@ -51,8 +51,9 @@ public class TimeReActor implements ReActor {
         raCtx.getReActorSystem().serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                    .setServiceName(serviceToQuery)
                                                                                    .setSelectionType(SelectionType.DIRECT)
-                                                                                   .build(),
-                                                  raCtx.getSelf());
+                                                                                   .build(), raCtx.getSelf())
+             .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                                                                .ifError(error -> raCtx.logError("Error discovering service", error)));
     }
 
     private void onServiceDiscoveryReply(ReActorContext raCtx, ServiceDiscoveryReply serviceDiscoveryReply) {

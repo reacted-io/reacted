@@ -12,7 +12,7 @@ import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.TypedSubscription;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
@@ -98,7 +98,7 @@ public class ServicePublicationApp {
                                                      .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
                                                      //The service will intercept all the Service Discovery Requests
                                                      //generated locally to this reactor system
-                                                     .setTypedSubscriptions(SubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                     .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                      .build();
         reActorSystem.spawnService(clockServiceConfig).orElseSneakyThrow();
         System.out.println("Service published");

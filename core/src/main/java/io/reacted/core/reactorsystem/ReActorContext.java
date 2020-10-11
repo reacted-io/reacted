@@ -9,12 +9,10 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
 import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.messages.reactors.SystemMonitorReport;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;

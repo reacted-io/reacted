@@ -12,15 +12,15 @@ import java.io.Serializable;
 
 public class TypedSubscription {
     public static final TypedSubscription[] NO_SUBSCRIPTIONS = new TypedSubscription[]{};
-    private final SubscriptionPolicy subscriptionPolicy;
+    private final TypedSubscriptionPolicy typedSubscriptionPolicy;
     private final Class<? extends Serializable> payloadType;
 
-    public TypedSubscription(SubscriptionPolicy subscriptionPolicy, Class<? extends Serializable> sniffedPayloadType) {
-        this.subscriptionPolicy = subscriptionPolicy;
+    public TypedSubscription(TypedSubscriptionPolicy typedSubscriptionPolicy, Class<? extends Serializable> sniffedPayloadType) {
+        this.typedSubscriptionPolicy = typedSubscriptionPolicy;
         this.payloadType = sniffedPayloadType;
     }
 
-    public SubscriptionPolicy getSubscriptionPolicy() { return subscriptionPolicy; }
+    public TypedSubscriptionPolicy getSubscriptionPolicy() { return typedSubscriptionPolicy; }
 
     public Class<? extends Serializable> getPayloadType() { return payloadType; }
 }

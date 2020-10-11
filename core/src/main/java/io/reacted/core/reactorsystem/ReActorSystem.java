@@ -17,7 +17,7 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryInitData;
@@ -109,7 +109,7 @@ public class ReActorSystem {
     /* All the reactors spawned by a specific reactor system instance */
     private final Map<ReActorId, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
-    private final MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, SubscriptionPolicy,
+    private final MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, TypedSubscriptionPolicy,
                                                          ReActorContext> typedSubscribers;
     private final Map<String, Dispatcher> dispatchers;
     private final ReActorSystemConfig systemConfig;
@@ -150,7 +150,7 @@ public class ReActorSystem {
         this.reActorSystemsGates = new ConcurrentHashMap<>();
         this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
         this.reActors = new ConcurrentHashMap<>(10_000_000, 0.5f);
-        this.typedSubscribers = new MultiMaps.CopyOnWriteHashMapOfEnumMaps<>(1000, 0.5f, SubscriptionPolicy.class);
+        this.typedSubscribers = new MultiMaps.CopyOnWriteHashMapOfEnumMaps<>(1000, 0.5f, TypedSubscriptionPolicy.class);
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.systemConfig = Objects.requireNonNull(config);
         this.localReActorSystemId = new ReActorSystemId(config.getReActorSystemName());
@@ -263,7 +263,7 @@ public class ReActorSystem {
     }
 
     //XXX Get all the typed (sniff) subscribers. Used as a cache for the propagations
-    public MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, SubscriptionPolicy,
+    public MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, TypedSubscriptionPolicy,
             ReActorContext> getTypedSubscribers() {
         return typedSubscribers;
     }

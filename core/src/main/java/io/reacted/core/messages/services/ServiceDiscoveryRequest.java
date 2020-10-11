@@ -19,6 +19,5 @@ public class ServiceDiscoveryRequest implements Serializable {
     public ServiceDiscoveryRequest(ServiceDiscoverySearchFilter searchFilter) {
         this.searchFilter = searchFilter;
     }
-
     public ServiceDiscoverySearchFilter getSearchFilter() { return searchFilter; }
 }

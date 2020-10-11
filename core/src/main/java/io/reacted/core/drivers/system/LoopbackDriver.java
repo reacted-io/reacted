@@ -9,7 +9,7 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.AckingPolicy;
@@ -127,7 +127,7 @@ public class LoopbackDriver extends ReActorSystemDriver {
 
     private void propagateMessage(ReActorId originalDst, Serializable msgPayload, ReActorRef src) {
         var subscribers = localReActorSystem.getTypedSubscribers().get(msgPayload.getClass(),
-                                                                       SubscriptionPolicy.LOCAL);
+                                                                       TypedSubscriptionPolicy.LOCAL);
         if (!subscribers.isEmpty()) {
             localReActorSystem.getMsgFanOutPool()
                               .submit(() -> propagateToSubscribers(localDriver, subscribers, originalDst,

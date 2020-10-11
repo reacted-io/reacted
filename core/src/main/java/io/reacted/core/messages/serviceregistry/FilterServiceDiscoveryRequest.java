@@ -8,6 +8,7 @@
 
 package io.reacted.core.messages.serviceregistry;
 
+import com.google.common.base.Objects;
 import io.reacted.core.messages.services.FilterItem;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.patterns.NonNullByDefault;
@@ -34,5 +35,25 @@ public class FilterServiceDiscoveryRequest implements Serializable {
 
     public Collection<FilterItem> getServiceDiscoveryResult() {
         return serviceDiscoveryResult;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) { return true; }
+        if (o == null || getClass() != o.getClass()) { return false; }
+        FilterServiceDiscoveryRequest that = (FilterServiceDiscoveryRequest) o;
+        return Objects.equal(getFilteringRuleToApply(), that.getFilteringRuleToApply()) &&
+               Objects.equal(getServiceDiscoveryResult(), that.getServiceDiscoveryResult());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(getFilteringRuleToApply(), getServiceDiscoveryResult());
+    }
+
+    @Override
+    public String toString() {
+        return "FilterServiceDiscoveryRequest{" + "filteringRuleToApply=" + filteringRuleToApply + ", " +
+               "serviceDiscoveryResult=" + serviceDiscoveryResult + '}';
     }
 }
