@@ -12,7 +12,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.EventExecutionAttempt;
-import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;

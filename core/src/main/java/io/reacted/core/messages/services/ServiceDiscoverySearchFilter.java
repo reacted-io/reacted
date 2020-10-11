@@ -11,9 +11,10 @@ package io.reacted.core.messages.services;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.services.SelectionType;
 
+import java.io.Serializable;
 import java.util.Properties;
 
-public interface ServiceDiscoverySearchFilter {
+public interface ServiceDiscoverySearchFilter extends Serializable {
 
     String FIELD_NAME_SERVICE_NAME = "serviceName";
     String FIELD_NAME_CPU_LOAD = "cpuLoad";

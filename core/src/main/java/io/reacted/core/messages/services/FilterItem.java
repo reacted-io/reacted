@@ -11,10 +11,12 @@ package io.reacted.core.messages.services;
 import com.google.common.base.Objects;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
+
+import java.io.Serializable;
 import java.util.Properties;
 
 @NonNullByDefault
-public class FilterItem {
+public class FilterItem implements Serializable {
     private final Properties serviceProperties;
     private final ReActorRef serviceGate;
 

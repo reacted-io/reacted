@@ -15,7 +15,6 @@ import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.reactors.ReActorId;
 import io.reacted.patterns.Try;
 
 import javax.annotation.Nullable;

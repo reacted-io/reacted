@@ -8,12 +8,11 @@
 
 package io.reacted.core.messages.services;
 import io.reacted.patterns.NonNullByDefault;
-import java.io.Serializable;
 
 @NonNullByDefault
 public class BasicServiceDiscoverySearchFilter extends GenericServiceDiscoverySearchFilter<BasicServiceDiscoverySearchFilter.Builder,
                                                                                            BasicServiceDiscoverySearchFilter>
-        implements Serializable, ServiceDiscoverySearchFilter {
+        implements ServiceDiscoverySearchFilter {
 
     private BasicServiceDiscoverySearchFilter(Builder builder) {
         super(builder);

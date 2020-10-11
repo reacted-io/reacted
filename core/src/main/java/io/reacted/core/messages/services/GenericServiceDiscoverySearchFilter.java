@@ -17,7 +17,6 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.net.InetAddress;
 import java.util.Objects;
 import java.util.Optional;
@@ -27,8 +26,8 @@ import java.util.regex.Pattern;
 
 @NonNullByDefault
 public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends GenericServiceDiscoverySearchFilter.Builder<BuilderT, BuiltT>,
-                                                          BuiltT extends GenericServiceDiscoverySearchFilter<BuilderT, BuiltT>>
-        extends InheritableBuilder<BuilderT, BuiltT> implements Serializable, ServiceDiscoverySearchFilter {
+                                                          BuiltT extends GenericServiceDiscoverySearchFilter<BuilderT, BuiltT> & ServiceDiscoverySearchFilter>
+        extends InheritableBuilder<BuilderT, BuiltT> implements ServiceDiscoverySearchFilter {
 
     private final String serviceName;
     private final SelectionType selectionType;

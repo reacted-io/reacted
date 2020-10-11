@@ -27,11 +27,9 @@ import io.reacted.patterns.UnChecked;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 
 @NonNullByDefault
 public class LoopbackDriver extends ReActorSystemDriver {
