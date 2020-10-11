@@ -66,9 +66,9 @@ public class BasicServiceDiscoverySearchFilter extends InheritableBuilder<BasicS
 
     @Override
     public boolean matches(Properties serviceInfos, ReActorRef serviceGate) {
-        return isServiceNameMatching(serviceInfos.getProperty(FIELD_NAME_SERVICE_NAME)) &&
+        return isServiceNameMatching(Objects.requireNonNull(serviceInfos).getProperty(FIELD_NAME_SERVICE_NAME)) &&
                isCpuLoadMatching((Double)serviceInfos.get(FIELD_NAME_CPU_LOAD)) &&
-               isChannelIdMatching(serviceGate) &&
+               isChannelIdMatching(Objects.requireNonNull(serviceGate)) &&
                isIpAddressMatching(serviceInfos.getProperty(FIELD_NAME_IP_ADDRESS)) &&
                isHostNameMatching(serviceInfos.getProperty(FIELD_NAME_HOSTNAME));
     }
