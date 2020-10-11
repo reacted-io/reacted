@@ -9,7 +9,6 @@
 package io.reacted.core.config.drivers;
 
 import io.reacted.core.config.reactors.GenericReActorConfig;
-import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;

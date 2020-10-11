@@ -28,7 +28,6 @@ import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.exceptions.ReActorRegistrationException;
 import io.reacted.core.exceptions.ReActorSystemInitException;
 import io.reacted.core.exceptions.ReActorSystemStructuralInconsistencyError;
-import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.NullMailbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -564,6 +563,7 @@ public class ReActorSystem {
     }
 
     /* SneakyThrows */
+    @SuppressWarnings("RedundantThrows")
     private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryDriverCfg.Builder<?, ?>,
                                                                              ? extends ServiceRegistryDriverCfg<?, ?>>> drivers) throws Exception {
         ServiceRegistryInitData driverInitData = new ServiceRegistryInitData(getSystemTimerService());

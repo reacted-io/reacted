@@ -32,11 +32,6 @@ public class ZooKeeperDriverCfg extends ServiceRegistryDriverCfg<ZooKeeperDriver
         return reattemptOnFailureInterval;
     }
 
-    @Override
-    public Builder toBuilder() {
-        return fillBuilder(newBuilder()).setReattemptOnFailureInterval(getReattemptOnFailureInterval());
-    }
-
     public static Builder newBuilder() { return new Builder(); }
 
     public static class Builder extends ServiceRegistryDriverCfg.Builder<Builder, ZooKeeperDriverCfg> {
