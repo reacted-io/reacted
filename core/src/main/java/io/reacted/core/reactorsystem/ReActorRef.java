@@ -200,8 +200,7 @@ public final class ReActorRef implements Externalizable {
     CompletionStage<Try<ReplyT>> ask(ReActorSystem localReActorSystem, ReActorRef target, RequestT request,
                                      Class<ReplyT> expectedReplyType, Duration askTimeout, String requestName) {
         CompletableFuture<Try<ReplyT>> returnValue = new CompletableFuture<>();
-        localReActorSystem.spawn(new Ask<>(localReActorSystem.getSystemTimerService(), askTimeout, expectedReplyType,
-                                           returnValue, requestName, target, request))
+        localReActorSystem.spawn(new Ask<>(askTimeout, expectedReplyType, returnValue, requestName, target, request))
                           .ifError(spawnError -> returnValue.complete(Try.ofFailure(spawnError)));
         return returnValue;
     }
