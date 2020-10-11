@@ -20,6 +20,7 @@ import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicatio
 import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
 import io.reacted.core.messages.serviceregistry.RegistryServicePublicationFailed;
 import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
+import io.reacted.core.messages.serviceregistry.ServiceRegistryNotAvailable;
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryComplete;
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
 import io.reacted.core.messages.services.FilterItem;
@@ -72,12 +73,19 @@ public class RemotingRoot {
     }
 
     private static void onPublishService(ReActorContext raCtx, ServicePublicationRequest publishService) {
-        for(ReActorRef serviceRegistryDriver : raCtx.getChildren()) {
-            var deliveryAttempt = serviceRegistryDriver.tell(raCtx.getSelf(), publishService);
-            deliveryAttempt.thenAccept(attempt -> attempt.filter(DeliveryStatus::isDelivered)
-                                                         .ifError(error -> raCtx.logError("Unable to deliver service publish request",
-                                                                                          error)));
+        if (raCtx.getChildren().isEmpty()) {
+             raCtx.aReply(new ServiceRegistryNotAvailable())
+                  .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                                                                     .ifError(error -> raCtx.logError("Unable to make a service discoverable {}",
+                                                                                                      publishService.getServiceProperties(), error)));
+             return;
+
         }
+        raCtx.getChildren().stream()
+             .map(registryDriver -> registryDriver.aTell(raCtx.getSelf(), publishService))
+             .forEach(publicationRequest -> publicationRequest.thenAcceptAsync(pubAttempt -> pubAttempt.filter(DeliveryStatus::isDelivered)
+                                                                                                       .ifError(error -> raCtx.logError("Unable to deliver service publication request {}",
+                                                                                                                                        publishService.getServiceProperties(), error))));
     }
 
     private static void onInitComplete(ReActorContext raCtx,

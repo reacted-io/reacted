@@ -16,6 +16,7 @@ import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.reactors.SystemMonitorReport;
 import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
 import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
+import io.reacted.core.messages.serviceregistry.ServiceRegistryNotAvailable;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
@@ -54,12 +55,19 @@ public class ReActorService implements ReActiveEntity {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(this::routeMessage)
+                        .reAct(ServiceRegistryNotAvailable.class, this::onServiceRegistryNotAvailable)
                         .reAct(ServiceDiscoveryRequest.class, this::serviceDiscovery)
                         .reAct(RouteeReSpawnRequest.class, this::respawnRoutee)
                         .reAct(ReActorInit.class, this::initService)
                         .reAct(ReActorStop.class, this::stopService)
                         .reAct(SystemMonitorReport.class, this::onSystemInfoReport)
                         .build();
+    }
+
+    private void onServiceRegistryNotAvailable(ReActorContext raCtx, ServiceRegistryNotAvailable notAvailable) {
+        raCtx.logInfo("{} makes itself discoverable",
+                      this.serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME));
+        raCtx.addTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class));
     }
 
     private void onSystemInfoReport(ReActorContext raCtx, SystemMonitorReport report) {

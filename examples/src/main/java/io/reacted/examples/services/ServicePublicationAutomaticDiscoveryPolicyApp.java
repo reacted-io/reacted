@@ -10,13 +10,12 @@ package io.reacted.examples.services;
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
@@ -35,7 +34,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
-public class ServicePublicationApp {
+public class ServicePublicationAutomaticDiscoveryPolicyApp {
     public static void main(String[] args) {
         String serviceName = "Clock Service";
         String serviceDispatcherName = serviceName + " Dedicated Dispatcher";
@@ -50,7 +49,7 @@ public class ServicePublicationApp {
                                                                 .build();
 
         ReActorSystemConfig systemConfig = ReActorSystemConfig.newBuilder()
-                                                              .setReactorSystemName(ServicePublicationApp.class.getSimpleName())
+                                                              .setReactorSystemName(ServicePublicationAutomaticDiscoveryPolicyApp.class.getSimpleName())
                                                               .setMsgFanOutPoolSize(1)
                                                               .setRecordExecution(false)
                                                               .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
@@ -68,7 +67,7 @@ public class ServicePublicationApp {
                                                   .setDispatcherName(serviceDispatcherName)
                                                   .build();
         var routeeReActions = ReActions.newBuilder()
-                                       .reAct(TimeRequest.class, ServicePublicationApp::onTimeRequest)
+                                       .reAct(TimeRequest.class, ServicePublicationAutomaticDiscoveryPolicyApp::onTimeRequest)
                                        .reAct((raCtx, any) -> {})
                                        .build();
         //Here we define how a routee behaves. This is going to be the actual body of our servuce
@@ -95,9 +94,6 @@ public class ServicePublicationApp {
                                                      //service mailbox. The exceeding ones will be
                                                      //dropped win an error to the sender
                                                      .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
-                                                     //The service will intercept all the Service Discovery Requests
-                                                     //generated locally to this reactor system
-                                                     .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                      .build();
         reActorSystem.spawnService(clockServiceConfig).orElseSneakyThrow();
         //Ask for a reference to a service called Clock Service. A reference to the service itself will be returned
