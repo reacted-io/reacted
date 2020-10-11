@@ -16,7 +16,7 @@ import java.util.Properties;
 
 public abstract class ServiceRegistryCfg<BuilderT extends ServiceRegistryCfg.Builder<BuilderT, BuiltT>,
                                          BuiltT extends ServiceRegistryCfg<BuilderT, BuiltT>>
-        extends GenericReActorConfig<BuilderT, BuiltT> {
+        extends ReActiveEntityConfig<BuilderT, BuiltT> {
     @NonNullByDefault
     private final Properties serviceRegistryProperties;
 
@@ -28,7 +28,7 @@ public abstract class ServiceRegistryCfg<BuilderT extends ServiceRegistryCfg.Bui
     @NonNullByDefault
     public final Properties getServiceRegistryProperties() { return serviceRegistryProperties; }
 
-    public abstract static class Builder<BuilderT, BuiltT> extends GenericReActorConfig.Builder<BuilderT, BuiltT> {
+    public abstract static class Builder<BuilderT, BuiltT> extends ReActiveEntityConfig.Builder<BuilderT, BuiltT> {
         private Properties serviceRegistryProperties;
 
         protected Builder() { }

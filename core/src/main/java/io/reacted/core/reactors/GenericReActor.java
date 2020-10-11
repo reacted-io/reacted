@@ -8,12 +8,12 @@
 
 package io.reacted.core.reactors;
 
-import io.reacted.core.config.reactors.GenericReActorConfig;
+import io.reacted.core.config.reactors.ReActiveEntityConfig;
 
 import javax.annotation.Nonnull;
 
-public interface GenericReActor<BuilderT extends GenericReActorConfig.Builder<BuilderT, BuiltT>,
-                                BuiltT extends GenericReActorConfig<BuilderT, BuiltT>> extends ReActiveEntity {
+public interface GenericReActor<BuilderT extends ReActiveEntityConfig.Builder<BuilderT, BuiltT>,
+                                BuiltT extends ReActiveEntityConfig<BuilderT, BuiltT>> extends ReActiveEntity {
     @Nonnull
     BuiltT getConfig();
 }

@@ -56,7 +56,7 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActorService.LoadBalancingPolicy loadBalancingPolicy;
 
-        private Builder() { setEntityType(ReActiveEntityType.REACTORSERVICE); }
+        private Builder() { }
 
         /**
          * A Service exposes the behavior of a reactor in a resilient and load balanced manneer. Here we specify

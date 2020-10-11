@@ -31,7 +31,6 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
     private final String reActorName;
     private final TypedSubscription[] typedTypedSubscriptions;
     private final Function<ReActorContext, MailBox> mailBoxProvider;
-    private final ReActiveEntityType reActiveEntityType;
 
     protected ReActiveEntityConfig(Builder<BuilderT, BuiltT> builder) {
         super(builder);
@@ -45,7 +44,6 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
                                        : Arrays.copyOf(builder.typedTypedSubscriptions,
                                                        builder.typedTypedSubscriptions.length);
         this.dispatcherName = builder.dispatcherName;
-        this.reActiveEntityType = builder.entityType;
     }
 
     public final String getDispatcherName() {
@@ -64,10 +62,6 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         return mailBoxProvider;
     }
 
-    public final ReActiveEntityType getReActiveEntityType() {
-        return reActiveEntityType;
-    }
-
     public abstract static class Builder<BuilderT, BuiltT>
             extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
@@ -75,8 +69,6 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         private String reActorName;
         private TypedSubscription[] typedTypedSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
         private Function<ReActorContext, MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private ReActiveEntityType entityType;
 
         protected Builder() { }
 
@@ -119,12 +111,5 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
             this.typedTypedSubscriptions = typedTypedSubscriptions;
             return getThis();
         }
-
-        protected final BuilderT setEntityType(ReActiveEntityType reActiveEntityType) {
-            this.entityType = reActiveEntityType;
-            return getThis();
-        }
     }
-
-    public enum ReActiveEntityType { REACTOR, REACTORSERVICE }
 }
