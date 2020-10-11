@@ -22,5 +22,5 @@ public final class CoreConstants {
 
     public static final String TEST_DISPATCHER = "TestDispatcher";
     public static final String REACTOR_NAME = "ReactorName";
-    public static final String RE_ACTED_ACTOR_SYSTEM = "ReActedActorSystem";
+    public static final String REACTED_ACTOR_SYSTEM = "ReActedActorSystem";
 }

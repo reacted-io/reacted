@@ -28,7 +28,7 @@ class ReActorServiceTest {
     @BeforeEach
     void setUp() {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(2)
                                                                      .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                                      .addDispatcherConfig(DispatcherConfig.newBuilder()
@@ -65,6 +65,8 @@ class ReActorServiceTest {
     @Test
     void reactorSystemCanSpawnService() {
         ReActorRef router = reActorSystem.spawnService(reActorServiceConfig).orElseSneakyThrow();
-        Assertions.assertEquals(router, reActorSystem.getReActor(router.getReActorId()).get().getSelf());
+        Assertions.assertEquals(router, reActorSystem.getReActor(router.getReActorId())
+                                                     .map(ReActorContext::getSelf)
+                                                     .orElse(ReActorRef.NO_REACTOR_REF));
     }
 }

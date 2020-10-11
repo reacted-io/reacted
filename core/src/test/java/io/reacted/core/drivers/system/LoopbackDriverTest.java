@@ -39,7 +39,7 @@ class LoopbackDriverTest {
     void prepareEnvironment() throws Exception {
         // Prepare & init ReActorSystem
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(1)
                                                                      .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                                      .addDispatcherConfig(DispatcherConfig.newBuilder()

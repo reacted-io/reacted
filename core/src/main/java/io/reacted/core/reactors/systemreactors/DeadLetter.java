@@ -24,24 +24,24 @@ public class DeadLetter {
     private static final Logger LOGGER = LoggerFactory.getLogger(DeadLetter.class);
     public static final ReActions DEADLETTERS = ReActions.newBuilder()
                                                          .reAct(DeadMessage.class,
-                                                                (ctx, payload) -> ctx.reply(ctx.getSender(),
-                                                                                            payload.getPayload()))
+                                                                (ctx, payload) -> ctx.getSelf()
+                                                                                     .tell(ctx.getSender(),
+                                                                                           payload.getPayload()))
                                                          .reAct(ReActorService.RouteeReSpawnRequest.class,
                                                                 ReActions::noReAction)
                                                          .reAct(ReActorInit.class, ReActions::noReAction)
                                                          .reAct(ReActorStop.class, ReActions::noReAction)
-                                                         .reAct(new DeadLetter()::onMessage)
+                                                         .reAct(DeadLetter::onMessage)
                                                          .build();
     /* All messages for reactors not found will be rerouted here */
     public static final AtomicLong RECEIVED = new AtomicLong();
 
-    private  <PayloadT extends Serializable>
-    void onMessage(ReActorContext reActorContext, PayloadT message) {
-        LOGGER.debug("{} of {}: {}", getClass().getSimpleName(),
-                    reActorContext.getReActorSystem()
-                                  .getLocalReActorSystemId()
-                                  .getReActorSystemName(),
-                    message.toString());
+    private static <PayloadT extends Serializable>
+    void onMessage(ReActorContext raCtx, PayloadT message) {
+        LOGGER.debug("{} of {}: {}", DeadLetter.class.getSimpleName(),
+                    raCtx.getReActorSystem()
+                         .getLocalReActorSystemId()
+                         .getReActorSystemName(), message.toString());
         RECEIVED.incrementAndGet();
     }
 }

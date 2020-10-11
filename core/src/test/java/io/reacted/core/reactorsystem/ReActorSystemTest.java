@@ -33,6 +33,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static org.mockito.Mockito.mock;
 
@@ -56,7 +58,7 @@ class ReActorSystemTest {
     @BeforeEach
     void prepareReactorSystem() {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(2)
                                                                      .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                                      .addDispatcherConfig(DispatcherConfig.newBuilder()
@@ -144,17 +146,23 @@ class ReActorSystemTest {
 
     @Test
     void reactorSystemCanStopChild() {
-        Try<ReActorRef> fatherActor = reActorSystem.spawn(mock(ReActions.class), reActorConfig);
-        Try<ReActorRef> childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor.get(),
-                                                                childReActorConfig);
+        ReActorRef fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig)
+                                              .orElseSneakyThrow();
+        ReActorRef childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor,
+                                                           childReActorConfig)
+                                               .orElseSneakyThrow();
 
-        Optional<ReActorContext> reActor = reActorSystem.getReActor(fatherActor.get().getReActorId());
+        Optional<ReActorContext> fatherCtx = reActorSystem.getReActor(fatherActor.getReActorId());
 
-        List<ReActorRef> children = reActor.get().getChildren();
+        List<ReActorRef> children = fatherCtx.map(ReActorContext::getChildren)
+                                             .orElse(List.of());
         Assertions.assertEquals(1, children.size());
 
-        reActorSystem.stopReActor(childReActor.get().getReActorId());
-        Assertions.assertEquals(0, children.size());
+        reActorSystem.stopReActor(childReActor.getReActorId())
+                     .map(CompletionStage::toCompletableFuture)
+                     .ifPresentOrElse(onStop -> { onStop.join();
+                                                  Assertions.assertEquals(0, children.size()); },
+                                      () -> Assertions.fail("No Reactor found!?"));
     }
 
     @Test

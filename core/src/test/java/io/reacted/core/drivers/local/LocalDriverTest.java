@@ -40,7 +40,7 @@ class LocalDriverTest {
     @BeforeAll
     static void prepareLocalDriver() throws Exception {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(1)
                                                                      .setRecordExecution(false)
                                                                      .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)

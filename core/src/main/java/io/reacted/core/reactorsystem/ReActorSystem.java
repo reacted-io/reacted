@@ -450,7 +450,8 @@ public class ReActorSystem {
      * a failed Try on failure
      */
     public Try<ReActorRef> spawnChild(ReActions reActions, ReActorRef father,
-                                      ReActiveEntityConfig<?, ?> reActorConfig) {
+                                      ReActiveEntityConfig<? extends ReActiveEntityConfig.Builder<?, ?>,
+                                                           ? extends ReActiveEntityConfig<?, ?>> reActorConfig) {
         Try<ReActorRef> spawned = spawn(getLoopback(), Objects.requireNonNull(reActions),
                                         Objects.requireNonNull(father), Objects.requireNonNull(reActorConfig));
         spawned.ifSuccess(initMe -> initMe.tell(getSystemSink(), REACTOR_INIT));
