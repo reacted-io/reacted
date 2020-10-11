@@ -39,6 +39,7 @@ import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
+import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
@@ -382,7 +383,7 @@ public class ReActorSystem {
      * On failure a future containing the exception that caused the failure
      */
     public CompletionStage<Try<ServiceDiscoveryReply>>
-    serviceDiscovery(BasicServiceDiscoverySearchFilter searchFilter) {
+    serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
                                    ServiceDiscoveryReply.class, searchFilter.getServiceName() + "|" +
                                                                 searchFilter.getSelectionType().name());
@@ -397,7 +398,7 @@ public class ReActorSystem {
      * @return The outcome of the request
      */
     @SuppressWarnings("UnusedReturnValue")
-    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(BasicServiceDiscoverySearchFilter searchFilter,
+    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(ServiceDiscoverySearchFilter searchFilter,
                                                                  ReActorRef requester) {
         return broadcastToLocalSubscribers(Objects.requireNonNull(requester),
                                            new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)));
