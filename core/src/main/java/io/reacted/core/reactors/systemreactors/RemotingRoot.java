@@ -122,11 +122,6 @@ public class RemotingRoot {
             raCtx.getReActorSystem().unregisterRoute(upsert.getReActorSystemId(), upsert.getChannelId());
             raCtx.getReActorSystem().registerNewRoute(upsert.getReActorSystemId(), upsert.getChannelId(),
                                                       upsert.getChannelData());
-
-            raCtx.logDebug("I am {} received config for {} Channel {} Data: {}",
-                           raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
-                           upsert.getReActorSystemId().getReActorSystemName(), upsert.getChannelId(),
-                           upsert.getChannelData().toString());
         }
     }
 
@@ -136,11 +131,7 @@ public class RemotingRoot {
             raCtx.getSelf().tell(raCtx.getSender(), new SynchronizationWithServiceRegistryComplete());
             return;
         }
-        raCtx.getReActorSystem().unregisterRoute(removed.getReActorSystem(),
-                                                 removed.getChannelId());
-        raCtx.logDebug("I am {} received removal request for {} channel {}",
-                       raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
-                       removed.getReActorSystem().getReActorSystemName(), removed.getChannelId());
+        raCtx.getReActorSystem().unregisterRoute(removed.getReActorSystem(), removed.getChannelId());
     }
 
     private static void onFilterServiceDiscoveryRequest(ReActorContext raCtx,
