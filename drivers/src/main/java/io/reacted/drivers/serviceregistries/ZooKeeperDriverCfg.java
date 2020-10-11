@@ -16,8 +16,7 @@ import java.time.Duration;
 import java.util.Objects;
 
 @NonNullByDefault
-public class ZooKeeperDriverCfg extends ServiceRegistryCfg<ZooKeeperDriverCfg.Builder,
-                                                                 ZooKeeperDriverCfg> {
+public class ZooKeeperDriverCfg extends ServiceRegistryCfg<ZooKeeperDriverCfg.Builder, ZooKeeperDriverCfg> {
     public static final Duration ZOOKEEPER_DEFAULT_REATTEMPT_ON_FAILURE_INTERVAL = Duration.ofMinutes(1);
     private final Duration reattemptOnFailureInterval;
 
