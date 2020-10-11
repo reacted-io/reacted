@@ -9,7 +9,7 @@
 package io.reacted.core.config.reactorsystem;
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
-import io.reacted.core.config.drivers.ServiceRegistryDriverCfg;
+import io.reacted.core.config.reactors.ServiceRegistryCfg;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
@@ -36,8 +36,8 @@ public class ReActorSystemConfig {
     private final LocalDriver localDriver;
     private final Set<DispatcherConfig> dispatchersConfigs;
     private final Set<RemotingDriver> remotingDrivers;
-    private final Set<ServiceRegistryDriver<? extends ServiceRegistryDriverCfg.Builder<?, ?>,
-                                            ? extends ServiceRegistryDriverCfg<?, ?>>> serviceRegistryDrivers;
+    private final Set<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                                            ? extends ServiceRegistryCfg<?, ?>>> serviceRegistryDrivers;
 
     private ReActorSystemConfig(Builder reactorSystemConfig) {
         this.reactorSystemName = Objects.requireNonNull(reactorSystemConfig.reactorSystemName);
@@ -68,8 +68,8 @@ public class ReActorSystemConfig {
 
     public Set<RemotingDriver> getRemotingDrivers() { return this.remotingDrivers; }
 
-    public Set<ServiceRegistryDriver<? extends ServiceRegistryDriverCfg.Builder<?, ?>,
-                                     ? extends ServiceRegistryDriverCfg<?, ?>>> getServiceRegistryDrivers() {
+    public Set<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                                     ? extends ServiceRegistryCfg<?, ?>>> getServiceRegistryDrivers() {
         return this.serviceRegistryDrivers;
     }
 
@@ -86,8 +86,8 @@ public class ReActorSystemConfig {
         private boolean shallRecordExecution;
         private final Set<DispatcherConfig> dispatcherConfigs = new HashSet<>();
         private final Set<RemotingDriver> remotingDrivers = new HashSet<>();
-        private final Set<ServiceRegistryDriver<? extends ServiceRegistryDriverCfg.Builder<?, ?>,
-                                                ? extends ServiceRegistryDriverCfg<?, ?>>> serviceRegistryDrivers = new HashSet<>();
+        private final Set<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                                                ? extends ServiceRegistryCfg<?, ?>>> serviceRegistryDrivers = new HashSet<>();
 
         private Builder() { /* No implementation required */ }
 
@@ -173,8 +173,8 @@ public class ReActorSystemConfig {
          *
          * @param serviceRegistryDriver service registry driver
          */
-        public Builder addServiceRegistryDriver(ServiceRegistryDriver<? extends ServiceRegistryDriverCfg.Builder<?, ?>,
-                ? extends ServiceRegistryDriverCfg<?, ?>> serviceRegistryDriver) {
+        public Builder addServiceRegistryDriver(ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                ? extends ServiceRegistryCfg<?, ?>> serviceRegistryDriver) {
             this.serviceRegistryDrivers.add(serviceRegistryDriver);
             return this;
         }

@@ -8,7 +8,7 @@
 
 package io.reacted.drivers.serviceregistries;
 
-import io.reacted.core.config.drivers.ServiceRegistryDriverCfg;
+import io.reacted.core.config.reactors.ServiceRegistryCfg;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.util.Objects;
 
 @NonNullByDefault
-public class ZooKeeperDriverCfg extends ServiceRegistryDriverCfg<ZooKeeperDriverCfg.Builder,
+public class ZooKeeperDriverCfg extends ServiceRegistryCfg<ZooKeeperDriverCfg.Builder,
                                                                  ZooKeeperDriverCfg> {
     public static final Duration ZOOKEEPER_DEFAULT_REATTEMPT_ON_FAILURE_INTERVAL = Duration.ofMinutes(1);
     private final Duration reattemptOnFailureInterval;
@@ -34,7 +34,7 @@ public class ZooKeeperDriverCfg extends ServiceRegistryDriverCfg<ZooKeeperDriver
 
     public static Builder newBuilder() { return new Builder(); }
 
-    public static class Builder extends ServiceRegistryDriverCfg.Builder<Builder, ZooKeeperDriverCfg> {
+    public static class Builder extends ServiceRegistryCfg.Builder<Builder, ZooKeeperDriverCfg> {
         private Duration reattemptOnFailureInterval = ZOOKEEPER_DEFAULT_REATTEMPT_ON_FAILURE_INTERVAL;
         private Builder() { }
 

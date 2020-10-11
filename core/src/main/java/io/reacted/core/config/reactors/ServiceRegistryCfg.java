@@ -6,22 +6,21 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.config.drivers;
+package io.reacted.core.config.reactors;
 
-import io.reacted.core.config.reactors.GenericReActorConfig;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
 import java.util.Properties;
 
-public abstract class ServiceRegistryDriverCfg<BuilderT extends ServiceRegistryDriverCfg.Builder<BuilderT, BuiltT>,
-                                               BuiltT extends ServiceRegistryDriverCfg<BuilderT, BuiltT>>
+public abstract class ServiceRegistryCfg<BuilderT extends ServiceRegistryCfg.Builder<BuilderT, BuiltT>,
+                                         BuiltT extends ServiceRegistryCfg<BuilderT, BuiltT>>
         extends GenericReActorConfig<BuilderT, BuiltT> {
     @NonNullByDefault
     private final Properties serviceRegistryProperties;
 
-    protected ServiceRegistryDriverCfg(@Nonnull Builder<BuilderT, BuiltT> builder) {
+    protected ServiceRegistryCfg(@Nonnull Builder<BuilderT, BuiltT> builder) {
         super(builder);
         this.serviceRegistryProperties = Objects.requireNonNull(builder.serviceRegistryProperties);
     }

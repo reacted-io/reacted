@@ -9,7 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.config.drivers.ServiceRegistryDriverCfg;
+import io.reacted.core.config.reactors.ServiceRegistryCfg;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.datastructure.MultiMaps;
@@ -570,8 +570,8 @@ public class ReActorSystem {
 
     /* SneakyThrows */
     @SuppressWarnings("RedundantThrows")
-    private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryDriverCfg.Builder<?, ?>,
-                                                                             ? extends ServiceRegistryDriverCfg<?, ?>>> drivers) throws Exception {
+    private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                                                                             ? extends ServiceRegistryCfg<?, ?>>> drivers) throws Exception {
         ServiceRegistryInitData driverInitData = new ServiceRegistryInitData(getSystemTimerService());
         drivers.forEach(driver -> driver.onServiceRegistryInit(driverInitData));
         drivers.forEach( driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())

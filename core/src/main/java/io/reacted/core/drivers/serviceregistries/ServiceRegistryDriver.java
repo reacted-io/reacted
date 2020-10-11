@@ -8,13 +8,13 @@
 
 package io.reacted.core.drivers.serviceregistries;
 
-import io.reacted.core.config.drivers.ServiceRegistryDriverCfg;
+import io.reacted.core.config.reactors.ServiceRegistryCfg;
 import io.reacted.core.reactors.GenericReActor;
 
 import javax.annotation.Nonnull;
 
-public abstract class ServiceRegistryDriver<BuilderT extends ServiceRegistryDriverCfg.Builder<BuilderT, BuiltT>,
-                                            BuiltT extends ServiceRegistryDriverCfg<BuilderT, BuiltT>>
+public abstract class ServiceRegistryDriver<BuilderT extends ServiceRegistryCfg.Builder<BuilderT, BuiltT>,
+                                            BuiltT extends ServiceRegistryCfg<BuilderT, BuiltT>>
         implements GenericReActor<BuilderT, BuiltT> {
     @Nonnull
     private final BuiltT driverCfg;
