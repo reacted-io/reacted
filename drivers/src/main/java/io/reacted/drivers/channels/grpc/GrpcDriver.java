@@ -46,8 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class GrpcDriver extends RemotingDriver {
-    private final GrpcDriverConfig grpcDriverConfig;
+public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     private final Map<String, SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram>> gatesStubs;
     private final ChannelId channelId;
     @Nullable
@@ -56,7 +55,7 @@ public class GrpcDriver extends RemotingDriver {
     private ExecutorService grpcExecutor;
 
     public GrpcDriver(GrpcDriverConfig grpcDriverConfig) {
-        this.grpcDriverConfig = Objects.requireNonNull(grpcDriverConfig);
+        super(grpcDriverConfig);
         this.gatesStubs = new ConcurrentHashMap<>(1000, 0.5f);
         this.channelId = new ChannelId(ChannelId.ChannelType.GRPC, grpcDriverConfig.getChannelName());
     }
@@ -71,8 +70,8 @@ public class GrpcDriver extends RemotingDriver {
                                                                .getReActorSystemName() + "-%d")
                 .build());
         this.grpcExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
-        this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.grpcDriverConfig.getHostName(),
-                                                        this.grpcDriverConfig.getPort()))
+        this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(getDriverConfig().getHostName(),
+                                                                              getDriverConfig().getPort()))
                                             .executor(this.grpcExecutor)
                                             .addService(new HealthStatusManager().getHealthService())
                                             .addService(new GrpcServer(this))
@@ -132,10 +131,10 @@ public class GrpcDriver extends RemotingDriver {
     }
 
     @Override
-    public boolean channelRequiresDeliveryAck() { return grpcDriverConfig.isDeliveryAckRequiredByChannel(); }
+    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
 
     @Override
-    public Properties getChannelProperties() { return grpcDriverConfig.getProperties(); }
+    public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     private static ManagedChannel getNewChannel(Properties channelIdProperties) {
         int port = Integer.parseInt(channelIdProperties.getProperty(GrpcDriverConfig.PORT_PROPERTY_NAME));

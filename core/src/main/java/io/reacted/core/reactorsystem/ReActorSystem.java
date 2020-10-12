@@ -298,13 +298,13 @@ public class ReActorSystem {
      * Register a new driver within the reactor system.
      *
      * @param anyDriver A ReActed driver
-     * @return A successfull Try on success, a failed one containing the exception that caused the error otherwise
+     * @return A successful Try on success, a failed one containing the exception that caused the error otherwise
      */
     public Try<Void> registerReActorSystemDriver(ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> anyDriver) {
         return getReActorSystemDrivers().contains(anyDriver)
                ? Try.ofFailure(new IllegalArgumentException())
                : anyDriver.initDriverCtx(this)
-                          .ifSuccess(vV -> reActorSystemDrivers.add(anyDriver));
+                          .peekSuccess(noVal -> reActorSystemDrivers.add(anyDriver));
     }
 
     /**

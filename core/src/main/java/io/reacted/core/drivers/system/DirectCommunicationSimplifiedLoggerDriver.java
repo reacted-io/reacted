@@ -27,21 +27,19 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunicationLoggerCfg> {
+public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<DirectCommunicationSimplifiedLoggerCfg> {
     private final ChannelId channelId;
     private final PrintWriter logFile;
 
     /**
-     * Creates a direct communication driver that logs in a file all the content of the exchanged messages within
-     * the {@link ReActorSystem}
-     *
+     * A local delivery driver that logs on a file just the main information about a message.
+     * This is the simplified/less noisy version of {@link DirectCommunicationLoggerDriver}
      * @param cfg driver configuration
-     * @throws UncheckedIOException If there is a problem opening the specified file
+     * @throws UncheckedIOException if there are problems opening the logfile
      */
-    public DirectCommunicationLoggerDriver(DirectCommunicationLoggerCfg cfg) {
+    public DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerCfg cfg) {
         super(cfg);
-        this.channelId =  new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION,
-                                        cfg.getChannelName());
+        this.channelId = new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION, getDriverConfig().getChannelName());
         this.logFile = Try.of(() -> new FileWriter(cfg.getLogFilePath(), false))
                           .map(PrintWriter::new)
                           .orElseThrow(ioException -> new UncheckedIOException((IOException)ioException));
@@ -60,22 +58,32 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
 
     @Override
     public CompletionStage<Try<Void>> cleanDriverLoop() {
-        return CompletableFuture.completedFuture(Try.ofRunnable(() -> { logFile.flush(); logFile.close(); }));
+        return CompletableFuture.completedFuture(Try.ofRunnable(() -> {
+            logFile.flush();
+            logFile.close();
+        }));
     }
 
     @Override
     public UnChecked.CheckedRunnable getDriverLoop() { return () -> { }; }
 
     @Override
-    public ChannelId getChannelId() { return this.channelId; }
+    public ChannelId getChannelId() { return channelId; }
 
     @Override
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        logFile.println(message.toString());
-        logFile.flush();
+        synchronized (logFile) {
+            logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+                           message.getSender().getReActorId().getReActorName(),
+                           message.getDestination().getReActorId().getReActorName(),
+                           message.getSequenceNumber(),
+                           message.getPayload().getClass().toString(),
+                           message.getPayload().toString());
+            logFile.flush();
+        }
         return destination.isStop()
                ? Try.ofSuccess(DeliveryStatus.NOT_DELIVERED)
                : localDeliver(destination, message);
@@ -83,15 +91,18 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        CompletionStage<Try<DeliveryStatus>> delivery = destination.isStop()
-                       ? CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.NOT_DELIVERED))
-                       : asyncLocalDeliver(destination, message);
-        delivery.thenAccept(deliveryAttempt -> {
-            synchronized (logFile) {
-                logFile.println(message.toString());
-                logFile.flush();
-            }
-        });
-        return delivery;
+        synchronized (logFile) {
+
+            logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+                           message.getSender().getReActorId().getReActorName(),
+                           message.getDestination().getReActorId().getReActorName(),
+                           message.getSequenceNumber(),
+                           message.getPayload().getClass().toString(),
+                           message.getPayload().toString());
+            logFile.flush();
+        }
+        return destination.isStop()
+               ? CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.NOT_DELIVERED))
+               : asyncLocalDeliver(destination, message);
     }
 }

@@ -13,6 +13,8 @@ import io.reacted.core.drivers.system.DirectCommunicationCfg;
 import io.reacted.core.drivers.system.DirectCommunicationDriver;
 import io.reacted.core.drivers.system.DirectCommunicationLoggerCfg;
 import io.reacted.core.drivers.system.DirectCommunicationLoggerDriver;
+import io.reacted.core.drivers.system.DirectCommunicationSimplifiedLoggerCfg;
+import io.reacted.core.drivers.system.DirectCommunicationSimplifiedLoggerDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -24,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -31,10 +34,6 @@ import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
 public final class SystemLocalDrivers {
-    public static final Try<DeliveryStatus> MESSAGE_NOT_DELIVERED = Try.ofSuccess(DeliveryStatus.NOT_DELIVERED);
-    public static final CompletionStage<Try<DeliveryStatus>>
-            ASYNC_MESSAGE_NOT_DELIVERED = CompletableFuture.completedFuture(MESSAGE_NOT_DELIVERED);
-    private static final Logger LOGGER = LoggerFactory.getLogger(SystemLocalDrivers.class);
     private SystemLocalDrivers() { /* Not Required */ }
 
     public static final DirectCommunicationDriver DIRECT_COMMUNICATION =
@@ -42,6 +41,15 @@ public final class SystemLocalDrivers {
                                                                 .setChannelName("DIRECT_COMMUNICATION")
                                                                 .build());
 
+    /**
+     * Returns a {@link DirectCommunicationDriver} for <b>local</b> communication that after sending each message
+     * logs the content of the message in a file
+     *
+     * @param loggingFilePath path of the file that should be created/truncated to store the dump of the messages
+     *                        exchanged within the local {@link ReActorSystem}
+     * @throws java.io.UncheckedIOException if an error occurs opening the file
+     * @return the {@link DirectCommunicationLoggerDriver}
+     */
     public static DirectCommunicationLoggerDriver getDirectCommunicationLogger(String loggingFilePath) {
         return new DirectCommunicationLoggerDriver(DirectCommunicationLoggerCfg.newBuilder()
                                                                                .setLogFilePath(loggingFilePath)
@@ -49,69 +57,20 @@ public final class SystemLocalDrivers {
                                                                                .build());
     }
 
-    public static LocalDriver getDirectCommunicationSimplifiedLogger(String loggingFilePath) {
-        return new LocalDriver() {
-            public final ChannelId CHANNEL_ID = new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION,
-                                                              "SIMPLIFIED_LOGGING_DIRECT_COMMUNICATION-" + loggingFilePath);
-            private final PrintWriter logFile = new PrintWriter(Try.of(() -> new FileWriter(loggingFilePath, false))
-                                                                   .orElseSneakyThrow());
-
-            @Override
-            public Try<Void> initDriverCtx(ReActorSystem localReActorSystem) { return Try.VOID; }
-
-            @Override
-            public CompletionStage<Try<Void>> stopDriverCtx(ReActorSystem reActorSystem) {
-                return CompletableFuture.completedFuture(Try.VOID);
-            }
-
-            @Override
-            public void initDriverLoop(ReActorSystem localReActorSystem) { logFile.flush();}
-
-            @Override
-            public CompletionStage<Try<Void>> cleanDriverLoop() {
-                return CompletableFuture.completedFuture(Try.ofRunnable(() -> {
-                    logFile.flush();
-                    logFile.close();
-                }));
-            }
-
-            @Override
-            public UnChecked.CheckedRunnable getDriverLoop() { return () -> { }; }
-
-            @Override
-            public ChannelId getChannelId() { return CHANNEL_ID; }
-
-            @Override
-            public Properties getChannelProperties() { return new Properties(); }
-
-            @Override
-            public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-                synchronized (logFile) {
-                    logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
-                                   message.getSender().getReActorId().getReActorName(),
-                                   message.getDestination().getReActorId().getReActorName(),
-                                   message.getSequenceNumber(),
-                                   message.getPayload().getClass().toString(),
-                                   message.getPayload().toString());
-                    logFile.flush();
-                }
-                return destination.isStop() ? MESSAGE_NOT_DELIVERED : localDeliver(destination, message);
-            }
-
-            @Override
-            public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-                synchronized (logFile) {
-
-                    logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
-                                   message.getSender().getReActorId().getReActorName(),
-                                   message.getDestination().getReActorId().getReActorName(),
-                                   message.getSequenceNumber(),
-                                   message.getPayload().getClass().toString(),
-                                   message.getPayload().toString());
-                    logFile.flush();
-                }
-                return destination.isStop() ? ASYNC_MESSAGE_NOT_DELIVERED : asyncLocalDeliver(destination, message);
-            }
-        };
+    /**
+     * Returns a {@link DirectCommunicationDriver} for <b>local</b> communication that after sending each message
+     * logs the main information of the message in a file. It is a less noisy version of {@link DirectCommunicationLoggerDriver}
+     *
+     * @param loggingFilePath path of the file that should be created/truncated to store the dump of the messages
+     *                        exchanged within the local {@link ReActorSystem}
+     * @throws java.io.UncheckedIOException if an error occurs opening the file
+     * @return the {@link DirectCommunicationSimplifiedLoggerDriver}
+     */
+    public static DirectCommunicationSimplifiedLoggerDriver
+    getDirectCommunicationSimplifiedLoggerDriver(String loggingFilePath) {
+        return new DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerCfg.newBuilder()
+                                                                                                   .setLogFilePath(loggingFilePath)
+                                                                                                   .setChannelName("SIMPLIFIED_LOGGING_DIRECT_COMMUNICATION-")
+                                                                                                   .build());
     }
 }
