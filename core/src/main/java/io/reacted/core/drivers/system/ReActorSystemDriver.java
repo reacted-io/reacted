@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -44,20 +45,22 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 @NonNullByDefault
-public abstract class ReActorSystemDriver {
+public abstract class ReActorSystemDriver<CfgT extends ReActedDriverCfg<?, CfgT>> {
     public static final ThreadLocal<DriverCtx> REACTOR_SYSTEM_CTX = new InheritableThreadLocal<>();
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
+    private final CfgT driverConfig;
     private final Map<Long, CompletableFuture<Try<DeliveryStatus>>> pendingAcksTriggers;
     @Nullable
     private ReActorSystem localReActorSystem;
     @Nullable
     private ExecutorService driverThread;
 
-    protected ReActorSystemDriver() {
+    protected ReActorSystemDriver(CfgT driverCfg) {
+        this.driverConfig = Objects.requireNonNull(driverCfg);
         CacheBuilder<Long, CompletableFuture<Try<DeliveryStatus>>> driverPendingAcksTriggers;
-        CacheBuilder.newBuilder()
-                    .expireAfterWrite()
-                    .removalListener()
+        //CacheBuilder.newBuilder()
+        //            .expireAfterWrite()
+        //            .removalListener()
         this.pendingAcksTriggers = new ConcurrentHashMap<>(1_000_000, 0.5f);
     }
 
@@ -69,6 +72,9 @@ public abstract class ReActorSystemDriver {
     abstract public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message);
     abstract public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message);
     abstract public boolean channelRequiresDeliveryAck();
+
+    public CfgT getDriverConfig() { return driverConfig; }
+
     /**
      * @param src source of the message
      * @param dst destination of the message

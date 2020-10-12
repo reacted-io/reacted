@@ -8,6 +8,7 @@
 
 package io.reacted.core.drivers.system;
 
+import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -26,7 +27,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public abstract class RemotingDriver extends ReActorSystemDriver {
+public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> extends ReActorSystemDriver<CfgT> {
+
+    protected RemotingDriver(CfgT cfg) {
+        super(cfg);
+    }
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
@@ -75,7 +80,7 @@ public abstract class RemotingDriver extends ReActorSystemDriver {
     public boolean equals(@Nullable Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        RemotingDriver that = (RemotingDriver) o;
+        RemotingDriver<?> that = (RemotingDriver<?>) o;
         return getChannelId().equals(that.getChannelId()) &&
                getChannelProperties().equals(that.getChannelProperties());
     }

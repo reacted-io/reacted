@@ -42,8 +42,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class ReplayLocalDriver extends LocalDriver {
-    private final CQDriverConfig driverConfig;
+public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
     private final Set<ReActorId> spawnedReActors;
     @Nullable
     private ChronicleQueue chronicle;
@@ -51,13 +50,13 @@ public class ReplayLocalDriver extends LocalDriver {
     private ReActorSystem replayedActorSystem;
 
     public ReplayLocalDriver(CQDriverConfig driverConfig) {
-        this.driverConfig = Objects.requireNonNull(driverConfig);
+        super(driverConfig);
         this.spawnedReActors = ConcurrentHashMap.newKeySet();
     }
 
     @Override
     public void initDriverLoop(ReActorSystem replayedActorSystem) {
-        this.chronicle = ChronicleQueue.singleBuilder(driverConfig.getChronicleFilesDir()).build();
+        this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir()).build();
         this.replayedActorSystem = replayedActorSystem;
     }
 
@@ -68,7 +67,7 @@ public class ReplayLocalDriver extends LocalDriver {
 
     @Override
     public ChannelId getChannelId() {
-        return new ChannelId(ChannelId.ChannelType.REPLAY_CHRONICLE_QUEUE, driverConfig.getChannelName());
+        return new ChannelId(ChannelId.ChannelType.REPLAY_CHRONICLE_QUEUE, getDriverConfig().getChannelName());
     }
 
     @Override

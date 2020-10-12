@@ -46,27 +46,26 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public class KafkaDriver extends RemotingDriver {
+public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaDriver.class);
     @Nullable
     private static final Message NO_VALID_PAYLOAD = null;
     @Nullable
     private static final byte[] NO_SERIALIZED_PAYLOAD = null;
     private static final Duration POLL_TIMEOUT = Duration.ofSeconds(1);
-    private final KafkaDriverConfig config;
     @Nullable
     private Consumer<Long, Message> kafkaConsumer;
     @Nullable
     private Producer<Long, Message> kafkaProducer;
 
     public KafkaDriver(KafkaDriverConfig config) {
-        this.config = Objects.requireNonNull(config);
+        super(config);
     }
 
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
-        this.kafkaConsumer = Objects.requireNonNull(createConsumer(config));
-        this.kafkaProducer = Objects.requireNonNull(createProducer(config));
+        this.kafkaConsumer = Objects.requireNonNull(createConsumer(getDriverConfig()));
+        this.kafkaProducer = Objects.requireNonNull(createProducer(getDriverConfig()));
     }
 
     @Override
@@ -83,16 +82,16 @@ public class KafkaDriver extends RemotingDriver {
 
     @Override
     public ChannelId getChannelId() {
-        return new ChannelId(ChannelId.ChannelType.KAFKA, this.config.getChannelName());
+        return new ChannelId(ChannelId.ChannelType.KAFKA, getDriverConfig().getChannelName());
     }
 
     @Override
-    public Properties getChannelProperties() { return this.config.getProperties(); }
+    public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
         return Try.of(() -> Objects.requireNonNull(this.kafkaProducer)
-                                   .send(new ProducerRecord<>(config.getTopic(), message)).get())
+                                   .send(new ProducerRecord<>(getDriverConfig().getTopic(), message)).get())
                   .map(metaData -> DeliveryStatus.DELIVERED);
     }
 
