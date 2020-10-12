@@ -12,7 +12,6 @@ import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.utils.ConfigUtils;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;

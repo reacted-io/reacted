@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -158,7 +157,8 @@ public abstract class ReActorSystemDriver<CfgT extends ReActedDriverCfg<?, CfgT>
     }
 
     protected static Try<DeliveryStatus> sendDeliveyAck(ReActorSystemId localReActorSystemId,
-                                                        long ackSeqNum, ReActorSystemDriver gate,
+                                                        long ackSeqNum,
+                                                        ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> gate,
                                                         Try<DeliveryStatus> deliveryResult, Message originalMessage) {
         var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
                                                            deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED));

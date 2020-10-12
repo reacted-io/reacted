@@ -12,7 +12,6 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.local.LocalDriver;
-import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;

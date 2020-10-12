@@ -28,6 +28,7 @@ public class DirectCommunicationSimplifiedLoggerCfg extends ReActedDriverCfg<Dir
 
     public static class Builder extends ReActedDriverCfg.Builder<DirectCommunicationSimplifiedLoggerCfg.Builder,
                                                                  DirectCommunicationSimplifiedLoggerCfg> {
+        @SuppressWarnings("NotNullFieldNotInitialized")
         private String logFilePath;
         private Builder() { }
 

@@ -122,7 +122,7 @@ public class ReActorSystemRef implements Externalizable {
         return SerializationUtils.setObjectField(this, REACTORSYSTEM_ID_OFFSET, reActorSystemId);
     }
 
-    public ReActorSystemRef setBackingDriver(ReActorSystemDriver gateDriver) {
+    public ReActorSystemRef setBackingDriver(ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> gateDriver) {
         return SerializationUtils.setObjectField(this, BACKING_DRIVER_OFFSET, gateDriver);
     }
 
