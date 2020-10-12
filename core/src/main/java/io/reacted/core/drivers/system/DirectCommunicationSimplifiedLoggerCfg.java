@@ -22,9 +22,7 @@ public class DirectCommunicationSimplifiedLoggerCfg extends ReActedDriverCfg<Dir
         this.logFilePath = Objects.requireNonNull(builder.logFilePath);
     }
 
-    public String getLogFilePath() {
-        return logFilePath;
-    }
+    public String getLogFilePath() { return logFilePath; }
 
     public static DirectCommunicationSimplifiedLoggerCfg.Builder newBuilder() { return new Builder(); }
 

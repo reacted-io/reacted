@@ -9,6 +9,10 @@
 package io.reacted.core.drivers.local;
 
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.drivers.system.DirectCommunicationCfg;
+import io.reacted.core.drivers.system.DirectCommunicationDriver;
+import io.reacted.core.drivers.system.DirectCommunicationLoggerCfg;
+import io.reacted.core.drivers.system.DirectCommunicationLoggerDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -33,102 +37,16 @@ public final class SystemLocalDrivers {
     private static final Logger LOGGER = LoggerFactory.getLogger(SystemLocalDrivers.class);
     private SystemLocalDrivers() { /* Not Required */ }
 
+    public static final DirectCommunicationDriver DIRECT_COMMUNICATION =
+            new DirectCommunicationDriver(DirectCommunicationCfg.newBuilder()
+                                                                .setChannelName("DIRECT_COMMUNICATION")
+                                                                .build());
 
-    public static final LocalDriver DIRECT_COMMUNICATION = new LocalDriver() {
-        public final ChannelId CHANNEL_ID = new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION,
-                                              "DIRECT_COMMUNICATION");
-
-        @Override
-        public Try<Void> initDriverCtx(ReActorSystem localReActorSystem) {
-            return Try.VOID;
-        }
-
-        @Override
-        public CompletionStage<Try<Void>> stopDriverCtx(ReActorSystem reActorSystem) {
-            return CompletableFuture.completedFuture(Try.VOID);
-        }
-
-        @Override
-        public void initDriverLoop(ReActorSystem localReActorSystem) { }
-
-        @Override
-        public CompletionStage<Try<Void>> cleanDriverLoop() { return CompletableFuture.completedFuture(Try.VOID); }
-
-        @Override
-        public UnChecked.CheckedRunnable getDriverLoop() { return () -> {}; }
-
-        @Override
-        public ChannelId getChannelId() { return CHANNEL_ID; }
-
-        @Override
-        public Properties getChannelProperties() {
-            return new Properties();
-        }
-
-        @Override
-        public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-            return destination.isStop() ? MESSAGE_NOT_DELIVERED : localDeliver(destination, message);
-        }
-
-        @Override
-        public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-            return destination.isStop() ? ASYNC_MESSAGE_NOT_DELIVERED : asyncLocalDeliver(destination, message);
-        }
-    };
-
-    public static LocalDriver getDirectCommunicationLogger(String loggingFilePath) {
-        return new LocalDriver() {
-            public final ChannelId CHANNEL_ID = new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION,
-                                                              "LOGGING_DIRECT_COMMUNICATION-" + loggingFilePath);
-            private final PrintWriter logFile = new PrintWriter(Try.of(() -> new FileWriter(loggingFilePath, false))
-                                                                   .orElseSneakyThrow());
-
-            @Override
-            public Try<Void> initDriverCtx(ReActorSystem localReActorSystem) { return Try.VOID; }
-
-            @Override
-            public CompletionStage<Try<Void>> stopDriverCtx(ReActorSystem reActorSystem) {
-                return CompletableFuture.completedFuture(Try.VOID);
-            }
-
-            @Override
-            public void initDriverLoop(ReActorSystem localReActorSystem) { logFile.flush();}
-
-            @Override
-            public CompletionStage<Try<Void>> cleanDriverLoop() {
-                return CompletableFuture.completedFuture(Try.ofRunnable(() -> { logFile.flush(); logFile.close(); }));
-            }
-
-            @Override
-            public UnChecked.CheckedRunnable getDriverLoop() { return () -> { }; }
-
-            @Override
-            public ChannelId getChannelId() { return CHANNEL_ID; }
-
-            @Override
-            public Properties getChannelProperties() { return new Properties(); }
-
-            @Override
-            public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-                logFile.println(message.toString());
-                logFile.flush();
-                return destination.isStop() ? MESSAGE_NOT_DELIVERED : localDeliver(destination, message);
-            }
-
-            @Override
-            public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-                var delivery =  destination.isStop()
-                                ? ASYNC_MESSAGE_NOT_DELIVERED
-                                : asyncLocalDeliver(destination, message);
-                delivery.thenAccept(deliveryAttempt -> {
-                    synchronized (logFile) {
-                        logFile.println(message.toString());
-                        logFile.flush();
-                    }
-                });
-                return delivery;
-            }
-        };
+    public static DirectCommunicationLoggerDriver getDirectCommunicationLogger(String loggingFilePath) {
+        return new DirectCommunicationLoggerDriver(DirectCommunicationLoggerCfg.newBuilder()
+                                                                               .setLogFilePath(loggingFilePath)
+                                                                               .setChannelName("LOGGING_DIRECT_COMMUNICATION-")
+                                                                               .build());
     }
 
     public static LocalDriver getDirectCommunicationSimplifiedLogger(String loggingFilePath) {
@@ -195,25 +113,5 @@ public final class SystemLocalDrivers {
                 return destination.isStop() ? ASYNC_MESSAGE_NOT_DELIVERED : asyncLocalDeliver(destination, message);
             }
         };
-    }
-
-    private static Try<DeliveryStatus> localDeliver(ReActorContext destination, Message message) {
-        Try<DeliveryStatus> deliverOperation = Try.of(() -> destination.getMbox()
-                                                                       .deliver(message));
-        rescheduleIfSuccess(deliverOperation, destination);
-        return deliverOperation;
-    }
-
-    private static CompletionStage<Try<DeliveryStatus>> asyncLocalDeliver(ReActorContext destination, Message message) {
-        var asyncDeliverResult = destination.getMbox()
-                                            .asyncDeliver(message);
-        asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result, destination));
-        return asyncDeliverResult;
-    }
-
-    private static void rescheduleIfSuccess(Try<DeliveryStatus> deliveryResult, ReActorContext destination) {
-        deliveryResult.peekFailure(error -> LOGGER.error("Unable to deliver: ", error))
-                      .filter(DeliveryStatus::isDelivered)
-                      .ifSuccess(deliveryStatus -> destination.reschedule());
     }
 }

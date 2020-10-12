@@ -66,6 +66,27 @@ public abstract class LocalDriver<CfgT extends ReActedDriverCfg<?, CfgT>>
           return SystemLocalDrivers.DIRECT_COMMUNICATION.sendAsyncMessage(destination, Objects.requireNonNull(message));
      }
 
+     protected static Try<DeliveryStatus> localDeliver(ReActorContext destination, Message message) {
+          Try<DeliveryStatus> deliverOperation = Try.of(() -> destination.getMbox()
+                                                                         .deliver(message));
+          rescheduleIfSuccess(deliverOperation, destination);
+          return deliverOperation;
+     }
+
+     protected static CompletionStage<Try<DeliveryStatus>> asyncLocalDeliver(ReActorContext destination,
+                                                                             Message message) {
+          var asyncDeliverResult = destination.getMbox()
+                                              .asyncDeliver(message);
+          asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result, destination));
+          return asyncDeliverResult;
+     }
+
+     protected static void rescheduleIfSuccess(Try<DeliveryStatus> deliveryResult, ReActorContext destination) {
+          deliveryResult.peekFailure(error -> LOGGER.error("Unable to deliver: ", error))
+                        .filter(DeliveryStatus::isDelivered)
+                        .ifSuccess(deliveryStatus -> destination.reschedule());
+     }
+
      private static void propagateToDeadLetters(ReActorRef systemDeadLetters, Message originalMessage) {
           systemDeadLetters.tell(originalMessage.getSender(), new DeadMessage(originalMessage.getPayload()));
      }
