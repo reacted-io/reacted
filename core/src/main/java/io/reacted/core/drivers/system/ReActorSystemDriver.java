@@ -8,6 +8,7 @@
 
 package io.reacted.core.drivers.system;
 
+import com.google.common.cache.CacheBuilder;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
@@ -53,6 +54,10 @@ public abstract class ReActorSystemDriver {
     private ExecutorService driverThread;
 
     protected ReActorSystemDriver() {
+        CacheBuilder<Long, CompletableFuture<Try<DeliveryStatus>>> driverPendingAcksTriggers;
+        CacheBuilder.newBuilder()
+                    .expireAfterWrite()
+                    .removalListener()
         this.pendingAcksTriggers = new ConcurrentHashMap<>(1_000_000, 0.5f);
     }
 
