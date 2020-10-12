@@ -145,7 +145,7 @@ public class ReActorSystemConfig {
          * @param refreshInterval Period after which a refresh of the system statistics should be done
          * @return this builder
          */
-        public Builder setSystemMonitorRefreshIntervak(Duration refreshInterval) {
+        public Builder setSystemMonitorRefreshInterval(Duration refreshInterval) {
             this.systemMonitorRefreshInterval = refreshInterval;
             return this;
         }

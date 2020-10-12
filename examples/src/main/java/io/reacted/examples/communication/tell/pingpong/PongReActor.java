@@ -30,8 +30,7 @@ public class PongReActor implements ReActor {
         return ReActions.newBuilder()
                         .reAct(Ping.class, this::onPing)
                         .reAct(ReActorStop.class, this::onStop)
-                        .reAct(((raCtx, payload) -> {
-                        }))
+                        .reAct(ReActions::noReAction)
                         .build();
     }
 

@@ -8,7 +8,11 @@
 
 package io.reacted.core.drivers.system;
 
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.RemovalCause;
+import com.google.common.cache.RemovalListener;
+import com.google.common.cache.RemovalNotification;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
@@ -42,25 +46,35 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @NonNullByDefault
-public abstract class ReActorSystemDriver<CfgT extends ReActedDriverCfg<?, CfgT>> {
+public abstract class ReActorSystemDriver<DriverCfgT extends ReActedDriverCfg<?, DriverCfgT>> {
     public static final ThreadLocal<DriverCtx> REACTOR_SYSTEM_CTX = new InheritableThreadLocal<>();
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
-    private final CfgT driverConfig;
-    private final Map<Long, CompletableFuture<Try<DeliveryStatus>>> pendingAcksTriggers;
+    private final DriverCfgT driverConfig;
+    private final Cache<Long, CompletableFuture<Try<DeliveryStatus>>> pendingAcksTriggers;
     @Nullable
     private ReActorSystem localReActorSystem;
     @Nullable
     private ExecutorService driverThread;
 
-    protected ReActorSystemDriver(CfgT driverCfg) {
+    protected ReActorSystemDriver(DriverCfgT driverCfg) {
         this.driverConfig = Objects.requireNonNull(driverCfg);
-        CacheBuilder<Long, CompletableFuture<Try<DeliveryStatus>>> driverPendingAcksTriggers;
-        //CacheBuilder.newBuilder()
-        //            .expireAfterWrite()
-        //            .removalListener()
-        this.pendingAcksTriggers = new ConcurrentHashMap<>(1_000_000, 0.5f);
+        this.pendingAcksTriggers = CacheBuilder.newBuilder()
+                                               .expireAfterWrite(driverCfg.getAtellAutomaticFailureTimeout()
+                                                                          .toMillis(), TimeUnit.MILLISECONDS)
+                                               .initialCapacity(10_000_000)
+                                               .removalListener(new RemovalListener<Long, CompletableFuture<Try<DeliveryStatus>>>() {
+                                                   @Override
+                                                   public void onRemoval(RemovalNotification<Long, CompletableFuture<Try<DeliveryStatus>>> notification) {
+                                                       if (notification.getCause() != RemovalCause.EXPLICIT) {
+                                                           notification.getValue()
+                                                                       .completeAsync(() -> Try.ofFailure(new TimeoutException()));
+                                                       }
+                                                   }
+                                               }).build();
     }
 
     abstract public void initDriverLoop(ReActorSystem localReActorSystem) throws Exception;
@@ -72,7 +86,7 @@ public abstract class ReActorSystemDriver<CfgT extends ReActedDriverCfg<?, CfgT>
     abstract public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message);
     abstract public boolean channelRequiresDeliveryAck();
 
-    public CfgT getDriverConfig() { return driverConfig; }
+    public DriverCfgT getDriverConfig() { return driverConfig; }
 
     /**
      * @param src source of the message
@@ -88,11 +102,15 @@ public abstract class ReActorSystemDriver<CfgT extends ReActedDriverCfg<?, CfgT>
                                                                                               PayloadT message);
 
     public Optional<CompletableFuture<Try<DeliveryStatus>>> removePendingAckTrigger(long msgSeqNum) {
-        return Optional.ofNullable(this.pendingAcksTriggers.remove(msgSeqNum));
+        var ackTrigger = this.pendingAcksTriggers.getIfPresent(msgSeqNum);
+        this.pendingAcksTriggers.invalidate(msgSeqNum);
+        return Optional.ofNullable(ackTrigger);
     }
 
     public CompletionStage<Try<DeliveryStatus>> newPendingAckTrigger(long msgSeqNum) {
-        return this.pendingAcksTriggers.computeIfAbsent(msgSeqNum, seqNum -> new CompletableFuture<>());
+        CompletableFuture<Try<DeliveryStatus>> newTrigger = new CompletableFuture<>();
+        this.pendingAcksTriggers.put(msgSeqNum, newTrigger);
+        return newTrigger;
     }
 
     public Try<Void> initDriverCtx(ReActorSystem localReActorSystem) {
