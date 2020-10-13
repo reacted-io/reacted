@@ -13,7 +13,6 @@ import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.time.Duration;
-import java.util.Objects;
 
 @NonNullByDefault
 public class ZooKeeperDriverCfg extends ServiceRegistryCfg<ZooKeeperDriverCfg.Builder, ZooKeeperDriverCfg> {

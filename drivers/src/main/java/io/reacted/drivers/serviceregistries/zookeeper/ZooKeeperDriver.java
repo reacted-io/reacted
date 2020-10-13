@@ -55,13 +55,10 @@ import org.apache.curator.x.discovery.ServiceInstance;
 import org.apache.curator.x.discovery.ServiceType;
 import org.apache.zookeeper.CreateMode;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.Serializable;
-import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -69,7 +66,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
@@ -138,7 +134,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
         CompletableFuture.runAsync(() -> getServiceInstance(cancellationRequest.getServiceName(),
                                                             raCtx.getReActorSystem().getLocalReActorSystemId(),
                                                             (ServicePublicationRequest)null)
-                                            .ifSuccessOrElse(this.serviceDiscovery::unregisterService,
+                                            .ifSuccessOrElse(Objects.requireNonNull(this.serviceDiscovery)::unregisterService,
                                                              error -> raCtx.logError("Unable to unregister service {}",
                                                                                      cancellationRequest.toString(), error)));
     }
@@ -159,7 +155,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
         }
         CompletableFuture.runAsync(() -> getServiceInstance(serviceName, raCtx.getReActorSystem()
                                                                               .getLocalReActorSystemId(), serviceInfo)
-                                            .ifSuccess(this.serviceDiscovery::registerService)
+                                            .ifSuccess(Objects.requireNonNull(this.serviceDiscovery)::registerService)
                                             .ifError(registeringError -> raCtx.reply(new RegistryServicePublicationFailed(serviceName,
                                                                                                                           registeringError))));
     }
@@ -169,7 +165,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
             return;
         }
 
-        CompletableFuture.supplyAsync(() -> queryZooKeeper(raCtx, this.serviceDiscovery, request.getSearchFilter()))
+        CompletableFuture.supplyAsync(() -> queryZooKeeper(raCtx, Objects.requireNonNull(this.serviceDiscovery), request.getSearchFilter()))
                          .toCompletableFuture()
                          .thenAcceptAsync(filterItemSet -> raCtx.getReActorSystem().getSystemRemotingRoot()
                                                                  .tell(raCtx.getSender(),
