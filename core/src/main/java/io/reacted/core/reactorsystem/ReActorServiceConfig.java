@@ -34,7 +34,7 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
                                                       IllegalArgumentException::new);
         this.routeeProvider = Objects.requireNonNull(builder.routeeProvider);
         this.loadBalancingPolicy = Objects.requireNonNull(builder.loadBalancingPolicy);
-        this.serviceRepublishReattemptDelayOnError = ObjectUtils.checkNonNullPositiveInterval(builder.serviceRepublishReattemptDelayOnError);
+        this.serviceRepublishReattemptDelayOnError = ObjectUtils.checkNonNullPositiveTimeInterval(builder.serviceRepublishReattemptDelayOnError);
     }
 
     public int getRouteesNum() {

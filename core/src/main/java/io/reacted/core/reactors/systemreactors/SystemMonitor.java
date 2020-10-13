@@ -40,9 +40,7 @@ public class SystemMonitor implements ReActiveEntity {
     public SystemMonitor(Duration taskPeriod, ScheduledExecutorService timerService) {
         this.timerService = Objects.requireNonNull(timerService);
         this.systemMonitor = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
-        this.taskPeriod = ObjectUtils.requiredCondition(Objects.requireNonNull(taskPeriod),
-                                                        interval -> interval.compareTo(Duration.ZERO) > 0,
-                                                        IllegalArgumentException::new);
+        this.taskPeriod = ObjectUtils.checkNonNullPositiveTimeInterval(taskPeriod);
     }
 
     @Nonnull

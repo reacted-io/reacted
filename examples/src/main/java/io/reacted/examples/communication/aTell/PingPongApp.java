@@ -70,7 +70,7 @@ class PingPongApp {
         var clientSystem = new ReActorSystem(clientSystemCfg).initReActorSystem();
         var serverSystem = new ReActorSystem(serverSystemCfg).initReActorSystem();
 
-        TimeUnit.SECONDS.sleep(5);
+        TimeUnit.SECONDS.sleep(10);
 
         var serverReActor = serverSystem.spawnService(ReActorServiceConfig.newBuilder()
                                                                           .setRouteeProvider(ServerReActor::new)
@@ -78,7 +78,7 @@ class PingPongApp {
                                                                           .setReActorName("ServerService")
                                                                           .setRouteesNum(1)
                                                                           .build()).orElseSneakyThrow();
-        TimeUnit.SECONDS.sleep(5);
+        TimeUnit.SECONDS.sleep(10);
         var remoteService = clientSystem.serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                            .setServiceName("ServerService")
                                                                                            .build())
@@ -136,7 +136,7 @@ class PingPongApp {
         }
 
         private void onInit(ReActorContext raCtx) {
-            unlimiChain(() -> this.serverReference.aTell("Not received"), 1000);
+            unlimiChain(() -> this.serverReference.aTell("Not received"), 1_000_000);
         }
     }
     

@@ -21,7 +21,6 @@ import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
-import io.reacted.core.drivers.serviceregistries.ServiceRegistryInitData;
 import io.reacted.core.drivers.system.LoopbackDriver;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
@@ -578,11 +577,10 @@ public class ReActorSystem {
     /* SneakyThrows */
     @SuppressWarnings("RedundantThrows")
     private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
-                                                                             ? extends ServiceRegistryCfg<?, ?>>> drivers) throws Exception {
-        ServiceRegistryInitData driverInitData = new ServiceRegistryInitData(getSystemSchedulingService());
-        drivers.forEach(driver -> driver.onServiceRegistryInit(driverInitData));
-        drivers.forEach( driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())
-                                                .orElseSneakyThrow());
+                                                                             ? extends ServiceRegistryCfg<?, ?>>> drivers)
+            throws Exception {
+        drivers.forEach(driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())
+                .orElseSneakyThrow());
     }
 
     private void initReActorSystemReActors() throws ReActorSystemInitException {

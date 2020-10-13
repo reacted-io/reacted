@@ -25,6 +25,4 @@ public abstract class ServiceRegistryDriver<BuilderT extends ServiceRegistryCfg.
     @Nonnull
     @Override
     public final BuiltT getConfig() { return driverCfg;  }
-
-    public abstract void onServiceRegistryInit(@Nonnull ServiceRegistryInitData initInfo);
 }

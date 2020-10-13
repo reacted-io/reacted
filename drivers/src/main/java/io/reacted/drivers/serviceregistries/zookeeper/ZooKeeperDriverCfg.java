@@ -22,9 +22,7 @@ public class ZooKeeperDriverCfg extends ServiceRegistryCfg<ZooKeeperDriverCfg.Bu
 
     private ZooKeeperDriverCfg(Builder builder) {
         super(builder);
-        this.reattemptOnFailureInterval = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.reattemptOnFailureInterval),
-                                                                        interval -> interval.compareTo(Duration.ZERO) > 0,
-                                                                        () -> new IllegalArgumentException("Invalid interval (<= 0)"));
+        this.reattemptOnFailureInterval = ObjectUtils.checkNonNullPositiveTimeInterval(builder.reattemptOnFailureInterval);
     }
 
     public Duration getReattemptOnFailureInterval() {

@@ -24,7 +24,7 @@ public final class ObjectUtils {
      * @throws NullPointerException if the provided argument is null
      * @throws IllegalArgumentException if the provided interval is not positive
      */
-    public static Duration checkNonNullPositiveInterval(@Nonnull Duration interval) {
+    public static Duration checkNonNullPositiveTimeInterval(@Nonnull Duration interval) {
         return requiredCondition(Objects.requireNonNull(interval),
                                  nonNullInterval -> nonNullInterval.compareTo(Duration.ZERO) > 0,
                                  () -> new IllegalArgumentException("Provided interval is not positive"));

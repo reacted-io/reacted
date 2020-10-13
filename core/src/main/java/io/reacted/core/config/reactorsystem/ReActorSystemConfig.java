@@ -52,9 +52,7 @@ public class ReActorSystemConfig {
         this.dispatchersConfigs = Set.copyOf(reactorSystemConfig.dispatcherConfigs);
         this.remotingDrivers = Set.copyOf(reactorSystemConfig.remotingDrivers);
         this.serviceRegistryDrivers = Set.copyOf(reactorSystemConfig.serviceRegistryDrivers);
-        this.systemMonitorRefreshInterval = ObjectUtils.requiredCondition(Objects.requireNonNull(reactorSystemConfig.systemMonitorRefreshInterval),
-                                                                          refreshInterval -> refreshInterval.compareTo(Duration.ZERO) > 0,
-                                                                          IllegalArgumentException::new);
+        this.systemMonitorRefreshInterval = ObjectUtils.checkNonNullPositiveTimeInterval(reactorSystemConfig.systemMonitorRefreshInterval);
     }
 
     public String getReActorSystemName() { return this.reactorSystemName; }

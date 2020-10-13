@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 public class ReActorService implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
@@ -73,12 +74,14 @@ public class ReActorService implements ReActiveEntity {
         raCtx.addTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class));
     }
 
-    public void  onServicePublicationError(ReActorContext raCtx, ServicePublicationRequestError error) {
+    public void onServicePublicationError(ReActorContext raCtx, ServicePublicationRequestError error) {
         Try.of(() -> raCtx.getReActorSystem()
-                          .getSystemSchedulingService().schedule(() -> sendPublicationRequest(raCtx,
-                                                                                              this.serviceInfo),
-                                                                 ))
-           .ifError()
+                          .getSystemSchedulingService()
+                          .schedule(() -> sendPublicationRequest(raCtx, this.serviceInfo),
+                                    this.reActorServiceConfig.getServiceRepublishReattemptDelayOnError().toMillis(),
+                                    TimeUnit.MILLISECONDS))
+           .peekFailure(failure -> raCtx.logError("Unable to reschedule service publication", failure))
+           .ifError(failure -> raCtx.getSelf().tell(raCtx.getSender(), error));
     }
 
     private void onSystemInfoReport(ReActorContext raCtx, SystemMonitorReport report) {
