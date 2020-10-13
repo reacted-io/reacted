@@ -64,6 +64,7 @@ public final class UnChecked {
         T get() throws Throwable;
     }
 
+    @SuppressWarnings("EmptyMethod")
     @FunctionalInterface
     public interface CheckedConsumer<T> {
         void accept(T arg1) throws Throwable;
@@ -74,6 +75,7 @@ public final class UnChecked {
         void accept(T arg1, U arg2) throws Throwable;
     }
 
+    @SuppressWarnings("EmptyMethod")
     @FunctionalInterface
     public interface CheckedFunction<T, U> {
         U apply(T arg1) throws Throwable;

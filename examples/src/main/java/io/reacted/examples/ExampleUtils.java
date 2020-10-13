@@ -17,13 +17,12 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
 @NonNullByDefault
 public final class ExampleUtils {
-    public static final Collection<ServiceRegistryDriver> NO_SERVICE_REGISTRIES = List.of();
+    public static final Collection<ServiceRegistryDriver<?, ?>> NO_SERVICE_REGISTRIES = List.of();
     public static final Collection<RemotingDriver> NO_REMOTING_DRIVERS = List.of();
 
     private ExampleUtils() {
@@ -39,12 +38,11 @@ public final class ExampleUtils {
     }
 
     public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName, LocalDriver localDriver,
-                                                                 Collection<ServiceRegistryDriver> serviceRegistryDrivers,
+                                                                 Collection<ServiceRegistryDriver<?, ?>> serviceRegistryDrivers,
                                                                  Collection<RemotingDriver> remotingDrivers) {
         var configBuilder = ReActorSystemConfig.newBuilder()
                                   //Tunable parameter for purging java timers from
                                   // canceled tasks
-                                  .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
                                   //How messages are delivered within a Reactor System
                                   .setLocalDriver(localDriver)
                                   //Fan out pool to message type subscribers

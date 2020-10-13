@@ -10,12 +10,12 @@ package io.reacted.core.reactorsystem;
 
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
-import java.time.Duration;
+import io.reacted.core.services.ReActorService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,29 +28,28 @@ class ReActorServiceTest {
     @BeforeEach
     void setUp() {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
-                .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
-                .setMsgFanOutPoolSize(2)
-                .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
-                .addDispatcherConfig(DispatcherConfig.newBuilder()
-                                             .setDispatcherName("TestDispatcher")
-                                             .setBatchSize(1_000)
-                                             .setDispatcherThreadsNum(1)
-                                             .build())
-                .build();
+                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
+                                                                     .setMsgFanOutPoolSize(2)
+                                                                     .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
+                                                                     .addDispatcherConfig(DispatcherConfig.newBuilder()
+                                                                                                          .setDispatcherName("TestDispatcher")
+                                                                                                          .setBatchSize(1_000)
+                                                                                                          .setDispatcherThreadsNum(1)
+                                                                                                          .build())
+                                                                     .build();
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();
 
         reActorServiceConfig = ReActorServiceConfig.newBuilder()
-                .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
-                .setMailBoxProvider(BasicMbox::new)
-                .setReActorName("TestRouter")
-                .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
-                .setRouteesNum(1)
-                .setRouteeProvider(() -> new MagicTestReActor(2, true,
-                                                              "RouterChild"))
-                .build();
+                                                   .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
+                                                   .setMailBoxProvider(ctx -> new BasicMbox())
+                                                   .setReActorName("TestRouter")
+                                                   .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                                                   .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+                                                   .setRouteesNum(1)
+                                                   .setRouteeProvider(() -> new MagicTestReActor(2, true,
+                                                                                                 "RouterChild"))
+                                                   .build();
     }
 
     @AfterEach
@@ -66,6 +65,8 @@ class ReActorServiceTest {
     @Test
     void reactorSystemCanSpawnService() {
         ReActorRef router = reActorSystem.spawnService(reActorServiceConfig).orElseSneakyThrow();
-        Assertions.assertEquals(router, reActorSystem.getReActor(router.getReActorId()).get().getSelf());
+        Assertions.assertEquals(router, reActorSystem.getReActor(router.getReActorId())
+                                                     .map(ReActorContext::getSelf)
+                                                     .orElse(ReActorRef.NO_REACTOR_REF));
     }
 }

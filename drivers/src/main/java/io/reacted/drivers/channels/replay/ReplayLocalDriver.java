@@ -56,9 +56,6 @@ public class ReplayLocalDriver extends LocalDriver {
     }
 
     @Override
-    public void stop(ReActorId dst) { }
-
-    @Override
     public void initDriverLoop(ReActorSystem replayedActorSystem) {
         this.chronicle = ChronicleQueue.singleBuilder(driverConfig.getChronicleFilesDir()).build();
         this.replayedActorSystem = replayedActorSystem;
@@ -129,9 +126,11 @@ public class ReplayLocalDriver extends LocalDriver {
                                                   .remove(executionAttempt.getMsgSeqNum());
                 localReActorSystem.getReActor(executionAttempt.getReActorId())
                                   .filter(reActorContext -> Objects.nonNull(message))
-                          .ifPresentOrElse(dstReActor -> forwardMessageToLocalActor(dstReActor, message),
-                                           () -> getMissingDetailsLog(localReActorSystem::logError,
-                                                                      executionAttempt.getReActorId(), message));
+                                  .ifPresentOrElse(dstReActor -> forwardMessageToLocalActor(dstReActor, message),
+                                                   () -> localReActorSystem.logError("Unable to delivery message {} for ReActor {}",
+                                                                                     executionAttempt.getReActorId(),
+                                                                                     message,
+                                                                                     new IllegalStateException()));
             } else {
                 dstToMessageBySeqNum.computeIfAbsent(nextMessage.getDestination().getReActorId(),
                                                      reActorId -> new HashMap<>())
@@ -154,12 +153,6 @@ public class ReplayLocalDriver extends LocalDriver {
     private boolean isTargetReactorAlreadySpawned(Message newMessage) {
         //Every spawned reactor receives an init message, so there must be a send for it
         return spawnedReActors.contains(newMessage.getSender().getReActorId());
-    }
-
-    private static void getMissingDetailsLog(BiConsumer<String, Throwable> logger,
-                                             ReActorId target, @Nullable Message payload) {
-        logger.accept(String.format("Unable to delivery message [%s] for ReActor [%s]", payload, target),
-                      new IllegalStateException());
     }
 
     private static void logFailureOnMessageRetrieve(BiConsumer<String, Throwable> logger, Throwable error) {

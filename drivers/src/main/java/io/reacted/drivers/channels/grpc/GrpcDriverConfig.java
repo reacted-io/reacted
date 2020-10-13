@@ -8,8 +8,8 @@
 
 package io.reacted.drivers.channels.grpc;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
@@ -24,7 +24,7 @@ public class GrpcDriverConfig extends ReActedDriverCfg<GrpcDriverConfig.Builder,
 
     private GrpcDriverConfig(Builder builder) {
         super(builder);
-        this.port = ConfigUtils.requiredInRange(builder.port, 1, 65535, IllegalArgumentException::new);
+        this.port = ObjectUtils.requiredInRange(builder.port, 1, 65535, IllegalArgumentException::new);
         this.hostName = Objects.requireNonNull(builder.hostName);
     }
 

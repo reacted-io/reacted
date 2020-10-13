@@ -3,3 +3,4 @@ target
 .idea/
 .m2/
 /release.properties
+.DS_Store

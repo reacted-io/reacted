@@ -6,9 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.config;
+package io.reacted.core.utils;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;
 
@@ -20,14 +19,13 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 @NonNullByDefault
 public final class ConfigUtils {
     private ConfigUtils() { /* No instances allowed */ }
-    public static Properties toProperties(ReActedDriverCfg<?, ?> config, Set<String> skipFields) {
+    public static Properties toProperties(Object anyObject, Set<String> skipFields) {
         Properties cfgProperties = new Properties();
-        Class<?> configLevel = Objects.requireNonNull(config).getClass();
+        Class<?> configLevel = Objects.requireNonNull(anyObject).getClass();
         do {
             Field[] configFields = configLevel.getDeclaredFields();
             Arrays.stream(configFields)
@@ -35,7 +33,7 @@ public final class ConfigUtils {
                   .filter(Predicate.not(field -> Modifier.isStatic(field.getModifiers())))
                   .forEach(field -> {
                       field.setAccessible(true);
-                      Optional.ofNullable(UnChecked.function(field::get).apply(config))
+                      Optional.ofNullable(UnChecked.function(field::get).apply(anyObject))
                               .map(Object::toString)
                               .ifPresent(fieldValue -> cfgProperties.setProperty(field.getName(),
                                                                                  fieldValue));
@@ -43,25 +41,5 @@ public final class ConfigUtils {
             configLevel = configLevel.getSuperclass();
         } while (configLevel != Object.class);
         return cfgProperties;
-    }
-
-    public static <ElementT extends Comparable<ElementT>, ExceptionT extends RuntimeException>
-    ElementT requiredInRange(ElementT element, ElementT inclusiveRangeStart, ElementT inclusiveRangeEnd,
-                             Supplier<ExceptionT> onError) {
-        if (!(Objects.requireNonNull(inclusiveRangeEnd).compareTo(Objects.requireNonNull(inclusiveRangeStart)) < 0) &&
-            Objects.requireNonNull(element).compareTo(inclusiveRangeStart) >= 0 &&
-                element.compareTo(inclusiveRangeEnd) <= 0) {
-            return element;
-        }
-        throw onError.get();
-    }
-
-    public static <ReturnT, OnErrorT extends RuntimeException>  ReturnT
-    requiredCondition(ReturnT element, Predicate<ReturnT> controlPredicate,
-                      Supplier<OnErrorT> onControlPredicateFailure) {
-        if (controlPredicate.negate().test(element)) {
-            throw onControlPredicateFailure.get();
-        }
-        return element;
     }
 }

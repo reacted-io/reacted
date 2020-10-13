@@ -17,7 +17,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.concurrent.CompletionStage;
 
 @ParametersAreNonnullByDefault
-public interface MailBox {
+public interface MailBox extends AutoCloseable {
     //TODO generic ring buffer for inboxes
 
     boolean isEmpty();
@@ -36,4 +36,7 @@ public interface MailBox {
 
     @Nonnull
     CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message);
+
+    @Override
+    default void close() throws Exception { }
 }

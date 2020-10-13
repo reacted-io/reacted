@@ -20,7 +20,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
-import java.time.Duration;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,7 +42,6 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
                 .setRecordExecution(false)
                 .setMsgFanOutPoolSize(1)
                 .setReactorSystemName("TckValidationRAS")
-                .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
                 .build();
         this.localReActorSystem = new ReActorSystem(rasCfg);
     }

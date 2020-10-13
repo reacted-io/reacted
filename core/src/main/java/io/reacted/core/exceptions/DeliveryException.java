@@ -6,9 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.messages.serviceregistry;
+package io.reacted.core.exceptions;
 
-import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
-@Immutable
-public class RegistrySubscriptionComplete implements Serializable { }
+public class DeliveryException extends RuntimeException { }

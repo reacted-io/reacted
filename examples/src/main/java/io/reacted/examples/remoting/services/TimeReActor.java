@@ -9,17 +9,18 @@
 package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
-import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.services.SelectionType;
 import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
@@ -47,9 +48,12 @@ public class TimeReActor implements ReActor {
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
-        raCtx.getReActorSystem().serviceDiscovery(serviceToQuery,
-                                                  ServiceDiscoveryRequest.SelectionType.DIRECT,
-                                                  raCtx.getSelf());
+        raCtx.getReActorSystem().serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
+                                                                                   .setServiceName(serviceToQuery)
+                                                                                   .setSelectionType(SelectionType.DIRECT)
+                                                                                   .build(), raCtx.getSelf())
+             .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                                                                .ifError(error -> raCtx.logError("Error discovering service", error)));
     }
 
     private void onServiceDiscoveryReply(ReActorContext raCtx, ServiceDiscoveryReply serviceDiscoveryReply) {
@@ -58,17 +62,17 @@ public class TimeReActor implements ReActor {
                                                        .toCompletableFuture()
                                                        .thenAccept(result -> result.filter(DeliveryStatus::isDelivered)
                                                                                    .ifError(Throwable::printStackTrace)),
-                             () -> raCtx.getReActorSystem().logDebug("No response received"));
+                             () -> raCtx.logError("No service discovery response received"));
     }
 
     private void onServiceResponse(ReActorContext raCtx, ZonedDateTime time) {
-        raCtx.getReActorSystem().logDebug("Received %d response from service: %s%n", ++received, time.toString());
+        raCtx.logInfo("Received {} response from service: {}", ++received, time.toString());
         raCtx.stop();
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        raCtx.getReActorSystem()
-             .logDebug("%s is exiting and exiting reactorsystem...", raCtx.getSelf().getReActorId().getReActorName());
+        raCtx.logInfo("{} is exiting and exiting reactorsystem...", raCtx.getSelf().getReActorId().getReActorName());
+
         CompletableFuture.supplyAsync(() -> Try.ofRunnable(() -> raCtx.getReActorSystem().shutDown())
                                                .ifError(Throwable::printStackTrace));
     }
@@ -78,8 +82,8 @@ public class TimeReActor implements ReActor {
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                             .setReActorName(TimeReActor.class.getSimpleName() + "-" + reactorName)
-                            .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
-                            .setMailBoxProvider(BasicMbox::new)
+                            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+                            .setMailBoxProvider(ctx -> new BasicMbox())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                             .build();
     }

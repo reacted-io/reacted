@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core;
+package io.reacted.core.datastructure;
 
 import io.reacted.patterns.NonNullByDefault;
 

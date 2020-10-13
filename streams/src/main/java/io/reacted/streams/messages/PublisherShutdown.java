@@ -10,5 +10,4 @@ package io.reacted.streams.messages;
 
 import java.io.Serializable;
 
-public class PublisherShutdown implements Serializable {
-}
+public class PublisherShutdown implements Serializable { }

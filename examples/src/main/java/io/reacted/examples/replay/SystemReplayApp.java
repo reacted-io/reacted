@@ -10,7 +10,7 @@ package io.reacted.examples.replay;
 
 import com.google.common.base.Strings;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
@@ -54,11 +54,11 @@ public class SystemReplayApp {
         var echoReActorConfig = ReActorConfig.newBuilder()
                                              .setReActorName("EchoReActor")
                                              .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                             .setMailBoxProvider(BasicMbox::new)
-                                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                             .setMailBoxProvider(ctx -> new BasicMbox())
+                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                              .build();
 
-        var echoReference = recordedReactorSystem.spawnReActor(echoReActions, echoReActorConfig)
+        var echoReference = recordedReactorSystem.spawn(echoReActions, echoReActorConfig)
                                                  .orElseSneakyThrow();
 
         IntStream.range(0, 5)
@@ -66,8 +66,9 @@ public class SystemReplayApp {
                  .forEachOrdered(echoReference::aTell);
         TimeUnit.SECONDS.sleep(1);
         recordedReactorSystem.shutDown();
+        TimeUnit.SECONDS.sleep(1);
         //Everything has been recorded, now let's try to replay it
-        System.out.println("Replay start!");
+        System.out.println("Replay engine setup");
         var replayDriverCfg = new ReplayLocalDriver(dumpingLocalDriverCfg);
         var replayedReActorSystem =
                 new ReActorSystem(ExampleUtils.getDefaultReActorSystemCfg(SystemReplayApp.class.getSimpleName(),
@@ -75,8 +76,10 @@ public class SystemReplayApp {
                                                                           ExampleUtils.NO_SERVICE_REGISTRIES,
                                                                           ExampleUtils.NO_REMOTING_DRIVERS))
                         .initReActorSystem();
+        System.out.println("Replay Start!");
         //Once the reactor will be created, the system will notify that and will begin its replay
-        replayedReActorSystem.spawnReActor(echoReActions, echoReActorConfig).orElseSneakyThrow();
+        replayedReActorSystem.spawn(echoReActions, echoReActorConfig).orElseSneakyThrow();
+        TimeUnit.SECONDS.sleep(1);
         replayedReActorSystem.shutDown();
     }
 }

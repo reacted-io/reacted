@@ -36,7 +36,7 @@ public final class ReActorRef implements Externalizable {
     private static final long HASHCODE_OFFSET = SerializationUtils.getFieldOffset(ReActorRef.class, "hashCode")
                                                                   .orElseSneakyThrow();
     private static final long REACTORSYSTEMREF_OFFSET = SerializationUtils.getFieldOffset(ReActorRef.class,
-                                                                               "reActorSystemRef")
+                                                                                          "reActorSystemRef")
                                                                           .orElseSneakyThrow();
     private static final Duration NO_TIMEOUT = Duration.ofDays(Integer.MAX_VALUE);
 
@@ -200,8 +200,7 @@ public final class ReActorRef implements Externalizable {
     CompletionStage<Try<ReplyT>> ask(ReActorSystem localReActorSystem, ReActorRef target, RequestT request,
                                      Class<ReplyT> expectedReplyType, Duration askTimeout, String requestName) {
         CompletableFuture<Try<ReplyT>> returnValue = new CompletableFuture<>();
-        localReActorSystem.spawnReActor(new Ask<>(localReActorSystem.getSystemTimer(), askTimeout, expectedReplyType,
-                                                  returnValue, requestName, target, request))
+        localReActorSystem.spawn(new Ask<>(askTimeout, expectedReplyType, returnValue, requestName, target, request))
                           .ifError(spawnError -> returnValue.complete(Try.ofFailure(spawnError)));
         return returnValue;
     }

@@ -9,22 +9,22 @@
 package io.reacted.examples.communication.tell.pingpong;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class PongReActor implements ReActor {
     private final Timer pongTimer = new Timer();
 
-    @NotNull
+    @Nonnull
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
@@ -35,14 +35,14 @@ public class PongReActor implements ReActor {
                         .build();
     }
 
-    @NotNull
+    @Nonnull
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                             .setReActorName(PongReActor.class.getSimpleName())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                            .setMailBoxProvider(BasicMbox::new)
-                            .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                            .setMailBoxProvider(ctx -> new BasicMbox())
+                            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }
 
@@ -51,9 +51,7 @@ public class PongReActor implements ReActor {
         //Schedule a reply after 1 second
         this.pongTimer.schedule(new TimerTask() {
             @Override
-            public void run() {
-                raCtx.getSender().tell(raCtx.getSelf(), new Pong(ping.getPingValue()));
-            }
+            public void run() { raCtx.reply(new Pong(ping.getPingValue())); }
         }, 1000);
     }
 

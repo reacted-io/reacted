@@ -8,13 +8,13 @@
 
 package io.reacted.core.reactorsystem;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.reactors.ReActorId;
 import io.reacted.patterns.Try;
 
 import javax.annotation.Nullable;
@@ -66,16 +66,14 @@ public class ReActorSystemRef implements Externalizable {
         return this.backingDriver.tell(src, dst, ackingPolicy, message);
     }
 
-    public void stop(ReActorId dst) {
-        this.backingDriver.stop(dst);
-    }
-
     public ReActorSystemId getReActorSystemId() {
         return this.reActorSystemId;
     }
 
+    @JsonIgnore
     public ReActorSystemDriver getBackingDriver() { return this.backingDriver; }
 
+    @JsonIgnore
     public Properties getGateProperties() { return this.gateProperties; }
 
     public boolean equals(@Nullable Object o) {
@@ -106,10 +104,6 @@ public class ReActorSystemRef implements Externalizable {
         ReActorSystemId reActorSystemId = new ReActorSystemId();
         reActorSystemId.readExternal(in);
         setReActorSystemId(reActorSystemId);
-        /* Here is where the location abstraction magic happens: on deserialization, we check in which driver the
-           deserialization is taking place. Then we set the driver instance as methods provider for communicating
-           for the reactor system pointed out by this reference
-         */
         RemotingDriver.getDriverCtx()
                       .flatMap(driverCtx -> driverCtx.getLocalReActorSystem().findGate(reActorSystemId,
                                                                                        driverCtx.getDecodingDriver()

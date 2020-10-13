@@ -9,7 +9,7 @@
 package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
@@ -17,6 +17,8 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
+
+import javax.annotation.Nonnull;
 import java.util.concurrent.atomic.LongAdder;
 
 public class MagicTestReActor implements ReActor {
@@ -32,11 +34,11 @@ public class MagicTestReActor implements ReActor {
 
     public MagicTestReActor(int maxMsgValue, boolean checkMsgOrdering, String reactorName) {
         this(maxMsgValue, checkMsgOrdering, ReActorConfig.newBuilder()
-                .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                .setMailBoxProvider(BasicMbox::new)
-                .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
-                .setReActorName(reactorName)
-                .build());
+                                                         .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                                                         .setMailBoxProvider(ctx -> new BasicMbox())
+                                                         .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+                                                         .setReActorName(reactorName)
+                                                         .build());
     }
 
     public MagicTestReActor(int maxMsgValue, boolean checkMsgOrdering, ReActorConfig reActorConfig) {
@@ -44,30 +46,30 @@ public class MagicTestReActor implements ReActor {
         this.checkMsgOrdering = checkMsgOrdering;
         this.reActorConfig = reActorConfig;
         this.reActions = ReActions.newBuilder()
-                .reAct(DeadMessage.class, this::onDeadMessage)
-                .reAct(Message.class, this::onMessage)
-                .build();
+                                  .reAct(DeadMessage.class, this::onDeadMessage)
+                                  .reAct(Message.class, this::onMessage)
+                                  .build();
     }
 
     public void onDeadMessage(ReActorContext ctx, DeadMessage deadMessage) {
         System.err.printf("Dispatcher used [%s] Payload: %s%n", ctx.getDispatcher()
-                .getName(), deadMessage.getPayload());
+                                                                   .getName(), deadMessage.getPayload());
         DEADMSG.increment();
     }
 
     public void onMessage(ReActorContext ctx, Message message) {
         System.err.printf("Dispatcher used [%s] Payload: %s%n", ctx.getDispatcher()
-                .getName(), message.getPayload());
+                                                                   .getName(), message.getPayload());
         RECEIVED.increment();
     }
 
+    @Nonnull
     @Override
     public ReActorConfig getConfig() {
         return reActorConfig;
     }
 
+    @Nonnull
     @Override
-    public ReActions getReActions() {
-        return reActions;
-    }
+    public ReActions getReActions() { return reActions; }
 }

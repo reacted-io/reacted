@@ -10,7 +10,7 @@ package io.reacted.examples.replay;
 
 import com.google.common.base.Strings;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorRef;
@@ -25,7 +25,7 @@ import java.time.Instant;
 public class SystemReplayAskApp {
     //NOTE: you may need to provide --illegal-access=permit --add-exports java.base/jdk.internal.ref=ALL-UNNAMED
     //as jvm option
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         String dumpDirectory = args.length == 0 || Strings.isNullOrEmpty(args[0]) ? "/tmp" : args[0];
         var dumpingLocalDriverCfg = CQDriverConfig.newBuilder()
                                                   .setChronicleFilesDir(dumpDirectory)
@@ -59,11 +59,11 @@ public class SystemReplayAskApp {
         var echoReActorConfig = ReActorConfig.newBuilder()
                                              .setReActorName("EchoReActor")
                                              .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                             .setMailBoxProvider(BasicMbox::new)
-                                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                             .setMailBoxProvider(ctx -> new BasicMbox())
+                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                              .build();
 
-        var echoReference = recordedReactorSystem.spawnReActor(echoReActions, echoReActorConfig)
+        var echoReference = recordedReactorSystem.spawn(echoReActions, echoReActorConfig)
                                                  .orElseSneakyThrow();
 
         echoReference.ask("I am an ask", String.class, "AskRequest")
@@ -82,7 +82,7 @@ public class SystemReplayAskApp {
                                                                           ExampleUtils.NO_REMOTING_DRIVERS))
                 .initReActorSystem();
         //Once the reactor will be created, the system will notify that and will begin its replay
-        echoReference = replayedReActorSystem.spawnReActor(echoReActions, echoReActorConfig).orElseSneakyThrow();
+        echoReference = replayedReActorSystem.spawn(echoReActions, echoReActorConfig).orElseSneakyThrow();
         echoReference.ask("I am an ask", String.class, "AskRequest")
                      .thenAccept(reply -> reply.ifSuccessOrElse(System.out::println,
                                                                 Throwable::printStackTrace))

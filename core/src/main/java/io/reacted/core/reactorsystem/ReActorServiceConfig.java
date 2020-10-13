@@ -8,17 +8,18 @@
 
 package io.reacted.core.reactorsystem;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.reactors.ReActor;
+import io.reacted.core.services.ReActorService;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;
 
 import java.util.Objects;
 
 @NonNullByDefault
-public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceConfig,
-                                                               ReActorServiceConfig.Builder> {
+public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceConfig.Builder,
+                                                               ReActorServiceConfig> {
 
     private final int routeesNum;
     private final UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
@@ -26,7 +27,7 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
 
     private ReActorServiceConfig(Builder reActorServiceConfig) {
         super(reActorServiceConfig);
-        this.routeesNum = ConfigUtils.requiredInRange(reActorServiceConfig.routeesNum, 1, 10_000,
+        this.routeesNum = ObjectUtils.requiredInRange(reActorServiceConfig.routeesNum, 1, 10_000,
                                                       IllegalArgumentException::new);
         this.routeeProvider = Objects.requireNonNull(reActorServiceConfig.routeeProvider);
         this.loadBalancingPolicy = Objects.requireNonNull(reActorServiceConfig.loadBalancingPolicy);
@@ -40,11 +41,6 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
         return loadBalancingPolicy;
     }
 
-    @Override
-    public ReActiveEntityConfig.Builder<ReActorServiceConfig, Builder> toBuilder() {
-        return fillBuilder(newBuilder());
-    }
-
     public static Builder newBuilder() {
         return new Builder();
     }
@@ -53,16 +49,14 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
         return routeeProvider;
     }
 
-    public static class Builder extends ReActiveEntityConfig.Builder<ReActorServiceConfig, Builder> {
+    public static class Builder extends ReActiveEntityConfig.Builder<Builder, ReActorServiceConfig> {
         private int routeesNum;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActorService.LoadBalancingPolicy loadBalancingPolicy;
 
-        private Builder() {
-            setEntityType(ReActiveEntityType.REACTORSERVICE);
-        }
+        private Builder() { }
 
         /**
          * A Service exposes the behavior of a reactor in a resilient and load balanced manneer. Here we specify

@@ -10,10 +10,11 @@ package io.reacted.examples.services;
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
+import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
@@ -21,20 +22,20 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorService;
 import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.services.ReActorService;
+import io.reacted.core.services.SelectionType;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-import org.jetbrains.annotations.NotNull;
 
-import java.time.Duration;
+import javax.annotation.Nonnull;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 public class ServicePublicationApp {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         String serviceName = "Clock Service";
         String serviceDispatcherName = serviceName + " Dedicated Dispatcher";
         //Since we want to grant the best possible service, let's not mix system messages execution with the
@@ -51,8 +52,7 @@ public class ServicePublicationApp {
                                                               .setReactorSystemName(ServicePublicationApp.class.getSimpleName())
                                                               .setMsgFanOutPoolSize(1)
                                                               .setRecordExecution(false)
-                                                              .setAskTimeoutsCleanupInterval(Duration.ofSeconds(10))
-                                                              .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLogger("/Users/angel/Desktop/ClockServiceLog"))
+                                                              .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                               //.setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                               //We can add as many dispatchers as we want
                                                               .addDispatcherConfig(serviceDispatcherCfg)
@@ -60,8 +60,7 @@ public class ServicePublicationApp {
         var reActorSystem = new ReActorSystem(systemConfig).initReActorSystem();
 
         ReActorConfig routeeConfig = ReActorConfig.newBuilder()
-                                                  .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
-                                                  .setMailBoxProvider(BasicMbox::new)
+                                                  .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                   .setReActorName("ClockWorker")
                                                   //Not only the service, but we want also its workers to use the same
                                                   //dedicated dispatcher
@@ -73,11 +72,11 @@ public class ServicePublicationApp {
                                        .build();
         //Here we define how a routee behaves. This is going to be the actual body of our servuce
         UnChecked.CheckedSupplier<ReActor> routeeProvider = () -> new ReActor() {
-            @NotNull
+            @Nonnull
             @Override
             public ReActions getReActions() { return routeeReActions; }
 
-            @NotNull
+            @Nonnull
             @Override
             public ReActorConfig getConfig() { return routeeConfig; }
         };
@@ -94,16 +93,18 @@ public class ServicePublicationApp {
                                                      //We can have at maximum 5 pending messages in the
                                                      //service mailbox. The exceeding ones will be
                                                      //dropped win an error to the sender
-                                                     .setMailBoxProvider(() -> new BoundedBasicMbox(5))
+                                                     .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
                                                      //The service will intercept all the Service Discovery Requests
                                                      //generated locally to this reactor system
-                                                     .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                     .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                      .build();
         reActorSystem.spawnService(clockServiceConfig).orElseSneakyThrow();
-        System.out.println("Service published");
         //Ask for a reference to a service called Clock Service. A reference to the service itself will be returned
         //This means that all the requests sent to the returned reference will be routed to one of the available workers
-        reActorSystem.serviceDiscovery(serviceName, ServiceDiscoveryRequest.SelectionType.ROUTED)
+        reActorSystem.serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
+                                                                        .setServiceName(serviceName)
+                                                                        .setSelectionType(SelectionType.ROUTED)
+                                                                        .build())
                      .thenApply(discovery -> discovery.map(ServiceDiscoveryReply::getServiceGates))
                      .thenApply(services -> services.filter(list -> !list.isEmpty()))
                      //get the first gate available
@@ -119,9 +120,8 @@ public class ServicePublicationApp {
     }
 
     private static void onTimeRequest(ReActorContext raCtx, TimeRequest timeRequest) {
-        raCtx.getReActorSystem().logDebug("%s received %s", raCtx.getSelf().getReActorId().getReActorName(),
-                                          timeRequest.getClass().getSimpleName());
-        raCtx.getSender().tell(ReActorRef.NO_REACTOR_REF, ZonedDateTime.ofInstant(Instant.now(),
-                                                                                  ZoneId.systemDefault()));
+        raCtx.logInfo("{} received {}", raCtx.getSelf().getReActorId().getReActorName(),
+                      timeRequest.getClass().getSimpleName());
+        raCtx.reply(ReActorRef.NO_REACTOR_REF, ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
     }
 }

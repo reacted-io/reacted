@@ -8,11 +8,14 @@
 
 package io.reacted.core.config.reactorsystem;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
+import io.reacted.core.config.reactors.ServiceRegistryCfg;
 import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.reactors.systemreactors.SystemMonitor;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.time.Duration;
@@ -22,60 +25,69 @@ import java.util.Set;
 
 @NonNullByDefault
 public class ReActorSystemConfig {
-
+    public static final int MAX_DISPATCHER_CONFIGS = 100;
+    public static final int DEFAULT_FANOUT_POOL_SIZE = 1;
+    public static final LocalDriver DEFAULT_LOCAL_DRIVER = SystemLocalDrivers.DIRECT_COMMUNICATION;
+    public static final Duration SYSTEM_MONITOR_DEFAULT_REFRESH_RATE = Duration.ofMinutes(1);
     private final String reactorSystemName;
     private final boolean recordedExecution;
     private final int msgFanOutPoolSize;
+    private final Duration systemMonitorRefreshInterval;
     private final LocalDriver localDriver;
     private final Set<DispatcherConfig> dispatchersConfigs;
     private final Set<RemotingDriver> remotingDrivers;
-    private final Set<ServiceRegistryDriver> serviceRegistryDrivers;
-    private final Duration askTimeoutsCleanupInterval;
+    private final Set<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                                            ? extends ServiceRegistryCfg<?, ?>>> serviceRegistryDrivers;
 
     private ReActorSystemConfig(Builder reactorSystemConfig) {
         this.reactorSystemName = Objects.requireNonNull(reactorSystemConfig.reactorSystemName);
-        this.msgFanOutPoolSize = ConfigUtils.requiredInRange(reactorSystemConfig.msgFanOutPoolSize, 1, 10,
+        this.msgFanOutPoolSize = ObjectUtils.requiredInRange(reactorSystemConfig.msgFanOutPoolSize,
+                                                             DEFAULT_FANOUT_POOL_SIZE, 10,
                                                              IllegalArgumentException::new);
         this.localDriver = Objects.requireNonNull(reactorSystemConfig.localDriver);
         this.recordedExecution = reactorSystemConfig.shallRecordExecution;
-        ConfigUtils.requiredInRange(reactorSystemConfig.dispatcherConfigs.size(), 0, 100,
+        ObjectUtils.requiredInRange(reactorSystemConfig.dispatcherConfigs.size(), 0, MAX_DISPATCHER_CONFIGS,
                                     IllegalArgumentException::new);
         this.dispatchersConfigs = Set.copyOf(reactorSystemConfig.dispatcherConfigs);
         this.remotingDrivers = Set.copyOf(reactorSystemConfig.remotingDrivers);
         this.serviceRegistryDrivers = Set.copyOf(reactorSystemConfig.serviceRegistryDrivers);
-        this.askTimeoutsCleanupInterval = Objects.requireNonNull(reactorSystemConfig.askTimeoutsCleanupInterval);
+        this.systemMonitorRefreshInterval = ObjectUtils.requiredCondition(Objects.requireNonNull(reactorSystemConfig.systemMonitorRefreshInterval),
+                                                                          refreshInterval -> refreshInterval.compareTo(Duration.ZERO) > 0,
+                                                                          IllegalArgumentException::new);
     }
 
-    public String getReActorSystemName() { return reactorSystemName; }
+    public String getReActorSystemName() { return this.reactorSystemName; }
 
-    public int getMsgFanOutPoolSize() { return msgFanOutPoolSize; }
+    public int getMsgFanOutPoolSize() { return this.msgFanOutPoolSize; }
 
-    public LocalDriver getLocalDriver() { return localDriver; }
+    public LocalDriver getLocalDriver() { return this.localDriver; }
 
-    public boolean isRecordedExecution() { return recordedExecution; }
+    public boolean isRecordedExecution() { return this.recordedExecution; }
 
-    public Set<DispatcherConfig> getDispatchersConfigs() { return dispatchersConfigs; }
+    public Set<DispatcherConfig> getDispatchersConfigs() { return this.dispatchersConfigs; }
 
-    public Set<RemotingDriver> getRemotingDrivers() { return remotingDrivers; }
+    public Set<RemotingDriver> getRemotingDrivers() { return this.remotingDrivers; }
 
-    public Set<ServiceRegistryDriver> getServiceRegistryDrivers() { return serviceRegistryDrivers; }
+    public Set<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                                     ? extends ServiceRegistryCfg<?, ?>>> getServiceRegistryDrivers() {
+        return this.serviceRegistryDrivers;
+    }
 
-    public Duration getAskTimeoutsCleanupInterval() { return askTimeoutsCleanupInterval; }
+    public Duration getSystemMonitorRefreshInterval() { return this.systemMonitorRefreshInterval; }
 
     public static Builder newBuilder() { return new Builder(); }
 
     public static class Builder {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reactorSystemName;
-        private int msgFanOutPoolSize;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private LocalDriver localDriver;
+        private int msgFanOutPoolSize = DEFAULT_FANOUT_POOL_SIZE;
+        private LocalDriver localDriver = DEFAULT_LOCAL_DRIVER;
+        private Duration systemMonitorRefreshInterval = SYSTEM_MONITOR_DEFAULT_REFRESH_RATE;
         private boolean shallRecordExecution;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private Duration askTimeoutsCleanupInterval;
         private final Set<DispatcherConfig> dispatcherConfigs = new HashSet<>();
         private final Set<RemotingDriver> remotingDrivers = new HashSet<>();
-        private final Set<ServiceRegistryDriver> serviceRegistryDrivers = new HashSet<>();
+        private final Set<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                                                ? extends ServiceRegistryCfg<?, ?>>> serviceRegistryDrivers = new HashSet<>();
 
         private Builder() { /* No implementation required */ }
 
@@ -126,6 +138,18 @@ public class ReActorSystemConfig {
         }
 
         /**
+         * {@link SystemMonitor} is a system reactor that collects statistics about the state of the system and
+         * propagates them among subscribers
+         *
+         * @param refreshInterval Period after which a refresh of the system statistics should be done
+         * @return this builder
+         */
+        public Builder setSystemMonitorRefreshIntervak(Duration refreshInterval) {
+            this.systemMonitorRefreshInterval = refreshInterval;
+            return this;
+        }
+
+        /**
          * @param dispatcherConfig new dispatcher config
          */
         public Builder addDispatcherConfig(DispatcherConfig dispatcherConfig) {
@@ -149,22 +173,9 @@ public class ReActorSystemConfig {
          *
          * @param serviceRegistryDriver service registry driver
          */
-        public Builder addServiceRegistryDriver(ServiceRegistryDriver serviceRegistryDriver) {
+        public Builder addServiceRegistryDriver(ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
+                ? extends ServiceRegistryCfg<?, ?>> serviceRegistryDriver) {
             this.serviceRegistryDrivers.add(serviceRegistryDriver);
-            return this;
-        }
-
-        /**
-         * Sending a message and getting a reply from a reactor can be done from outside a reactor
-         * context using an Ask. Ask primitive supports a timeout before automatically expiring and
-         * assuming that a reply will never arrive. Such timeout is backed up by a java timer that
-         * requires periodic maintenance to remove expired entries. This parameter defines the
-         * cleanup period.
-         *
-         * @param askTimeoutsCleanupInterval timer purge period
-         */
-        public Builder setAskTimeoutsCleanupInterval(Duration askTimeoutsCleanupInterval) {
-            this.askTimeoutsCleanupInterval = askTimeoutsCleanupInterval;
             return this;
         }
 

@@ -9,5 +9,15 @@
 package io.reacted.core.messages;
 
 public enum AckingPolicy {
-    NONE, ONE_TO_ONE
+    /**
+     * No ack will be sent back
+     */
+    NONE,
+    /**
+     * An ack containing the outcome of the delivery attempt will be sent back for each message
+     * @see io.reacted.core.messages.reactors.DeliveryStatus
+     * Any {@link io.reacted.core.reactorsystem.ReActorRef#tell} will not be considered as completed
+     * before reaching the ack
+     */
+    ONE_TO_ONE
 }

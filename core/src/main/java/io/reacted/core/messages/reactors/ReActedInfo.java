@@ -6,10 +6,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.messages.serviceregistry;
+package io.reacted.core.messages.reactors;
+
+import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 
 @Immutable
-public class RegistrySubscriptionRequest implements Serializable { }
+@NonNullByDefault
+public class ReActedInfo extends LogMessage {
+    public ReActedInfo(String format, Serializable... arguments) {
+        super(format, arguments);
+    }
+}

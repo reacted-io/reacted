@@ -6,59 +6,88 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.reactorsystem;
+package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
-import io.reacted.core.messages.serviceregistry.RegistryServiceCancellationRequest;
-import io.reacted.core.messages.serviceregistry.RegistryServicePublicationRequest;
+import io.reacted.core.messages.reactors.SystemMonitorReport;
+import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
+import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
+import io.reacted.core.messages.serviceregistry.ServiceRegistryNotAvailable;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
+import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
+import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
+import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.patterns.Try;
-
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.BiConsumer;
+import java.util.Properties;
 
-public class ReActorService {
+public class ReActorService implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
-    private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router [%s]";
+    private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router {}";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
+    private final Properties serviceInfo;
     private final ReActorServiceConfig reActorServiceConfig;
     private long msgReceived;
 
     public ReActorService(ReActorServiceConfig reActorServiceConfig) {
+        this.serviceInfo = new Properties();
         this.reActorServiceConfig = Objects.requireNonNull(reActorServiceConfig);
         this.msgReceived = 1;
+        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME,
+                             reActorServiceConfig.getReActorName());
     }
 
+    @Nonnull
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(this::routeMessage)
+                        .reAct(ServiceRegistryNotAvailable.class, this::onServiceRegistryNotAvailable)
                         .reAct(ServiceDiscoveryRequest.class, this::serviceDiscovery)
                         .reAct(RouteeReSpawnRequest.class, this::respawnRoutee)
                         .reAct(ReActorInit.class, this::initService)
                         .reAct(ReActorStop.class, this::stopService)
+                        .reAct(SystemMonitorReport.class, this::onSystemInfoReport)
                         .build();
     }
 
-    public void stopService(ReActorContext raCtx, ReActorStop stop) {
-        raCtx.getReActorSystem()
-             .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new RegistryServiceCancellationRequest(raCtx.getReActorSystem()
-                                                                                .getLocalReActorSystemId(),
-                                                                           reActorServiceConfig.getReActorName()));
+    private void onServiceRegistryNotAvailable(ReActorContext raCtx, ServiceRegistryNotAvailable notAvailable) {
+        raCtx.logInfo("{} makes itself discoverable",
+                      this.serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME));
+        raCtx.addTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class));
     }
 
-    public void initService(ReActorContext raCtx, ReActorInit reActorInit) {
+    private void onSystemInfoReport(ReActorContext raCtx, SystemMonitorReport report) {
+        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_CPU_LOAD, report.getCpuLoad());
+        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_FREE_MEMORY_SIZE, report.getFreeMemorySize());
+        updateServiceRegistry(raCtx, this.serviceInfo);
+    }
+
+    private void stopService(ReActorContext raCtx, ReActorStop stop) {
+        raCtx.getReActorSystem()
+             .getSystemRemotingRoot()
+             .tell(raCtx.getSelf(), new ServiceCancellationRequest(raCtx.getReActorSystem().getLocalReActorSystemId(),
+                                                                   reActorServiceConfig.getReActorName()));
+    }
+
+    private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
+        //All the services can receive service stats
+        raCtx.addTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class));
+
         //spawn the minimum number or routees
-        BiConsumer<String, Throwable> systemLogger = raCtx.getReActorSystem()::logError;
         for (int currentRoutee = 0; currentRoutee < reActorServiceConfig.getRouteesNum(); currentRoutee++) {
             try {
                 ReActor routee = Objects.requireNonNull(reActorServiceConfig.getRouteeProvider()
@@ -69,45 +98,40 @@ public class ReActorService {
                 String routeeNewName = String.format(REACTOR_SERVICE_NAME_FORMAT,
                                                      reActorServiceConfig.getReActorName(),
                                                      routeeCfg.getReActorName(), currentRoutee);
-                ReActorConfig newRouteeCfg = routeeCfg.toBuilder()
-                                                      .setReActorName(routeeNewName)
-                                                      .build();
+                ReActorConfig newRouteeCfg = ReActorConfig.fromConfig(routeeCfg)
+                                                          .setReActorName(routeeNewName)
+                                                          .build();
                 spawnRoutee(raCtx, routeeReActions, newRouteeCfg);
             } catch (Throwable routeeSpawnError) {
-                systemLogger.accept(ROUTEE_SPAWN_ERROR, routeeSpawnError);
+                raCtx.logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);
             }
         }
 
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new RegistryServicePublicationRequest(raCtx.getSelf(),
-                                                                          reActorServiceConfig.getReActorName()));
-
-
+             .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), this.serviceInfo));
     }
 
-    public void serviceDiscovery(ReActorContext routerActorCtx, ServiceDiscoveryRequest request) {
-        if (!request.matchRequest(reActorServiceConfig.getReActorName())) {
+    private void serviceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
+        if (!request.getSearchFilter().matches(this.serviceInfo, raCtx.getSelf())) {
             return;
         }
 
-        Optional<ReActorRef> serviceSelection = switch (request.getSelectionType()) {
-            case ROUTED -> Optional.of(routerActorCtx.getSelf());
-            case DIRECT -> selectRoutee(routerActorCtx, msgReceived);
+        Optional<ReActorRef> serviceSelection = switch (request.getSearchFilter().getSelectionType()) {
+            case ROUTED -> Optional.of(raCtx.getSelf());
+            case DIRECT -> selectRoutee(raCtx, msgReceived);
         };
 
-        serviceSelection.map(service -> new ServiceDiscoveryReply(service, routerActorCtx.getReActorSystem()))
-                        .ifPresent(discoveryReply -> routerActorCtx.getSender().tell(routerActorCtx.getSelf(),
+        serviceSelection.map(ServiceDiscoveryReply::new)
+                        .ifPresent(discoveryReply -> raCtx.getSender().tell(raCtx.getSelf(),
                                                                                      discoveryReply));
     }
 
     private void routeMessage(ReActorContext raCtx, Serializable newMessage) {
-        BiConsumer<String, Throwable> systemLogger = raCtx.getReActorSystem()::logError;
         selectRoutee(raCtx, ++msgReceived)
                 .ifPresentOrElse(routee -> routee.tell(raCtx.getSender(), newMessage),
-                                 () -> systemLogger.accept(String.format(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
-                                                                         reActorServiceConfig.getReActorName()),
-                                                           new IllegalStateException()));
+                                 () -> raCtx.logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
+                                                      reActorServiceConfig.getReActorName(), new IllegalStateException()));
     }
 
     private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived) {
@@ -115,12 +139,11 @@ public class ReActorService {
     }
 
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
-        BiConsumer<String, Throwable> systemLogger = raCtx.getReActorSystem()::logError;
         Try.of(() -> Objects.requireNonNull(reActorServiceConfig.getRouteeProvider()
                                                                 .get()))
-           .peekFailure(error -> systemLogger.accept(ROUTEE_REACTIONS_RETRIEVAL_ERROR, error))
+           .peekFailure(error -> raCtx.logError(ROUTEE_REACTIONS_RETRIEVAL_ERROR, error))
            .ifSuccess(routee -> spawnRoutee(raCtx, routee.getReActions(), reSpawnRequest.routeeConfig))
-           .ifError(spawnError -> systemLogger.accept(ROUTEE_SPAWN_ERROR, spawnError));
+           .ifError(spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR, spawnError));
     }
 
     private void spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions, ReActorConfig routeeConfig) {
@@ -133,6 +156,17 @@ public class ReActorService {
                  .thenAccept(terminated -> { if (!routeeCtx.isStop()) {
                                                   routerCtx.getSelf().tell(ReActorRef.NO_REACTOR_REF,
                                                                            new RouteeReSpawnRequest(routeeConfig)); }});
+    }
+
+    private static void updateServiceRegistry(ReActorContext raCtx, Properties serviceInfo) {
+        raCtx.getReActorSystem()
+             .getSystemRemotingRoot()
+             .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), serviceInfo))
+             .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                                                                .ifError(error -> raCtx.logError("Unable to refresh " +
+                                                                                                 "service info {}",
+                                                                                                 serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME),
+                                                                                                 error)));
     }
 
     public static class RouteeReSpawnRequest implements Serializable {

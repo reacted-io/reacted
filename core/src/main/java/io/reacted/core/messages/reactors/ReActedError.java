@@ -10,29 +10,13 @@ package io.reacted.core.messages.reactors;
 
 import io.reacted.patterns.NonNullByDefault;
 
-import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
-import java.util.Optional;
 
 @Immutable
 @NonNullByDefault
-public class ReActedError implements Serializable {
-    @Nullable
-    private final Throwable error;
-    @Nullable
-    private final String message;
-
-    public ReActedError(@Nullable String message, @Nullable Throwable error, Object ...args) {
-        if (message != null) {
-            this.message = String.format(message, args);
-        } else {
-            this.message = null;
-        }
-        this.error = error;
+public class ReActedError extends LogMessage {
+    public ReActedError(String format, Serializable... arguments) {
+        super(format, arguments);
     }
-
-    public Optional<Throwable> getError() { return Optional.ofNullable(error); }
-
-    public Optional<String> getMessage() { return Optional.ofNullable(message); }
 }

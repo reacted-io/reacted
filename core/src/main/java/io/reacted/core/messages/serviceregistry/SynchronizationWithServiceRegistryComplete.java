@@ -6,9 +6,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.streams.messages;
+package io.reacted.core.messages.serviceregistry;
 
+import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
-
-public class SubscriberComplete implements Serializable {
-}
+@Immutable
+public class SynchronizationWithServiceRegistryComplete implements Serializable { }

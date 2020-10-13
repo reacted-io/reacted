@@ -12,16 +12,11 @@ import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
-import java.util.Objects;
 
 @Immutable
 @NonNullByDefault
-public class ReActedDebug implements Serializable {
-    private final String debugMessage;
-
-    public ReActedDebug(String format, Object ...args) {
-        this.debugMessage = String.format(Objects.requireNonNull(format), args);
+public class ReActedDebug extends LogMessage {
+    public ReActedDebug(String format, Serializable... arguments) {
+        super(format, arguments);
     }
-
-    public String getDebugMessage() { return debugMessage; }
 }

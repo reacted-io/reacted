@@ -12,7 +12,7 @@
     <groupId>io.reacted</groupId>
     <artifactId>reacted-all</artifactId>
     <packaging>pom</packaging>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.2.2-SNAPSHOT</version>
 
     <name>ReActed</name>
     <description>
@@ -96,7 +96,7 @@
         <apache-curator.version>4.3.0</apache-curator.version>
         <apache-curator-discovery.version>5.0.0</apache-curator-discovery.version>
         <jackson.databind.version>2.11.0</jackson.databind.version>
-        <grpc.version>1.31.0</grpc.version>
+        <grpc.version>1.32.1</grpc.version>
         <protobuf.version>3.12.2</protobuf.version>
         <protobuf.maven.plugin.version>0.6.1</protobuf.maven.plugin.version>
         <tomcat.annotations.version>6.0.53</tomcat.annotations.version>
@@ -113,11 +113,6 @@
     </modules>
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.reactivestreams</groupId>
-                <artifactId>reactive-streams</artifactId>
-                <version>${reactive.streams.version}</version>
-            </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
@@ -219,6 +214,12 @@
             <dependency>
                 <groupId>org.reactivestreams</groupId>
                 <artifactId>reactive-streams-tck-flow</artifactId>
+                <version>${reactive.streams.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.reactivestreams</groupId>
+                <artifactId>reactive-streams</artifactId>
                 <version>${reactive.streams.version}</version>
                 <scope>test</scope>
             </dependency>

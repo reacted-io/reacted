@@ -9,104 +9,84 @@
 package io.reacted.core.config.reactors;
 
 import com.google.common.base.Strings;
+import io.reacted.core.config.InheritableBuilder;
+import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.MailBox;
+import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 @NonNullByDefault
-public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<BuiltT, BuilderT>,
-                                           BuilderT extends ReActiveEntityConfig.Builder<BuiltT, BuilderT>>
-    implements Serializable {
+public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig.Builder<BuilderT, BuiltT>,
+                                           BuiltT extends ReActiveEntityConfig<BuilderT, BuiltT>>
+        extends InheritableBuilder<BuilderT, BuiltT> {
 
+    public static final Function<ReActorContext, MailBox> DEFAULT_MAILBOX_SUPPLIER = ctx -> new BasicMbox();
+    public static final TypedSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS = TypedSubscription.NO_SUBSCRIPTIONS;
     private final String dispatcherName;
     private final String reActorName;
-    private final SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions;
-    private final Supplier<MailBox> mailBoxProvider;
-    private final ReActiveEntityType reActiveEntityType;
+    private final TypedSubscription[] typedTypedSubscriptions;
+    private final Function<ReActorContext, MailBox> mailBoxProvider;
 
-    protected ReActiveEntityConfig(Builder<BuiltT, BuilderT> builder) {
+    protected ReActiveEntityConfig(Builder<BuilderT, BuiltT> builder) {
+        super(builder);
         if (Strings.isNullOrEmpty(builder.dispatcherName)) {
             throw new IllegalArgumentException("DispatcherName cannot be empty or null");
         }
         this.reActorName = Objects.requireNonNull(builder.reActorName);
         this.mailBoxProvider = Objects.requireNonNull(builder.mailBoxProvider);
-        this.typedSniffSubscriptions = Objects.requireNonNull(builder.typedSniffSubscriptions).length == 0
-                                       ? SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS
-                                       : Arrays.copyOf(builder.typedSniffSubscriptions,
-                                                       builder.typedSniffSubscriptions.length);
+        this.typedTypedSubscriptions = Objects.requireNonNull(builder.typedTypedSubscriptions).length == 0
+                                       ? TypedSubscription.NO_SUBSCRIPTIONS
+                                       : Arrays.copyOf(builder.typedTypedSubscriptions,
+                                                       builder.typedTypedSubscriptions.length);
         this.dispatcherName = builder.dispatcherName;
-        this.reActiveEntityType = builder.entityType;
     }
 
-    public String getDispatcherName() {
+    public final String getDispatcherName() {
         return dispatcherName;
     }
 
-    public String getReActorName() {
+    public final String getReActorName() {
         return reActorName;
     }
 
-    public SubscriptionPolicy.SniffSubscription[] getTypedSniffSubscriptions() {
-        return Arrays.copyOf(typedSniffSubscriptions, typedSniffSubscriptions.length);
+    public final TypedSubscription[] getTypedSniffSubscriptions() {
+        return Arrays.copyOf(typedTypedSubscriptions, typedTypedSubscriptions.length);
     }
 
-    public Supplier<MailBox> getMailBoxProvider() {
+    public final Function<ReActorContext, MailBox> getMailBoxProvider() {
         return mailBoxProvider;
     }
 
-    public ReActiveEntityType getReActiveEntityType() {
-        return reActiveEntityType;
-    }
-
-    public BuilderT fillBuilder(BuilderT realBuilder) {
-        return realBuilder.setDispatcherName(getDispatcherName())
-                          .setMailBoxProvider(getMailBoxProvider())
-                          .setReActorName(getReActorName())
-                          .setTypedSniffSubscriptions(getTypedSniffSubscriptions())
-                          .setEntityType(getReActiveEntityType());
-    }
-
-    abstract public Builder<BuiltT, BuilderT> toBuilder();
-
-    public abstract static class Builder<BuiltT extends ReActiveEntityConfig<BuiltT, BuilderT>,
-                                         BuilderT extends Builder<BuiltT, BuilderT>> {
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private String dispatcherName;
+    public abstract static class Builder<BuilderT, BuiltT>
+            extends InheritableBuilder.Builder<BuilderT, BuiltT> {
+        private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reActorName;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private SubscriptionPolicy.SniffSubscription[] typedSniffSubscriptions;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private Supplier<MailBox> mailBoxProvider;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private ReActiveEntityType entityType;
+        private TypedSubscription[] typedTypedSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
+        private Function<ReActorContext, MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
 
-        protected Builder() {
-        }
-
-        abstract public BuiltT build();
-
-        @SuppressWarnings("unchecked")
-        public BuilderT getThis() {
-            return (BuilderT) this;
-        }
+        protected Builder() { }
 
         /**
          * Every reactor is scheduled only on a single dispatcher. Here is set which one
+         * @param dispatcherName Name of the {@link io.reacted.core.runtime.Dispatcher} on which this reactor should run
          */
-        public BuilderT setDispatcherName(String dispatcherName) {
+        public final BuilderT setDispatcherName(String dispatcherName) {
             this.dispatcherName = dispatcherName;
             return getThis();
         }
 
         /**
          * Every reactor needs a name that has to be unique among its siblings
+         *
+         * @param reActorName name of the reactor
          */
-        public BuilderT setReActorName(String reActorName) {
+        public final BuilderT setReActorName(String reActorName) {
             this.reActorName = reActorName;
             return getThis();
         }
@@ -116,7 +96,7 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
          *
          * @param mailBoxProvider specify how to obtain a new mailbox. Used on reactor creation
          */
-        public BuilderT setMailBoxProvider(Supplier<MailBox> mailBoxProvider) {
+        public final BuilderT setMailBoxProvider(Function<ReActorContext, MailBox> mailBoxProvider) {
             this.mailBoxProvider = mailBoxProvider;
             return getThis();
         }
@@ -125,18 +105,11 @@ public abstract class ReActiveEntityConfig<BuiltT extends ReActiveEntityConfig<B
          * Reactors can subscribe to message types to receive a copy of of a message if it matches the subscription
          * criteria
          *
-         * @param typedSniffSubscriptions Sniffing subscriptions
+         * @param typedTypedSubscriptions Sniffing subscriptions
          */
-        public BuilderT setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription... typedSniffSubscriptions) {
-            this.typedSniffSubscriptions = typedSniffSubscriptions;
-            return getThis();
-        }
-
-        protected BuilderT setEntityType(ReActiveEntityType reActiveEntityType) {
-            this.entityType = reActiveEntityType;
+        public final BuilderT setTypedSubscriptions(TypedSubscription... typedTypedSubscriptions) {
+            this.typedTypedSubscriptions = typedTypedSubscriptions;
             return getThis();
         }
     }
-
-    public enum ReActiveEntityType { REACTOR, REACTORSERVICE }
 }

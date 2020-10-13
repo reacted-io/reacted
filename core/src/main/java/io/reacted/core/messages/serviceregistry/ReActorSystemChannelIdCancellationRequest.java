@@ -17,11 +17,11 @@ import java.io.Serializable;
 
 @Immutable
 @NonNullByDefault
-public class RegistryUnregisterChannel implements Serializable {
+public class ReActorSystemChannelIdCancellationRequest implements Serializable {
     private final ReActorSystemId reActorSystemId;
     private final ChannelId channelId;
 
-    public RegistryUnregisterChannel(ReActorSystemId reActorSystemId, ChannelId channelId) {
+    public ReActorSystemChannelIdCancellationRequest(ReActorSystemId reActorSystemId, ChannelId channelId) {
         this.reActorSystemId = reActorSystemId;
         this.channelId = channelId;
     }
