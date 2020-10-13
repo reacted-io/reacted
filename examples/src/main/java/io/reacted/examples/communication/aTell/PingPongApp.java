@@ -33,7 +33,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -79,19 +83,21 @@ class PingPongApp {
                                                                           .setRouteesNum(1)
                                                                           .build()).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(5);
+        var remoteService = clientSystem.serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
+                                                                                           .setServiceName("ServerService")
+                                                                                           .build())
+                                        .toCompletableFuture().join()
+                                        .get().getServiceGates()
+                                        .iterator().next();
 
-        var clientReActor = clientSystem.spawn(new ClientReActor(clientSystem.serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
-                                                                                                                                           .setServiceName("ServerService")
-                                                                                                                                           .build())
-                                                                                        .toCompletableFuture()
-                                                                                        .join()
-                                                                                        .get()
-                                                                                        .getServiceGates()
-                                                                                        .iterator()
-                                                                                        .next())).orElseSneakyThrow();
+        var clientReActor = clientSystem.spawn(new ClientReActor(remoteService)).orElseSneakyThrow();
 
         //The reactors are executing now
-        TimeUnit.SECONDS.sleep(10000);
+        TimeUnit.SECONDS.sleep(300);
+        remoteService.aTell("Banana").thenAccept(ds -> ds.filter(DeliveryStatus::isDelivered)
+                                                         .ifSuccessOrElse(success -> System.out.println("Delivered also banana"),
+                                                                          Throwable::printStackTrace));
+        TimeUnit.SECONDS.sleep(5);
         //The game is finished, shut down
         clientSystem.shutDown();
         serverSystem.shutDown();
@@ -134,15 +140,18 @@ class PingPongApp {
         }
 
         private void onInit(ReActorContext raCtx) {
-            System.out.println("Initing");
-            var requests = IntStream.range(0, 1_000_000)
-                     .mapToObj(idx -> this.serverReference.aTell("Not received"))
-                     .collect(Collectors.toUnmodifiableList());
-            requests.stream()
-                    .reduce((a, b) -> a.thenCompose(c -> {
-                        c.ifError(Throwable::printStackTrace);
-                        return b; }))
-                    .ifPresent(lastStep -> lastStep.thenAcceptAsync(val -> raCtx.logInfo("Finished!")));
+            unlimiChain(() -> this.serverReference.aTell("Not received"), 100_000);
         }
+    }
+    
+    public static void unlimiChain(Supplier<CompletionStage<?>> producer, int iterations) {
+        producer.get().thenAcceptAsync(val -> {
+            int nIter = iterations - 1;
+            if ( nIter > 0) {
+                unlimiChain(producer, nIter);
+            } else {
+                System.out.println("Finished!");
+            }
+        });
     }
 }

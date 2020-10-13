@@ -45,6 +45,8 @@ import org.apache.curator.framework.recipes.cache.TreeCacheListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.utils.ZKPaths;
 import org.apache.curator.x.async.AsyncCuratorFramework;
+import org.apache.curator.x.async.WatchMode;
+import org.apache.curator.x.async.api.ExistsOption;
 import org.apache.curator.x.discovery.ServiceDiscovery;
 import org.apache.curator.x.discovery.ServiceDiscoveryBuilder;
 import org.apache.curator.x.discovery.ServiceInstance;
@@ -61,6 +63,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ScheduledExecutorService;
@@ -83,8 +86,6 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
     @Nullable
     private ScheduledExecutorService timerService;
     @Nullable
-    private CuratorFramework client;
-    @Nullable
     private ServiceDiscovery<ServicePublicationRequest> serviceDiscovery;
     @Nullable
     private AsyncCuratorFramework asyncClient;
@@ -106,7 +107,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
         if (o == null || getClass() != o.getClass()) return false;
         ZooKeeperDriver that = (ZooKeeperDriver) o;
         return Objects.equals(getConfig().getServiceRegistryProperties(),
-                              getConfig().getServiceRegistryProperties());
+                              that.getConfig().getServiceRegistryProperties());
     }
 
     @Override
@@ -208,6 +209,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
         }
 
         try {
+
             this.client.create()
                        .creatingParentsIfNeeded()
                        .withMode(CreateMode.EPHEMERAL)
@@ -251,10 +253,15 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
     }
 
     private void onInit(ReActorContext raCtx) {
-        this.client = CuratorFrameworkFactory.newClient(getZkConnectionString(),
-                                                        new ExponentialBackoffRetry(1000, 20));
-        this.client.start();
-        this.asyncClient = AsyncCuratorFramework.wrap(client);
+        this.asyncClient = AsyncCuratorFramework.wrap(CuratorFrameworkFactory.newClient(getZkConnectionString(),
+                                                                                        new ExponentialBackoffRetry(1000,
+                                                                                                                    20)));
+
+
+        this.asyncClient.checkExists()
+                        .withOptions(Set.of(ExistsOption.createParentsIfNeeded))
+                        .forPath(CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH)
+                        .thenAcceptAsync(stat -> stat.)
 
         var gatesPathCreation = Try.ofRunnable(() -> client.create()
                                                            .creatingParentsIfNeeded()

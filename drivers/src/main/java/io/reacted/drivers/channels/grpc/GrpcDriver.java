@@ -140,7 +140,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
         int port = Integer.parseInt(channelIdProperties.getProperty(GrpcDriverConfig.PORT_PROPERTY_NAME));
         String host = channelIdProperties.getProperty(GrpcDriverConfig.HOST_PROPERTY_NAME);
         return ManagedChannelBuilder.forAddress(host, port)
-                                    .keepAliveTime(5, TimeUnit.SECONDS)
+                                    .keepAliveTime(6, TimeUnit.MINUTES)
                                     .keepAliveWithoutCalls(true)
                                     .enableRetry()
                                     .usePlaintext()
@@ -159,11 +159,12 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             return new StreamObserver<>() {
                 @Override
                 public void onNext(ReActedLinkProtocol.ReActedDatagram reActedDatagram) {
-                    Try.withResources(() -> new ObjectInputStream(new ByteArrayInputStream(reActedDatagram.getBinaryPayload()
-                                                                                                          .toByteArray())),
-                                      ObjectInputStream::readObject)
-                       .ifSuccessOrElse(payload -> thisDriver.offerMessage((Message) payload),
-                                        this::onError);
+                    try (ObjectInputStream msgSource = new ObjectInputStream(new ByteArrayInputStream(reActedDatagram.getBinaryPayload()
+                                                                                                          .toByteArray()))) {
+                        thisDriver.offerMessage((Message)msgSource.readObject());
+                    } catch (Exception deserializationError) {
+                        throw new RuntimeException(deserializationError);
+                    }
                 }
 
                 @Override
