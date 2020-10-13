@@ -116,7 +116,7 @@ public class ReActorSystem {
      * The fields below can be null only before a successful init completion
      */
     @Nullable
-    private ScheduledExecutorService systemTimerService;
+    private ScheduledExecutorService systemSchedulingService;
     @Nullable
     private ExecutorService msgFanOutPool;
     @Nullable
@@ -518,7 +518,9 @@ public class ReActorSystem {
         return getReActor(reActorToStop).map(ReActorContext::stop);
     }
 
-    ScheduledExecutorService getSystemTimerService() { return Objects.requireNonNull(systemTimerService); }
+    public ScheduledExecutorService getSystemSchedulingService() {
+        return Objects.requireNonNull(systemSchedulingService);
+    }
 
     Set<ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>>> getReActorSystemDrivers() {
         return Set.copyOf(this.reActorSystemDrivers);
@@ -553,8 +555,8 @@ public class ReActorSystem {
             throw new ReActorSystemInitException("Unable to register system dispatcher");
         }
 
-        this.systemTimerService = createSystemScheduleService(getSystemConfig().getReActorSystemName(),
-                                                              SYSTEM_TASK_SCHEDULER_POOL_SIZE);
+        this.systemSchedulingService = createSystemScheduleService(getSystemConfig().getReActorSystemName(),
+                                                                   SYSTEM_TASK_SCHEDULER_POOL_SIZE);
         this.msgFanOutPool = createFanOutPool(getLocalReActorSystemId().getReActorSystemName(),
                                               getSystemConfig().getMsgFanOutPoolSize());
 
@@ -577,7 +579,7 @@ public class ReActorSystem {
     @SuppressWarnings("RedundantThrows")
     private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
                                                                              ? extends ServiceRegistryCfg<?, ?>>> drivers) throws Exception {
-        ServiceRegistryInitData driverInitData = new ServiceRegistryInitData(getSystemTimerService());
+        ServiceRegistryInitData driverInitData = new ServiceRegistryInitData(getSystemSchedulingService());
         drivers.forEach(driver -> driver.onServiceRegistryInit(driverInitData));
         drivers.forEach( driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())
                                                 .orElseSneakyThrow());
@@ -678,9 +680,9 @@ public class ReActorSystem {
     }
 
     private void stopSystemTimer() {
-        if (this.systemTimerService != null) {
-            this.systemTimerService.shutdownNow();
-            this.systemTimerService = null;
+        if (this.systemSchedulingService != null) {
+            this.systemSchedulingService.shutdownNow();
+            this.systemSchedulingService = null;
         }
     }
 
@@ -728,7 +730,7 @@ public class ReActorSystem {
 
     private ReActorRef spawnSystemMonitor(ReActorRef systemActorsRoot) {
         return spawn(getLoopback(), new SystemMonitor(getSystemConfig().getSystemMonitorRefreshInterval(),
-                                                      getSystemTimerService()).getReActions(),
+                                                      getSystemSchedulingService()).getReActions(),
                      systemActorsRoot, ReActorConfig.newBuilder()
                                                     .setReActorName("SystemMonitor")
                                                     .setMailBoxProvider(ctx -> new NullMailbox())

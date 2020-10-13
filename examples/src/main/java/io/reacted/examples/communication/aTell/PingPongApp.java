@@ -24,22 +24,17 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.ReActorService;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
-import io.reacted.drivers.serviceregistries.ZooKeeperDriver;
-import io.reacted.drivers.serviceregistries.ZooKeeperDriverCfg;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverCfg;
 import io.reacted.examples.ExampleUtils;
 
 import javax.annotation.Nonnull;
-import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 class PingPongApp {
     public static void main(String[] args) throws InterruptedException {
@@ -59,7 +54,8 @@ class PingPongApp {
                                                                                                           .setChannelName("TestChannel")
                                                                                                           .build())));
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Server",
-                                                                   SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                                   SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
+                                                                   //SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
                                                                                                                  .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                  .setReActorName("ZooKeeperDriver")
@@ -78,7 +74,7 @@ class PingPongApp {
 
         var serverReActor = serverSystem.spawnService(ReActorServiceConfig.newBuilder()
                                                                           .setRouteeProvider(ServerReActor::new)
-                                                                          .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
+                                                                          .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
                                                                           .setReActorName("ServerService")
                                                                           .setRouteesNum(1)
                                                                           .build()).orElseSneakyThrow();
@@ -140,7 +136,7 @@ class PingPongApp {
         }
 
         private void onInit(ReActorContext raCtx) {
-            unlimiChain(() -> this.serverReference.aTell("Not received"), 100_000);
+            unlimiChain(() -> this.serverReference.aTell("Not received"), 1000);
         }
     }
     

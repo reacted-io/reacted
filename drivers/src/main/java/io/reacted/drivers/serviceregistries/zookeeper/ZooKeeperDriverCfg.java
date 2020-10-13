@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.drivers.serviceregistries;
+package io.reacted.drivers.serviceregistries.zookeeper;
 
 import io.reacted.core.config.reactors.ServiceRegistryCfg;
 import io.reacted.core.utils.ObjectUtils;

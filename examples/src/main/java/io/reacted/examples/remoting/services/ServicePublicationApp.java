@@ -18,8 +18,8 @@ import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.ReActorService;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
-import io.reacted.drivers.serviceregistries.ZooKeeperDriver;
-import io.reacted.drivers.serviceregistries.ZooKeeperDriverCfg;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverCfg;
 import io.reacted.examples.ExampleUtils;
 
 import java.io.IOException;
@@ -69,7 +69,7 @@ public class ServicePublicationApp {
                                              //Two workers for service will be created for load balancing reasons
                                              .setRouteesNum(2)
                                              //For every new request select a different worker instance
-                                             .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
+                                             .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
                                              .setDispatcherName(serviceDispatcherName)
                                              //Let's assume that we do not need any form of backpressure
                                              .setMailBoxProvider(ctx -> new BasicMbox())
