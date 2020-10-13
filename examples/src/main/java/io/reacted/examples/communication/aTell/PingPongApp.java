@@ -54,8 +54,8 @@ class PingPongApp {
                                                                                                           .setChannelName("TestChannel")
                                                                                                           .build())));
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Server",
-                                                                   SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
-                                                                   //SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                                   //SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
+                                                                   SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
                                                                                                                  .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                  .setReActorName("ZooKeeperDriver")

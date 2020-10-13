@@ -87,7 +87,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
     private static final CompletionStage<Try<DeliveryStatus>> SUCCESS = CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
     private static final byte[] NO_PAYLOAD = new byte[0];
     @Nullable
-    private ServiceDiscovery<ServicePublicationRequest> serviceDiscovery;
+    private volatile ServiceDiscovery<ServicePublicationRequest> serviceDiscovery;
     @Nullable
     private AsyncCuratorFramework asyncClient;
     @Nullable
@@ -135,11 +135,12 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
         if (this.serviceDiscovery == null) {
             return;
         }
-        getServiceInstance(cancellationRequest.getServiceName(),
-                           raCtx.getReActorSystem().getLocalReActorSystemId(), (ServicePublicationRequest)null)
-                .ifSuccessOrElse(this.serviceDiscovery::unregisterService,
-                                 error -> raCtx.logError("Unable to unregister service {}",
-                                                         cancellationRequest.toString(), error));
+        CompletableFuture.runAsync(() -> getServiceInstance(cancellationRequest.getServiceName(),
+                                                            raCtx.getReActorSystem().getLocalReActorSystemId(),
+                                                            (ServicePublicationRequest)null)
+                                            .ifSuccessOrElse(this.serviceDiscovery::unregisterService,
+                                                             error -> raCtx.logError("Unable to unregister service {}",
+                                                                                     cancellationRequest.toString(), error)));
     }
 
     private void onServicePublicationRequest(ReActorContext raCtx, ServicePublicationRequest serviceInfo) {
@@ -156,12 +157,11 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
                                                              new IllegalArgumentException("Invalid name: blank")));
             return;
         }
-        CompletableFuture.runAsync(() -> getServiceInstance(serviceName,
-                                                            raCtx.getReActorSystem().getLocalReActorSystemId(),
-                                                            serviceInfo)
-                .ifSuccess(this.serviceDiscovery::registerService)
-                .ifError(registeringError -> raCtx.reply(new RegistryServicePublicationFailed(serviceName,
-                                                                                              registeringError))));
+        CompletableFuture.runAsync(() -> getServiceInstance(serviceName, raCtx.getReActorSystem()
+                                                                              .getLocalReActorSystemId(), serviceInfo)
+                                            .ifSuccess(this.serviceDiscovery::registerService)
+                                            .ifError(registeringError -> raCtx.reply(new RegistryServicePublicationFailed(serviceName,
+                                                                                                                          registeringError))));
     }
 
     private void onServiceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
@@ -260,16 +260,18 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
     }
 
     private void onRootPathsCreated(ReActorContext raCtx, ZooKeeperRootPathsCreated created) {
-        this.serviceDiscovery = ServiceDiscoveryBuilder.builder(ServicePublicationRequest.class)
-                                                       .basePath(CLUSTER_REGISTRY_SERVICES_ROOT_PATH)
-                                                       .client(Objects.requireNonNull(this.asyncClient).unwrap())
-                                                       .build();
-        raCtx.getReActorSystem().getSystemRemotingRoot().tell(raCtx.getSelf(), new RegistryDriverInitComplete());
+        CompletableFuture.supplyAsync(() -> ServiceDiscoveryBuilder.builder(ServicePublicationRequest.class)
+                                                                   .basePath(CLUSTER_REGISTRY_SERVICES_ROOT_PATH)
+                                                                   .client(Objects.requireNonNull(this.asyncClient).unwrap())
+                                                                   .build())
+                         .thenAcceptAsync(serviceDiscovery -> this.serviceDiscovery = serviceDiscovery)
+                         .thenAcceptAsync(noVal -> raCtx.getReActorSystem().getSystemRemotingRoot()
+                                                        .tell(raCtx.getSelf(), new RegistryDriverInitComplete()));
     }
 
     private void shutdownZookeeperConnection() throws IOException {
         if (this.serviceDiscovery != null) {
-            this.serviceDiscovery.close();
+            Objects.requireNonNull(this.serviceDiscovery).close();
         }
         if (this.reActedHierarchy != null) {
             this.reActedHierarchy.close();
