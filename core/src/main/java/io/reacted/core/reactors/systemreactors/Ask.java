@@ -40,9 +40,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
 
     public Ask(Duration askTimeout, Class<ReplyT> expectedReplyType, CompletableFuture<Try<ReplyT>> completionTrigger,
                String requestName, ReActorRef target, Serializable request) {
-        this.askTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(askTimeout),
-                                                        timeout -> timeout.compareTo(Duration.ZERO) > 0,
-                                                        () -> new IllegalArgumentException("Invalid timeout <= 0"));
+        this.askTimeout = ObjectUtils.checkNonNullPositiveTimeInterval(askTimeout);
         this.expectedReplyType = Objects.requireNonNull(expectedReplyType);
         this.completionTrigger = Objects.requireNonNull(completionTrigger);
         this.requestName = Objects.requireNonNull(requestName);

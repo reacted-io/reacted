@@ -32,8 +32,7 @@ import java.util.function.BiConsumer;
 
 
 @NonNullByDefault
-public class CQLocalDriver extends LocalDriver {
-    private final CQDriverConfig driverConfig;
+public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
@@ -42,12 +41,12 @@ public class CQLocalDriver extends LocalDriver {
     private ExcerptTailer cqTailer;
 
     public CQLocalDriver(CQDriverConfig driverConfig) {
-        this.driverConfig = Objects.requireNonNull(driverConfig);
+        super(driverConfig);
     }
 
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
-        this.chronicle = ChronicleQueue.singleBuilder(driverConfig.getChronicleFilesDir()).build();
+        this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir()).build();
         this.cqAppender = chronicle.acquireAppender();
         this.cqTailer = chronicle.createTailer().toEnd();
     }
@@ -59,11 +58,11 @@ public class CQLocalDriver extends LocalDriver {
 
     @Override
     public ChannelId getChannelId() {
-        return new ChannelId(ChannelId.ChannelType.LOCAL_CHRONICLE_QUEUE, driverConfig.getChannelName());
+        return new ChannelId(ChannelId.ChannelType.LOCAL_CHRONICLE_QUEUE, getDriverConfig().getChannelName());
     }
 
     @Override
-    public Properties getChannelProperties() { return driverConfig.getProperties(); }
+    public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
@@ -76,7 +75,7 @@ public class CQLocalDriver extends LocalDriver {
     }
 
     @Override
-    public boolean channelRequiresDeliveryAck() { return driverConfig.isDeliveryAckRequiredByChannel(); }
+    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
 
     @Override
     public CompletionStage<Try<Void>> cleanDriverLoop() {

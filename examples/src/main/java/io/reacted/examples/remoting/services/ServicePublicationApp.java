@@ -18,16 +18,17 @@ import io.reacted.core.reactorsystem.ReActorServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.ReActorService;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
-import io.reacted.drivers.serviceregistries.ZooKeeperDriver;
-import io.reacted.drivers.serviceregistries.ZooKeeperDriverCfg;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverCfg;
 import io.reacted.examples.ExampleUtils;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 public class ServicePublicationApp {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, IOException {
         String zookeeperConnectionString = args.length == 0 || Strings.isNullOrEmpty(args[0])
                                            ? "localhost:2181" : args[0];
         Properties serviceRegistryProperties = new Properties();
@@ -38,7 +39,7 @@ public class ServicePublicationApp {
         var clientReActorSystem = "CLIENT_REACTORSYSTEM";
         var clientGatePort = 54321;
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(serverReActorSystem,
-                                                                      SystemLocalDrivers.getDirectCommunicationSimplifiedLogger("/tmp/server"),
+                                                                      SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
                                                                       List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
                                                                                                                     .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                     .setServiceRegistryProperties(serviceRegistryProperties)
@@ -47,7 +48,7 @@ public class ServicePublicationApp {
                                                                       List.of(new GrpcDriver(ExampleUtils.getGrpcDriverCfg(serverGatePort))));
 
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(clientReActorSystem,
-                                                                      SystemLocalDrivers.getDirectCommunicationSimplifiedLogger("/tmp/client"),
+                                                                      SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/client"),
                                                                       List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
                                                                                                                     .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                     .setServiceRegistryProperties(serviceRegistryProperties)
@@ -68,7 +69,7 @@ public class ServicePublicationApp {
                                              //Two workers for service will be created for load balancing reasons
                                              .setRouteesNum(2)
                                              //For every new request select a different worker instance
-                                             .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
+                                             .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
                                              .setDispatcherName(serviceDispatcherName)
                                              //Let's assume that we do not need any form of backpressure
                                              .setMailBoxProvider(ctx -> new BasicMbox())

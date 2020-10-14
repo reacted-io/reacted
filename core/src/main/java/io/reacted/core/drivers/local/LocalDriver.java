@@ -8,6 +8,7 @@
 
 package io.reacted.core.drivers.local;
 
+import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -25,8 +26,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public abstract class LocalDriver extends ReActorSystemDriver {
+public abstract class LocalDriver<CfgT extends ReActedDriverCfg<?, CfgT>>
+        extends ReActorSystemDriver<CfgT> {
      private static final Try<DeliveryStatus> TARGET_MISSING = Try.ofFailure(new NoSuchElementException());
+
+     protected LocalDriver(CfgT driverCfg) {
+          super(driverCfg);
+     }
 
      @Override
      public boolean channelRequiresDeliveryAck() { return false; }
@@ -58,6 +64,27 @@ public abstract class LocalDriver extends ReActorSystemDriver {
      protected static CompletionStage<Try<DeliveryStatus>> forwardMessageToLocalActor(ReActorContext destination,
                                                                                       Message message) {
           return SystemLocalDrivers.DIRECT_COMMUNICATION.sendAsyncMessage(destination, Objects.requireNonNull(message));
+     }
+
+     protected static Try<DeliveryStatus> localDeliver(ReActorContext destination, Message message) {
+          Try<DeliveryStatus> deliverOperation = Try.of(() -> destination.getMbox()
+                                                                         .deliver(message));
+          rescheduleIfSuccess(deliverOperation, destination);
+          return deliverOperation;
+     }
+
+     protected static CompletionStage<Try<DeliveryStatus>> asyncLocalDeliver(ReActorContext destination,
+                                                                             Message message) {
+          var asyncDeliverResult = destination.getMbox()
+                                              .asyncDeliver(message);
+          asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result, destination));
+          return asyncDeliverResult;
+     }
+
+     protected static void rescheduleIfSuccess(Try<DeliveryStatus> deliveryResult, ReActorContext destination) {
+          deliveryResult.peekFailure(error -> LOGGER.error("Unable to deliver: ", error))
+                        .filter(DeliveryStatus::isDelivered)
+                        .ifSuccess(deliveryStatus -> destination.reschedule());
      }
 
      private static void propagateToDeadLetters(ReActorRef systemDeadLetters, Message originalMessage) {

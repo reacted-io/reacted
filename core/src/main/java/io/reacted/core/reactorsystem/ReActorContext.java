@@ -22,12 +22,15 @@ import io.reacted.patterns.Try;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -141,6 +144,14 @@ public final class ReActorContext {
 
     public CompletionStage<Try<DeliveryStatus>> reply(ReActorRef sender, Serializable anyPayload) {
         return getSender().tell(sender, anyPayload);
+    }
+
+    public Try<ScheduledFuture<CompletionStage<Try<DeliveryStatus>>>>
+    rescheduleMessage(Serializable messageToBeRescheduled, Duration inHowLong) {
+        return Try.of(() -> getReActorSystem().getSystemSchedulingService()
+                                              .schedule(() -> getSelf().tell(getSender(),
+                                                                             messageToBeRescheduled),
+                                                        inHowLong.toMillis(), TimeUnit.MILLISECONDS));
     }
 
     /**
