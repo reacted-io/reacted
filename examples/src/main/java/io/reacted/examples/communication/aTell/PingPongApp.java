@@ -145,8 +145,7 @@ class PingPongApp {
             long start = System.nanoTime();
             AsyncUtils.asyncLoop(noval -> this.serverReference.aTell("Not received"),
                                  Try.of(() -> DeliveryStatus.DELIVERED),
-                                 (Try<DeliveryStatus>) null, 1_000_000L,
-                                 new ForkJoinPool(1))
+                                 (Try<DeliveryStatus>) null, 1_00_000L)
                       .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
                                                               Duration.ofNanos(System.nanoTime() - start)
                                                                       .toString(),
