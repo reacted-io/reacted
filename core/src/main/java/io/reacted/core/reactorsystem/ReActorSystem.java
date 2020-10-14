@@ -11,6 +11,7 @@ package io.reacted.core.reactorsystem;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.config.reactors.ServiceRegistryCfg;
+import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.datastructure.MultiMaps;
@@ -584,11 +585,10 @@ public class ReActorSystem {
     }
 
     private void initReActorSystemReActors() throws ReActorSystemInitException {
-        List.of(getSystemSink(), getSystemDeadLetters(), Objects.requireNonNull(this.reActorSystemRoot),
-                Objects.requireNonNull(this.systemReActorsRoot), getSystemRemotingRoot(), getSystemLogger(),
-                Objects.requireNonNull(this.userReActorsRoot))
-            .forEach(reactor -> throwOnFailedDelivery(reactor.aTell(getSystemSink(), REACTOR_INIT),
-                                                      ReActorSystemInitException::new));
+        this.reActors.values().stream()
+                     .map(ReActorContext::getSelf)
+                     .forEach(reactor -> throwOnFailedDelivery(reactor.tell(getSystemSink(), REACTOR_INIT),
+                                                               ReActorSystemInitException::new));
     }
 
     private void spawnReActorSystemReActors() throws RuntimeException {
@@ -731,7 +731,7 @@ public class ReActorSystem {
                                                       getSystemSchedulingService()).getReActions(),
                      systemActorsRoot, ReActorConfig.newBuilder()
                                                     .setReActorName("SystemMonitor")
-                                                    .setMailBoxProvider(ctx -> new NullMailbox())
+                                                    .setMailBoxProvider(ctx -> new BoundedBasicMbox(1))
                                                     .build()).orElseSneakyThrow();
     }
 

@@ -143,6 +143,7 @@ public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> ext
             deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
                                                                        getLocalReActorSystem().getNewSeqNum(), this,
                                                                        deliveryResult, message)
+                                    .peekFailure(Throwable::printStackTrace)
                                   .ifError(error -> getLocalReActorSystem().logError("Unable to send ack", error)));
         }
     }

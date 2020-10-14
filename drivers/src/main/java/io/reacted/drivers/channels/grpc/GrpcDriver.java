@@ -18,9 +18,11 @@ import io.grpc.netty.NettyServerBuilder;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.ServerChannel;
 import io.netty.channel.SingleThreadEventLoop;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.drivers.DriverCtx;
@@ -79,10 +81,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                                                .getReActorSystemName() + "-%d")
                 .build());
         this.grpcExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
-        this.workerEventLoopGroup = new EpollEventLoopGroup(5);
+        this.workerEventLoopGroup = new NioEventLoopGroup(5);
         this.bossEventLoopGroup = new NioEventLoopGroup(1);
         this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(getDriverConfig().getHostName(),
                                                                               getDriverConfig().getPort()))
+                                            .channelType(NioServerSocketChannel.class)
                                             .executor(this.grpcExecutor)
                                             .bossEventLoopGroup(this.bossEventLoopGroup)
                                             .workerEventLoopGroup(this.workerEventLoopGroup)
@@ -97,12 +100,18 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
 
         Try.of(() -> this.grpcServer.awaitTermination(5, TimeUnit.SECONDS))
            .ifError(error -> Thread.currentThread().interrupt());
-
-        this.grpcServer.shutdownNow();
-
-        Objects.requireNonNull(this.bossEventLoopGroup).shutdownGracefully();
-        Objects.requireNonNull(this.workerEventLoopGroup).shutdownGracefully();
-        Objects.requireNonNull(this.grpcExecutor).shutdownNow();
+        if (this.grpcServer != null) {
+            this.grpcServer.shutdownNow();
+        }
+        if (this.bossEventLoopGroup != null) {
+            this.bossEventLoopGroup.shutdownGracefully();
+        }
+        if (this.workerEventLoopGroup != null) {
+            this.workerEventLoopGroup.shutdownGracefully();
+        }
+        if (this.grpcExecutor != null) {
+            this.grpcExecutor.shutdownNow();
+        }
         this.gatesStubs.clear();
 
         return CompletableFuture.completedFuture(Try.ofSuccess(null));

@@ -13,29 +13,52 @@ import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.time.Duration;
+import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 
 @NonNullByDefault
 public class ZooKeeperDriverCfg extends ServiceRegistryCfg<ZooKeeperDriverCfg.Builder, ZooKeeperDriverCfg> {
-    public static final Duration ZOOKEEPER_DEFAULT_REATTEMPT_ON_FAILURE_INTERVAL = Duration.ofMinutes(1);
-    private final Duration reattemptOnFailureInterval;
-
+    public static final Duration ZOOKEEPER_DEFAULT_PING_INTERVAL = Duration.ofSeconds(20);
+    private final Duration pingInterval;
+    private final Executor asyncExecutionService;
     private ZooKeeperDriverCfg(Builder builder) {
         super(builder);
-        this.reattemptOnFailureInterval = ObjectUtils.checkNonNullPositiveTimeInterval(builder.reattemptOnFailureInterval);
+        this.pingInterval = ObjectUtils.checkNonNullPositiveTimeInterval(builder.pingInterval);
+        this.asyncExecutionService = Objects.requireNonNull(builder.asyncExecutorService);
     }
 
-    public Duration getReattemptOnFailureInterval() {
-        return reattemptOnFailureInterval;
+    public Duration getPingInterval() {
+        return pingInterval;
     }
+
+    public Executor getAsyncExecutionService() { return asyncExecutionService; }
 
     public static Builder newBuilder() { return new Builder(); }
 
     public static class Builder extends ServiceRegistryCfg.Builder<Builder, ZooKeeperDriverCfg> {
-        private Duration reattemptOnFailureInterval = ZOOKEEPER_DEFAULT_REATTEMPT_ON_FAILURE_INTERVAL;
+        private Duration pingInterval = ZOOKEEPER_DEFAULT_PING_INTERVAL;
+        private Executor asyncExecutorService = ForkJoinPool.commonPool();
         private Builder() { }
 
-        public final Builder setReattemptOnFailureInterval(Duration reattemptOnFailureInterval) {
-            this.reattemptOnFailureInterval = reattemptOnFailureInterval;
+        /**
+         * Specify after how often a ping should be sent to Zookeeper
+         *
+         * @param pingInterval ping delay. Positive delay only. Default {@link ZooKeeperDriverCfg#ZOOKEEPER_DEFAULT_PING_INTERVAL}
+         * @return this builder
+         */
+        public final Builder setPingInterval(Duration pingInterval) {
+            this.pingInterval = pingInterval;
+            return this;
+        }
+
+        /**
+         * Define a custom executor service for executing asynchronous operations
+         * @param asyncExecutor Alternate executor. Default: {@link ForkJoinPool#commonPool()}
+         * @return this builder
+         */
+        public Builder setAsyncExecutor(Executor asyncExecutor) {
+            this.asyncExecutorService = asyncExecutor;
             return this;
         }
 

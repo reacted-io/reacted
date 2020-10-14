@@ -168,7 +168,9 @@ public abstract class ReActorSystemDriver<DriverCfgT extends ReActedDriverCfg<?,
     protected static boolean isAckRequired(AckingPolicy ackingPolicy, Properties senderChannelProperties) {
         String isAckRequiredByChannelProperty = (String)senderChannelProperties.getOrDefault(ReActedDriverCfg.IS_DELIVERY_ACK_REQUIRED_BY_CHANNEL_PROPERTY_NAME,
                                                                                              "false");
-
+        if (isAckRequiredByChannelProperty.equals("false")) {
+            System.out.println("Ack not required by properties: " + senderChannelProperties.toString());
+        }
         return isAckRequired(isAckRequiredByChannelProperty.compareToIgnoreCase("true") == 0, ackingPolicy);
     }
 

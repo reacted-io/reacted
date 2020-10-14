@@ -29,7 +29,7 @@ public class ReActorSystemConfig {
     public static final int MAX_DISPATCHER_CONFIGS = 100;
     public static final int DEFAULT_FANOUT_POOL_SIZE = 1;
     public static final LocalDriver<? extends ReActedDriverCfg<?, ?>> DEFAULT_LOCAL_DRIVER = SystemLocalDrivers.DIRECT_COMMUNICATION;
-    public static final Duration SYSTEM_MONITOR_DEFAULT_REFRESH_RATE = Duration.ofMinutes(1);
+    public static final Duration SYSTEM_MONITOR_DEFAULT_REFRESH_RATE = Duration.ofSeconds(20);
     private final String reactorSystemName;
     private final boolean recordedExecution;
     private final int msgFanOutPoolSize;

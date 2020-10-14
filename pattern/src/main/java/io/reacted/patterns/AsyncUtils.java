@@ -8,12 +8,16 @@
 
 package io.reacted.patterns;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.Function;
 
 @NonNullByDefault
@@ -124,7 +128,7 @@ public final class AsyncUtils {
                                                      finalTrigger, onError, executorService);
                             }
                             finalTrigger.toCompletableFuture().complete(result);
-                            return finalTrigger; 
-                            }, executorService);
+                            return finalTrigger;
+                        }, executorService);
     }
 }
