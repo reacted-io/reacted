@@ -165,12 +165,12 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
             return;
         }
 
-        CompletableFuture.supplyAsync(() -> queryZooKeeper(raCtx, Objects.requireNonNull(this.serviceDiscovery), request.getSearchFilter()))
-                         .toCompletableFuture()
+        CompletableFuture.supplyAsync(() -> queryZooKeeper(raCtx, Objects.requireNonNull(this.serviceDiscovery),
+                                                           request.getSearchFilter()))
                          .thenAcceptAsync(filterItemSet -> raCtx.getReActorSystem().getSystemRemotingRoot()
-                                                                 .tell(raCtx.getSender(),
-                                                                       new FilterServiceDiscoveryRequest(request.getSearchFilter(),
-                                                                                                         filterItemSet)));
+                                                                .tell(raCtx.getSender(),
+                                                                      new FilterServiceDiscoveryRequest(request.getSearchFilter(),
+                                                                                                        filterItemSet)));
     }
 
     private static Set<FilterItem> queryZooKeeper(ReActorContext raCtx,
@@ -205,13 +205,12 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
                  .ifError(error -> raCtx.reply(new ReActorSystemChannelIdPublicationError()));
             return;
         }
-
-        Try.of(() -> createPathIfRequired(this.asyncClient,  CreateMode.EPHEMERAL,
-                                          ZooKeeperDriver.getGatePublicationPath(pubRequest.getReActorSystemId(),
-                                                                                 pubRequest.getChannelId()),
-                                          encodeProperties(pubRequest.getChannelIdData())))
-           .ifError(encodeError -> raCtx.logError("Permanent error, unable to encode channel properties {}",
-                                                  pubRequest.getChannelIdData(), encodeError));
+        CompletableFuture.runAsync(() -> Try.of(() -> createPathIfRequired(this.asyncClient,  CreateMode.EPHEMERAL,
+                                                                           ZooKeeperDriver.getGatePublicationPath(pubRequest.getReActorSystemId(),
+                                                                                                                  pubRequest.getChannelId()),
+                                                                           encodeProperties(pubRequest.getChannelIdData())))
+                                            .ifError(encodeError -> raCtx.logError("Permanent error, unable to encode channel properties {}",
+                                                                                   pubRequest.getChannelIdData(), encodeError)));
     }
 
     private void onSynchronizationWithRegistryRequest(ReActorContext raCtx,
@@ -246,13 +245,14 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
         this.asyncClient = AsyncCuratorFramework.wrap(CuratorFrameworkFactory.newClient(getZkConnectionString(),
                                                                                         new ExponentialBackoffRetry(1000,
                                                                                                                     20)));
-        this.asyncClient.unwrap().start();
-        createPathIfRequired(this.asyncClient, CreateMode.PERSISTENT, CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH,
-                             NO_PAYLOAD)
-                .thenComposeAsync(createdPath -> createPathIfRequired(this.asyncClient, CreateMode.PERSISTENT,
-                                                                      CLUSTER_REGISTRY_SERVICES_ROOT_PATH,
-                                                                      NO_PAYLOAD))
-                .thenAcceptAsync(createdPath -> raCtx.selfTell(new ZooKeeperRootPathsCreated()));
+        CompletableFuture.runAsync(() -> this.asyncClient.unwrap().start())
+                         .thenAcceptAsync(noVal -> createPathIfRequired(this.asyncClient, CreateMode.PERSISTENT,
+                                                                        CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH,
+                                                                        NO_PAYLOAD))
+                         .thenComposeAsync(createdPath -> createPathIfRequired(this.asyncClient, CreateMode.PERSISTENT,
+                                                                               CLUSTER_REGISTRY_SERVICES_ROOT_PATH,
+                                                                               NO_PAYLOAD))
+                         .thenAcceptAsync(createdPath -> raCtx.selfTell(new ZooKeeperRootPathsCreated()));
     }
 
     private void onRootPathsCreated(ReActorContext raCtx, ZooKeeperRootPathsCreated created) {
@@ -278,8 +278,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
     }
 
     private static CompletionStage<String> createPathIfRequired(AsyncCuratorFramework asyncClient,
-                                                         CreateMode creationMode, String pathToCreate,
-                                                         byte[] payload) {
+                                                                CreateMode creationMode, String pathToCreate,
+                                                                byte[] payload) {
         return asyncClient.checkExists()
                           .withOptions(Set.of(ExistsOption.createParentsIfNeeded))
                           .forPath(pathToCreate)

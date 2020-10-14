@@ -17,6 +17,10 @@ import io.grpc.Server;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SingleThreadEventLoop;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.drivers.DriverCtx;
@@ -53,6 +57,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     private Server grpcServer;
     @Nullable
     private ExecutorService grpcExecutor;
+    @Nullable
+    private EventLoopGroup workerEventLoopGroup;
+    @Nullable
+    private EventLoopGroup bossEventLoopGroup;
+
 
     public GrpcDriver(GrpcDriverConfig grpcDriverConfig) {
         super(grpcDriverConfig);
@@ -70,9 +79,13 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                                                .getReActorSystemName() + "-%d")
                 .build());
         this.grpcExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
+        this.workerEventLoopGroup = new EpollEventLoopGroup(5);
+        this.bossEventLoopGroup = new NioEventLoopGroup(1);
         this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(getDriverConfig().getHostName(),
                                                                               getDriverConfig().getPort()))
                                             .executor(this.grpcExecutor)
+                                            .bossEventLoopGroup(this.bossEventLoopGroup)
+                                            .workerEventLoopGroup(this.workerEventLoopGroup)
                                             .addService(new HealthStatusManager().getHealthService())
                                             .addService(new GrpcServer(this))
                                             .build();
@@ -80,16 +93,19 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
 
     @Override
     public CompletableFuture<Try<Void>> cleanDriverLoop() {
-            Objects.requireNonNull(this.grpcServer).shutdown();
+        Objects.requireNonNull(this.grpcServer).shutdown();
 
-            Try.of(() -> this.grpcServer.awaitTermination(5, TimeUnit.SECONDS))
-               .ifError(error -> Thread.currentThread().interrupt());
+        Try.of(() -> this.grpcServer.awaitTermination(5, TimeUnit.SECONDS))
+           .ifError(error -> Thread.currentThread().interrupt());
 
-            this.grpcServer.shutdownNow();
+        this.grpcServer.shutdownNow();
 
-            Objects.requireNonNull(this.grpcExecutor).shutdownNow();
-            this.gatesStubs.clear();
-            return CompletableFuture.completedFuture(Try.ofSuccess(null));
+        Objects.requireNonNull(this.bossEventLoopGroup).shutdownGracefully();
+        Objects.requireNonNull(this.workerEventLoopGroup).shutdownGracefully();
+        Objects.requireNonNull(this.grpcExecutor).shutdownNow();
+        this.gatesStubs.clear();
+
+        return CompletableFuture.completedFuture(Try.ofSuccess(null));
     }
 
     @Override

@@ -27,12 +27,16 @@ import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverCfg;
 import io.reacted.examples.ExampleUtils;
+import io.reacted.patterns.AsyncUtils;
+import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -89,7 +93,7 @@ class PingPongApp {
         var clientReActor = clientSystem.spawn(new ClientReActor(remoteService)).orElseSneakyThrow();
 
         //The reactors are executing now
-        TimeUnit.SECONDS.sleep(300);
+        TimeUnit.SECONDS.sleep(3600);
         remoteService.aTell("Banana").thenAccept(ds -> ds.filter(DeliveryStatus::isDelivered)
                                                          .ifSuccessOrElse(success -> System.out.println("Delivered also banana"),
                                                                           Throwable::printStackTrace));
@@ -136,18 +140,16 @@ class PingPongApp {
         }
 
         private void onInit(ReActorContext raCtx) {
-            unlimiChain(() -> this.serverReference.aTell("Not received"), 1_000_000);
+            long start = System.nanoTime();
+            AsyncUtils.asyncLoop(noval -> this.serverReference.aTell("Not received"),
+                                 Try.of(() -> DeliveryStatus.DELIVERED),
+                                 (Try<DeliveryStatus>) null, 1_000_000L)
+                      .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
+                                                              Duration.ofNanos(System.nanoTime() - start)
+                                                                      .toString(),
+                                                              Thread.currentThread().getName()));
+            long end = System.nanoTime();
+            System.out.println("Finished storm: " + Duration.ofNanos(end - start).toString());
         }
-    }
-    
-    public static void unlimiChain(Supplier<CompletionStage<?>> producer, int iterations) {
-        producer.get().thenAcceptAsync(val -> {
-            int nIter = iterations - 1;
-            if ( nIter > 0) {
-                unlimiChain(producer, nIter);
-            } else {
-                System.out.println("Finished!");
-            }
-        });
     }
 }
