@@ -48,9 +48,8 @@ class SystemLocalDriversTest {
 
     @Test
     void fileCreatedInDirectCommunicationLogger() {
-        Assertions.assertEquals(
-                "DIRECT_COMMUNICATION@LOGGING_DIRECT_COMMUNICATION-" + TMP_TEST_DIRECT_COMMUNICATION_TXT,
-                localDriver.getChannelId().toString());
+        Assertions.assertEquals("DIRECT_COMMUNICATION@LOGGING_DIRECT_COMMUNICATION-",
+                                localDriver.getChannelId().toString());
         Assertions.assertTrue(new File(TMP_TEST_DIRECT_COMMUNICATION_TXT).exists());
     }
 
