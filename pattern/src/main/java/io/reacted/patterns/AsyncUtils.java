@@ -10,22 +10,23 @@ package io.reacted.patterns;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
+import javax.annotation.processing.Completions;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 @NonNullByDefault
 @Immutable
 public final class AsyncUtils {
     private AsyncUtils() { /* No implementations allowed */ }
 
-    public static
-    CompletionStage<Void> ifThenElse(boolean condition,
-                                     AsyncRunnable ifTrue,
-                                     AsyncRunnable ifFalse) {
-        return (condition ? ifTrue : ifFalse).run().thenAccept(res -> {});
+    public static CompletionStage<Void> ifThenElse(boolean condition,
+                                                   Supplier<CompletionStage<?>> ifTrue,
+                                                   Supplier<CompletionStage<?>> ifFalse) {
+        return (condition ? ifTrue : ifFalse).get().thenAccept(res -> {});
     }
 
     /**
