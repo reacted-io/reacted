@@ -14,7 +14,6 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.serviceregistry.FilterServiceDiscoveryRequest;
-import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicationError;
 import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
 import io.reacted.core.messages.serviceregistry.RegistryGateRemoved;
 import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
@@ -22,7 +21,6 @@ import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicatio
 import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
 import io.reacted.core.messages.serviceregistry.RegistryServicePublicationFailed;
 import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
-import io.reacted.core.messages.serviceregistry.ServicePublicationRequestError;
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryComplete;
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryFailed;
 import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
@@ -41,6 +39,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.cache.ChildData;
+import org.apache.curator.framework.recipes.cache.CuratorCache;
 import org.apache.curator.framework.recipes.cache.TreeCache;
 import org.apache.curator.framework.recipes.cache.TreeCacheEvent;
 import org.apache.curator.framework.recipes.cache.TreeCacheListener;
@@ -59,6 +58,7 @@ import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -66,10 +66,12 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
-public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Builder, ZooKeeperDriverCfg> {
+public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig.Builder, ZooKeeperDriverConfig> {
     public static final String ZK_CONNECTION_STRING = "zkConnectionString";
     private static final String REACTED_REACTORSYSTEMS_ROOT = "REACTED_REACTOR_SYSTEMS";
     private static final String REACTED_SERVICES_ROOT = "REACTED_SERVICES";
@@ -87,20 +89,9 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
     @Nullable
     private AsyncCuratorFramework asyncClient;
     @Nullable
-    private TreeCache reActedHierarchy;
+    private CuratorCache curatorCache;
 
-    public ZooKeeperDriver(ZooKeeperDriverCfg cfg) {
-        super(cfg);
-    }
-
-    @Override
-    public boolean equals(@Nullable Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ZooKeeperDriver that = (ZooKeeperDriver) o;
-        return Objects.equals(getConfig().getServiceRegistryProperties(),
-                              that.getConfig().getServiceRegistryProperties());
-    }
+    public ZooKeeperDriver(ZooKeeperDriverConfig config) { super(config); }
 
     @Override
     public int hashCode() {
@@ -112,12 +103,30 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
                         .reAct(ReActorInit.class, (raCtx, init) -> this.onInit(raCtx))
                         .reAct(ReActorStop.class, (raCtx, stop) -> this.onStop(raCtx))
                         .reAct(ZooKeeperRootPathsCreated.class, this::onRootPathsCreated)
-                        .reAct(ReActorSystemChannelIdPublicationRequest.class, this::onChannelIdPublicationRequest)
-                        .reAct(ReActorSystemChannelIdCancellationRequest.class, this::onChannelIdCancellationRequest)
-                        .reAct(SynchronizationWithServiceRegistryRequest.class, this::onSynchronizationWithRegistryRequest)
-                        .reAct(ServicePublicationRequest.class, this::onServicePublicationRequest)
-                        .reAct(ServiceCancellationRequest.class, this::onServiceCancellationRequest)
-                        .reAct(ServiceDiscoveryRequest.class, this::onServiceDiscovery)
+                        .reAct(ReActorSystemChannelIdPublicationRequest.class,
+                               (raCtx, systemPubRequest) -> rescheduleIf(this::onChannelIdPublicationRequest,
+                                                                   this::isCuratorClientMissing,
+                                                                   raCtx, systemPubRequest))
+                        .reAct(ReActorSystemChannelIdCancellationRequest.class,
+                               (raCtx, cancRequest) -> rescheduleIf(this::onChannelIdCancellationRequest,
+                                                                    this::isServiceDiscoveryClientMissing,
+                                                                    raCtx, cancRequest))
+                        .reAct(SynchronizationWithServiceRegistryRequest.class,
+                               (raCtx, syncRequest) -> rescheduleIf(this::onSynchronizationWithRegistryRequest,
+                                                                    this::isCuratorClientMissing,
+                                                                    raCtx, syncRequest))
+                        .reAct(ServicePublicationRequest.class,
+                               (raCtx, servicePubRequest) -> rescheduleIf(this::onServicePublicationRequest,
+                                                                          this::isCuratorClientMissing,
+                                                                          raCtx, servicePubRequest))
+                        .reAct(ServiceCancellationRequest.class,
+                               (raCtx, serviceCancRequest) -> rescheduleIf(this::onServiceCancellationRequest,
+                                                                          this::isServiceDiscoveryClientMissing,
+                                                                          raCtx, serviceCancRequest))
+                        .reAct(ServiceDiscoveryRequest.class,
+                               (raCtx, serviceDiscoveryRequest) -> rescheduleIf(this::onServiceDiscovery,
+                                                                                this::isServiceDiscoveryClientMissing,
+                                                                                raCtx, serviceDiscoveryRequest))
                         .reAct(ZooKeeperDriver::onSpuriousMessage)
                         .build();
     }
@@ -126,11 +135,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
         return getConfig().getServiceRegistryProperties().getProperty(ZK_CONNECTION_STRING);
     }
 
-    private void onServiceCancellationRequest(ReActorContext raCtx,
-                                              ServiceCancellationRequest cancellationRequest) {
-        if (this.serviceDiscovery == null) {
-            return;
-        }
+    private void onServiceCancellationRequest(ReActorContext raCtx, ServiceCancellationRequest cancellationRequest) {
         getConfig().getAsyncExecutionService()
                    .execute(() -> getServiceInstance(cancellationRequest.getServiceName(),
                                                      raCtx.getReActorSystem().getLocalReActorSystemId(),
@@ -141,11 +146,6 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
     }
 
     private void onServicePublicationRequest(ReActorContext raCtx, ServicePublicationRequest serviceInfo) {
-        if (this.serviceDiscovery == null) {
-            raCtx.rescheduleMessage(serviceInfo, getConfig().getPingInterval())
-                 .ifError(error -> raCtx.reply(new ServicePublicationRequestError()));
-            return;
-        }
         String serviceName = serviceInfo.getServiceProperties()
                                         .getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME);
         if (StringUtils.isBlank(serviceName)) {
@@ -163,9 +163,6 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
     }
 
     private void onServiceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
-        if (this.serviceDiscovery == null) {
-            return;
-        }
         ReActorRef discoveryRequester = raCtx.getSender();
         CompletableFuture.supplyAsync(() -> queryZooKeeper(raCtx, Objects.requireNonNull(this.serviceDiscovery),
                                                            request.getSearchFilter()),
@@ -192,25 +189,17 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
 
     private void onChannelIdCancellationRequest(ReActorContext raCtx,
                                                 ReActorSystemChannelIdCancellationRequest cancelRequest) {
-        if (this.asyncClient == null) {
-            return;
-        }
         getConfig().getAsyncExecutionService()
-                   .execute(() -> this.asyncClient.delete()
-                                                  .forPath(ZooKeeperDriver.getGatePublicationPath(cancelRequest.getReActorSystemId(),
-                                                                                                  cancelRequest.getChannelId())));
+                   .execute(() -> Objects.requireNonNull(this.asyncClient)
+                                         .delete()
+                                         .forPath(ZooKeeperDriver.getGatePublicationPath(cancelRequest.getReActorSystemId(),
+                                                                                         cancelRequest.getChannelId())));
     }
 
     private void onChannelIdPublicationRequest(ReActorContext raCtx,
                                                ReActorSystemChannelIdPublicationRequest pubRequest) {
-        if (this.asyncClient == null) {
-            raCtx.rescheduleMessage(pubRequest, getConfig().getPingInterval())
-                 .peekFailure(error -> raCtx.logError("Critic! {} cannot reschedule a channel publication",
-                                                      getConfig().getReActorName(), error))
-                 .ifError(error -> raCtx.reply(new ReActorSystemChannelIdPublicationError()));
-            return;
-        }
-        CompletableFuture.runAsync(() -> Try.of(() -> createPathIfRequired(this.asyncClient,  CreateMode.EPHEMERAL,
+        CompletableFuture.runAsync(() -> Try.of(() -> createPathIfRequired(Objects.requireNonNull(this.asyncClient),
+                                                                           CreateMode.EPHEMERAL,
                                                                            ZooKeeperDriver.getGatePublicationPath(pubRequest.getReActorSystemId(),
                                                                                                                   pubRequest.getChannelId()),
                                                                            encodeProperties(pubRequest.getChannelIdData())))
@@ -221,19 +210,14 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
 
     private void onSynchronizationWithRegistryRequest(ReActorContext raCtx,
                                                       SynchronizationWithServiceRegistryRequest subRequest) {
-        if (this.asyncClient == null) {
-            raCtx.rescheduleMessage(subRequest, getConfig().getPingInterval())
-                 .ifError(error -> raCtx.reply(new SynchronizationWithServiceRegistryFailed()));
-            return;
-        }
-        if (this.reActedHierarchy == null) {
-            this.reActedHierarchy = TreeCache.newBuilder(this.asyncClient.unwrap(), CLUSTER_REGISTRY_ROOT_PATH)
-                                             .build();
+        if (this.curatorCache == null) {
+            this.curatorCache =  TreeCache.newBuilder(this.asyncClient.unwrap(), CLUSTER_REGISTRY_ROOT_PATH)
+                                         .build();
         }
         try {
-            this.reActedHierarchy.start()
-                                 .getListenable()
-                                 .addListener(getTreeListener(raCtx.getReActorSystem(), raCtx.getSelf()));
+            this.curatorCache.start()
+                             .getListenable()
+                             .addListener(getTreeListener(raCtx.getReActorSystem(), raCtx.getSelf()));
             raCtx.getReActorSystem()
                  .getSystemRemotingRoot()
                  .tell(raCtx.getSelf(), new SynchronizationWithServiceRegistryComplete());
@@ -277,17 +261,36 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
                                                    .tell(raCtx.getSelf(), new RegistryDriverInitComplete()));
     }
 
+    private  <PayloadT extends Serializable> void rescheduleIf(BiConsumer<ReActorContext, PayloadT> realCall,
+                                                               Supplier<Boolean> shouldReschedule,
+                                                               ReActorContext raCtx, PayloadT message) {
+        if (shouldReschedule.get()) {
+            raCtx.rescheduleMessage(message, getConfig().getPingInterval())
+                 .ifError(error -> raCtx.logError("WARNING {} misbehaves. Error attempting a {} reschedulation. " +
+                                                  "System remoting may become unreliable ",
+                                                  ZooKeeperDriver.class.getSimpleName(),
+                                                  message.getClass().getSimpleName(), error));
+        } else {
+            realCall.accept(raCtx, message);
+        }
+    }
+
+    private boolean isCuratorClientMissing() { return this.asyncClient == null; }
+
+    private boolean isServiceDiscoveryClientMissing() { return this.serviceDiscovery == null; }
+
     private void shutdownZookeeperConnection() throws IOException {
         if (this.serviceDiscovery != null) {
             Objects.requireNonNull(this.serviceDiscovery).close();
         }
-        if (this.reActedHierarchy != null) {
-            this.reActedHierarchy.close();
+        if (this.curatorCache != null) {
+            this.curatorCache.close();
         }
         if (this.asyncClient != null) {
             this.asyncClient.unwrap().close();
         }
     }
+
 
     private static CompletionStage<String> createPathIfRequired(AsyncCuratorFramework asyncClient,
                                                                 CreateMode creationMode, String pathToCreate,

@@ -17,7 +17,7 @@ import java.util.Objects;
 import java.util.Properties;
 
 @NonNullByDefault
-public abstract class ChannelDriverCfg<BuilderT extends InheritableBuilder.Builder<BuilderT, BuiltT>,
+public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Builder<BuilderT, BuiltT>,
                                        BuiltT extends InheritableBuilder<BuilderT, BuiltT>>
         extends InheritableBuilder<BuilderT, BuiltT> {
     public static final Duration NEVER_FAIL = Duration.ofNanos(Long.MAX_VALUE);
@@ -26,7 +26,7 @@ public abstract class ChannelDriverCfg<BuilderT extends InheritableBuilder.Build
     private final boolean deliveryAckRequiredByChannel;
     private final Duration aTellAutomaticFailureTimeout;
 
-    protected ChannelDriverCfg(Builder<BuilderT, BuiltT> builder) {
+    protected ChannelDriverConfig(Builder<BuilderT, BuiltT> builder) {
         super(builder);
         this.channelName = Objects.requireNonNull(builder.channelName);
         this.deliveryAckRequiredByChannel = builder.deliveryAckRequiredByChannel;
@@ -38,7 +38,7 @@ public abstract class ChannelDriverCfg<BuilderT extends InheritableBuilder.Build
 
     public Properties getProperties() {
         var props = getChannelProperties();
-        props.setProperty(ChannelDriverCfg.CHANNEL_ID_PROPERTY_NAME, getChannelName());
+        props.setProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME, getChannelName());
         return props;
     }
 
@@ -78,7 +78,7 @@ public abstract class ChannelDriverCfg<BuilderT extends InheritableBuilder.Build
         /**
          * Specify after how much time a not acknowledged message from {@link io.reacted.core.reactorsystem.ReActorRef#aTell}
          * should be automatically marked as completed as a failure
-         * @param aTellFailureTimeout the automatic failure timeout. Default {@link ChannelDriverCfg#NEVER_FAIL}
+         * @param aTellFailureTimeout the automatic failure timeout. Default {@link ChannelDriverConfig#NEVER_FAIL}
          *                            Max Value: {@link Long#MAX_VALUE} nanosecs
          * @return this builder
          */

@@ -78,7 +78,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     public ReactedSubmissionPublisher(ReActorSystem localReActorSystem, String feedName) {
         this.localReActorSystem = Objects.requireNonNull(localReActorSystem);
         this.subscribers = ConcurrentHashMap.newKeySet(10);
-        var feedGateCfg = ReActorConfig.newBuilder()
+        var feedGateConfig = ReActorConfig.newBuilder()
                                        .setReActorName(ReactedSubmissionPublisher.class.getSimpleName() + "-" +
                                                        Objects.requireNonNull(feedName))
                                        .setMailBoxProvider(ctx -> new BasicMbox())
@@ -94,7 +94,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                                  this::onSubscriptionRequest)
                                                           .reAct(UnsubscriptionRequest.class,
                                                                  this::onUnSubscriptionRequest)
-                                                          .build(), feedGateCfg)
+                                                          .build(), feedGateConfig)
                                           .orElseThrow(IllegalArgumentException::new);
     }
 
@@ -390,7 +390,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         CompletionStage<Void> subscriptionComplete = new CompletableFuture<>();
         var backpressureManager = new BackpressureManager<>(subscription, this.feedGate, subscriptionComplete);
 
-        var subscriberCfg = ReActorConfig.newBuilder()
+        var subscriberConfig = ReActorConfig.newBuilder()
                                          .setReActorName(this.feedGate.getReActorId().getReActorName() +
                                                          "_subscriber_" + subscription.getSubscriberName() + "_" +
                                                          this.feedGate.getReActorId().getReActorUUID().toString())
@@ -400,7 +400,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                          .build();
 
         this.localReActorSystem.spawnChild(backpressureManager.getReActions(), localReActorSystem.getUserReActorsRoot(),
-                                           subscriberCfg)
+                                           subscriberConfig)
                                .orElseSneakyThrow();
         return subscriptionComplete;
     }

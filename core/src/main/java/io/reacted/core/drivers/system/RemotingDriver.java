@@ -8,7 +8,7 @@
 
 package io.reacted.core.drivers.system;
 
-import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -25,11 +25,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public abstract class RemotingDriver<CfgT extends ChannelDriverCfg<?, CfgT>> extends ReActorSystemDriver<CfgT> {
+public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>>
+        extends ReActorSystemDriver<ConfigT> {
 
-    protected RemotingDriver(CfgT cfg) {
-        super(cfg);
-    }
+    protected RemotingDriver(ConfigT config) { super(config); }
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {

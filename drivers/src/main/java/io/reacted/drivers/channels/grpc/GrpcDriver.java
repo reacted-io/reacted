@@ -21,7 +21,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.Message;
@@ -125,7 +125,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
         Properties dstChannelIdProperties = message.getDestination().getReActorSystemRef().getGateProperties();
-        String dstChannelIdName = dstChannelIdProperties.getProperty(ChannelDriverCfg.CHANNEL_ID_PROPERTY_NAME);
+        String dstChannelIdName = dstChannelIdProperties.getProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME);
 
         var grpcLink = this.gatesStubs.computeIfAbsent(dstChannelIdName,
                                                        channelName -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties),

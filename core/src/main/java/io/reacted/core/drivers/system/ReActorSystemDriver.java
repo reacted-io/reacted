@@ -15,7 +15,7 @@ import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.messages.AckingPolicy;
@@ -48,21 +48,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @NonNullByDefault
-public abstract class ReActorSystemDriver<DriverCfgT extends ChannelDriverCfg<?, DriverCfgT>> {
+public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> {
     public static final ThreadLocal<DriverCtx> REACTOR_SYSTEM_CTX = new InheritableThreadLocal<>();
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
-    private final DriverCfgT driverConfig;
+    private final ConfigT driverConfig;
     private final Cache<Long, CompletableFuture<Try<DeliveryStatus>>> pendingAcksTriggers;
     @Nullable
     private ReActorSystem localReActorSystem;
     @Nullable
     private ExecutorService driverThread;
 
-    protected ReActorSystemDriver(DriverCfgT driverCfg) {
-        this.driverConfig = Objects.requireNonNull(driverCfg);
+    protected ReActorSystemDriver(ConfigT config) {
+        this.driverConfig = Objects.requireNonNull(config);
         this.pendingAcksTriggers = CacheBuilder.newBuilder()
-                                               .expireAfterWrite(driverCfg.getAtellAutomaticFailureTimeout()
-                                                                          .toMillis(), TimeUnit.MILLISECONDS)
+                                               .expireAfterWrite(config.getAtellAutomaticFailureTimeout()
+                                                                       .toMillis(), TimeUnit.MILLISECONDS)
                                                .initialCapacity(10_000_000)
                                                .removalListener(new RemovalListener<Long, CompletableFuture<Try<DeliveryStatus>>>() {
                                                    @Override
@@ -84,7 +84,7 @@ public abstract class ReActorSystemDriver<DriverCfgT extends ChannelDriverCfg<?,
     abstract public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message);
     abstract public boolean channelRequiresDeliveryAck();
 
-    public DriverCfgT getDriverConfig() { return driverConfig; }
+    public ConfigT getDriverConfig() { return driverConfig; }
 
     /**
      * @param src source of the message
@@ -167,7 +167,7 @@ public abstract class ReActorSystemDriver<DriverCfgT extends ChannelDriverCfg<?,
 
     protected static Try<DeliveryStatus> sendDeliveyAck(ReActorSystemId localReActorSystemId,
                                                         long ackSeqNum,
-                                                        ReActorSystemDriver<? extends ChannelDriverCfg<?, ?>> gate,
+                                                        ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> gate,
                                                         Try<DeliveryStatus> deliveryResult, Message originalMessage) {
         var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
                                                            deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED));

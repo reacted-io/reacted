@@ -8,26 +8,24 @@
 
 package io.reacted.core.drivers.system;
 
-import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
 
 @NonNullByDefault
-public class DirectCommunicationLoggerCfg extends ChannelDriverCfg<DirectCommunicationLoggerCfg.Builder,
-                                                                   DirectCommunicationLoggerCfg> {
+public class DirectCommunicationLoggerConfig extends ChannelDriverConfig<DirectCommunicationLoggerConfig.Builder, DirectCommunicationLoggerConfig> {
     private final String logFilePath;
-    private DirectCommunicationLoggerCfg(Builder builder) {
+    private DirectCommunicationLoggerConfig(Builder builder) {
         super(builder);
         this.logFilePath = Objects.requireNonNull(builder.logFilePath);
     }
 
     public String getLogFilePath() { return logFilePath; }
 
-    public static DirectCommunicationLoggerCfg.Builder newBuilder() { return new Builder(); }
+    public static DirectCommunicationLoggerConfig.Builder newBuilder() { return new Builder(); }
 
-    public static class Builder extends ChannelDriverCfg.Builder<DirectCommunicationLoggerCfg.Builder,
-            DirectCommunicationLoggerCfg> {
+    public static class Builder extends ChannelDriverConfig.Builder<DirectCommunicationLoggerConfig.Builder, DirectCommunicationLoggerConfig> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String logFilePath;
         private Builder() { }
@@ -37,8 +35,8 @@ public class DirectCommunicationLoggerCfg extends ChannelDriverCfg<DirectCommuni
             return this;
         }
         @Override
-        public DirectCommunicationLoggerCfg build() {
-            return new DirectCommunicationLoggerCfg(this);
+        public DirectCommunicationLoggerConfig build() {
+            return new DirectCommunicationLoggerConfig(this);
         }
     }
 }

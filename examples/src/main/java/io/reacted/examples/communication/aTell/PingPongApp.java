@@ -25,7 +25,7 @@ import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
-import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverCfg;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.Try;
@@ -44,12 +44,12 @@ class PingPongApp {
         zooKeeperProps.put(ZooKeeperDriver.ZK_CONNECTION_STRING, "localhost:2181");
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Client",
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
-                                                                   List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
-                                                                                                                 .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                                                                                 .setReActorName("ZooKeeperDriver")
-                                                                                                                 .setAsyncExecutor(new ForkJoinPool())
-                                                                                                                 .setServiceRegistryProperties(zooKeeperProps)
-                                                                                                                 .build())),
+                                                                   List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
+                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setReActorName("ZooKeeperDriver")
+                                                                                                                    .setAsyncExecutor(new ForkJoinPool())
+                                                                                                                    .setServiceRegistryProperties(zooKeeperProps)
+                                                                                                                    .build())),
                                                                    List.of(new GrpcDriver(GrpcDriverConfig.newBuilder()
                                                                                                           .setHostName("localhost")
                                                                                                           .setPort(12345)
@@ -59,12 +59,12 @@ class PingPongApp {
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Server",
                                                                    //SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
-                                                                   List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
-                                                                                                                 .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                                                                                 .setAsyncExecutor(new ForkJoinPool(2))
-                                                                                                                 .setReActorName("ZooKeeperDriver")
-                                                                                                                 .setServiceRegistryProperties(zooKeeperProps)
-                                                                                                                 .build())),
+                                                                   List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
+                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setAsyncExecutor(new ForkJoinPool(2))
+                                                                                                                    .setReActorName("ZooKeeperDriver")
+                                                                                                                    .setServiceRegistryProperties(zooKeeperProps)
+                                                                                                                    .build())),
                                                                    List.of(new GrpcDriver(GrpcDriverConfig.newBuilder()
                                                                                                           .setHostName("localhost")
                                                                                                           .setPort(54321)

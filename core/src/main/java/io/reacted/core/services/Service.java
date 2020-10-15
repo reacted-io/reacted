@@ -105,13 +105,13 @@ public class Service implements ReActiveEntity {
             try {
                 ReActor routee = Objects.requireNonNull(serviceConfig.getRouteeProvider()
                                                                      .get());
-                ReActorConfig routeeCfg = routee.getConfig();
+                ReActorConfig routeeConfig = routee.getConfig();
                 ReActions routeeReActions = routee.getReActions();
                 //A service has multiple children, so they cannot share the same name
                 String routeeNewName = String.format(REACTOR_SERVICE_NAME_FORMAT,
                                                      serviceConfig.getReActorName(),
-                                                     routeeCfg.getReActorName(), currentRoutee);
-                ReActorConfig newRouteeCfg = ReActorConfig.fromConfig(routeeCfg)
+                                                     routeeConfig.getReActorName(), currentRoutee);
+                ReActorConfig newRouteeCfg = ReActorConfig.fromConfig(routeeConfig)
                                                           .setReActorName(routeeNewName)
                                                           .build();
                 spawnRoutee(raCtx, routeeReActions, newRouteeCfg);

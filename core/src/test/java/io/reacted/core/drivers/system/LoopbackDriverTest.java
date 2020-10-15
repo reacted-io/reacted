@@ -10,7 +10,7 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
-import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 class LoopbackDriverTest {
     static String testDispatcher = "TestDispatcher";
     static ReActorSystem reActorSystem;
-    static LoopbackDriver<? extends ChannelDriverCfg<?, ?>> loopbackDriver;
+    static LoopbackDriver<? extends ChannelDriverConfig<?, ?>> loopbackDriver;
     static ReActorRef destReActorRef;
     static Message message;
 

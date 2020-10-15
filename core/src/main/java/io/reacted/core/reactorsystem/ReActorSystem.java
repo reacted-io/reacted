@@ -9,8 +9,8 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.config.drivers.ChannelDriverCfg;
-import io.reacted.core.config.reactors.ServiceRegistryCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.TypedSubscription;
@@ -100,7 +100,7 @@ public class ReActorSystem {
      *  same driver. A driver allows you to communicate with through a given middleware, so what it offers
      *  is a gate to reach other reactor systems */
     private final Map<ReActorSystemId, Map<ChannelId, ReActorSystemRef>> reActorSystemsGates;
-    private final Set<ReActorSystemDriver<? extends ChannelDriverCfg<?, ?>>> reActorSystemDrivers;
+    private final Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> reActorSystemDrivers;
     /* All the reactors spawned by a specific reactor system instance */
     private final Map<ReActorId, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
@@ -275,7 +275,7 @@ public class ReActorSystem {
     //reactor system
     @SuppressWarnings("UnusedReturnValue")
     public ReActorSystemRef registerNewRoute(ReActorSystemId reActorSystemId,
-                                             ReActorSystemDriver<? extends ChannelDriverCfg<?, ?>> driver,
+                                             ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driver,
                                              Properties channelProperties) {
         var channelMap = this.reActorSystemsGates.computeIfAbsent(reActorSystemId,
                                                                   newReActorSystem -> new ConcurrentHashMap<>());
@@ -305,7 +305,7 @@ public class ReActorSystem {
      * @param anyDriver A ReActed driver
      * @return A successful Try on success, a failed one containing the exception that caused the error otherwise
      */
-    public Try<Void> registerReActorSystemDriver(ReActorSystemDriver<? extends ChannelDriverCfg<?, ?>> anyDriver) {
+    public Try<Void> registerReActorSystemDriver(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> anyDriver) {
         return getReActorSystemDrivers().contains(anyDriver)
                ? Try.ofFailure(new IllegalArgumentException())
                : anyDriver.initDriverCtx(this)
@@ -319,7 +319,7 @@ public class ReActorSystem {
      * @return A future that will contain once completed the outcome of the operation
      */
     public CompletionStage<Try<Void>>
-    unregisterReActorSystemDriver(ReActorSystemDriver<? extends ChannelDriverCfg<?, ?>> anyDriver) {
+    unregisterReActorSystemDriver(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> anyDriver) {
         for (Map.Entry<ReActorSystemId, Map<ChannelId, ReActorSystemRef>> gate : this.reActorSystemsGates.entrySet()) {
             unregisterRoute(gate.getKey(), anyDriver.getChannelId());
         }
@@ -526,7 +526,7 @@ public class ReActorSystem {
         return Objects.requireNonNull(systemSchedulingService);
     }
 
-    Set<ReActorSystemDriver<? extends ChannelDriverCfg<?, ?>>> getReActorSystemDrivers() {
+    Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> getReActorSystemDrivers() {
         return Set.copyOf(this.reActorSystemDrivers);
     }
 
@@ -564,7 +564,7 @@ public class ReActorSystem {
         this.msgFanOutPool = createFanOutPool(getLocalReActorSystemId().getReActorSystemName(),
                                               getSystemConfig().getMsgFanOutPoolSize());
 
-        LoopbackDriver<? extends ChannelDriverCfg<?, ?>> loopbackDriver =
+        LoopbackDriver<? extends ChannelDriverConfig<?, ?>> loopbackDriver =
                 new LoopbackDriver<>(this, getSystemConfig().getLocalDriver());
         registerReActorSystemDriver(loopbackDriver).orElseSneakyThrow();
         this.loopback = registerNewRoute(localReActorSystemId, loopbackDriver, new Properties());
@@ -581,8 +581,8 @@ public class ReActorSystem {
 
     /* SneakyThrows */
     @SuppressWarnings("RedundantThrows")
-    private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryCfg.Builder<?, ?>,
-                                                                             ? extends ServiceRegistryCfg<?, ?>>> drivers)
+    private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
+                                                                             ? extends ServiceRegistryConfig<?, ?>>> drivers)
             throws Exception {
         drivers.forEach(driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())
                 .orElseSneakyThrow());
@@ -623,7 +623,7 @@ public class ReActorSystem {
                                         .orElse(CompletableFuture.completedFuture(Try.ofSuccess(null)));
     }
 
-    private List<ReActorSystemDriver<? extends ChannelDriverCfg<?, ?>>> getNonRemoteDrivers() {
+    private List<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> getNonRemoteDrivers() {
         return Stream.concat(Stream.of(NullDriver.NULL_DRIVER),
                              getAllGates(localReActorSystemId).stream()
                                                               .map(ReActorSystemRef::getBackingDriver))

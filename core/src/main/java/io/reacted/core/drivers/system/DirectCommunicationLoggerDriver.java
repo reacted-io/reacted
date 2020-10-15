@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunicationLoggerCfg> {
+public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunicationLoggerConfig> {
     private final ChannelId channelId;
     private final PrintWriter logFile;
 
@@ -35,14 +35,14 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
      * Creates a direct communication driver that logs in a file all the content of the exchanged messages within
      * the {@link ReActorSystem}
      *
-     * @param cfg driver configuration
+     * @param config driver configuration
      * @throws UncheckedIOException If there is a problem opening the specified file
      */
-    public DirectCommunicationLoggerDriver(DirectCommunicationLoggerCfg cfg) {
-        super(cfg);
+    public DirectCommunicationLoggerDriver(DirectCommunicationLoggerConfig config) {
+        super(config);
         this.channelId =  new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION,
-                                        cfg.getChannelName());
-        this.logFile = Try.of(() -> new FileWriter(cfg.getLogFilePath(), false))
+                                        config.getChannelName());
+        this.logFile = Try.of(() -> new FileWriter(config.getLogFilePath(), false))
                           .map(PrintWriter::new)
                           .orElseThrow(ioException -> new UncheckedIOException((IOException)ioException));
     }

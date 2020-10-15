@@ -19,7 +19,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
-import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverCfg;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
 
 import java.io.IOException;
@@ -40,20 +40,20 @@ public class ServicePublicationApp {
         var clientGatePort = 54321;
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(serverReActorSystem,
                                                                       SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
-                                                                      List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
-                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                                                                                    .setServiceRegistryProperties(serviceRegistryProperties)
-                                                                                                                    .setReActorName("ZooKeeperDriver")
-                                                                                                                    .build())),
+                                                                      List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
+                                                                                                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                       .setServiceRegistryProperties(serviceRegistryProperties)
+                                                                                                                       .setReActorName("ZooKeeperDriver")
+                                                                                                                       .build())),
                                                                       List.of(new GrpcDriver(ExampleUtils.getGrpcDriverCfg(serverGatePort))));
 
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(clientReActorSystem,
                                                                       SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/client"),
-                                                                      List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
-                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                                                                                    .setServiceRegistryProperties(serviceRegistryProperties)
-                                                                                                                    .setReActorName("ZooKeeperDriver")
-                                                                                                                    .build())),
+                                                                      List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
+                                                                                                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                       .setServiceRegistryProperties(serviceRegistryProperties)
+                                                                                                                       .setReActorName("ZooKeeperDriver")
+                                                                                                                       .build())),
                                                                       List.of(new GrpcDriver(ExampleUtils.getGrpcDriverCfg(clientGatePort))));
 
         var server = new ReActorSystem(serverSystemCfg).initReActorSystem();

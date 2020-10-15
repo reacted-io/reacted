@@ -8,7 +8,7 @@
 
 package io.reacted.drivers.channels.chroniclequeue;
 
-import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 import net.openhft.chronicle.wire.WireKey;
 
@@ -16,7 +16,7 @@ import java.util.Objects;
 import java.util.Properties;
 
 @NonNullByDefault
-public class CQDriverConfig extends ChannelDriverCfg<CQDriverConfig.Builder, CQDriverConfig> {
+public class CQDriverConfig extends ChannelDriverConfig<CQDriverConfig.Builder, CQDriverConfig> {
 
     public static final String CQ_FILES_DIRECTORY = "chronicleFilesDir";
     public static final String CQ_TOPIC_NAME = "topicName";
@@ -43,7 +43,7 @@ public class CQDriverConfig extends ChannelDriverCfg<CQDriverConfig.Builder, CQD
         return properties;
     }
 
-    public static class Builder extends ChannelDriverCfg.Builder<Builder, CQDriverConfig> {
+    public static class Builder extends ChannelDriverConfig.Builder<Builder, CQDriverConfig> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String chronicleFilesDir;
         @SuppressWarnings("NotNullFieldNotInitialized")

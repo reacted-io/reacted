@@ -8,7 +8,7 @@
 
 package io.reacted.drivers.channels.kafka;
 
-import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
@@ -16,7 +16,7 @@ import java.util.Objects;
 import java.util.Properties;
 
 @NonNullByDefault
-public class KafkaDriverConfig extends ChannelDriverCfg<KafkaDriverConfig.Builder, KafkaDriverConfig> {
+public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Builder, KafkaDriverConfig> {
     public static final String KAFKA_BOOTSTRAP_ENDPOINT = "bootstrapEndpoint";
     public static final String KAFKA_TOPIC = "topic";
     public static final String KAFKA_GROUP_ID = "groupId";
@@ -55,7 +55,7 @@ public class KafkaDriverConfig extends ChannelDriverCfg<KafkaDriverConfig.Builde
         return properties;
     }
 
-    public static class Builder extends ChannelDriverCfg.Builder<KafkaDriverConfig.Builder, KafkaDriverConfig> {
+    public static class Builder extends ChannelDriverConfig.Builder<KafkaDriverConfig.Builder, KafkaDriverConfig> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String bootstrapEndpoint;
         @SuppressWarnings("NotNullFieldNotInitialized")
