@@ -235,13 +235,13 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     }
 
     private void onInit(ReActorContext raCtx) {
-        this.asyncClient = AsyncCuratorFramework.wrap(CuratorFrameworkFactory.newClient(getZkConnectionString(),
-                                                                                        (int)getConfig().getSessionTimeout()
-                                                                                                        .toMillis(),
-                                                                                        (int)getConfig().getConnectionTimeout()
-                                                                                                        .toMillis(),
-                                                                                        new ExponentialBackoffRetry(1000,
-                                                                                                                    20)));
+        var curatorClient = CuratorFrameworkFactory.newClient(getZkConnectionString(),
+                                                              (int)getConfig().getSessionTimeout().toMillis(),
+                                                              (int)getConfig().getConnectionTimeout().toMillis(),
+                                                              new ExponentialBackoffRetry((int)getConfig().getReconnectionDelay()
+                                                                                                          .toMillis(),
+                                                                                          getConfig().getMaxReconnectionAttempts()));
+        this.asyncClient = AsyncCuratorFramework.wrap(curatorClient);
 
         CompletableFuture.runAsync(() -> this.asyncClient.unwrap().start(), getConfig().getAsyncExecutionService())
                          .thenAccept(noVal -> createPathIfRequired(this.asyncClient, CreateMode.PERSISTENT,

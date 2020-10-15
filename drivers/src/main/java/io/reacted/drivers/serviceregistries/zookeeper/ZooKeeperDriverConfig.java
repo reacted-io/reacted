@@ -23,10 +23,14 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
     public static final Duration ZOOKEEPER_DEFAULT_PING_INTERVAL = Duration.ofSeconds(20);
     public static final Duration ZOOKEEPER_DEFAULT_SESSION_TIMEOUT = Duration.ofMinutes(2);
     public static final Duration ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT = Duration.ofMinutes(2);
+    public static final Duration ZOOKEEPER_DEFAULT_RECONNECTION_DELAY = Duration.ofSeconds(2);
+    public static final int ZOOKEEPER_DEFAULT_MAX_RECONNECTION_ATTEMPTS = 20;
     private final Duration pingInterval;
     private final Duration sessionTimeout;
     private final Duration connectionTimeout;
+    private final Duration reconnectionDelay;
     private final Executor asyncExecutionService;
+    private final int maxReconnectionAttempts;
 
     private ZooKeeperDriverConfig(Builder builder) {
         super(builder);
@@ -37,6 +41,12 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         this.connectionTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.connectionTimeout,
                                                                                        Integer.MAX_VALUE,
                                                                                        TimeUnit.MILLISECONDS);
+        this.reconnectionDelay = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.reconnectionDelay,
+                                                                                       Integer.MAX_VALUE,
+                                                                                       TimeUnit.MILLISECONDS);
+        this.maxReconnectionAttempts = ObjectUtils.requiredInRange(builder.maxReconnectionAttempts,
+                                                                   0, Integer.MAX_VALUE,
+                                                                   () -> new IllegalArgumentException("Invalid max reconnection attempts value"));
         this.asyncExecutionService = Objects.requireNonNull(builder.asyncExecutorService);
     }
 
@@ -46,10 +56,13 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
 
     public Executor getAsyncExecutionService() { return asyncExecutionService; }
 
-    public Duration getSessionTimeout() { return sessionTimeout;
-    }
+    public Duration getSessionTimeout() { return sessionTimeout; }
 
     public Duration getConnectionTimeout() { return connectionTimeout; }
+
+    public Duration getReconnectionDelay() { return reconnectionDelay; }
+
+    public int getMaxReconnectionAttempts() { return maxReconnectionAttempts; }
 
     public static Builder newBuilder() { return new Builder(); }
 
@@ -57,13 +70,17 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         private Duration pingInterval = ZOOKEEPER_DEFAULT_PING_INTERVAL;
         private Duration sessionTimeout = ZOOKEEPER_DEFAULT_SESSION_TIMEOUT;
         private Duration connectionTimeout = ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT;
+        private Duration reconnectionDelay = ZOOKEEPER_DEFAULT_RECONNECTION_DELAY;
+        private int maxReconnectionAttempts = ZOOKEEPER_DEFAULT_MAX_RECONNECTION_ATTEMPTS;
         private Executor asyncExecutorService = ForkJoinPool.commonPool();
-        private Builder() { }
+
+        private Builder() { /* No implementation required */ }
 
         /**
          * Specify after how often a ping should be sent to Zookeeper
          *
-         * @param pingInterval ping delay. Positive delay only. Default {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_PING_INTERVAL}
+         * @param pingInterval ping delay. A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         *                     Default {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_PING_INTERVAL}
          * @return this builder
          */
         public final Builder setPingInterval(Duration pingInterval) {
@@ -74,7 +91,8 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         /**
          * Sets the timeout for the zookeeper session.
          *
-         * @param sessionTimeout A positive amount. Default: {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_SESSION_TIMEOUT}
+         * @param sessionTimeout A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         *                       Default: {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_SESSION_TIMEOUT}
          * @return this builder
          */
         public final Builder setSessionTimeout(Duration sessionTimeout) {
@@ -84,7 +102,8 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
 
         /**
          * Sets the timeout for the zookeeper connection.
-         * @param connectionTimeout A positive amount. Default: {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT}
+         * @param connectionTimeout A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         *                          Default: {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT}
          * @return this builder
          */
         public final Builder setConnectionTimeout(Duration connectionTimeout) {
@@ -99,6 +118,28 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          */
         public Builder setAsyncExecutor(Executor asyncExecutor) {
             this.asyncExecutorService = asyncExecutor;
+            return this;
+        }
+
+        /**
+         * Defines the base for the exponential backoff reconnection system
+         * @param reconnectionDelay Exponential backoff base.
+         *                          A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         * @return this builder
+         */
+        public Builder setReconnectionDelay(Duration reconnectionDelay) {
+            this.reconnectionDelay = reconnectionDelay;
+            return this;
+        }
+
+        /**
+         * Defines the maximum amount of reattempts that should be performed during the exponential backoff cycle
+         * before permanently giving up
+         * @param maxReconnectionAttempts A positive amount
+         * @return this builder
+         */
+        public Builder setMaxReconnectionAttempts(int maxReconnectionAttempts) {
+            this.maxReconnectionAttempts = maxReconnectionAttempts;
             return this;
         }
 
