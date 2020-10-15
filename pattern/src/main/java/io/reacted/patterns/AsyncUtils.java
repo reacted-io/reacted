@@ -21,6 +21,13 @@ import java.util.function.Function;
 public final class AsyncUtils {
     private AsyncUtils() { /* No implementations allowed */ }
 
+    public static
+    CompletionStage<Void> ifThenElse(boolean condition,
+                                     AsyncRunnable ifTrue,
+                                     AsyncRunnable ifFalse) {
+        return (condition ? ifTrue : ifFalse).run().thenAccept(res -> {});
+    }
+
     /**
      * Asynchronously executes {@code operation} {@code iterations} times. Every loops iteration begins when the
      * previous one is terminated. Silently ignore the errors and on error it maps the result of the iteration to
