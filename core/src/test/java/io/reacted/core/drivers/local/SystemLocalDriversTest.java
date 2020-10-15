@@ -24,7 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class SystemLocalDriversTest {
-    public static final String TMP_TEST_DIRECT_COMMUNICATION_TXT = "/tmp/testDirectCommunication.txt";
+    private static final String TMP_TEST_DIRECT_COMMUNICATION_TXT = "/tmp/testDirectCommunication.txt";
     private BasicMbox actorMbox;
     private LocalDriver localDriver;
     private Message defaultMessage;
@@ -35,7 +35,7 @@ class SystemLocalDriversTest {
         localDriver = SystemLocalDrivers.getDirectCommunicationLogger(TMP_TEST_DIRECT_COMMUNICATION_TXT);
         actorMbox = new BasicMbox();
         reActorContext = ReActorContext.newBuilder()
-                .setMbox(actorMbox)
+                .setMbox(ctx -> actorMbox)
                 .setReactorRef(ReActorRef.NO_REACTOR_REF)
                 .setReActorSystem(mock(ReActorSystem.class))
                 .setParentActor(ReActorRef.NO_REACTOR_REF)
