@@ -33,6 +33,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
@@ -41,6 +42,7 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.cache.ChildData;
 import org.apache.curator.framework.recipes.cache.CuratorCache;
+import org.apache.curator.framework.recipes.cache.CuratorCacheListener;
 import org.apache.curator.framework.recipes.cache.TreeCache;
 import org.apache.curator.framework.recipes.cache.TreeCacheEvent;
 import org.apache.curator.framework.recipes.cache.TreeCacheListener;
@@ -70,6 +72,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig.Builder, ZooKeeperDriverConfig> {
@@ -212,21 +216,21 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     private void onSynchronizationWithRegistryRequest(ReActorContext raCtx,
                                                       SynchronizationWithServiceRegistryRequest subRequest) {
         if (this.curatorCache == null) {
-            this.curatorCache =  TreeCache.newBuilder(this.asyncClient.unwrap(), CLUSTER_REGISTRY_ROOT_PATH)
-                                         .build();
+            this.curatorCache = CuratorCache.builder(Objects.requireNonNull(this.asyncClient).unwrap(),
+                                                     CLUSTER_REGISTRY_ROOT_PATH)
+                                            .withExceptionHandler(Throwable::printStackTrace)
+                                            .build();
+            this.curatorCache.listenable()
+                             .addListener(CuratorCacheListener.builder()
+                                          .forTreeCache(this.asyncClient.unwrap(),
+                                                        getTreeListener(raCtx.getReActorSystem(), raCtx.getSelf()))
+                                          .build(),
+                                          getConfig().getAsyncExecutionService());
+            this.curatorCache.start();
         }
-        try {
-            this.curatorCache.start()
-                             .getListenable()
-                             .addListener(getTreeListener(raCtx.getReActorSystem(), raCtx.getSelf()));
-            raCtx.getReActorSystem()
-                 .getSystemRemotingRoot()
-                 .tell(raCtx.getSelf(), new SynchronizationWithServiceRegistryComplete());
-        } catch (Exception subscriptionError) {
-            raCtx.logError("Error starting registry subscription", subscriptionError);
-            raCtx.rescheduleMessage(subRequest, getConfig().getPingInterval())
-                 .ifError(error -> raCtx.reply(new SynchronizationWithServiceRegistryFailed()));
-        }
+        raCtx.getReActorSystem()
+             .getSystemRemotingRoot()
+             .tell(raCtx.getSelf(), new SynchronizationWithServiceRegistryComplete());
     }
 
     private void onStop(ReActorContext raCtx) {
@@ -336,14 +340,13 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                           .exceptionally(error -> false);
     }
 
-    private TreeCacheListener getTreeListener(ReActorSystem reActorSystem, ReActorRef driverReActor) {
+    private static TreeCacheListener getTreeListener(ReActorSystem reActorSystem, ReActorRef driverReActor) {
         return (curatorFramework, treeCacheEvent) ->
-                getConfig().getAsyncExecutionService()
-                           .execute(() -> cacheEventsRouter(curatorFramework, treeCacheEvent, reActorSystem, driverReActor)
-                                                .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
-                                                                                                   .ifError(error -> reActorSystem.logError("Error handling zookeeper event {}",
-                                                                                                                                            treeCacheEvent.toString(),
-                                                                                                                                            error))));
+                cacheEventsRouter(curatorFramework, treeCacheEvent, reActorSystem, driverReActor)
+                        .thenAccept(attempt -> ifNotDelivered(attempt)
+                                                .ifError(error -> reActorSystem.logError("Error handling zookeeper event {}",
+                                                                                         treeCacheEvent.toString(),
+                                                                                         error)));
     }
 
     private static CompletionStage<Try<DeliveryStatus>>
