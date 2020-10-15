@@ -37,7 +37,6 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import net.openhft.chronicle.bytes.AppendableUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -67,8 +66,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
@@ -169,12 +166,12 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverCfg.Bu
         if (this.serviceDiscovery == null) {
             return;
         }
-
+        ReActorRef discoveryRequester = raCtx.getSender();
         CompletableFuture.supplyAsync(() -> queryZooKeeper(raCtx, Objects.requireNonNull(this.serviceDiscovery),
                                                            request.getSearchFilter()),
                                       getConfig().getAsyncExecutionService())
                          .thenAccept(filterItemSet -> raCtx.getReActorSystem().getSystemRemotingRoot()
-                                                           .tell(raCtx.getSender(),
+                                                           .tell(discoveryRequester,
                                                                  new FilterServiceDiscoveryRequest(request.getSearchFilter(),
                                                                                                    filterItemSet)));
     }

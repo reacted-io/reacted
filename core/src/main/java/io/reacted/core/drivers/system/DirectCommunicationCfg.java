@@ -8,9 +8,11 @@
 
 package io.reacted.core.drivers.system;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.patterns.NonNullByDefault;
 
-public class DirectCommunicationCfg extends ReActedDriverCfg<DirectCommunicationCfg.Builder,
+@NonNullByDefault
+public class DirectCommunicationCfg extends ChannelDriverCfg<DirectCommunicationCfg.Builder,
                                                              DirectCommunicationCfg> {
     private DirectCommunicationCfg(Builder builder) {
         super(builder);
@@ -18,7 +20,7 @@ public class DirectCommunicationCfg extends ReActedDriverCfg<DirectCommunication
 
     public static Builder newBuilder() { return new Builder(); }
 
-    public static class Builder extends ReActedDriverCfg.Builder<Builder, DirectCommunicationCfg> {
+    public static class Builder extends ChannelDriverCfg.Builder<Builder, DirectCommunicationCfg> {
         private Builder() { }
 
         @Override

@@ -8,16 +8,17 @@
 
 package io.reacted.drivers.channels.grpc;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
+import java.util.Properties;
 
 @NonNullByDefault
-public class GrpcDriverConfig extends ReActedDriverCfg<GrpcDriverConfig.Builder, GrpcDriverConfig> {
-    public static final String PORT_PROPERTY_NAME = "port";
-    public static final String HOST_PROPERTY_NAME = "hostName";
+public class GrpcDriverConfig extends ChannelDriverCfg<GrpcDriverConfig.Builder, GrpcDriverConfig> {
+    public static final String GRPC_PORT = "port";
+    public static final String GRPC_HOST = "hostName";
 
     private final String hostName;
     private final int port;
@@ -34,7 +35,15 @@ public class GrpcDriverConfig extends ReActedDriverCfg<GrpcDriverConfig.Builder,
 
     public static Builder newBuilder() { return new Builder(); }
 
-    public static class Builder extends ReActedDriverCfg.Builder<Builder, GrpcDriverConfig> {
+    @Override
+    public Properties getChannelProperties() {
+        Properties properties = new Properties();
+        properties.setProperty(GRPC_PORT, getPort() + "");
+        properties.setProperty(GRPC_HOST, getHostName());
+        return properties;
+    }
+
+    public static class Builder extends ChannelDriverCfg.Builder<Builder, GrpcDriverConfig> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String hostName;
         private int port;

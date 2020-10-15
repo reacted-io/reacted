@@ -19,9 +19,9 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorServiceConfig;
+import io.reacted.core.reactorsystem.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.services.ReActorService;
+import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
@@ -35,11 +35,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
-import java.util.stream.IntStream;
 
 class PingPongApp {
     public static void main(String[] args) throws InterruptedException {
@@ -79,12 +76,12 @@ class PingPongApp {
 
         TimeUnit.SECONDS.sleep(10);
 
-        var serverReActor = serverSystem.spawnService(ReActorServiceConfig.newBuilder()
-                                                                          .setRouteeProvider(ServerReActor::new)
-                                                                          .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
-                                                                          .setReActorName("ServerService")
-                                                                          .setRouteesNum(1)
-                                                                          .build()).orElseSneakyThrow();
+        var serverReActor = serverSystem.spawnService(ServiceConfig.newBuilder()
+                                                                   .setRouteeProvider(ServerReActor::new)
+                                                                   .setLoadBalancingPolicy(Service.LoadBalancingPolicy.ROUND_ROBIN)
+                                                                   .setReActorName("ServerService")
+                                                                   .setRouteesNum(1)
+                                                                   .build()).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(10);
         var remoteService = clientSystem.serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                            .setServiceName("ServerService")

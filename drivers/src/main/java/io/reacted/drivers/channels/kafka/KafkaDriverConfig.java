@@ -8,14 +8,19 @@
 
 package io.reacted.drivers.channels.kafka;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
+import java.util.Properties;
 
 @NonNullByDefault
-public class KafkaDriverConfig extends ReActedDriverCfg<KafkaDriverConfig.Builder, KafkaDriverConfig> {
+public class KafkaDriverConfig extends ChannelDriverCfg<KafkaDriverConfig.Builder, KafkaDriverConfig> {
+    public static final String KAFKA_BOOTSTRAP_ENDPOINT = "bootstrapEndpoint";
+    public static final String KAFKA_TOPIC = "topic";
+    public static final String KAFKA_GROUP_ID = "groupId";
+    public static final String KAFKA_MAX_POLL_RECORDS = "maxPollRecords";
     private final String bootstrapEndpoint;
     private final String topic;
     private final String groupId;
@@ -40,7 +45,17 @@ public class KafkaDriverConfig extends ReActedDriverCfg<KafkaDriverConfig.Builde
 
     public static Builder newBuilder() { return new Builder(); }
 
-    public static class Builder extends ReActedDriverCfg.Builder<KafkaDriverConfig.Builder, KafkaDriverConfig> {
+    @Override
+    public Properties getChannelProperties() {
+        Properties properties = new Properties();
+        properties.setProperty(KAFKA_BOOTSTRAP_ENDPOINT, getBootstrapEndpoint());
+        properties.setProperty(KAFKA_GROUP_ID, getGroupId());
+        properties.setProperty(KAFKA_TOPIC, getTopic());
+        properties.setProperty(KAFKA_MAX_POLL_RECORDS, getMaxPollRecords() + "");
+        return properties;
+    }
+
+    public static class Builder extends ChannelDriverCfg.Builder<KafkaDriverConfig.Builder, KafkaDriverConfig> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String bootstrapEndpoint;
         @SuppressWarnings("NotNullFieldNotInitialized")

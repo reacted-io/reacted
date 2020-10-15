@@ -8,7 +8,7 @@
 
 package io.reacted.core.drivers.local;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -26,7 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public abstract class LocalDriver<CfgT extends ReActedDriverCfg<?, CfgT>>
+public abstract class LocalDriver<CfgT extends ChannelDriverCfg<?, CfgT>>
         extends ReActorSystemDriver<CfgT> {
      private static final Try<DeliveryStatus> TARGET_MISSING = Try.ofFailure(new NoSuchElementException());
 

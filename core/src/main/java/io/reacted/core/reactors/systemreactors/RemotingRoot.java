@@ -8,7 +8,7 @@
 
 package io.reacted.core.reactors.systemreactors;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -38,11 +38,11 @@ import java.util.stream.Collectors;
 
 @Immutable
 public class RemotingRoot {
-    private final Collection<RemotingDriver<? extends ReActedDriverCfg<?, ?>>> remotingDrivers;
+    private final Collection<RemotingDriver<? extends ChannelDriverCfg<?, ?>>> remotingDrivers;
     private final ReActorSystemId localReActorSystem;
 
     public RemotingRoot(ReActorSystemId localReActorSystem,
-                        Collection<RemotingDriver<? extends ReActedDriverCfg<?, ?>>> remotingDrivers) {
+                        Collection<RemotingDriver<? extends ChannelDriverCfg<?, ?>>> remotingDrivers) {
         this.remotingDrivers = remotingDrivers;
         this.localReActorSystem = localReActorSystem;
     }
@@ -145,7 +145,7 @@ public class RemotingRoot {
                                                                                      filterItem.getServiceGate()))
                   .map(FilterItem::getServiceGate)
                   .collect(Collectors.toUnmodifiableSet());
-        raCtx.aReply(new ServiceDiscoveryReply(foundServices))
+        raCtx.reply(new ServiceDiscoveryReply(foundServices))
              .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
                                                                 .ifError(error -> raCtx.logError("Unable to answer with a {}",
                                                                                                  ServiceDiscoveryReply.class.getSimpleName(),

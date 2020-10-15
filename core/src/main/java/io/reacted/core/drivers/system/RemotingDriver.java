@@ -8,26 +8,24 @@
 
 package io.reacted.core.drivers.system;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystemRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> extends ReActorSystemDriver<CfgT> {
+public abstract class RemotingDriver<CfgT extends ChannelDriverCfg<?, CfgT>> extends ReActorSystemDriver<CfgT> {
 
     protected RemotingDriver(CfgT cfg) {
         super(cfg);
@@ -132,12 +130,7 @@ public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> ext
             hasBeenSniffed = true;
         }
         boolean isAckRequired = !hasBeenSniffed &&
-                                isAckRequired(message.getDataLink().getAckingPolicy(),
-                                              getLocalReActorSystem().findGate(message.getDataLink()
-                                                                                      .getGeneratingReActorSystem(),
-                                                                               getChannelId())
-                                                                     .map(ReActorSystemRef::getGateProperties)
-                                                                     .orElseGet(Properties::new));
+                                message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
         var deliverAttempt = (isAckRequired ? destination.tell(sender, payload) : destination.aTell(sender, payload)).toCompletableFuture();
         if (isAckRequired) {
             deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),

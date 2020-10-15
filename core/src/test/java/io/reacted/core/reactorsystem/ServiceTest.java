@@ -15,15 +15,15 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
-import io.reacted.core.services.ReActorService;
+import io.reacted.core.services.Service;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class ReActorServiceTest {
+class ServiceTest {
     private static ReActorSystem reActorSystem;
-    private static ReActorServiceConfig reActorServiceConfig;
+    private static ServiceConfig serviceConfig;
 
     @BeforeEach
     void setUp() {
@@ -40,16 +40,16 @@ class ReActorServiceTest {
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();
 
-        reActorServiceConfig = ReActorServiceConfig.newBuilder()
-                                                   .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
-                                                   .setMailBoxProvider(ctx -> new BasicMbox())
-                                                   .setReActorName("TestRouter")
-                                                   .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                                   .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
-                                                   .setRouteesNum(1)
-                                                   .setRouteeProvider(() -> new MagicTestReActor(2, true,
+        serviceConfig = ServiceConfig.newBuilder()
+                                     .setLoadBalancingPolicy(Service.LoadBalancingPolicy.ROUND_ROBIN)
+                                     .setMailBoxProvider(ctx -> new BasicMbox())
+                                     .setReActorName("TestRouter")
+                                     .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                                     .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+                                     .setRouteesNum(1)
+                                     .setRouteeProvider(() -> new MagicTestReActor(2, true,
                                                                                                  "RouterChild"))
-                                                   .build();
+                                     .build();
     }
 
     @AfterEach
@@ -59,12 +59,12 @@ class ReActorServiceTest {
 
     @Test
     void reactorSystemSpawnServiceIsSuccessful() {
-        Assertions.assertTrue(reActorSystem.spawnService(reActorServiceConfig).isSuccess());
+        Assertions.assertTrue(reActorSystem.spawnService(serviceConfig).isSuccess());
     }
 
     @Test
     void reactorSystemCanSpawnService() {
-        ReActorRef router = reActorSystem.spawnService(reActorServiceConfig).orElseSneakyThrow();
+        ReActorRef router = reActorSystem.spawnService(serviceConfig).orElseSneakyThrow();
         Assertions.assertEquals(router, reActorSystem.getReActor(router.getReActorId())
                                                      .map(ReActorContext::getSelf)
                                                      .orElse(ReActorRef.NO_REACTOR_REF));

@@ -26,7 +26,7 @@ import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorServiceConfig;
+import io.reacted.core.reactorsystem.ServiceConfig;
 import io.reacted.patterns.Try;
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -37,21 +37,20 @@ import java.util.Properties;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
-public class ReActorService implements ReActiveEntity {
+public class Service implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
     private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router {}";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
     private final Properties serviceInfo;
-    private final ReActorServiceConfig reActorServiceConfig;
+    private final ServiceConfig serviceConfig;
     private long msgReceived;
 
-    public ReActorService(ReActorServiceConfig reActorServiceConfig) {
+    public Service(ServiceConfig serviceConfig) {
         this.serviceInfo = new Properties();
-        this.reActorServiceConfig = Objects.requireNonNull(reActorServiceConfig);
+        this.serviceConfig = Objects.requireNonNull(serviceConfig);
         this.msgReceived = 1;
-        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME,
-                             reActorServiceConfig.getReActorName());
+        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME, serviceConfig.getReActorName());
     }
 
     @Nonnull
@@ -78,7 +77,7 @@ public class ReActorService implements ReActiveEntity {
         Try.of(() -> raCtx.getReActorSystem()
                           .getSystemSchedulingService()
                           .schedule(() -> sendPublicationRequest(raCtx, this.serviceInfo),
-                                    this.reActorServiceConfig.getServiceRepublishReattemptDelayOnError().toMillis(),
+                                    this.serviceConfig.getServiceRepublishReattemptDelayOnError().toMillis(),
                                     TimeUnit.MILLISECONDS))
            .peekFailure(failure -> raCtx.logError("Unable to reschedule service publication", failure))
            .ifError(failure -> raCtx.getSelf().tell(raCtx.getSender(), error));
@@ -94,7 +93,7 @@ public class ReActorService implements ReActiveEntity {
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
              .tell(raCtx.getSelf(), new ServiceCancellationRequest(raCtx.getReActorSystem().getLocalReActorSystemId(),
-                                                                   reActorServiceConfig.getReActorName()));
+                                                                   serviceConfig.getReActorName()));
     }
 
     private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
@@ -102,15 +101,15 @@ public class ReActorService implements ReActiveEntity {
         raCtx.addTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class));
 
         //spawn the minimum number or routees
-        for (int currentRoutee = 0; currentRoutee < reActorServiceConfig.getRouteesNum(); currentRoutee++) {
+        for (int currentRoutee = 0; currentRoutee < serviceConfig.getRouteesNum(); currentRoutee++) {
             try {
-                ReActor routee = Objects.requireNonNull(reActorServiceConfig.getRouteeProvider()
-                                                                            .get());
+                ReActor routee = Objects.requireNonNull(serviceConfig.getRouteeProvider()
+                                                                     .get());
                 ReActorConfig routeeCfg = routee.getConfig();
                 ReActions routeeReActions = routee.getReActions();
                 //A service has multiple children, so they cannot share the same name
                 String routeeNewName = String.format(REACTOR_SERVICE_NAME_FORMAT,
-                                                     reActorServiceConfig.getReActorName(),
+                                                     serviceConfig.getReActorName(),
                                                      routeeCfg.getReActorName(), currentRoutee);
                 ReActorConfig newRouteeCfg = ReActorConfig.fromConfig(routeeCfg)
                                                           .setReActorName(routeeNewName)
@@ -142,16 +141,16 @@ public class ReActorService implements ReActiveEntity {
         selectRoutee(raCtx, ++msgReceived)
                 .ifPresentOrElse(routee -> routee.tell(raCtx.getSender(), newMessage),
                                  () -> raCtx.logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
-                                                      reActorServiceConfig.getReActorName(), new IllegalStateException()));
+                                                      serviceConfig.getReActorName(), new IllegalStateException()));
     }
 
     private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived) {
-        return reActorServiceConfig.getLoadBalancingPolicy().selectRoutee(routerCtx, msgReceived);
+        return serviceConfig.getLoadBalancingPolicy().selectRoutee(routerCtx, msgReceived);
     }
 
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
-        Try.of(() -> Objects.requireNonNull(reActorServiceConfig.getRouteeProvider()
-                                                                .get()))
+        Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider()
+                                                         .get()))
            .peekFailure(error -> raCtx.logError(ROUTEE_REACTIONS_RETRIEVAL_ERROR, error))
            .ifSuccess(routee -> spawnRoutee(raCtx, routee.getReActions(), reSpawnRequest.routeeConfig))
            .ifError(spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR, spawnError));

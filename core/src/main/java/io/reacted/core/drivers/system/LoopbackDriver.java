@@ -9,7 +9,7 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.messages.AckingPolicy;
@@ -32,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public class LoopbackDriver<CfgT extends ReActedDriverCfg<?, CfgT>> extends ReActorSystemDriver<CfgT> {
+public class LoopbackDriver<CfgT extends ChannelDriverCfg<?, CfgT>> extends ReActorSystemDriver<CfgT> {
     private final LocalDriver<CfgT> localDriver;
     private final ReActorSystem localReActorSystem;
 

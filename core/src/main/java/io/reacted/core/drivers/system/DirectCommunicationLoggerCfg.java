@@ -8,11 +8,13 @@
 
 package io.reacted.core.drivers.system;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
 
-public class DirectCommunicationLoggerCfg extends ReActedDriverCfg<DirectCommunicationLoggerCfg.Builder,
+@NonNullByDefault
+public class DirectCommunicationLoggerCfg extends ChannelDriverCfg<DirectCommunicationLoggerCfg.Builder,
                                                                    DirectCommunicationLoggerCfg> {
     private final String logFilePath;
     private DirectCommunicationLoggerCfg(Builder builder) {
@@ -24,8 +26,9 @@ public class DirectCommunicationLoggerCfg extends ReActedDriverCfg<DirectCommuni
 
     public static DirectCommunicationLoggerCfg.Builder newBuilder() { return new Builder(); }
 
-    public static class Builder extends ReActedDriverCfg.Builder<DirectCommunicationLoggerCfg.Builder,
+    public static class Builder extends ChannelDriverCfg.Builder<DirectCommunicationLoggerCfg.Builder,
             DirectCommunicationLoggerCfg> {
+        @SuppressWarnings("NotNullFieldNotInitialized")
         private String logFilePath;
         private Builder() { }
 

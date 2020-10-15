@@ -10,12 +10,11 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
@@ -32,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 class LoopbackDriverTest {
     static String testDispatcher = "TestDispatcher";
     static ReActorSystem reActorSystem;
-    static LoopbackDriver<? extends ReActedDriverCfg<?, ?>> loopbackDriver;
+    static LoopbackDriver<? extends ChannelDriverCfg<?, ?>> loopbackDriver;
     static ReActorRef destReActorRef;
     static Message message;
 

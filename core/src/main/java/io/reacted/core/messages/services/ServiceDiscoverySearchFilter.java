@@ -10,6 +10,7 @@ package io.reacted.core.messages.services;
 
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.services.SelectionType;
+import io.reacted.core.services.Service;
 
 import java.io.Serializable;
 import java.util.Properties;
@@ -29,7 +30,7 @@ public interface ServiceDiscoverySearchFilter extends Serializable {
 
     /**
      * @return The type of the reference that should be returned, is possible.
-     * @see SelectionType and {@link io.reacted.core.services.ReActorService}
+     * @see SelectionType and {@link Service}
      */
     SelectionType getSelectionType();
 

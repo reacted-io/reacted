@@ -13,6 +13,7 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.services.SelectionType;
+import io.reacted.core.services.Service;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -166,7 +167,7 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
 
         /**
          *
-         * @param selectionType Definition on the type of {@link io.reacted.core.services.ReActorService}
+         * @param selectionType Definition on the type of {@link Service}
          *                      {@link ReActorRef} required.
          *                      @see SelectionType
          * @return this builder

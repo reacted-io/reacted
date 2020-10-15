@@ -15,7 +15,7 @@ import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.messages.AckingPolicy;
@@ -48,7 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @NonNullByDefault
-public abstract class ReActorSystemDriver<DriverCfgT extends ReActedDriverCfg<?, DriverCfgT>> {
+public abstract class ReActorSystemDriver<DriverCfgT extends ChannelDriverCfg<?, DriverCfgT>> {
     public static final ThreadLocal<DriverCtx> REACTOR_SYSTEM_CTX = new InheritableThreadLocal<>();
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
     private final DriverCfgT driverConfig;
@@ -165,18 +165,9 @@ public abstract class ReActorSystemDriver<DriverCfgT extends ReActedDriverCfg<?,
         return messageAckingPolicy != AckingPolicy.NONE && isAckRequiredByChannel;
     }
 
-    protected static boolean isAckRequired(AckingPolicy ackingPolicy, Properties senderChannelProperties) {
-        String isAckRequiredByChannelProperty = (String)senderChannelProperties.getOrDefault(ReActedDriverCfg.IS_DELIVERY_ACK_REQUIRED_BY_CHANNEL_PROPERTY_NAME,
-                                                                                             "false");
-        if (isAckRequiredByChannelProperty.equals("false")) {
-            System.out.println("Ack not required by properties: " + senderChannelProperties.toString());
-        }
-        return isAckRequired(isAckRequiredByChannelProperty.compareToIgnoreCase("true") == 0, ackingPolicy);
-    }
-
     protected static Try<DeliveryStatus> sendDeliveyAck(ReActorSystemId localReActorSystemId,
                                                         long ackSeqNum,
-                                                        ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> gate,
+                                                        ReActorSystemDriver<? extends ChannelDriverCfg<?, ?>> gate,
                                                         Try<DeliveryStatus> deliveryResult, Message originalMessage) {
         var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
                                                            deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED));

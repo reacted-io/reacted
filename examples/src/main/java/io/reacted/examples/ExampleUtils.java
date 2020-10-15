@@ -8,7 +8,7 @@
 
 package io.reacted.examples;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverCfg;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
@@ -24,7 +24,7 @@ import java.util.List;
 @NonNullByDefault
 public final class ExampleUtils {
     public static final Collection<ServiceRegistryDriver<?, ?>> NO_SERVICE_REGISTRIES = List.of();
-    public static final Collection<RemotingDriver<? extends ReActedDriverCfg<?, ?>>> NO_REMOTING_DRIVERS = List.of();
+    public static final Collection<RemotingDriver<? extends ChannelDriverCfg<?, ?>>> NO_REMOTING_DRIVERS = List.of();
 
     private ExampleUtils() {
     }
@@ -39,9 +39,9 @@ public final class ExampleUtils {
     }
 
     public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName,
-                                                                 LocalDriver<? extends ReActedDriverCfg<?, ?>> localDriver,
+                                                                 LocalDriver<? extends ChannelDriverCfg<?, ?>> localDriver,
                                                                  Collection<ServiceRegistryDriver<?, ?>> serviceRegistryDrivers,
-                                                                 Collection<RemotingDriver<? extends ReActedDriverCfg<?, ?>>> remotingDrivers) {
+                                                                 Collection<RemotingDriver<? extends ChannelDriverCfg<?, ?>>> remotingDrivers) {
         var configBuilder = ReActorSystemConfig.newBuilder()
                                   //Tunable parameter for purging java timers from
                                   // canceled tasks

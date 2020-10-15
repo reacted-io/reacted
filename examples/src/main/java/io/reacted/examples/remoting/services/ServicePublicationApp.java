@@ -14,9 +14,9 @@ import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.SystemMonitorReport;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
-import io.reacted.core.reactorsystem.ReActorServiceConfig;
+import io.reacted.core.reactorsystem.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.services.ReActorService;
+import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverCfg;
@@ -64,20 +64,20 @@ public class ServicePublicationApp {
         //be used for load partitioning
         var serviceDispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         //Now let's publish a service in server reactor system
-        var serviceCfg = ReActorServiceConfig.newBuilder()
-                                             .setReActorName(serviceName)
-                                             //Two workers for service will be created for load balancing reasons
-                                             .setRouteesNum(2)
-                                             //For every new request select a different worker instance
-                                             .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
-                                             .setDispatcherName(serviceDispatcherName)
-                                             //Let's assume that we do not need any form of backpressure
-                                             .setMailBoxProvider(ctx -> new BasicMbox())
-                                             //We do not need to listen for ServiceDiscoveryRequests, we have the
-                                             //Service Registry now
-                                             .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class))
-                                             .setRouteeProvider(() -> new ClockReActor(serviceDispatcherName))
-                                             .build();
+        var serviceCfg = ServiceConfig.newBuilder()
+                                      .setReActorName(serviceName)
+                                      //Two workers for service will be created for load balancing reasons
+                                      .setRouteesNum(2)
+                                      //For every new request select a different worker instance
+                                      .setLoadBalancingPolicy(Service.LoadBalancingPolicy.ROUND_ROBIN)
+                                      .setDispatcherName(serviceDispatcherName)
+                                      //Let's assume that we do not need any form of backpressure
+                                      .setMailBoxProvider(ctx -> new BasicMbox())
+                                      //We do not need to listen for ServiceDiscoveryRequests, we have the
+                                      //Service Registry now
+                                      .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class))
+                                      .setRouteeProvider(() -> new ClockReActor(serviceName))
+                                      .build();
 
         //Create a service. It will be published automatically on the service registry
         server.spawnService(serviceCfg).orElseSneakyThrow();
