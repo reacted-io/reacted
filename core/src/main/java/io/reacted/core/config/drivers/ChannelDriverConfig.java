@@ -15,6 +15,7 @@ import io.reacted.patterns.NonNullByDefault;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
 public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Builder<BuilderT, BuiltT>,
@@ -30,10 +31,9 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         super(builder);
         this.channelName = Objects.requireNonNull(builder.channelName);
         this.deliveryAckRequiredByChannel = builder.deliveryAckRequiredByChannel;
-        this.aTellAutomaticFailureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.aTellFailureTimeout),
-                                                                          interval -> interval.compareTo(Duration.ZERO) > 0 &&
-                                                                                      interval.compareTo(Duration.ofNanos(Long.MAX_VALUE)) <= 0,
-                                                                          () -> new IllegalArgumentException("Invalid timeout!"));
+        this.aTellAutomaticFailureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.aTellFailureTimeout,
+                                                                                                  Long.MAX_VALUE,
+                                                                                                  TimeUnit.NANOSECONDS);
     }
 
     public Properties getProperties() {

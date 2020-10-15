@@ -236,7 +236,10 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
 
     private void onInit(ReActorContext raCtx) {
         this.asyncClient = AsyncCuratorFramework.wrap(CuratorFrameworkFactory.newClient(getZkConnectionString(),
-                                                                                        20000, 20000,
+                                                                                        (int)getConfig().getSessionTimeout()
+                                                                                                        .toMillis(),
+                                                                                        (int)getConfig().getConnectionTimeout()
+                                                                                                        .toMillis(),
                                                                                         new ExponentialBackoffRetry(1000,
                                                                                                                     20)));
 
