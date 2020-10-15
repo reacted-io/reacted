@@ -9,6 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
@@ -44,7 +45,7 @@ public class ReActorSystemRef implements Externalizable {
                                                                          .orElseSneakyThrow();
 
     private final ReActorSystemId reActorSystemId;
-    private final transient ReActorSystemDriver backingDriver;
+    private final transient ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> backingDriver;
     private final transient Properties gateProperties;
 
     public ReActorSystemRef() {
@@ -53,8 +54,8 @@ public class ReActorSystemRef implements Externalizable {
         this.gateProperties = null;
     }
 
-    public ReActorSystemRef(ReActorSystemDriver backingDriver, Properties gateProperties,
-                            ReActorSystemId reActorSystemId) {
+    public ReActorSystemRef(ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> backingDriver,
+                            Properties gateProperties, ReActorSystemId reActorSystemId) {
         this.backingDriver = backingDriver;
         this.reActorSystemId = reActorSystemId;
         this.gateProperties = gateProperties;
@@ -71,7 +72,7 @@ public class ReActorSystemRef implements Externalizable {
     }
 
     @JsonIgnore
-    public ReActorSystemDriver getBackingDriver() { return this.backingDriver; }
+    public ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> getBackingDriver() { return this.backingDriver; }
 
     @JsonIgnore
     public Properties getGateProperties() { return this.gateProperties; }
@@ -121,7 +122,7 @@ public class ReActorSystemRef implements Externalizable {
         return SerializationUtils.setObjectField(this, REACTORSYSTEM_ID_OFFSET, reActorSystemId);
     }
 
-    public ReActorSystemRef setBackingDriver(ReActorSystemDriver gateDriver) {
+    public ReActorSystemRef setBackingDriver(ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> gateDriver) {
         return SerializationUtils.setObjectField(this, BACKING_DRIVER_OFFSET, gateDriver);
     }
 

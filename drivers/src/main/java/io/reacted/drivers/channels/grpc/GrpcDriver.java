@@ -17,6 +17,9 @@ import io.grpc.Server;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.drivers.DriverCtx;
@@ -46,17 +49,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class GrpcDriver extends RemotingDriver {
-    private final GrpcDriverConfig grpcDriverConfig;
+public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     private final Map<String, SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram>> gatesStubs;
     private final ChannelId channelId;
     @Nullable
     private Server grpcServer;
     @Nullable
     private ExecutorService grpcExecutor;
+    @Nullable
+    private EventLoopGroup workerEventLoopGroup;
+    @Nullable
+    private EventLoopGroup bossEventLoopGroup;
+
 
     public GrpcDriver(GrpcDriverConfig grpcDriverConfig) {
-        this.grpcDriverConfig = Objects.requireNonNull(grpcDriverConfig);
+        super(grpcDriverConfig);
         this.gatesStubs = new ConcurrentHashMap<>(1000, 0.5f);
         this.channelId = new ChannelId(ChannelId.ChannelType.GRPC, grpcDriverConfig.getChannelName());
     }
@@ -71,9 +78,14 @@ public class GrpcDriver extends RemotingDriver {
                                                                .getReActorSystemName() + "-%d")
                 .build());
         this.grpcExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
-        this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.grpcDriverConfig.getHostName(),
-                                                        this.grpcDriverConfig.getPort()))
+        this.workerEventLoopGroup = new NioEventLoopGroup(5);
+        this.bossEventLoopGroup = new NioEventLoopGroup(1);
+        this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(getDriverConfig().getHostName(),
+                                                                              getDriverConfig().getPort()))
+                                            .channelType(NioServerSocketChannel.class)
                                             .executor(this.grpcExecutor)
+                                            .bossEventLoopGroup(this.bossEventLoopGroup)
+                                            .workerEventLoopGroup(this.workerEventLoopGroup)
                                             .addService(new HealthStatusManager().getHealthService())
                                             .addService(new GrpcServer(this))
                                             .build();
@@ -81,16 +93,25 @@ public class GrpcDriver extends RemotingDriver {
 
     @Override
     public CompletableFuture<Try<Void>> cleanDriverLoop() {
-            Objects.requireNonNull(this.grpcServer).shutdown();
+        Objects.requireNonNull(this.grpcServer).shutdown();
 
-            Try.of(() -> this.grpcServer.awaitTermination(5, TimeUnit.SECONDS))
-               .ifError(error -> Thread.currentThread().interrupt());
-
+        Try.of(() -> this.grpcServer.awaitTermination(5, TimeUnit.SECONDS))
+           .ifError(error -> Thread.currentThread().interrupt());
+        if (this.grpcServer != null) {
             this.grpcServer.shutdownNow();
+        }
+        if (this.bossEventLoopGroup != null) {
+            this.bossEventLoopGroup.shutdownGracefully();
+        }
+        if (this.workerEventLoopGroup != null) {
+            this.workerEventLoopGroup.shutdownGracefully();
+        }
+        if (this.grpcExecutor != null) {
+            this.grpcExecutor.shutdownNow();
+        }
+        this.gatesStubs.clear();
 
-            Objects.requireNonNull(this.grpcExecutor).shutdownNow();
-            this.gatesStubs.clear();
-            return CompletableFuture.completedFuture(Try.ofSuccess(null));
+        return CompletableFuture.completedFuture(Try.ofSuccess(null));
     }
 
     @Override
@@ -132,16 +153,16 @@ public class GrpcDriver extends RemotingDriver {
     }
 
     @Override
-    public boolean channelRequiresDeliveryAck() { return grpcDriverConfig.isDeliveryAckRequiredByChannel(); }
+    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
 
     @Override
-    public Properties getChannelProperties() { return grpcDriverConfig.getProperties(); }
+    public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     private static ManagedChannel getNewChannel(Properties channelIdProperties) {
         int port = Integer.parseInt(channelIdProperties.getProperty(GrpcDriverConfig.PORT_PROPERTY_NAME));
         String host = channelIdProperties.getProperty(GrpcDriverConfig.HOST_PROPERTY_NAME);
         return ManagedChannelBuilder.forAddress(host, port)
-                                    .keepAliveTime(5, TimeUnit.SECONDS)
+                                    .keepAliveTime(6, TimeUnit.MINUTES)
                                     .keepAliveWithoutCalls(true)
                                     .enableRetry()
                                     .usePlaintext()
@@ -160,11 +181,12 @@ public class GrpcDriver extends RemotingDriver {
             return new StreamObserver<>() {
                 @Override
                 public void onNext(ReActedLinkProtocol.ReActedDatagram reActedDatagram) {
-                    Try.withResources(() -> new ObjectInputStream(new ByteArrayInputStream(reActedDatagram.getBinaryPayload()
-                                                                                                          .toByteArray())),
-                                      ObjectInputStream::readObject)
-                       .ifSuccessOrElse(payload -> thisDriver.offerMessage((Message) payload),
-                                        this::onError);
+                    try (ObjectInputStream msgSource = new ObjectInputStream(new ByteArrayInputStream(reActedDatagram.getBinaryPayload()
+                                                                                                          .toByteArray()))) {
+                        thisDriver.offerMessage((Message)msgSource.readObject());
+                    } catch (Exception deserializationError) {
+                        throw new RuntimeException(deserializationError);
+                    }
                 }
 
                 @Override

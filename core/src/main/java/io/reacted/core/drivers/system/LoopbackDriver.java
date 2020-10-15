@@ -9,9 +9,9 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.local.LocalDriver;
-import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
@@ -32,13 +32,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public class LoopbackDriver extends ReActorSystemDriver {
-    private static final CompletionStage<Try<DeliveryStatus>> MESSAGE_NOT_DELIVERED =
-            CompletableFuture.completedFuture(SystemLocalDrivers.MESSAGE_NOT_DELIVERED);
-    private final LocalDriver localDriver;
+public class LoopbackDriver<CfgT extends ReActedDriverCfg<?, CfgT>> extends ReActorSystemDriver<CfgT> {
+    private final LocalDriver<CfgT> localDriver;
     private final ReActorSystem localReActorSystem;
 
-    public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver localDriver) {
+    public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver<CfgT> localDriver) {
+        super(localDriver.getDriverConfig());
         this.localDriver = Objects.requireNonNull(localDriver);
         this.localReActorSystem = Objects.requireNonNull(reActorSystem);
     }
@@ -47,7 +46,7 @@ public class LoopbackDriver extends ReActorSystemDriver {
     public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
         ReActorContext dstCtx = localReActorSystem.getNullableReActorCtx(dst.getReActorId());
-        CompletionStage<Try<DeliveryStatus>> tellResult = MESSAGE_NOT_DELIVERED;
+        CompletionStage<Try<DeliveryStatus>> tellResult;
         boolean isAckRequired = isAckRequired(localDriver.channelRequiresDeliveryAck(), ackingPolicy);
         long seqNum = localReActorSystem.getNewSeqNum();
         if (dstCtx != null) {
@@ -66,6 +65,7 @@ public class LoopbackDriver extends ReActorSystemDriver {
 
             propagateMessage(dst.getReActorId(), payload, src);
         } else {
+            tellResult = CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.NOT_DELIVERED));
             if (!dst.equals(localReActorSystem.getSystemDeadLetters())) {
                 localReActorSystem.getSystemDeadLetters().tell(src, new DeadMessage(payload));
             } else {
@@ -133,10 +133,9 @@ public class LoopbackDriver extends ReActorSystemDriver {
         }
     }
 
-    private static void propagateToSubscribers(LocalDriver localDriver, Collection<ReActorContext> subscribers,
-                                               ReActorId originalDestination,
-                                               ReActorSystem localReActorSystem,
-                                               ReActorRef src, Serializable payload) {
+    private void propagateToSubscribers(LocalDriver<CfgT> localDriver, Collection<ReActorContext> subscribers,
+                                        ReActorId originalDestination, ReActorSystem localReActorSystem,
+                                        ReActorRef src, Serializable payload) {
         subscribers.stream()
                    .filter(reActorCtx -> !reActorCtx.getSelf().getReActorId().equals(originalDestination))
                    .forEach(dstCtx -> localDriver.sendMessage(dstCtx,

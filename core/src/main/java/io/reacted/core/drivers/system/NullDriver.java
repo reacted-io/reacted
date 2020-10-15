@@ -26,11 +26,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public final class NullDriver extends ReActorSystemDriver {
-    public static final NullDriver NULL_DRIVER = new NullDriver();
+public final class NullDriver extends ReActorSystemDriver<NullDriverCfg> {
+    public static final NullDriver NULL_DRIVER = new NullDriver(NullDriverCfg.newBuilder()
+                                                                             .build());
     public static final Properties NULL_DRIVER_PROPERTIES = new Properties();
 
-    private NullDriver() {}
+    private final ChannelId channelId;
+    private NullDriver(NullDriverCfg cfg) {
+        super(cfg);
+        this.channelId = ChannelId.NO_CHANNEL_ID;
+    }
 
     @Override
     public Try<Void> initDriverCtx(ReActorSystem localReActorSystem) {
@@ -74,9 +79,7 @@ public final class NullDriver extends ReActorSystemDriver {
     public boolean channelRequiresDeliveryAck() { return false; }
 
     @Override
-    public ChannelId getChannelId() {
-        return ChannelId.NO_CHANNEL_ID;
-    }
+    public ChannelId getChannelId() { return channelId; }
 
     @Override
     public Properties getChannelProperties() { return NULL_DRIVER_PROPERTIES; }

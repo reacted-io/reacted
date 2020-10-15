@@ -15,29 +15,33 @@ import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;
 
+import java.time.Duration;
 import java.util.Objects;
 
 @NonNullByDefault
 public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceConfig.Builder,
                                                                ReActorServiceConfig> {
-
+    public static final int MAX_ROUTEES_PER_SERVICE = 1000;
+    public static final Duration DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY = Duration.ofMinutes(2);
     private final int routeesNum;
     private final UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
     private final ReActorService.LoadBalancingPolicy loadBalancingPolicy;
+    private final Duration serviceRepublishReattemptDelayOnError;
 
-    private ReActorServiceConfig(Builder reActorServiceConfig) {
-        super(reActorServiceConfig);
-        this.routeesNum = ObjectUtils.requiredInRange(reActorServiceConfig.routeesNum, 1, 10_000,
+    private ReActorServiceConfig(Builder builder) {
+        super(builder);
+        this.routeesNum = ObjectUtils.requiredInRange(builder.routeesNum, 1, MAX_ROUTEES_PER_SERVICE,
                                                       IllegalArgumentException::new);
-        this.routeeProvider = Objects.requireNonNull(reActorServiceConfig.routeeProvider);
-        this.loadBalancingPolicy = Objects.requireNonNull(reActorServiceConfig.loadBalancingPolicy);
+        this.routeeProvider = Objects.requireNonNull(builder.routeeProvider);
+        this.loadBalancingPolicy = Objects.requireNonNull(builder.loadBalancingPolicy);
+        this.serviceRepublishReattemptDelayOnError = ObjectUtils.checkNonNullPositiveTimeInterval(builder.serviceRepublishReattemptDelayOnError);
     }
 
     public int getRouteesNum() {
         return routeesNum;
     }
 
-    public ReActorService.LoadBalancingPolicy getSelectionPolicy() {
+    public ReActorService.LoadBalancingPolicy getLoadBalancingPolicy() {
         return loadBalancingPolicy;
     }
 
@@ -49,18 +53,23 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
         return routeeProvider;
     }
 
+    public Duration getServiceRepublishReattemptDelayOnError() {
+        return serviceRepublishReattemptDelayOnError;
+    }
+
     public static class Builder extends ReActiveEntityConfig.Builder<Builder, ReActorServiceConfig> {
         private int routeesNum;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private ReActorService.LoadBalancingPolicy loadBalancingPolicy;
+        private ReActorService.LoadBalancingPolicy loadBalancingPolicy = ReActorService.LoadBalancingPolicy.ROUND_ROBIN;
+        private Duration serviceRepublishReattemptDelayOnError = DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY;
 
         private Builder() { }
 
         /**
          * A Service exposes the behavior of a reactor in a resilient and load balanced manneer. Here we specify
          * how many instances of the exposed reactor should be automatically created and mantained by the router.
+         * Valid range [1, {@link ReActorServiceConfig#MAX_ROUTEES_PER_SERVICE}]
          *
          * @param routeesNum number of instances of the exposed reactor that should be created/mantained
          */
@@ -82,12 +91,28 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
 
         /**
          * A service automatically load balances messages to its routees. Here we define how that should be done
+         * Default value: {@link ReActorService.LoadBalancingPolicy#ROUND_ROBIN}
          *
          * @param loadBalancingPolicy Policy to use for selecting the destination among routee when a message
          *                            when a message for a routee is received by the service
          */
-        public Builder setSelectionPolicy(ReActorService.LoadBalancingPolicy loadBalancingPolicy) {
+        public Builder setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy loadBalancingPolicy) {
             this.loadBalancingPolicy = loadBalancingPolicy;
+            return this;
+        }
+
+        /**
+         * A service automatically try to publish itself to the connected service registries. If an error should occur,
+         * the service would not be discoverable. This parameter defines in how long the service should reattempt to
+         * publish itself on the service registries
+         *
+         * Default value: {@link ReActorServiceConfig#DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY}
+         *
+         * @param republicationReattemptDelayOnError delay after than the republication should be reattempted
+         * @return this builder
+         */
+        public Builder setServiceRepublishReattemptDelayOnError(Duration republicationReattemptDelayOnError) {
+            this.serviceRepublishReattemptDelayOnError = republicationReattemptDelayOnError;
             return this;
         }
 

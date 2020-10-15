@@ -21,14 +21,14 @@ import java.util.Optional;
 public class ChannelId implements Serializable {
     public static final ChannelId NO_CHANNEL_ID = new ChannelId(ChannelType.INVALID_CHANNEL_TYPE,"");
     private static final String SEPARATOR = "@";
-    private final String channelId;
+    private final String channelName;
     private final ChannelType channelType;
     private final String channelString;
     private final int hashCode;
 
     public ChannelId(ChannelType channelType, String channelName) {
         this.channelType = channelType;
-        this.channelId = channelName;
+        this.channelName = channelName;
         this.channelString = channelType.name() + SEPARATOR + channelName;
         this.hashCode = Objects.hash(channelType, channelName);
     }
@@ -39,13 +39,17 @@ public class ChannelId implements Serializable {
                   .toOptional();
     }
 
+    public String getChannelName() { return channelName; }
+
+    public ChannelType getChannelType() { return channelType; }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ChannelId channelId1 = (ChannelId) o;
         return channelType == channelId1.channelType &&
-               Objects.equals(channelId, channelId1.channelId);
+               Objects.equals(channelName, channelId1.channelName);
     }
 
     @Override

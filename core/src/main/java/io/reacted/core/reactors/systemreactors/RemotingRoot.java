@@ -8,6 +8,7 @@
 
 package io.reacted.core.reactors.systemreactors;
 
+import io.reacted.core.config.drivers.ReActedDriverCfg;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -37,11 +38,11 @@ import java.util.stream.Collectors;
 
 @Immutable
 public class RemotingRoot {
-    private final Collection<RemotingDriver> remotingDrivers;
+    private final Collection<RemotingDriver<? extends ReActedDriverCfg<?, ?>>> remotingDrivers;
     private final ReActorSystemId localReActorSystem;
 
     public RemotingRoot(ReActorSystemId localReActorSystem,
-                        Collection<RemotingDriver> remotingDrivers) {
+                        Collection<RemotingDriver<? extends ReActedDriverCfg<?, ?>>> remotingDrivers) {
         this.remotingDrivers = remotingDrivers;
         this.localReActorSystem = localReActorSystem;
     }

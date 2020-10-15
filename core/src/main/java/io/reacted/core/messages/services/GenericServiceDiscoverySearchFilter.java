@@ -64,7 +64,7 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
     @Override
     public boolean matches(Properties serviceInfos, ReActorRef serviceGate) {
         return isServiceNameMatching(Objects.requireNonNull(serviceInfos).getProperty(FIELD_NAME_SERVICE_NAME)) &&
-               isCpuLoadMatching((Double)serviceInfos.get(FIELD_NAME_CPU_LOAD)) &&
+               isCpuLoadMatching(serviceInfos.getProperty(FIELD_NAME_CPU_LOAD)) &&
                isChannelIdMatching(Objects.requireNonNull(serviceGate)) &&
                isIpAddressMatching(serviceInfos.getProperty(FIELD_NAME_IP_ADDRESS)) &&
                isHostNameMatching(serviceInfos.getProperty(FIELD_NAME_HOSTNAME));
@@ -74,9 +74,11 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
         return Objects.equals(getServiceName(), serviceName);
     }
 
-    private boolean isCpuLoadMatching(@Nullable Double cpuLoad) {
+    private boolean isCpuLoadMatching(@Nullable String cpuLoad) {
         return cpuLoad == null ||
-               getCpuLoad().map(reqCpuLoad -> reqCpuLoad.contains(cpuLoad))
+               getCpuLoad().map(reqCpuLoad -> Try.of(() -> Double.valueOf(cpuLoad))
+                                                 .filter(reqCpuLoad::contains)
+                                                 .isSuccess())
                            .orElse(true);
     }
 

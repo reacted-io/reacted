@@ -41,7 +41,7 @@ class ReActorServiceTest {
         reActorSystem.initReActorSystem();
 
         reActorServiceConfig = ReActorServiceConfig.newBuilder()
-                                                   .setSelectionPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
+                                                   .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
                                                    .setMailBoxProvider(ctx -> new BasicMbox())
                                                    .setReActorName("TestRouter")
                                                    .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)

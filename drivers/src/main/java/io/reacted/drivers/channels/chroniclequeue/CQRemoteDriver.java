@@ -29,8 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 @NonNullByDefault
-public class CQRemoteDriver extends RemotingDriver {
-    private final CQDriverConfig driverConfig;
+public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
@@ -41,12 +40,12 @@ public class CQRemoteDriver extends RemotingDriver {
     private ReActorSystem localReActorSystem;
 
     public CQRemoteDriver(CQDriverConfig driverConfig) {
-        this.driverConfig = Objects.requireNonNull(driverConfig);
+        super(driverConfig);
     }
 
     @Override
     public void initDriverLoop(ReActorSystem reActorSystem) {
-        this.chronicle = ChronicleQueue.singleBuilder(driverConfig.getChronicleFilesDir()).build();
+        this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir()).build();
         this.cqAppender = chronicle.acquireAppender();
         this.cqTailer = chronicle.createTailer().toEnd();
         this.localReActorSystem = reActorSystem;
@@ -58,12 +57,12 @@ public class CQRemoteDriver extends RemotingDriver {
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         CQRemoteDriver that = (CQRemoteDriver) o;
-        return Objects.equals(driverConfig, that.driverConfig);
+        return Objects.equals(getDriverConfig(), that.getDriverConfig());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(driverConfig);
+        return Objects.hash(getDriverConfig());
     }
 
     @Override
@@ -78,14 +77,14 @@ public class CQRemoteDriver extends RemotingDriver {
 
     @Override
     public ChannelId getChannelId() {
-        return new ChannelId(ChannelId.ChannelType.REMOTING_CHRONICLE_QUEUE, driverConfig.getChannelName());
+        return new ChannelId(ChannelId.ChannelType.REMOTING_CHRONICLE_QUEUE, getDriverConfig().getChannelName());
     }
 
     @Override
-    public boolean channelRequiresDeliveryAck() { return driverConfig.isDeliveryAckRequiredByChannel(); }
+    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
 
     @Override
-    public Properties getChannelProperties() { return driverConfig.getProperties(); }
+    public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {

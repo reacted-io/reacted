@@ -86,7 +86,7 @@ public class ServicePublicationAutomaticDiscoveryPolicyApp {
                                                      .setRouteesNum(5)
                                                      //and requests to the service will be balanced
                                                      //among the routees using the following policy
-                                                     .setSelectionPolicy(ReActorService.LoadBalancingPolicy.LOWEST_LOAD)
+                                                     .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.LOWEST_LOAD)
                                                      .setDispatcherName(serviceDispatcherName)
                                                      //We can have at maximum 5 pending messages in the
                                                      //service mailbox. The exceeding ones will be
