@@ -57,7 +57,7 @@ public class ServicePublicationApp {
                                                                       List.of(new GrpcDriver(ExampleUtils.getGrpcDriverCfg(clientGatePort))));
 
         var server = new ReActorSystem(serverSystemCfg).initReActorSystem();
-        var client = new ReActorSystem(clientSystemCfg).initReActorSystem();
+       // var client = new ReActorSystem(clientSystemCfg).initReActorSystem();
 
         var serviceName = "ClockService";
         //For simplicity let's use the default dispatcher. A new one could and should
@@ -77,15 +77,16 @@ public class ServicePublicationApp {
                                       //Service Registry now
                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class))
                                       .setRouteeProvider(() -> new ClockReActor(serviceName))
+                                      .setIsRemoteService(true)
                                       .build();
 
         //Create a service. It will be published automatically on the service registry
         server.spawnService(serviceCfg).orElseSneakyThrow();
         //Give some time for the service propagation
-        TimeUnit.SECONDS.sleep(10);
+        TimeUnit.SECONDS.sleep(1000);
         //Create a reactor in CLIENT reactor system that will query the service exported in SERVER
         //All the communication between the two reactor systems will be done using a GRPC channel
-        client.spawn(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
+       // client.spawn(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(10);
         server.shutDown();
     }

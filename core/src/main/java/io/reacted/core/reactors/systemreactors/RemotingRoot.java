@@ -82,7 +82,7 @@ public class RemotingRoot {
 
         }
         raCtx.getChildren().stream()
-             .map(registryDriver -> registryDriver.aTell(raCtx.getSelf(), publishService))
+             .map(registryDriver -> registryDriver.tell(raCtx.getSelf(), publishService))
              .forEach(publicationRequest -> publicationRequest.thenAcceptAsync(pubAttempt -> pubAttempt.filter(DeliveryStatus::isDelivered)
                                                                                                        .ifError(error -> raCtx.logError("Unable to deliver service publication request {}",
                                                                                                                                         publishService.getServiceProperties(), error))));

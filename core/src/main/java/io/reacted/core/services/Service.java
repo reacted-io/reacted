@@ -77,7 +77,6 @@ public class Service implements ReActiveEntity {
         if (!this.serviceConfig.isRemoteService()) {
             return;
         }
-
         Try.of(() -> raCtx.getReActorSystem()
                           .getSystemSchedulingService()
                           .schedule(() -> sendPublicationRequest(raCtx, this.serviceInfo),

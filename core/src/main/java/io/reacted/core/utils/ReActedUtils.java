@@ -20,12 +20,12 @@ import java.util.function.Consumer;
 public final class ReActedUtils {
     private ReActedUtils() { /* No Implementation required */ }
 
-    public static Try<DeliveryStatus> ifNotDelivered(Try<DeliveryStatus> deliveryAttempt,
-                                                     Consumer<Throwable> ifNotDelivered) {
-        return ifNotDelivered(deliveryAttempt).peekFailure(Objects.requireNonNull(ifNotDelivered));
+    public static Try<DeliveryStatus> isDelivered(Try<DeliveryStatus> deliveryAttempt,
+                                                  Consumer<Throwable> ifNotDelivered) {
+        return isDelivered(deliveryAttempt).peekFailure(Objects.requireNonNull(ifNotDelivered));
     }
 
-    public static Try<DeliveryStatus> ifNotDelivered(Try<DeliveryStatus> deliveryAttempt) {
+    public static Try<DeliveryStatus> isDelivered(Try<DeliveryStatus> deliveryAttempt) {
         return Objects.requireNonNull(deliveryAttempt)
                       .filter(DeliveryStatus::isDelivered, DeliveryException::new);
     }
