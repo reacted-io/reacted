@@ -74,6 +74,10 @@ public class Service implements ReActiveEntity {
     }
 
     public void onServicePublicationError(ReActorContext raCtx, ServicePublicationRequestError error) {
+        if (!this.serviceConfig.isRemoteService()) {
+            return;
+        }
+
         Try.of(() -> raCtx.getReActorSystem()
                           .getSystemSchedulingService()
                           .schedule(() -> sendPublicationRequest(raCtx, this.serviceInfo),
@@ -119,7 +123,9 @@ public class Service implements ReActiveEntity {
                 raCtx.logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);
             }
         }
-        sendPublicationRequest(raCtx, this.serviceInfo);
+        if (this.serviceConfig.isRemoteService()) {
+            sendPublicationRequest(raCtx, this.serviceInfo);
+        }
     }
 
     private void serviceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
@@ -168,7 +174,11 @@ public class Service implements ReActiveEntity {
                                                                            new RouteeReSpawnRequest(routeeConfig)); }});
     }
 
-    private static void updateServiceRegistry(ReActorContext raCtx, Properties serviceInfo) {
+    private void updateServiceRegistry(ReActorContext raCtx, Properties serviceInfo) {
+        if (!this.serviceConfig.isRemoteService()) {
+            return;
+        }
+
         sendPublicationRequest(raCtx, serviceInfo)
              .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
                                                                 .ifError(error -> raCtx.logError("Unable to refresh " +
