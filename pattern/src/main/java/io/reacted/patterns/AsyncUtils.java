@@ -10,7 +10,6 @@ package io.reacted.patterns;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
-import javax.annotation.processing.Completions;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;

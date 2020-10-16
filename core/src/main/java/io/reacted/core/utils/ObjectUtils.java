@@ -10,7 +10,6 @@ package io.reacted.core.utils;
 
 import io.reacted.patterns.NonNullByDefault;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Objects;

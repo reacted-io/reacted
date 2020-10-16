@@ -22,14 +22,13 @@ import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class ServicePublicationApp {
-    public static void main(String[] args) throws InterruptedException, IOException {
+    public static void main(String[] args) throws InterruptedException {
         String zookeeperConnectionString = args.length == 0 || Strings.isNullOrEmpty(args[0])
                                            ? "localhost:2181" : args[0];
         Properties serviceRegistryProperties = new Properties();

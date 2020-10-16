@@ -529,10 +529,9 @@ public class ReActorSystem {
     }
 
     public void flushAllRemoteGates() {
-        this.reActorSystemsGates.entrySet().stream()
-                .filter(entry -> !entry.getKey().equals(getLocalReActorSystemId()))
-                .map(Map.Entry::getKey)
-                .forEach(this.reActorSystemsGates::remove);
+        this.reActorSystemsGates.keySet().stream()
+                                .filter(channelIdReActorSystemRefMap -> !channelIdReActorSystemRefMap.equals(getLocalReActorSystemId()))
+                                .forEach(this.reActorSystemsGates::remove);
     }
 
     Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> getReActorSystemDrivers() {

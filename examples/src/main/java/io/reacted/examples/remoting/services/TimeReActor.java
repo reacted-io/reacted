@@ -21,11 +21,9 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.SelectionType;
-import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
 import java.time.ZonedDateTime;
-import java.util.concurrent.CompletableFuture;
 
 public class TimeReActor implements ReActor {
     private final String serviceToQuery;

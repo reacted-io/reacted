@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 public abstract class Try<T> {
 
     public static final Try<Void> VOID = Try.of(Try::noOp);
+    @SuppressWarnings("StaticInitializerReferencesSubClass")
     private static final Try.Failure<NoSuchElementException> FILTER_FAILED = Try.ofFailure(new NoSuchElementException());
 
     private static final UnsupportedOperationException FAILURE_UNSUPPORTED_OPERATION_EXCEPTION =
