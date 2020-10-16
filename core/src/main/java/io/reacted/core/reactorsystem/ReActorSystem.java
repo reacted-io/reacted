@@ -371,6 +371,8 @@ public class ReActorSystem {
         Try.of(() -> stopReActorSystem().toCompletableFuture().join())
            .ifError(error -> LOGGER.error("Error stopping init hierarchy", error));
 
+        this.init = null;
+
         Try.of(() -> stopLocalDriver().toCompletableFuture().join())
            .ifSuccessOrElse(stopAttempt -> stopAttempt.ifError(error -> LOGGER.error("Error stopping local drivers",
                                                                                      error)),
@@ -664,10 +666,8 @@ public class ReActorSystem {
         if (this.init == null) {
             return CompletableFuture.completedFuture(null);
         }
-        //Kill the system hierarchy
-        var init = this.init;
-        this.init = null;
-        return stopSystemRoot(init);
+        //Kill the system hierarchy;
+        return stopSystemRoot(this.init);
     }
 
     private CompletionStage<Void> stopSystemRoot(ReActorRef reActorRoot) {

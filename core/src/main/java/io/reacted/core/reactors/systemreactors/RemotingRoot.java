@@ -14,6 +14,7 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.serviceregistry.FilterServiceDiscoveryRequest;
+import io.reacted.core.messages.serviceregistry.RegistryConnectionLost;
 import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
 import io.reacted.core.messages.serviceregistry.RegistryGateRemoved;
 import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
@@ -58,6 +59,7 @@ public class RemotingRoot {
                         .reAct(RegistryServicePublicationFailed.class, RemotingRoot::onRegistryServicePublicationFailure)
                         .reAct(ServiceCancellationRequest.class, RemotingRoot::onCancelService)
                         .reAct(FilterServiceDiscoveryRequest.class, RemotingRoot::onFilterServiceDiscoveryRequest)
+                        .reAct(RegistryConnectionLost.class, this::onRegistryConnectionLost)
                         .reAct(ReActorStop.class, RemotingRoot::onStop)
                         .reAct(RemotingRoot::onSpuriousMessage)
                         .build();
@@ -74,7 +76,7 @@ public class RemotingRoot {
 
     private static void onPublishService(ReActorContext raCtx, ServicePublicationRequest publishService) {
         if (raCtx.getChildren().isEmpty()) {
-             raCtx.aReply(new ServiceRegistryNotAvailable())
+             raCtx.reply(new ServiceRegistryNotAvailable())
                   .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
                                                                      .ifError(error -> raCtx.logError("Unable to make a service discoverable {}",
                                                                                                       publishService.getServiceProperties(), error)));
@@ -118,11 +120,16 @@ public class RemotingRoot {
     private void onRegistryGateUpsert(ReActorContext raCtx, RegistryGateUpserted upsert) {
         //skip self notifications
         if (!raCtx.getReActorSystem().getLocalReActorSystemId().equals(upsert.getReActorSystemId())) {
-
+            raCtx.logInfo("Gate added for {} : {}@{}", raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
+                          upsert.getChannelId().toString(), upsert.getReActorSystemId().getReActorSystemName());
             raCtx.getReActorSystem().unregisterRoute(upsert.getReActorSystemId(), upsert.getChannelId());
             raCtx.getReActorSystem().registerNewRoute(upsert.getReActorSystemId(), upsert.getChannelId(),
                                                       upsert.getChannelData());
         }
+    }
+
+    private void onRegistryConnectionLost(ReActorContext raCtx, RegistryConnectionLost connectionLost) {
+        raCtx.getReActorSystem().flushAllRemoteGates();
     }
 
     private void onRegistryGateRemoval(ReActorContext raCtx, RegistryGateRemoved removed) {

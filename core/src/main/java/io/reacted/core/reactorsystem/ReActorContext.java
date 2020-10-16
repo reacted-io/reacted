@@ -148,10 +148,10 @@ public final class ReActorContext {
 
     public Try<ScheduledFuture<CompletionStage<Try<DeliveryStatus>>>>
     rescheduleMessage(Serializable messageToBeRescheduled, Duration inHowLong) {
+        ReActorRef sender = getSender();
         return Try.of(() -> getReActorSystem().getSystemSchedulingService()
-                                              .schedule(() -> getSelf().tell(getSender(),
-                                                                             messageToBeRescheduled),
-                                                        inHowLong.toMillis(), TimeUnit.MILLISECONDS));
+                                              .schedule(() -> getSelf().tell(sender, messageToBeRescheduled),
+                                                              inHowLong.toMillis(), TimeUnit.MILLISECONDS));
     }
 
     /**

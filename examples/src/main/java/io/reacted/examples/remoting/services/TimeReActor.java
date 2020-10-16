@@ -69,14 +69,10 @@ public class TimeReActor implements ReActor {
 
     private void onServiceResponse(ReActorContext raCtx, ZonedDateTime time) {
         raCtx.logInfo("Received {} response from service: {}", ++received, time.toString());
-        raCtx.stop();
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        raCtx.logInfo("{} is exiting and exiting reactorsystem...", raCtx.getSelf().getReActorId().getReActorName());
-
-        CompletableFuture.supplyAsync(() -> Try.ofRunnable(() -> raCtx.getReActorSystem().shutDown())
-                                               .ifError(Throwable::printStackTrace));
+        raCtx.logInfo("{} is exiting", raCtx.getSelf().getReActorId().getReActorName());
     }
 
     @Nonnull
