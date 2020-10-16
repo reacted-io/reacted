@@ -31,6 +31,7 @@ import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+import org.checkerframework.checker.units.qual.K;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,15 +65,10 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                                .expireAfterWrite(config.getAtellAutomaticFailureTimeout()
                                                                        .toMillis(), TimeUnit.MILLISECONDS)
                                                .initialCapacity(10_000_000)
-                                               .removalListener(new RemovalListener<Long, CompletableFuture<Try<DeliveryStatus>>>() {
-                                                   @Override
-                                                   public void onRemoval(RemovalNotification<Long, CompletableFuture<Try<DeliveryStatus>>> notification) {
-                                                       if (notification.getCause() != RemovalCause.EXPLICIT) {
-                                                           notification.getValue()
-                                                                       .completeAsync(() -> Try.ofFailure(new TimeoutException()));
-                                                       }
-                                                   }
-                                               }).build();
+                                               .removalListener((RemovalListener<Long,
+                                                                 CompletableFuture<Try<DeliveryStatus>>>)
+                                                                        ReActorSystemDriver::expireOnTimeout)
+                                               .build();
     }
 
     abstract public void initDriverLoop(ReActorSystem localReActorSystem) throws Exception;
@@ -176,5 +172,12 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                             new ReActorRef(ReActorId.NO_REACTOR_ID,
                                                            originalMessage.getSender().getReActorSystemRef()),
                                             ackSeqNum, localReActorSystemId, AckingPolicy.NONE, statusUpdatePayload));
+    }
+
+    private static void
+    expireOnTimeout(RemovalNotification<Long, CompletableFuture<Try<DeliveryStatus>>> notification) {
+        if (notification.getCause() != RemovalCause.EXPLICIT) {
+            notification.getValue().completeAsync(() -> Try.ofFailure(new TimeoutException()));
+        }
     }
 }
