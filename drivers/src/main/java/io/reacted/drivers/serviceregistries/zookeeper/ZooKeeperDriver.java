@@ -256,7 +256,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                                                   getConfig().getMaxReconnectionAttempts()));
             curatorClient.getConnectionStateListenable()
                          .addListener((curator, newState) -> onConnectionStateChange(raCtx, curator,
-                                                                                     this.curatorCache, newState),
+                                                                                     this.curatorCache,
+                                                                                     newState),
                                                              getConfig().getAsyncExecutionService());
             this.asyncClient = AsyncCuratorFramework.wrap(curatorClient);
         }
@@ -408,21 +409,27 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     }
 
     private static void onConnectionStateChange(ReActorContext raCtx, CuratorFramework curator,
-                                                CuratorCache curatorCache, ConnectionState newState) {
+                                                @Nullable CuratorCache curatorCache, ConnectionState newState) {
+
         switch (newState) {
             case LOST, SUSPENDED -> raCtx.getReActorSystem().getSystemRemotingRoot()
                                          .tell(raCtx.getSelf(), new RegistryConnectionLost());
-            case RECONNECTED ->
-                curatorCache.stream().forEachOrdered(childData -> cacheEventsRouter(curator,
-                                                                                    new TreeCacheEvent(TreeCacheEvent.Type.NODE_ADDED,
-                                                                                                       childData),
-                                                                                    raCtx.getReActorSystem(),
-                                                                                    raCtx.getSelf()));
+            case RECONNECTED -> Optional.ofNullable(curatorCache)
+                                        .map(CuratorCache::stream)
+                                        .ifPresent(children -> children.forEachOrdered(child -> refreshGate(raCtx.getSelf(),
+                                                                                                            raCtx.getReActorSystem(),
+                                                                                                            curator,
+                                                                                                            child)));
             case CONNECTED, READ_ONLY -> {}
         }
     }
 
-    //private static void onCacheConnectionStateChange(ReActorContext raCtx, )
+    private static void refreshGate(ReActorRef zkDriver, ReActorSystem reActorSystem, CuratorFramework curator,
+                                    ChildData childData) {
+        cacheEventsRouter(curator, new TreeCacheEvent(TreeCacheEvent.Type.NODE_ADDED, childData),
+                          reActorSystem, zkDriver);
+
+    }
 
     private static String getGatePublicationPath(ReActorSystemId reActorSystemId, ChannelId channelId) {
         return String.format(CLUSTER_GATE_PUBLICATION_PATH, reActorSystemId.getReActorSystemName(),
