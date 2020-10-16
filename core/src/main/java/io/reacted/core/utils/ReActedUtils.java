@@ -25,16 +25,6 @@ import java.util.function.Supplier;
 public final class ReActedUtils {
     private ReActedUtils() { /* No Implementation required */ }
 
-    public static Try<DeliveryStatus> isDelivered(Try<DeliveryStatus> deliveryAttempt,
-                                                  Consumer<Throwable> ifNotDelivered) {
-        return isDelivered(deliveryAttempt).peekFailure(Objects.requireNonNull(ifNotDelivered));
-    }
-
-    public static Try<DeliveryStatus> isDelivered(Try<DeliveryStatus> deliveryAttempt) {
-        return Objects.requireNonNull(deliveryAttempt)
-                      .filter(DeliveryStatus::isDelivered, DeliveryException::new);
-    }
-
     public static  <PayloadT extends Serializable> void rescheduleIf(BiConsumer<ReActorContext, PayloadT> realCall,
                                                                      Supplier<Boolean> shouldReschedule,
                                                                      Duration rescheduleInterval,

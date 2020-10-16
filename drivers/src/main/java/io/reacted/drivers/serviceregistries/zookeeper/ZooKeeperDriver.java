@@ -10,6 +10,7 @@ package io.reacted.drivers.serviceregistries.zookeeper;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -38,7 +39,6 @@ import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.cache.ChildData;
@@ -70,8 +70,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
-
-import static io.reacted.core.utils.ReActedUtils.isDelivered;
 
 @NonNullByDefault
 public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig.Builder, ZooKeeperDriverConfig> {
@@ -352,10 +350,10 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     private static TreeCacheListener getTreeListener(ReActorSystem reActorSystem, ReActorRef driverReActor) {
         return (curatorFramework, treeCacheEvent) ->
                 cacheEventsRouter(curatorFramework, treeCacheEvent, reActorSystem, driverReActor)
-                        .thenAccept(attempt -> isDelivered(attempt,
-                                                           error -> reActorSystem.logError("Error handling zookeeper event {}",
-                                                                                           treeCacheEvent.toString(),
-                                                                                           error)));
+                        .thenAccept(attempt -> attempt.filter(DeliveryStatus::isDelivered, DeliveryException::new)
+                                                      .ifError(error -> reActorSystem.logError("Error handling zookeeper event {}",
+                                                                                               treeCacheEvent.toString(),
+                                                                                               error)));
     }
 
     private static CompletionStage<Try<DeliveryStatus>>
