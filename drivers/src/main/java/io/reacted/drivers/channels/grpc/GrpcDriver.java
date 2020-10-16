@@ -43,6 +43,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -93,14 +94,12 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
 
     @Override
     public CompletableFuture<Try<Void>> cleanDriverLoop() {
-        System.out.println("GRPC driver cleaning up");
-
         Objects.requireNonNull(this.grpcServer).shutdown();
 
         Try.of(() -> this.grpcServer.awaitTermination(5, TimeUnit.SECONDS))
            .ifError(error -> Thread.currentThread().interrupt());
         if (this.grpcServer != null) {
-            this.grpcServer.shutdownNow();
+            this.grpcServer.shutdown();
         }
         if (this.bossEventLoopGroup != null) {
             this.bossEventLoopGroup.shutdownGracefully();
@@ -109,10 +108,9 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             this.workerEventLoopGroup.shutdownGracefully();
         }
         if (this.grpcExecutor != null) {
-            this.grpcExecutor.shutdownNow();
+            this.grpcExecutor.shutdown();
         }
         this.gatesStubs.clear();
-        System.out.println("GRPC driver cleaned up");
         return CompletableFuture.completedFuture(Try.ofSuccess(null));
     }
 
@@ -130,7 +128,8 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
         String dstChannelIdName = dstChannelIdProperties.getProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME);
 
         var grpcLink = this.gatesStubs.computeIfAbsent(dstChannelIdName,
-                                                       channelName -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties),
+                                                       channelName -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties,
+                                                                                                                  Objects.requireNonNull(this.grpcExecutor)),
                                                                                                     ReActedLinkGrpc::newStub,
                                                                                                     stub -> stub.link(getEmptyMessageHandler(getLocalReActorSystem()))));
         var byteArray = new ByteArrayOutputStream();
@@ -160,7 +159,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     @Override
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
-    private static ManagedChannel getNewChannel(Properties channelIdProperties) {
+    private static ManagedChannel getNewChannel(Properties channelIdProperties, Executor grpcExecutor) {
         int port = Integer.parseInt(channelIdProperties.getProperty(GrpcDriverConfig.GRPC_PORT));
         String host = channelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST);
         return ManagedChannelBuilder.forAddress(host, port)
@@ -168,6 +167,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                     .keepAliveWithoutCalls(true)
                                     .enableRetry()
                                     .usePlaintext()
+                                    .executor(grpcExecutor)
                                     .build();
     }
 
