@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.examples.communication.aTell;
+package io.reacted.examples.communication.atell;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
@@ -22,7 +22,6 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
-import io.reacted.core.utils.ReActedUtils;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
@@ -138,7 +137,7 @@ class PingPongApp {
 
         private void onInit(ReActorContext raCtx) {
             long start = System.nanoTime();
-            AsyncUtils.asyncLoop(noval -> serverReference.aTell("Not received"),
+            AsyncUtils.asyncLoop(noval -> serverReference.atell("Not received"),
                                  Try.of(() -> DeliveryStatus.DELIVERED),
                                  (Try<DeliveryStatus>) null, 1_000_000L)
                       .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",

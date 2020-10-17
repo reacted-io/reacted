@@ -10,7 +10,6 @@ package io.reacted.drivers.serviceregistries.zookeeper;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -35,7 +34,6 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.core.utils.ReActedUtils;
-import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.apache.commons.lang3.StringUtils;
@@ -250,35 +248,35 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         if (asyncClient == null) {
             var curatorClient = CuratorFrameworkFactory.newClient(getZkConnectionString(),
-                                                                                  (int) getConfig().getSessionTimeout()
-                                                                                                   .toMillis(),
-                                                                                  (int) getConfig().getConnectionTimeout()
-                                                                                                   .toMillis(),
-                                                                                  new ExponentialBackoffRetry((int) getConfig().getReconnectionDelay()
-                                                                                                                               .toMillis(),
-                                                                                  getConfig().getMaxReconnectionAttempts()));
+                                                                 (int) getConfig().getSessionTimeout()
+                                                                                 .toMillis(),
+                                                                 (int) getConfig().getConnectionTimeout()
+                                                                                  .toMillis(),
+                                                                  new ExponentialBackoffRetry((int) getConfig().getReconnectionDelay()
+                                                                                                               .toMillis(),
+                                                                                              getConfig().getMaxReconnectionAttempts()));
             curatorClient.getConnectionStateListenable()
-                         .addListener((curator, newState) -> onConnectionStateChange(raCtx, curator,
-                                                                                     curatorCache,
+                         .addListener((curator, newState) -> onConnectionStateChange(raCtx, curator, curatorCache,
                                                                                      newState),
                                                              getConfig().getAsyncExecutionService());
             this.asyncClient = AsyncCuratorFramework.wrap(curatorClient);
         }
 
-        CompletableFuture.runAsync(() -> asyncClient.unwrap().start(), getConfig().getAsyncExecutionService())
-                         .thenCompose(noVal -> createPathIfRequired(asyncClient, CreateMode.PERSISTENT,
-                                                                    CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH,
-                                                                    NO_PAYLOAD))
-                         .thenCompose(isPathCreated ->  isPathCreated
-                                                        ? createPathIfRequired(asyncClient, CreateMode.PERSISTENT,
-                                                                               CLUSTER_REGISTRY_SERVICES_ROOT_PATH,
-                                                                               NO_PAYLOAD)
-                                                        : CompletableFuture.completedFuture(false))
-                         .thenCompose(isPathCreated -> (isPathCreated
-                                                       ?  raCtx.selfTell(new ZooKeeperRootPathsCreated())
-                                                       :  CompletableFuture.completedStage(raCtx.rescheduleMessage(init,
-                                                                                                                   getConfig()
-                                                                           .getReconnectionDelay()))).thenAccept(n -> {}));
+        var cacheStart = CompletableFuture.runAsync(() -> Objects.requireNonNull(asyncClient)
+                                                                 .unwrap().start(),
+                                                    getConfig().getAsyncExecutionService());
+        cacheStart.thenCompose(noVal -> createPathIfRequired(Objects.requireNonNull(asyncClient), CreateMode.PERSISTENT,
+                                                             CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH, NO_PAYLOAD))
+                  .thenCompose(isPathCreated ->  isPathCreated
+                                                 ? createPathIfRequired(Objects.requireNonNull(asyncClient),
+                                                                        CreateMode.PERSISTENT,
+                                                                        CLUSTER_REGISTRY_SERVICES_ROOT_PATH, NO_PAYLOAD)
+                                                 : CompletableFuture.completedFuture(false))
+                  .thenCompose(isPathCreated -> (isPathCreated
+                                                 ?  raCtx.selfTell(new ZooKeeperRootPathsCreated())
+                                                 :  CompletableFuture.completedStage(raCtx.rescheduleMessage(init,
+                                                                                                             getConfig().getReconnectionDelay())))
+                                                                     .thenAccept(n -> {}));
     }
 
     private void onRootPathsCreated(ReActorContext raCtx, ZooKeeperRootPathsCreated created) {

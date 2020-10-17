@@ -108,7 +108,7 @@ public final class ReActorRef implements Externalizable {
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> aTell(PayloadT messagePayload) {
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> atell(PayloadT messagePayload) {
         return reActorSystemRef.tell(reActorSystemRef.getBackingDriver()
                                                      .getLocalReActorSystem()
                                                      .getSystemSink(), this, AckingPolicy.ONE_TO_ONE,
@@ -124,7 +124,7 @@ public final class ReActorRef implements Externalizable {
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> aTell(ReActorRef msgSender,
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> atell(ReActorRef msgSender,
                                                                                       PayloadT messagePayload) {
         return reActorSystemRef.tell(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
                                      Objects.requireNonNull(messagePayload));

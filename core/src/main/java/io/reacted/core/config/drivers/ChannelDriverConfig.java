@@ -25,13 +25,13 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
     public static final String CHANNEL_ID_PROPERTY_NAME = "channelName";
     private final String channelName;
     private final boolean deliveryAckRequiredByChannel;
-    private final Duration aTellAutomaticFailureTimeout;
+    private final Duration atellAutomaticFailureTimeout;
 
     protected ChannelDriverConfig(Builder<BuilderT, BuiltT> builder) {
         super(builder);
         this.channelName = Objects.requireNonNull(builder.channelName);
         this.deliveryAckRequiredByChannel = builder.deliveryAckRequiredByChannel;
-        this.aTellAutomaticFailureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.aTellFailureTimeout,
+        this.atellAutomaticFailureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.atellFailureTimeout,
                                                                                                   Long.MAX_VALUE,
                                                                                                   TimeUnit.NANOSECONDS);
     }
@@ -46,7 +46,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
 
     public boolean isDeliveryAckRequiredByChannel() { return deliveryAckRequiredByChannel; }
 
-    public Duration getAtellAutomaticFailureTimeout() { return aTellAutomaticFailureTimeout; }
+    public Duration getAtellAutomaticFailureTimeout() { return atellAutomaticFailureTimeout; }
 
     public Properties getChannelProperties() { return new Properties(); }
 
@@ -54,7 +54,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
             extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String channelName;
-        private Duration aTellFailureTimeout = NEVER_FAIL;
+        private Duration atellFailureTimeout = NEVER_FAIL;
         private boolean deliveryAckRequiredByChannel;
 
         public final BuilderT setChannelName(String channelName) {
@@ -66,7 +66,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
          *
          * @param isDeliveryAckRequiredByChannel specify if the {@link io.reacted.core.config.ChannelId} provided
          *                                       by the driver is not reliable enough and it may require an ack.
-         *                                       If this is set to false, all the messages sent through {@link io.reacted.core.reactorsystem.ReActorRef#aTell}
+         *                                       If this is set to false, all the messages sent through {@link io.reacted.core.reactorsystem.ReActorRef#atell}
          *                                       will behave like {@link io.reacted.core.reactorsystem.ReActorRef#tell}
          * @return this builder
          */
@@ -76,14 +76,14 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         }
 
         /**
-         * Specify after how much time a not acknowledged message from {@link io.reacted.core.reactorsystem.ReActorRef#aTell}
+         * Specify after how much time a not acknowledged message from {@link io.reacted.core.reactorsystem.ReActorRef#atell}
          * should be automatically marked as completed as a failure
-         * @param aTellFailureTimeout the automatic failure timeout. Default {@link ChannelDriverConfig#NEVER_FAIL}
+         * @param atellFailureTimeout the automatic failure timeout. Default {@link ChannelDriverConfig#NEVER_FAIL}
          *                            Max Value: {@link Long#MAX_VALUE} nanosecs
          * @return this builder
          */
-        public final BuilderT setAckedTellAutomaticFailureAfterTimeout(Duration aTellFailureTimeout) {
-            this.aTellFailureTimeout = aTellFailureTimeout;
+        public final BuilderT setAckedTellAutomaticFailureAfterTimeout(Duration atellFailureTimeout) {
+            this.atellFailureTimeout = atellFailureTimeout;
             return getThis();
         }
     }

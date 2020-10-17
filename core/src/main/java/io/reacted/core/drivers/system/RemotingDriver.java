@@ -106,7 +106,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         //reactor system is the source channel is a 1:N channel such as a kafka topic
         if (isLocalReActorSystem(getLocalReActorSystem().getLocalReActorSystemId(),
                                  destination.getReActorSystemRef().getReActorSystemId())) {
-            //If so, this is an ACK confirmation for a message sent with aTell
+            //If so, this is an ACK confirmation for a message sent with atell
             if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
                 removePendingAckTrigger(deliveryStatusUpdate.getMsgSeqNum())
@@ -132,7 +132,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         }
         boolean isAckRequired = !hasBeenSniffed &&
                                 message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
-        var deliverAttempt = (isAckRequired ? destination.tell(sender, payload) : destination.aTell(sender, payload));
+        var deliverAttempt = (isAckRequired ? destination.tell(sender, payload) : destination.atell(sender, payload));
         if (isAckRequired) {
             deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
                                                                        getLocalReActorSystem().getNewSeqNum(), this,

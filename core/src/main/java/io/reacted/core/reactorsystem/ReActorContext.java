@@ -155,13 +155,13 @@ public final class ReActorContext {
     }
 
     /**
-     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#aTell(Serializable)}
+     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#atell(Serializable)}
      * @param sender {@link ReActorRef} identifying the sender of this reply
      * @param anyPayload payload to be sent
-     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#aTell(ReActorRef, Serializable)}
+     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#atell(ReActorRef, Serializable)}
      */
     public CompletionStage<Try<DeliveryStatus>> aReply(ReActorRef sender, Serializable anyPayload) {
-        return getSender().aTell(sender, anyPayload);
+        return getSender().atell(sender, anyPayload);
     }
 
     /**
