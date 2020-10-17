@@ -54,22 +54,22 @@ public class SystemMonitor implements ReActiveEntity {
     }
 
     private void onInit(ReActorContext raCtx) {
-        this.timer = Try.of(() -> this.timerService.scheduleAtFixedRate(() -> this.broadcastStatistics(raCtx),
-                                                                        0, taskPeriod.toMillis(),
-                                                                        TimeUnit.MILLISECONDS))
+        this.timer = Try.of(() -> timerService.scheduleAtFixedRate(() -> broadcastStatistics(raCtx),
+                                                                   0, taskPeriod.toMillis(),
+                                                                   TimeUnit.MILLISECONDS))
                         .orElse(null, error -> initRetry(error, raCtx));
     }
 
     private void onStop() {
-        if (this.timer != null) {
-            this.timer.cancel(true);
+        if (timer != null) {
+            timer.cancel(true);
         }
     }
 
     private void broadcastStatistics(ReActorContext raCtx) {
         Try.ofRunnable(() -> raCtx.getReActorSystem()
                                   .broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF,
-                                                               getSystemStatistics(this.systemMonitor)))
+                                                               getSystemStatistics(systemMonitor)))
            .ifError(error -> raCtx.logError("Unable to broadcast statistics update", error));
     }
 

@@ -10,12 +10,14 @@ package io.reacted.core.drivers.local;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -69,23 +71,21 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      }
 
      protected static Try<DeliveryStatus> localDeliver(ReActorContext destination, Message message) {
-          Try<DeliveryStatus> deliverOperation = Try.of(() -> destination.getMbox()
-                                                                         .deliver(message));
+          Try<DeliveryStatus> deliverOperation = Try.of(() -> destination.getMbox().deliver(message));
           rescheduleIfSuccess(deliverOperation, destination);
           return deliverOperation;
      }
 
      protected static CompletionStage<Try<DeliveryStatus>> asyncLocalDeliver(ReActorContext destination,
                                                                              Message message) {
-          var asyncDeliverResult = destination.getMbox()
-                                              .asyncDeliver(message);
+          var asyncDeliverResult = destination.getMbox().asyncDeliver(message);
           asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result, destination));
           return asyncDeliverResult;
      }
 
      protected static void rescheduleIfSuccess(Try<DeliveryStatus> deliveryResult, ReActorContext destination) {
-          deliveryResult.peekFailure(error -> LOGGER.error("Unable to deliver: ", error))
-                        .filter(DeliveryStatus::isDelivered)
+          deliveryResult.filter(DeliveryStatus::isDelivered, DeliveryException::new)
+                        .peekFailure(error -> LOGGER.error("Unable to deliver: ", error))
                         .ifSuccess(deliveryStatus -> destination.reschedule());
      }
 

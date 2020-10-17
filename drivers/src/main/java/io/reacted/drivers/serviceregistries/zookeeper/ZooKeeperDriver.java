@@ -90,9 +90,9 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     @Nullable
     private volatile ServiceDiscovery<ServicePublicationRequest> serviceDiscovery;
     @Nullable
-    private AsyncCuratorFramework asyncClient;
+    private volatile AsyncCuratorFramework asyncClient;
     @Nullable
-    private CuratorCache curatorCache;
+    private volatile CuratorCache curatorCache;
 
     public ZooKeeperDriver(ZooKeeperDriverConfig config) { super(config); }
 
@@ -104,7 +104,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
-                        .reAct(ReActorStop.class, (raCtx, stop) -> this.onStop(raCtx))
+                        .reAct(ReActorStop.class, (raCtx, stop) -> onStop(raCtx))
                         .reAct(ZooKeeperRootPathsCreated.class, this::onRootPathsCreated)
                         .reAct(ReActorSystemChannelIdPublicationRequest.class,
                                (raCtx, systemPubRequest) -> ReActedUtils.rescheduleIf(this::onChannelIdPublicationRequest,
@@ -222,17 +222,18 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
 
     private void onSynchronizationWithRegistryRequest(ReActorContext raCtx,
                                                       SynchronizationWithServiceRegistryRequest subRequest) {
-        if (this.curatorCache == null) {
-            this.curatorCache = CuratorCache.builder(Objects.requireNonNull(this.asyncClient).unwrap(),
+        if (curatorCache == null) {
+            this.curatorCache = CuratorCache.builder(Objects.requireNonNull(asyncClient).unwrap(),
                                                      CLUSTER_REGISTRY_ROOT_PATH)
                                             .withExceptionHandler(Throwable::printStackTrace)
                                             .build();
-            this.curatorCache.listenable()
-                             .addListener(CuratorCacheListener.builder()
-                                          .forTreeCache(this.asyncClient.unwrap(),
-                                                        getTreeListener(raCtx.getReActorSystem(), raCtx.getSelf()))
-                                          .build(), getConfig().getAsyncExecutionService());
-            this.curatorCache.start();
+            Objects.requireNonNull(curatorCache).listenable()
+                        .addListener(CuratorCacheListener.builder()
+                                                         .forTreeCache(Objects.requireNonNull(asyncClient).unwrap(),
+                                                                       getTreeListener(raCtx.getReActorSystem(),
+                                                                                       raCtx.getSelf()))
+                                                         .build(), getConfig().getAsyncExecutionService());
+            Objects.requireNonNull(curatorCache).start();
         }
 
         raCtx.getReActorSystem()
@@ -247,7 +248,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
-        if (this.asyncClient == null) {
+        if (asyncClient == null) {
             var curatorClient = CuratorFrameworkFactory.newClient(getZkConnectionString(),
                                                                                   (int) getConfig().getSessionTimeout()
                                                                                                    .toMillis(),
@@ -258,35 +259,37 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                                                   getConfig().getMaxReconnectionAttempts()));
             curatorClient.getConnectionStateListenable()
                          .addListener((curator, newState) -> onConnectionStateChange(raCtx, curator,
-                                                                                     this.curatorCache,
+                                                                                     curatorCache,
                                                                                      newState),
                                                              getConfig().getAsyncExecutionService());
             this.asyncClient = AsyncCuratorFramework.wrap(curatorClient);
         }
 
-        CompletableFuture.runAsync(() -> this.asyncClient.unwrap().start(), getConfig().getAsyncExecutionService())
-                         .thenCompose(noVal -> createPathIfRequired(this.asyncClient, CreateMode.PERSISTENT,
+        CompletableFuture.runAsync(() -> asyncClient.unwrap().start(), getConfig().getAsyncExecutionService())
+                         .thenCompose(noVal -> createPathIfRequired(asyncClient, CreateMode.PERSISTENT,
                                                                     CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH,
                                                                     NO_PAYLOAD))
                          .thenCompose(isPathCreated ->  isPathCreated
-                                                        ? createPathIfRequired(this.asyncClient, CreateMode.PERSISTENT,
+                                                        ? createPathIfRequired(asyncClient, CreateMode.PERSISTENT,
                                                                                CLUSTER_REGISTRY_SERVICES_ROOT_PATH,
                                                                                NO_PAYLOAD)
                                                         : CompletableFuture.completedFuture(false))
-                         .thenCompose(isPathCreated -> AsyncUtils.ifThenElse(isPathCreated,
-                                                                            () -> raCtx.selfTell(new ZooKeeperRootPathsCreated()),
-                                                                            () -> CompletableFuture.completedStage(raCtx.rescheduleMessage(init, getConfig().getReconnectionDelay()))));
+                         .thenCompose(isPathCreated -> (isPathCreated
+                                                       ?  raCtx.selfTell(new ZooKeeperRootPathsCreated())
+                                                       :  CompletableFuture.completedStage(raCtx.rescheduleMessage(init,
+                                                                                                                   getConfig()
+                                                                           .getReconnectionDelay()))).thenAccept(n -> {}));
     }
 
     private void onRootPathsCreated(ReActorContext raCtx, ZooKeeperRootPathsCreated created) {
-        if (this.serviceDiscovery != null) {
+        if (serviceDiscovery != null) {
             raCtx.getReActorSystem().getSystemRemotingRoot().tell(raCtx.getSelf(),
                                                                   new RegistryDriverInitComplete());
             return;
         }
         CompletableFuture.supplyAsync(() -> ServiceDiscoveryBuilder.builder(ServicePublicationRequest.class)
                                                                    .basePath(CLUSTER_REGISTRY_SERVICES_ROOT_PATH)
-                                                                   .client(Objects.requireNonNull(this.asyncClient)
+                                                                   .client(Objects.requireNonNull(asyncClient)
                                                                                   .unwrap())
                                                                    .build(),
                                       getConfig().getAsyncExecutionService())
@@ -295,25 +298,24 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                    .tell(raCtx.getSelf(), new RegistryDriverInitComplete()));
     }
 
-    private boolean isCuratorClientMissing() { return this.asyncClient == null; }
+    private boolean isCuratorClientMissing() { return asyncClient == null; }
 
-    private boolean isServiceDiscoveryClientMissing() { return this.serviceDiscovery == null; }
+    private boolean isServiceDiscoveryClientMissing() { return serviceDiscovery == null; }
 
     private void shutdownZookeeperConnection() throws IOException {
-        if (this.serviceDiscovery != null) {
-            Objects.requireNonNull(this.serviceDiscovery).close();
+        if (serviceDiscovery != null) {
+            Objects.requireNonNull(serviceDiscovery).close();
         }
-        if (this.curatorCache != null) {
-            this.curatorCache.close();
+        if (curatorCache != null) {
+            Objects.requireNonNull(curatorCache).close();
         }
-        if (this.asyncClient != null) {
-            this.asyncClient.unwrap().close();
+        if (asyncClient != null) {
+            Objects.requireNonNull(asyncClient).unwrap().close();
         }
         this.serviceDiscovery = null;
         this.curatorCache = null;
         this.asyncClient = null;
     }
-
 
     private static CompletionStage<Boolean> createPathIfRequired(AsyncCuratorFramework asyncClient,
                                                                 CreateMode creationMode, String pathToCreate,

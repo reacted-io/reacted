@@ -899,7 +899,7 @@ public abstract class Try<T> {
 
         private Success() {
             /* Never Here */
-            throw new IllegalStateException("Illegal " + this.getClass().getSimpleName() + " Object State");
+            throw new IllegalStateException("Illegal " + getClass().getSimpleName() + " Object State");
         }
 
         private Success(T successValue) {
@@ -947,7 +947,7 @@ public abstract class Try<T> {
 
         private Failure() {
             /* Never Here */
-            throw new IllegalStateException("Illegal " + this.getClass().getSimpleName() + " Object State");
+            throw new IllegalStateException("Illegal " + getClass().getSimpleName() + " Object State");
         }
 
         private Failure(Throwable failureValue) {

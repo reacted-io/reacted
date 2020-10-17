@@ -22,12 +22,6 @@ import java.util.function.Supplier;
 public final class AsyncUtils {
     private AsyncUtils() { /* No implementations allowed */ }
 
-    public static CompletionStage<Void> ifThenElse(boolean condition,
-                                                   Supplier<CompletionStage<?>> ifTrue,
-                                                   Supplier<CompletionStage<?>> ifFalse) {
-        return (condition ? ifTrue : ifFalse).get().thenAccept(res -> {});
-    }
-
     /**
      * Asynchronously executes {@code operation} {@code iterations} times. Every loops iteration begins when the
      * previous one is terminated. Silently ignore the errors and on error it maps the result of the iteration to

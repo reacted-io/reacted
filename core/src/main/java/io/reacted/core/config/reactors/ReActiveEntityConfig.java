@@ -54,7 +54,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         return reActorName;
     }
 
-    public final TypedSubscription[] getTypedSniffSubscriptions() {
+    public final TypedSubscription[] getTypedSubscriptions() {
         return Arrays.copyOf(typedTypedSubscriptions, typedTypedSubscriptions.length);
     }
 

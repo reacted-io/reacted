@@ -137,7 +137,8 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
                                                                        getLocalReActorSystem().getNewSeqNum(), this,
                                                                        deliveryResult, message)
-                                                        .ifError(error -> getLocalReActorSystem().logError("Unable to send ack", error)));
+                                                        .ifError(error -> getLocalReActorSystem().logError("Unable to send ack",
+                                                                                                           error)));
         }
     }
 }

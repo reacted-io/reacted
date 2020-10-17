@@ -95,14 +95,14 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                                                                               PayloadT message);
 
     public Optional<CompletionStage<Try<DeliveryStatus>>> removePendingAckTrigger(long msgSeqNum) {
-        var ackTrigger = this.pendingAcksTriggers.getIfPresent(msgSeqNum);
-        this.pendingAcksTriggers.invalidate(msgSeqNum);
+        var ackTrigger = pendingAcksTriggers.getIfPresent(msgSeqNum);
+        pendingAcksTriggers.invalidate(msgSeqNum);
         return Optional.ofNullable(ackTrigger);
     }
 
     public CompletionStage<Try<DeliveryStatus>> newPendingAckTrigger(long msgSeqNum) {
         CompletableFuture<Try<DeliveryStatus>> newTrigger = new CompletableFuture<>();
-        this.pendingAcksTriggers.put(msgSeqNum, newTrigger);
+        pendingAcksTriggers.put(msgSeqNum, newTrigger);
         return newTrigger;
     }
 
@@ -131,8 +131,8 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     }
 
     public CompletionStage<Try<Void>> stopDriverCtx(ReActorSystem reActorSystem) {
-        Objects.requireNonNull(this.driverThread).shutdownNow();
-        return this.cleanDriverLoop();
+        Objects.requireNonNull(driverThread).shutdownNow();
+        return cleanDriverLoop();
     }
 
     public static Optional<DriverCtx> getDriverCtx() {

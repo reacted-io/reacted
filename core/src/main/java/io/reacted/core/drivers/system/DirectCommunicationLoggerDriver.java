@@ -67,7 +67,7 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
     public UnChecked.CheckedRunnable getDriverLoop() { return () -> { }; }
 
     @Override
-    public ChannelId getChannelId() { return this.channelId; }
+    public ChannelId getChannelId() { return channelId; }
 
     @Override
     public Properties getChannelProperties() { return new Properties(); }

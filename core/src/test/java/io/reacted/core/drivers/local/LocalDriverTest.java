@@ -76,7 +76,7 @@ class LocalDriverTest {
                                        .setReactorRef(reActorRef)
                                        .setReActorSystem(reActorSystem)
                                        .setParentActor(ReActorRef.NO_REACTOR_REF)
-                                       .setInterceptRules(subscribedTypes)
+                                       .setSubscriptions(subscribedTypes)
                 .setDispatcher(mock(Dispatcher.class))
                 .setReActions(mock(ReActions.class))
                 .build();

@@ -64,18 +64,18 @@ public class ReActorSystemRef implements Externalizable {
     <PayloadT extends Serializable>
     CompletionStage<Try<DeliveryStatus>> tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
                                               PayloadT message) {
-        return this.backingDriver.tell(src, dst, ackingPolicy, message);
+        return backingDriver.tell(src, dst, ackingPolicy, message);
     }
 
     public ReActorSystemId getReActorSystemId() {
-        return this.reActorSystemId;
+        return reActorSystemId;
     }
 
     @JsonIgnore
-    public ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> getBackingDriver() { return this.backingDriver; }
+    public ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> getBackingDriver() { return backingDriver; }
 
     @JsonIgnore
-    public Properties getGateProperties() { return this.gateProperties; }
+    public Properties getGateProperties() { return gateProperties; }
 
     public boolean equals(@Nullable Object o) {
         if (this == o) return true;

@@ -44,9 +44,9 @@ class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.Del
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         this.subscription = subscription;
-        long requests = this.requestOnStartup;
-        synchronized (this.preInitializationRequests) {
-            requests += this.preInitializationRequests.sum();
+        long requests = requestOnStartup;
+        synchronized (preInitializationRequests) {
+            requests += preInitializationRequests.sum();
         }
         if (requests > 0) {
             subscription.request(requests);
@@ -55,29 +55,29 @@ class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.Del
 
     @Override
     public void onNext(BackpressuringMbox.DeliveryRequest item) {
-        if (this.realDeliveryCallback.apply(item.deliveryPayload).isDelivered()) {
-            this.targetMailboxOwner.reschedule();
+        if (realDeliveryCallback.apply(item.deliveryPayload).isDelivered()) {
+            targetMailboxOwner.reschedule();
         }
     }
 
     @Override
-    public void onError(Throwable throwable) { this.backpressurer.close(); }
+    public void onError(Throwable throwable) { backpressurer.close(); }
 
     @Override
     public void onComplete() {
         //https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8254060
-        Objects.requireNonNull(this.subscription).cancel();
+        Objects.requireNonNull(subscription).cancel();
     }
 
     public void request(long elementsToRequest) {
-        if (this.subscription == null) {
-            synchronized (this.preInitializationRequests) {
-                if (this.subscription == null) {
-                    this.preInitializationRequests.add(elementsToRequest);
+        if (subscription == null) {
+            synchronized (preInitializationRequests) {
+                if (subscription == null) {
+                    preInitializationRequests.add(elementsToRequest);
                     return;
                 }
             }
         }
-        Objects.requireNonNull(this.subscription).request(elementsToRequest);
+        Objects.requireNonNull(subscription).request(elementsToRequest);
     }
 }

@@ -55,24 +55,24 @@ public class ReActorSystemConfig {
         this.systemMonitorRefreshInterval = ObjectUtils.checkNonNullPositiveTimeInterval(reactorSystemConfig.systemMonitorRefreshInterval);
     }
 
-    public String getReActorSystemName() { return this.reactorSystemName; }
+    public String getReActorSystemName() { return reactorSystemName; }
 
-    public int getMsgFanOutPoolSize() { return this.msgFanOutPoolSize; }
+    public int getMsgFanOutPoolSize() { return msgFanOutPoolSize; }
 
-    public LocalDriver<? extends ChannelDriverConfig<?, ?>> getLocalDriver() { return this.localDriver; }
+    public LocalDriver<? extends ChannelDriverConfig<?, ?>> getLocalDriver() { return localDriver; }
 
-    public boolean isRecordedExecution() { return this.recordedExecution; }
+    public boolean isRecordedExecution() { return recordedExecution; }
 
-    public Set<DispatcherConfig> getDispatchersConfigs() { return this.dispatchersConfigs; }
+    public Set<DispatcherConfig> getDispatchersConfigs() { return dispatchersConfigs; }
 
-    public Set<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> getRemotingDrivers() { return this.remotingDrivers; }
+    public Set<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> getRemotingDrivers() { return remotingDrivers; }
 
     public Set<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
                                      ? extends ServiceRegistryConfig<?, ?>>> getServiceRegistryDrivers() {
-        return this.serviceRegistryDrivers;
+        return serviceRegistryDrivers;
     }
 
-    public Duration getSystemMonitorRefreshInterval() { return this.systemMonitorRefreshInterval; }
+    public Duration getSystemMonitorRefreshInterval() { return systemMonitorRefreshInterval; }
 
     public static Builder newBuilder() { return new Builder(); }
 
@@ -178,6 +178,9 @@ public class ReActorSystemConfig {
             return this;
         }
 
+        /**
+         * @throws IllegalArgumentException if any of the supplied arguments do not comply with the provided boundaries
+         */
         public ReActorSystemConfig build() {
             return new ReActorSystemConfig(this);
         }

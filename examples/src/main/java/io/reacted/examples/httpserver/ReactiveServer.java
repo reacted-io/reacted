@@ -99,18 +99,18 @@ public class ReactiveServer {
         public void handle(HttpExchange exchange) {
             handleResponse(exchange, "GET".equals(exchange.getRequestMethod())
                                      ? handleGetRequest(exchange)
-                                     : List.of(), this.requestCounter.incrementAndGet());
+                                     : List.of(), requestCounter.incrementAndGet());
         }
 
         private void handleResponse(HttpExchange exchange, List<String> filenames, long requestId) {
             if (!filenames.isEmpty()) {
-                this.reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId,
-                                                                     this.outputExecutor, this.backpressureExecutor,
-                                                                     this.singleThreadedSequencer),
-                                                ReActorConfig.newBuilder()
-                                                             .setReActorName("Request " + requestId)
-                                                             .setDispatcherName(RESPONSE_DISPATCHER)
-                                                             .build());
+                reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId,
+                                                                outputExecutor, backpressureExecutor,
+                                                                singleThreadedSequencer),
+                                           ReActorConfig.newBuilder()
+                                                        .setReActorName("Request " + requestId)
+                                                        .setDispatcherName(RESPONSE_DISPATCHER)
+                                                        .build());
             }
         }
 
@@ -155,16 +155,16 @@ public class ReactiveServer {
                             .reAct(ReActorInit.class, this::onInit)
                             .reAct(ReactedSubmissionPublisher.class, this::onDataPublisher)
                             .reAct(InternalError.class, (raCtx, error) -> handleError(raCtx, error.anyError))
-                            .reAct(ReActorStop.class, (raCtx, error) -> this.onStop(raCtx))
+                            .reAct(ReActorStop.class, (raCtx, error) -> onStop(raCtx))
                             .reAct(ReActions::noReAction)
                             .build();
         }
 
         private void onInit(ReActorContext raCtx, ReActorInit init) {
             raCtx.logInfo("Initing {}", raCtx.getSelf().getReActorId().getReActorName());
-            Try.ofRunnable(() -> this.httpCtx.sendResponseHeaders(200, 0))
+            Try.ofRunnable(() -> httpCtx.sendResponseHeaders(200, 0))
                .flatMap(noVal -> Try.ofRunnable(() -> sendData("<html><body>")))
-               .map(noVal -> spawnPathReaders(this.filePaths, raCtx, this.requestId))
+               .map(noVal -> spawnPathReaders(filePaths, raCtx, requestId))
                .flatMap(Try::identity)
                .ifError(error -> handleError(raCtx, error));
         }
@@ -172,12 +172,12 @@ public class ReactiveServer {
         private void onDataPublisher(ReActorContext raCtx, ReactedSubmissionPublisher<String> publisher) {
             var sender = raCtx.getSender();
             publisher.subscribe(ReactedSubmissionPublisher.ReActedSubscription.<String>newBuilder()
-                                        .setAsyncBackpressurer(this.asyncBackpressureExecutor)
+                                        .setAsyncBackpressurer(asyncBackpressureExecutor)
                                         .setSubscriberName("sub_" + raCtx.getSender().getReActorId().getReActorName())
                                         .setBufferSize(ReactiveServer.BACKPRESSURING_BUFFER_SIZE)
                                         .setBackpressureTimeout(ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION)
-                                        .setSequencer(this.sequencer)
-                                        .setSubscriber(getNexDataConsumer(raCtx, this.outputExecutor))
+                                        .setSequencer(sequencer)
+                                        .setSubscriber(getNexDataConsumer(raCtx, outputExecutor))
                                         .build())
                      .thenAccept(noVal -> sender.tell(raCtx.getSelf(), new StartPublishing()));
         }
@@ -219,8 +219,8 @@ public class ReactiveServer {
         private void onStop(ReActorContext raCtx) {
             logOnStop(raCtx);
             Try.ofRunnable(() -> sendData("</body></html>"))
-               .ifSuccess(noVal -> { this.outputStream.flush();
-                                     this.outputStream.close(); });
+               .ifSuccess(noVal -> { outputStream.flush();
+                                     outputStream.close(); });
         }
 
         private void handleError(ReActorContext raCtx, Throwable anyError) {
@@ -229,7 +229,7 @@ public class ReactiveServer {
         }
 
         private void sendData(String htmlResponse) throws IOException {
-            this.outputStream.write(htmlResponse.getBytes());
+            outputStream.write(htmlResponse.getBytes());
         }
 
         private Try<ReActorRef> spawnPathReaders(List<String> filePaths,
@@ -261,7 +261,9 @@ public class ReactiveServer {
                                                    .reAct(ReActorStop.class,
                                                           (raCtx, stop) -> onStop(raCtx))
                                                    .reAct(StartPublishing.class,
-                                                          (raCtx, pubStart) -> CompletableFuture.runAsync(() -> readFileLine(raCtx, this.fileLines)))
+                                                          (raCtx, pubStart) ->
+                                                          CompletableFuture.runAsync(() -> readFileLine(raCtx,
+                                                                                                        fileLines)))
                                                    .reAct(ReActions::noReAction)
                                                    .build();
             this.readFileWorkerCfg = ReActorConfig.newBuilder()
@@ -274,7 +276,7 @@ public class ReactiveServer {
 
         @Nonnull
         @Override
-        public ReActions getReActions() { return this.readFileWorkerBehavior; }
+        public ReActions getReActions() { return readFileWorkerBehavior; }
 
         @Nonnull
         @Override
@@ -285,19 +287,19 @@ public class ReactiveServer {
                                 .orElse(null, error -> raCtx.getParent().tell(raCtx.getSelf(),
                                                                               new InternalError(error)));
 
-            if (this.fileLines == null) {
-                this.dataPublisher.close();
+            if (fileLines == null) {
+                dataPublisher.close();
                 return;
             }
-            ifNotDelivered(raCtx.getParent().tell(raCtx.getSelf(), this.dataPublisher),
+            ifNotDelivered(raCtx.getParent().tell(raCtx.getSelf(), dataPublisher),
                            error -> raCtx.getParent().tell(raCtx.getSelf(), new InternalError(error)));
         }
 
         private void onStop(ReActorContext raCtx) {
             logOnStop(raCtx);
-            this.dataPublisher.interrupt();
-            if (this.fileLines != null) {
-                Try.ofRunnable(() -> this.fileLines.close());
+            dataPublisher.interrupt();
+            if (fileLines != null) {
+                Try.ofRunnable(() -> fileLines.close());
             }
         }
 
@@ -309,11 +311,11 @@ public class ReactiveServer {
                 char[] buffer = new char[ReactiveServer.READ_CHUNK_SIZE];
                 int read = file.read(buffer);
                 if (read == -1) {
-                    this.dataPublisher.close();
+                    dataPublisher.close();
                     return;
                 }
-                this.dataPublisher.backpressurableSubmit(new String(buffer, 0, read))
-                                  .thenAccept(noVal -> readFileLine(raCtx, Objects.requireNonNull(fileLines)));
+                dataPublisher.backpressurableSubmit(new String(buffer, 0, read))
+                             .thenAccept(noVal -> readFileLine(raCtx, Objects.requireNonNull(fileLines)));
             } catch (Exception exc) {
                 raCtx.getParent().tell(raCtx.getSelf(), new InternalError(exc));
             }

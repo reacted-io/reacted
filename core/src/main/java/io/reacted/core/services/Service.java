@@ -77,22 +77,22 @@ public class Service implements ReActiveEntity {
     }
 
     public void onServicePublicationError(ReActorContext raCtx, ServicePublicationRequestError error) {
-        if (!this.serviceConfig.isRemoteService()) {
+        if (!serviceConfig.isRemoteService()) {
             return;
         }
         Try.of(() -> raCtx.getReActorSystem()
                           .getSystemSchedulingService()
-                          .schedule(() -> sendPublicationRequest(raCtx, this.serviceInfo),
-                                    this.serviceConfig.getServiceRepublishReattemptDelayOnError().toMillis(),
+                          .schedule(() -> sendPublicationRequest(raCtx, serviceInfo),
+                                    serviceConfig.getServiceRepublishReattemptDelayOnError().toMillis(),
                                     TimeUnit.MILLISECONDS))
            .peekFailure(failure -> raCtx.logError("Unable to reschedule service publication", failure))
            .ifError(failure -> raCtx.getSelf().tell(raCtx.getSender(), error));
     }
 
     private void onSystemInfoReport(ReActorContext raCtx, SystemMonitorReport report) {
-        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_CPU_LOAD, report.getCpuLoad());
-        this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_FREE_MEMORY_SIZE, report.getFreeMemorySize());
-        updateServiceRegistry(raCtx, this.serviceInfo);
+        serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_CPU_LOAD, report.getCpuLoad());
+        serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_FREE_MEMORY_SIZE, report.getFreeMemorySize());
+        updateServiceRegistry(raCtx, serviceInfo);
     }
 
     private void stopService(ReActorContext raCtx, ReActorStop stop) {
@@ -125,13 +125,13 @@ public class Service implements ReActiveEntity {
                 raCtx.logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);
             }
         }
-        if (this.serviceConfig.isRemoteService()) {
-            sendPublicationRequest(raCtx, this.serviceInfo);
+        if (serviceConfig.isRemoteService()) {
+            sendPublicationRequest(raCtx, serviceInfo);
         }
     }
 
     private void serviceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
-        if (!request.getSearchFilter().matches(this.serviceInfo, raCtx.getSelf())) {
+        if (!request.getSearchFilter().matches(serviceInfo, raCtx.getSelf())) {
             return;
         }
 
@@ -177,7 +177,7 @@ public class Service implements ReActiveEntity {
     }
 
     private void updateServiceRegistry(ReActorContext raCtx, Properties serviceInfo) {
-        if (!this.serviceConfig.isRemoteService()) {
+        if (!serviceConfig.isRemoteService()) {
             return;
         }
 

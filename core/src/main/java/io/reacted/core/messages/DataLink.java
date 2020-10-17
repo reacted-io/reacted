@@ -46,7 +46,7 @@ public class DataLink implements Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        Objects.requireNonNull(this.generatingReActorSystem).writeExternal(out);
+        Objects.requireNonNull(generatingReActorSystem).writeExternal(out);
         out.writeInt(Objects.requireNonNull(ackingPolicy).ordinal());
     }
 
