@@ -12,16 +12,23 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.patterns.Try;
+
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class SystemLocalDriversTest {
     private static final String TMP_TEST_DIRECT_COMMUNICATION_TXT = "/tmp/testDirectCommunication.txt";
@@ -32,7 +39,6 @@ class SystemLocalDriversTest {
 
     @BeforeEach
     void setUp() {
-        localDriver = SystemLocalDrivers.getDirectCommunicationLogger(TMP_TEST_DIRECT_COMMUNICATION_TXT);
         actorMbox = new BasicMbox();
         reActorContext = ReActorContext.newBuilder()
                 .setMbox(ctx -> actorMbox)
@@ -48,24 +54,49 @@ class SystemLocalDriversTest {
 
     @Test
     void fileCreatedInDirectCommunicationLogger() {
+        localDriver = SystemLocalDrivers.getDirectCommunicationLogger(TMP_TEST_DIRECT_COMMUNICATION_TXT);
         Assertions.assertEquals("DIRECT_COMMUNICATION@LOGGING_DIRECT_COMMUNICATION-",
-                                localDriver.getChannelId().toString());
+                localDriver.getChannelId().toString());
         Assertions.assertTrue(new File(TMP_TEST_DIRECT_COMMUNICATION_TXT).exists());
     }
 
-    @Test
-    void messageIsLoggedInDirectCommunicationLogger() throws IOException {
+    private static Stream<Arguments> incorrectLogPaths() {
+        return Stream.of(
+                // no file name specified
+                Arguments.of("/tmps/"),
+                // directory not existent
+                Arguments.of("/tmps/test.txt"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("incorrectLogPaths")
+    void logfileNotCreatedWhenFileNameIsIncorrect(String logPath) {
+        Assertions.assertThrows(UncheckedIOException.class,
+                () -> SystemLocalDrivers.getDirectCommunicationLogger(logPath));
+    }
+
+    private static Stream<Arguments> logPaths() {
+        return Stream.of(
+                Arguments.of(TMP_TEST_DIRECT_COMMUNICATION_TXT),
+                Arguments.of("/tmp/testDirect Communication.txt")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("logPaths")
+    void messageIsLoggedInDirectCommunicationLogger(String logPath) throws IOException {
+        localDriver = SystemLocalDrivers.getDirectCommunicationLogger(logPath);
         localDriver.sendMessage(reActorContext, defaultMessage);
 
         Assertions.assertEquals(defaultMessage.toString(),
-                                Files.readString(Path.of(TMP_TEST_DIRECT_COMMUNICATION_TXT),
-                                                 StandardCharsets.US_ASCII).strip());
+                Files.readString(Path.of(logPath), StandardCharsets.US_ASCII).strip());
     }
 
     @Test
     void simpleAsyncMessageIsSent() throws ExecutionException, InterruptedException {
+        localDriver = SystemLocalDrivers.getDirectCommunicationLogger(TMP_TEST_DIRECT_COMMUNICATION_TXT);
         CompletionStage<Try<DeliveryStatus>> tryCompletionStage = localDriver.sendAsyncMessage(reActorContext,
-                                                                                               defaultMessage);
+                defaultMessage);
 
         Assertions.assertTrue(
                 tryCompletionStage.toCompletableFuture().get().stream().findFirst().get().isDelivered());
@@ -74,9 +105,10 @@ class SystemLocalDriversTest {
 
     @Test
     void simpleAsyncMessageNotSentWhenDestinationIsStopped() throws ExecutionException, InterruptedException {
+        localDriver = SystemLocalDrivers.getDirectCommunicationLogger(TMP_TEST_DIRECT_COMMUNICATION_TXT);
         reActorContext.stop();
         CompletionStage<Try<DeliveryStatus>> tryCompletionStage = localDriver.sendAsyncMessage(reActorContext,
-                                                                                               defaultMessage);
+                defaultMessage);
 
         Assertions.assertTrue(
                 tryCompletionStage.toCompletableFuture().get().stream().findFirst().get().isNotDelivered());
@@ -84,6 +116,7 @@ class SystemLocalDriversTest {
 
     @Test
     void deliveryStatusIsDeliveredWhenMessageIsSent() {
+        localDriver = SystemLocalDrivers.getDirectCommunicationLogger(TMP_TEST_DIRECT_COMMUNICATION_TXT);
         Try<DeliveryStatus> deliveryStatusTry = localDriver.sendMessage(reActorContext, defaultMessage);
         Assertions.assertTrue(deliveryStatusTry.get().isDelivered());
     }
