@@ -81,8 +81,9 @@ class PingPongApp {
                                                                    .setLoadBalancingPolicy(Service.LoadBalancingPolicy.ROUND_ROBIN)
                                                                    .setReActorName("ServerService")
                                                                    .setRouteesNum(1)
+                                                                   .setIsRemoteService(true)
                                                                    .build()).orElseSneakyThrow();
-        TimeUnit.SECONDS.sleep(10);
+        TimeUnit.SECONDS.sleep(5);
         var remoteService = clientSystem.serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                            .setServiceName("ServerService")
                                                                                            .build())
