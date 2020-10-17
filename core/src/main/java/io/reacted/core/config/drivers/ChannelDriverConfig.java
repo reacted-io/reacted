@@ -12,6 +12,7 @@ import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
+import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
@@ -22,10 +23,12 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
                                        BuiltT extends InheritableBuilder<BuilderT, BuiltT>>
         extends InheritableBuilder<BuilderT, BuiltT> {
     public static final Duration NEVER_FAIL = Duration.ofNanos(Long.MAX_VALUE);
+    public static final Duration DEFAULT_MSG_LOST_TIMEOUT = Duration.ofSeconds(20);
     public static final String CHANNEL_ID_PROPERTY_NAME = "channelName";
     private final String channelName;
     private final boolean deliveryAckRequiredByChannel;
     private final Duration atellAutomaticFailureTimeout;
+    private final Duration ackCacheCleanupInterval;
 
     protected ChannelDriverConfig(Builder<BuilderT, BuiltT> builder) {
         super(builder);
@@ -34,6 +37,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         this.atellAutomaticFailureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.atellFailureTimeout,
                                                                                                   Long.MAX_VALUE,
                                                                                                   TimeUnit.NANOSECONDS);
+        this.ackCacheCleanupInterval = ObjectUtils.checkNonNullPositiveTimeInterval(builder.ackCacheCleanupInterval);
     }
 
     public Properties getProperties() {
@@ -50,11 +54,14 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
 
     public Properties getChannelProperties() { return new Properties(); }
 
+    public Duration getAckCacheCleanupInterval() { return ackCacheCleanupInterval; }
+
     public static abstract class Builder<BuilderT, BuiltT>
             extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String channelName;
-        private Duration atellFailureTimeout = NEVER_FAIL;
+        private Duration atellFailureTimeout = DEFAULT_MSG_LOST_TIMEOUT;
+        private Duration ackCacheCleanupInterval = DEFAULT_MSG_LOST_TIMEOUT;
         private boolean deliveryAckRequiredByChannel;
 
         public final BuilderT setChannelName(String channelName) {
@@ -78,12 +85,24 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         /**
          * Specify after how much time a not acknowledged message from {@link io.reacted.core.reactorsystem.ReActorRef#atell}
          * should be automatically marked as completed as a failure
-         * @param atellFailureTimeout the automatic failure timeout. Default {@link ChannelDriverConfig#NEVER_FAIL}
+         * @param atellFailureTimeout the automatic failure timeout. Default {@link ChannelDriverConfig#DEFAULT_MSG_LOST_TIMEOUT}
          *                            Max Value: {@link Long#MAX_VALUE} nanosecs
          * @return this builder
          */
-        public final BuilderT setAckedTellAutomaticFailureAfterTimeout(Duration atellFailureTimeout) {
+        public final BuilderT setAtellAutomaticFailureAfterTimeout(Duration atellFailureTimeout) {
             this.atellFailureTimeout = atellFailureTimeout;
+            return getThis();
+        }
+
+        /**
+         * Specify how often the cache used for keeping the pending acks triggers for {@link io.reacted.core.reactorsystem.ReActorRef#atell}
+         * should be checked for maintenance
+         *
+         * @param ackCacheCleanupInterval Cache cleanup rate. Positive intervals only, default: {@link ChannelDriverConfig#DEFAULT_MSG_LOST_TIMEOUT}
+         * @return this builder
+         */
+        public final BuilderT setAckCacheCleanupInterval(Duration ackCacheCleanupInterval) {
+            this.ackCacheCleanupInterval = ackCacheCleanupInterval;
             return getThis();
         }
     }

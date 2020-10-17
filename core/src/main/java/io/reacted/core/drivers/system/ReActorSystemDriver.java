@@ -43,6 +43,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -53,6 +54,8 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
     private final ConfigT driverConfig;
     private final Cache<Long, CompletableFuture<Try<DeliveryStatus>>> pendingAcksTriggers;
+    @Nullable
+    private ScheduledFuture<?> cacheMainteinanceTask;
     @Nullable
     private ReActorSystem localReActorSystem;
     @Nullable
@@ -116,6 +119,13 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                                                                  thread.getName(), error))
                 .build();
         this.driverThread = Executors.newFixedThreadPool(1, driverThreadDetails);
+        this.cacheMainteinanceTask = localReActorSystem.getSystemSchedulingService()
+                                                       .scheduleWithFixedDelay(pendingAcksTriggers::cleanUp,
+                                                                               getDriverConfig().getAckCacheCleanupInterval()
+                                                                                                .toMillis(),
+                                                                               getDriverConfig().getAckCacheCleanupInterval()
+                                                                                                .toMillis(),
+                                                                               TimeUnit.MILLISECONDS);
 
         Try<Void> initDriver = CompletableFuture.runAsync(() -> REACTOR_SYSTEM_CTX.set(new DriverCtx(localReActorSystem, this)),
                                                           driverThread)
@@ -131,6 +141,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     }
 
     public CompletionStage<Try<Void>> stopDriverCtx(ReActorSystem reActorSystem) {
+        Objects.requireNonNull(cacheMainteinanceTask).cancel(true);
         Objects.requireNonNull(driverThread).shutdownNow();
         return cleanDriverLoop();
     }

@@ -24,6 +24,7 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.exceptions.ChannelUnavailableException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -126,6 +127,10 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
         Properties dstChannelIdProperties = message.getDestination().getReActorSystemRef().getGateProperties();
         String dstChannelIdName = dstChannelIdProperties.getProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME);
+        if (dstChannelIdName == null) {
+            //channel has been removed!
+            return Try.ofFailure(new ChannelUnavailableException());
+        }
         SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram> grpcLink;
         grpcLink = gatesStubs.computeIfAbsent(dstChannelIdName,
                                               channelName -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties,
