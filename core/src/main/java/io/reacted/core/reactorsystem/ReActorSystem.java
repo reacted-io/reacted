@@ -11,6 +11,7 @@ package io.reacted.core.reactorsystem;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.config.reactors.TypedSubscription;
@@ -903,7 +904,7 @@ public class ReActorSystem {
                                Function<? super Throwable, ExceptionT> exceptionMapper) throws ExceptionT {
         Try.of(() -> deliveryAttempt.toCompletableFuture().join())
            .flatMap(Try::identity)
-           .filter(DeliveryStatus::isDelivered)
+           .filter(DeliveryStatus::isDelivered, DeliveryException::new)
            .orElseThrow(exceptionMapper::apply);
     }
 }

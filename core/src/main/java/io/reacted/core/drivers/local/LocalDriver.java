@@ -52,11 +52,13 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           var ackTrigger = removePendingAckTrigger(message.getSequenceNumber());
 
           if (deliveryAttempt.isPresent()) {
-               var deliveryAttemptStatus = deliveryAttempt.get();
-               deliveryAttemptStatus.thenAccept(deliveryStatus -> ackTrigger.ifPresent(trigger -> trigger.complete(deliveryStatus)));
+               var attemptResult = deliveryAttempt.get();
+               attemptResult.thenAccept(status -> ackTrigger.ifPresent(trigger -> trigger.toCompletableFuture()
+                                                                                         .complete(status)));
 
           } else {
-               ackTrigger.ifPresent(trigger -> trigger.complete(TARGET_MISSING));
+               ackTrigger.ifPresent(trigger -> trigger.toCompletableFuture()
+                                                      .complete(TARGET_MISSING));
                propagateToDeadLetters(getLocalReActorSystem().getSystemDeadLetters(), message);
           }
      }

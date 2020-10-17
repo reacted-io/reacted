@@ -8,17 +8,30 @@
 
 package io.reacted.core.utils;
 
+import io.reacted.core.exceptions.DeliveryException;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.Try;
+import io.reacted.patterns.UnChecked;
 
 import java.io.Serializable;
 import java.time.Duration;
+import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 @NonNullByDefault
 public final class ReActedUtils {
     private ReActedUtils() { /* No Implementation required */ }
+
+    public static void ifNotDelivered(CompletionStage<Try<DeliveryStatus>> deliveryAttempt,
+                                      Try.TryConsumer<Throwable> onFailedDelivery) {
+        deliveryAttempt.thenAcceptAsync(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered,
+                                                                                      DeliveryException::new)
+                                                                              .ifError(onFailedDelivery));
+    }
 
     public static  <PayloadT extends Serializable> void rescheduleIf(BiConsumer<ReActorContext, PayloadT> realCall,
                                                                      Supplier<Boolean> shouldReschedule,

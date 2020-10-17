@@ -56,9 +56,9 @@ public final class ObjectUtils {
     public static <ElementT extends Comparable<ElementT>, ExceptionT extends RuntimeException>
     ElementT requiredInRange(ElementT element, ElementT inclusiveRangeStart, ElementT inclusiveRangeEnd,
                              Supplier<ExceptionT> onError) {
-        if (!(java.util.Objects.requireNonNull(inclusiveRangeEnd).compareTo(java.util.Objects.requireNonNull(inclusiveRangeStart)) < 0) &&
-            java.util.Objects.requireNonNull(element).compareTo(inclusiveRangeStart) >= 0 &&
-                element.compareTo(inclusiveRangeEnd) <= 0) {
+        if (!(Objects.requireNonNull(inclusiveRangeEnd).compareTo(Objects.requireNonNull(inclusiveRangeStart)) < 0) &&
+              Objects.requireNonNull(element).compareTo(inclusiveRangeStart) >= 0 &&
+              element.compareTo(inclusiveRangeEnd) <= 0) {
             return element;
         }
         throw onError.get();
@@ -67,8 +67,9 @@ public final class ObjectUtils {
     public static <ReturnT, OnErrorT extends RuntimeException>  ReturnT
     requiredCondition(ReturnT element, Predicate<ReturnT> controlPredicate,
                       Supplier<OnErrorT> onControlPredicateFailure) {
-        if (controlPredicate.negate().test(element)) {
-            throw onControlPredicateFailure.get();
+        if (Objects.requireNonNull(controlPredicate)
+                   .negate().test(Objects.requireNonNull(element))) {
+            throw Objects.requireNonNull(onControlPredicateFailure).get();
         }
         return element;
     }

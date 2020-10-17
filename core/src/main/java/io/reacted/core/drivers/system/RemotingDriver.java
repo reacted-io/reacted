@@ -9,6 +9,7 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -58,7 +59,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                                                  ackingPolicy, message));
         CompletionStage<Try<DeliveryStatus>> tellResult;
         if (isAckRequired) {
-            tellResult = sendResult.filter(DeliveryStatus::isDelivered)
+            tellResult = sendResult.filter(DeliveryStatus::isDelivered, DeliveryException::new)
                                    .map(success -> pendingAck)
                                    .peekFailure(error -> removePendingAckTrigger(nextSeqNum))
                                    .orElseGet(() -> CompletableFuture.completedFuture(sendResult));
@@ -109,7 +110,8 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
                 removePendingAckTrigger(deliveryStatusUpdate.getMsgSeqNum())
-                        .ifPresent(pendingAckTrigger -> pendingAckTrigger.complete(Try.ofSuccess(deliveryStatusUpdate.getDeliveryStatus())));
+                        .ifPresent(pendingAckTrigger -> pendingAckTrigger.toCompletableFuture()
+                                                                         .complete(Try.ofSuccess(deliveryStatusUpdate.getDeliveryStatus())));
                 //This is functionally useless because systemSink by design swallows received messages, it is required
                 //only for consistent logging if a logging direct communication local driver is used because in this way
                 //also the ACK will appear in logs
@@ -130,13 +132,12 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         }
         boolean isAckRequired = !hasBeenSniffed &&
                                 message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
-        var deliverAttempt = (isAckRequired ? destination.tell(sender, payload) : destination.aTell(sender, payload)).toCompletableFuture();
+        var deliverAttempt = (isAckRequired ? destination.tell(sender, payload) : destination.aTell(sender, payload));
         if (isAckRequired) {
             deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
                                                                        getLocalReActorSystem().getNewSeqNum(), this,
                                                                        deliveryResult, message)
-                                    .peekFailure(Throwable::printStackTrace)
-                                  .ifError(error -> getLocalReActorSystem().logError("Unable to send ack", error)));
+                                                        .ifError(error -> getLocalReActorSystem().logError("Unable to send ack", error)));
         }
     }
 }

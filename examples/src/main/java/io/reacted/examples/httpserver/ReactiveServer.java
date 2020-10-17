@@ -15,6 +15,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher;
@@ -45,6 +46,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class ReactiveServer {
@@ -286,12 +289,8 @@ public class ReactiveServer {
                 this.dataPublisher.close();
                 return;
             }
-            raCtx.getParent()
-                 .tell(raCtx.getSelf(), this.dataPublisher)
-                 .thenAccept(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
-                                                               .ifError(error -> raCtx.getParent()
-                                                                                      .tell(raCtx.getSelf(),
-                                                                                            new InternalError(error))));
+            ifNotDelivered(raCtx.getParent().tell(raCtx.getSelf(), this.dataPublisher),
+                           error -> raCtx.getParent().tell(raCtx.getSelf(), new InternalError(error)));
         }
 
         private void onStop(ReActorContext raCtx) {

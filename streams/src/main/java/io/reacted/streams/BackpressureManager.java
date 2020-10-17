@@ -17,6 +17,7 @@ import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.messages.PublisherComplete;
@@ -33,6 +34,8 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
+
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription, AutoCloseable {
@@ -150,12 +153,11 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         this.backpressurerCtx = raCtx;
         this.backpressuringMbox = (BackpressuringMbox)raCtx.getMbox();
-        var requestDelivery = this.feedGate.tell(raCtx.getSelf(),
-                                                 new SubscriptionRequest(raCtx.getSelf()));
+
         Try.TryConsumer<Throwable> onSubscriptionError = error -> { this.subscriber.onSubscribe(this);
                                                                     errorTermination(raCtx, error, this.subscriber); };
-        requestDelivery.thenAccept(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered)
-                                                                         .ifError(onSubscriptionError));
+        ifNotDelivered(this.feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())),
+                       onSubscriptionError);
     }
 
     private void completeTermination(ReActorContext raCtx, Flow.Subscriber<? super PayloadT> localSubscriber) {

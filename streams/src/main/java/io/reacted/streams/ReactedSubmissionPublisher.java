@@ -23,6 +23,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.utils.ObjectUtils;
+import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.PublisherShutdown;
@@ -37,6 +38,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serializable;
+import java.sql.Time;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
@@ -48,8 +50,11 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
@@ -442,13 +447,11 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     private void onSubscriptionRequest(ReActorContext raCtx, SubscriptionRequest subscription) {
-        subscription.getSubscriptionBackpressuringManager()
-                    .aTell(raCtx.getSelf(),
-                           new SubscriptionReply(this.subscribers.add(subscription.getSubscriptionBackpressuringManager())))
-                    .thenAccept(delivery -> delivery.filter(DeliveryStatus::isDelivered, IllegalStateException::new)
-                                                    .ifError(error -> raCtx.logError("Unable to deliver subscription confirmation to {}",
-                                                                                     subscription.getSubscriptionBackpressuringManager(),
-                                                                                     error)));
+        var backpressuringManager = subscription.getSubscriptionBackpressuringManager();
+        ifNotDelivered(backpressuringManager.aTell(raCtx.getSelf(),
+                                                   new SubscriptionReply(this.subscribers.add(backpressuringManager))),
+                    error -> raCtx.logError("Unable to deliver subscription confirmation to {}",
+                                            subscription.getSubscriptionBackpressuringManager(), error));
     }
 
     private void onUnSubscriptionRequest(ReActorContext raCtx, UnsubscriptionRequest unsubscriptionRequest) {
@@ -480,9 +483,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
             this.subscriber = Objects.requireNonNull(builder.subscriber);
             this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                           IllegalArgumentException::new);
-            this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
-                                                                     timeout -> timeout.compareTo(RELIABLE_SUBSCRIPTION) <= 0,
-                                                                     IllegalArgumentException::new);
+            this.backpressureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.backpressureTimeout,
+                                                                                             RELIABLE_SUBSCRIPTION.toNanos(),
+                                                                                             TimeUnit.NANOSECONDS);
             this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer);
             this.subscriberName = Objects.requireNonNull(builder.subscriberName);
             this.sequencer = builder.sequencer == null

@@ -27,6 +27,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ServiceConfig;
+import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.Try;
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -36,6 +37,8 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 public class Service implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
@@ -178,20 +181,17 @@ public class Service implements ReActiveEntity {
             return;
         }
 
-        sendPublicationRequest(raCtx, serviceInfo)
-             .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
-                                                                .ifError(error -> raCtx.logError("Unable to refresh " +
-                                                                                                 "service info {}",
-                                                                                                 serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME),
-                                                                                                 error)));
+        ifNotDelivered(sendPublicationRequest(raCtx, serviceInfo),
+                       error -> raCtx.logError("Unable to refresh service info {}",
+                                               serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME),
+                                               error));
     }
 
     private static CompletionStage<Try<DeliveryStatus>> sendPublicationRequest(ReActorContext raCtx,
                                                                                Properties serviceInfo) {
         return raCtx.getReActorSystem()
                     .getSystemRemotingRoot()
-                    .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(),
-                                                                         serviceInfo));
+                    .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), serviceInfo));
     }
 
     public static class RouteeReSpawnRequest implements Serializable {

@@ -57,9 +57,9 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
                                                                           localReActorSystem.getLocalReActorSystemId(),
                                                                           ackingPolicy, payload));
             if (isAckRequired) {
-                tellResult.thenAccept(deliveryStatusTry -> localDriver.removePendingAckTrigger(seqNum)
-                                                                      .ifPresent(deliveryAttempt -> deliveryAttempt.toCompletableFuture()
-                                                                                                                   .complete(deliveryStatusTry)));
+                tellResult.thenAccept(deliveryResult -> localDriver.removePendingAckTrigger(seqNum)
+                                                                   .ifPresent(deliveryAttempt -> deliveryAttempt.toCompletableFuture()
+                                                                                                                .complete(deliveryResult)));
                 tellResult = pendingAck;
             }
 

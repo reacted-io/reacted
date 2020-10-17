@@ -84,7 +84,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     /**
      * @param src source of the message
      * @param dst destination of the message
-     * @param ackingPolicy An {@link AckingPolicy} defining how or if this message should be ack-ed
+     * @param ackingPolicy A {@link AckingPolicy} defining how or if this message should be ack-ed
      * @param message payload
      * @return a completion stage that is going to be completed on error or when the message is successfully delivered
      *         to the target mailbox
@@ -94,7 +94,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                                                                               AckingPolicy ackingPolicy,
                                                                                               PayloadT message);
 
-    public Optional<CompletableFuture<Try<DeliveryStatus>>> removePendingAckTrigger(long msgSeqNum) {
+    public Optional<CompletionStage<Try<DeliveryStatus>>> removePendingAckTrigger(long msgSeqNum) {
         var ackTrigger = this.pendingAcksTriggers.getIfPresent(msgSeqNum);
         this.pendingAcksTriggers.invalidate(msgSeqNum);
         return Optional.ofNullable(ackTrigger);
@@ -111,22 +111,22 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
         ThreadFactory driverThreadDetails = new ThreadFactoryBuilder()
                 .setNameFormat(localReActorSystem.getLocalReActorSystemId().getReActorSystemName() + "-" +
                                getChannelId() + "-" + getClass().getSimpleName() + "-driver-%d")
-                .setUncaughtExceptionHandler((thread, error) -> localReActorSystem.logError("Uncaught error in driver thread {} ",
-                                                                                            thread.getName(), error))
+                .setUncaughtExceptionHandler((thread, error) ->
+                                                     localReActorSystem.logError("Uncaught error in driver thread {} ",
+                                                                                 thread.getName(), error))
                 .build();
         this.driverThread = Executors.newFixedThreadPool(1, driverThreadDetails);
 
-        Try<Void> initDriver = CompletableFuture.runAsync(() -> REACTOR_SYSTEM_CTX.set(new DriverCtx(localReActorSystem,
-                                                                                                     this)),
+        Try<Void> initDriver = CompletableFuture.runAsync(() -> REACTOR_SYSTEM_CTX.set(new DriverCtx(localReActorSystem, this)),
                                                           driverThread)
                                                 .thenApplyAsync(vV -> Try.ofRunnable(() -> initDriverLoop(localReActorSystem)),
                                                                 driverThread)
                                                 .join();
-        initDriver.peekFailure(error -> LOGGER.error("Driver {} init failed",getClass().getSimpleName(), error))
-                  .peekFailure(error -> stopDriverCtx(localReActorSystem))
-                  .ifSuccess(vV -> CompletableFuture.supplyAsync(() -> Try.ofRunnable(getDriverLoop()), driverThread)
-                                                    .thenAccept(retVal -> retVal.peekFailure(error -> LOGGER.error("Driver body failed:", error))
-                                                                                .ifError(error -> stopDriverCtx(localReActorSystem))));
+        initDriver.ifSuccessOrElse(vV -> CompletableFuture.supplyAsync(() -> Try.ofRunnable(getDriverLoop()), driverThread)
+                                                          .thenAccept(retVal -> retVal.peekFailure(error -> LOGGER.error("Driver body failed:", error))
+                                                                                      .ifError(error -> stopDriverCtx(localReActorSystem))),
+                                   error -> { LOGGER.error("Driver {} init failed", getClass().getSimpleName(), error);
+                                              stopDriverCtx(localReActorSystem); });
         return initDriver;
     }
 

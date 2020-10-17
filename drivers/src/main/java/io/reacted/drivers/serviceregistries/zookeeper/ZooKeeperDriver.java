@@ -71,6 +71,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
+
 @NonNullByDefault
 public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig.Builder, ZooKeeperDriverConfig> {
     public static final String ZK_CONNECTION_STRING = "zkConnectionString";
@@ -350,11 +352,9 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
 
     private static TreeCacheListener getTreeListener(ReActorSystem reActorSystem, ReActorRef driverReActor) {
         return (curatorFramework, treeCacheEvent) ->
-                cacheEventsRouter(curatorFramework, treeCacheEvent, reActorSystem, driverReActor)
-                        .thenAccept(attempt -> attempt.filter(DeliveryStatus::isDelivered, DeliveryException::new)
-                                                      .ifError(error -> reActorSystem.logError("Error handling zookeeper event {}",
-                                                                                               treeCacheEvent.toString(),
-                                                                                               error)));
+                ifNotDelivered(cacheEventsRouter(curatorFramework, treeCacheEvent, reActorSystem, driverReActor),
+                              error -> reActorSystem.logError("Error handling zookeeper event {}",
+                                                              treeCacheEvent.toString(), error));
     }
 
     private static CompletionStage<Try<DeliveryStatus>>

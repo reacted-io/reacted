@@ -21,9 +21,12 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.SelectionType;
+import io.reacted.core.utils.ReActedUtils;
 
 import javax.annotation.Nonnull;
 import java.time.ZonedDateTime;
+
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 public class TimeReActor implements ReActor {
     private final String serviceToQuery;
@@ -46,22 +49,18 @@ public class TimeReActor implements ReActor {
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
-        raCtx.getReActorSystem()
-             .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
-                                                                .setServiceName(serviceToQuery)
-                                                                .setSelectionType(SelectionType.DIRECT)
-                                                                .build(), raCtx.getSelf())
-             .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
-                                                                .ifError(error -> raCtx.logError("Error discovering service",
-                                                                                                 error)));
+        ifNotDelivered(raCtx.getReActorSystem()
+                            .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
+                                                                               .setServiceName(serviceToQuery)
+                                                                               .setSelectionType(SelectionType.DIRECT)
+                                                                               .build(), raCtx.getSelf()),
+                       error -> raCtx.logError("Error discovering service", error));
     }
 
     private void onServiceDiscoveryReply(ReActorContext raCtx, ServiceDiscoveryReply serviceDiscoveryReply) {
         var gate = serviceDiscoveryReply.getServiceGates().stream().findAny();
-        gate.ifPresentOrElse(serviceGate -> serviceGate.tell(raCtx.getSelf(), new TimeRequest())
-                                                       .toCompletableFuture()
-                                                       .thenAccept(result -> result.filter(DeliveryStatus::isDelivered)
-                                                                                   .ifError(Throwable::printStackTrace)),
+        gate.ifPresentOrElse(serviceGate -> ifNotDelivered(serviceGate.tell(raCtx.getSelf(), new TimeRequest()),
+                                                          Throwable::printStackTrace),
                              () -> raCtx.logError("No service discovery response received"));
     }
 

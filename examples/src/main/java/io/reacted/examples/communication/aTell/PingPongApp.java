@@ -22,6 +22,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
+import io.reacted.core.utils.ReActedUtils;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
@@ -93,10 +94,6 @@ class PingPongApp {
         var clientReActor = clientSystem.spawn(new ClientReActor(remoteService)).orElseSneakyThrow();
 
         //The reactors are executing now
-        TimeUnit.SECONDS.sleep(3600);
-        remoteService.aTell("Banana").thenAccept(ds -> ds.filter(DeliveryStatus::isDelivered)
-                                                         .ifSuccessOrElse(success -> System.out.println("Delivered also banana"),
-                                                                          Throwable::printStackTrace));
         TimeUnit.SECONDS.sleep(5);
         //The game is finished, shut down
         clientSystem.shutDown();
