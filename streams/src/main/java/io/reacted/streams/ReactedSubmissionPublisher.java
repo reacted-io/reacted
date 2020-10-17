@@ -483,9 +483,10 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
             this.subscriber = Objects.requireNonNull(builder.subscriber);
             this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                           IllegalArgumentException::new);
-            this.backpressureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.backpressureTimeout,
-                                                                                             RELIABLE_SUBSCRIPTION.toNanos(),
-                                                                                             TimeUnit.NANOSECONDS);
+            this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
+                                                                     timeout -> timeout.compareTo(RELIABLE_SUBSCRIPTION) <= 0 &&
+                                                                                !timeout.isNegative(),
+                                                                     IllegalArgumentException::new);
             this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer);
             this.subscriberName = Objects.requireNonNull(builder.subscriberName);
             this.sequencer = builder.sequencer == null
