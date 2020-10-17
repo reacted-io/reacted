@@ -39,6 +39,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
+import java.sql.Time;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
@@ -96,12 +97,12 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     @Override
     public CompletableFuture<Try<Void>> cleanDriverLoop() {
         Objects.requireNonNull(grpcServer).shutdown();
-
         Try.of(() -> grpcServer.awaitTermination(5, TimeUnit.SECONDS))
            .ifError(error -> Thread.currentThread().interrupt());
-        if (grpcServer != null) {
-            grpcServer.shutdown();
-        }
+        gatesStubs.values()
+                  .forEach(linkContainer -> Try.of(() -> linkContainer.channel.shutdown()
+                                                                              .awaitTermination(5, TimeUnit.SECONDS))
+                                               .ifError(error -> Thread.currentThread().interrupt()));
         if (bossEventLoopGroup != null) {
             bossEventLoopGroup.shutdownGracefully();
         }
