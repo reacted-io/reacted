@@ -76,6 +76,7 @@ public class ServiceConfig extends ReActiveEntityConfig<ServiceConfig.Builder, S
          * Valid range [1, {@link ServiceConfig#MAX_ROUTEES_PER_SERVICE}]
          *
          * @param routeesNum number of instances of the exposed reactor that should be created/mantained
+         * @return this builder
          */
         public Builder setRouteesNum(int routeesNum) {
             this.routeesNum = routeesNum;
@@ -87,6 +88,7 @@ public class ServiceConfig extends ReActiveEntityConfig<ServiceConfig.Builder, S
          * their factory
          *
          * @param routeeProvider Used to spawn a new routee reactor on request
+         * @return this builder
          */
         public Builder setRouteeProvider(UnChecked.CheckedSupplier<ReActor> routeeProvider) {
             this.routeeProvider = routeeProvider;
@@ -99,6 +101,7 @@ public class ServiceConfig extends ReActiveEntityConfig<ServiceConfig.Builder, S
          *
          * @param loadBalancingPolicy Policy to use for selecting the destination among routee when a message
          *                            when a message for a routee is received by the service
+         * @return this builder
          */
         public Builder setLoadBalancingPolicy(Service.LoadBalancingPolicy loadBalancingPolicy) {
             this.loadBalancingPolicy = loadBalancingPolicy;

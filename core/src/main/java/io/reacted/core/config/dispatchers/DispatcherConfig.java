@@ -56,6 +56,7 @@ public class DispatcherConfig {
          *
          * @param batchSize Number of messages that should be processed at maximum for a single reactor for a single
          *                  scheduling request
+         * @return this builder
          */
         public Builder setBatchSize(int batchSize) {
             this.batchSize = batchSize;
@@ -66,6 +67,7 @@ public class DispatcherConfig {
          * A dispatcher can process as many reactors in parallel as many thread it has
          *
          * @param dispatcherThreadsNum How many thread should be allocated to this dispatcher
+         * @return this builder
          */
         public Builder setDispatcherThreadsNum(int dispatcherThreadsNum) {
             this.dispatcherThreadsNum = dispatcherThreadsNum;
@@ -77,6 +79,7 @@ public class DispatcherConfig {
          *
          * @param dispatcherName Unique name of a dispatcher. Reactors can request to be scheduled on thid
          *                       dispacher specifying this name
+         * @return this builder
          */
         public Builder setDispatcherName(String dispatcherName) {
             this.dispatcherName = dispatcherName;

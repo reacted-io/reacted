@@ -90,6 +90,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      * @param dst destination of the message
      * @param ackingPolicy A {@link AckingPolicy} defining how or if this message should be ack-ed
      * @param message payload
+     * @param <PayloadT> any Serializable object
      * @return a completion stage that is going to be completed on error or when the message is successfully delivered
      *         to the target mailbox
      */

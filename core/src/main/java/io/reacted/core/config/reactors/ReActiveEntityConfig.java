@@ -29,7 +29,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
     public static final TypedSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS = TypedSubscription.NO_SUBSCRIPTIONS;
     private final String dispatcherName;
     private final String reActorName;
-    private final TypedSubscription[] typedTypedSubscriptions;
+    private final TypedSubscription[] typedSubscriptions;
     private final Function<ReActorContext, MailBox> mailBoxProvider;
 
     protected ReActiveEntityConfig(Builder<BuilderT, BuiltT> builder) {
@@ -39,10 +39,10 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         }
         this.reActorName = Objects.requireNonNull(builder.reActorName);
         this.mailBoxProvider = Objects.requireNonNull(builder.mailBoxProvider);
-        this.typedTypedSubscriptions = Objects.requireNonNull(builder.typedTypedSubscriptions).length == 0
+        this.typedSubscriptions = Objects.requireNonNull(builder.typedSubscriptions).length == 0
                                        ? TypedSubscription.NO_SUBSCRIPTIONS
-                                       : Arrays.copyOf(builder.typedTypedSubscriptions,
-                                                       builder.typedTypedSubscriptions.length);
+                                       : Arrays.copyOf(builder.typedSubscriptions,
+                                                       builder.typedSubscriptions.length);
         this.dispatcherName = builder.dispatcherName;
     }
 
@@ -55,7 +55,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
     }
 
     public final TypedSubscription[] getTypedSubscriptions() {
-        return Arrays.copyOf(typedTypedSubscriptions, typedTypedSubscriptions.length);
+        return Arrays.copyOf(typedSubscriptions, typedSubscriptions.length);
     }
 
     public final Function<ReActorContext, MailBox> getMailBoxProvider() {
@@ -67,7 +67,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reActorName;
-        private TypedSubscription[] typedTypedSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
+        private TypedSubscription[] typedSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
         private Function<ReActorContext, MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
 
         protected Builder() { }
@@ -75,6 +75,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         /**
          * Every reactor is scheduled only on a single dispatcher. Here is set which one
          * @param dispatcherName Name of the {@link io.reacted.core.runtime.Dispatcher} on which this reactor should run
+         * @return this builder
          */
         public final BuilderT setDispatcherName(String dispatcherName) {
             this.dispatcherName = dispatcherName;
@@ -85,6 +86,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
          * Every reactor needs a name that has to be unique among its siblings
          *
          * @param reActorName name of the reactor
+         * @return this builder
          */
         public final BuilderT setReActorName(String reActorName) {
             this.reActorName = reActorName;
@@ -95,6 +97,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
          * Messages for a reactor are delivered within its unique and only mailbox
          *
          * @param mailBoxProvider specify how to obtain a new mailbox. Used on reactor creation
+         * @return this builder
          */
         public final BuilderT setMailBoxProvider(Function<ReActorContext, MailBox> mailBoxProvider) {
             this.mailBoxProvider = mailBoxProvider;
@@ -105,10 +108,11 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
          * Reactors can subscribe to message types to receive a copy of of a message if it matches the subscription
          * criteria
          *
-         * @param typedTypedSubscriptions Sniffing subscriptions
+         * @param typedSubscriptions Typed subscriptions
+         * @return this builder
          */
-        public final BuilderT setTypedSubscriptions(TypedSubscription... typedTypedSubscriptions) {
-            this.typedTypedSubscriptions = typedTypedSubscriptions;
+        public final BuilderT setTypedSubscriptions(TypedSubscription... typedSubscriptions) {
+            this.typedSubscriptions = typedSubscriptions;
             return getThis();
         }
     }

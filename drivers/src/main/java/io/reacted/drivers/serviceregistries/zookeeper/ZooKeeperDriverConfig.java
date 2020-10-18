@@ -79,7 +79,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         /**
          * Specify after how often a ping should be sent to Zookeeper
          *
-         * @param pingInterval ping delay. A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         * @param pingInterval ping delay. A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          *                     Default {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_PING_INTERVAL}
          * @return this builder
          */
@@ -91,7 +91,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         /**
          * Sets the timeout for the zookeeper session.
          *
-         * @param sessionTimeout A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         * @param sessionTimeout A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          *                       Default: {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_SESSION_TIMEOUT}
          * @return this builder
          */
@@ -102,7 +102,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
 
         /**
          * Sets the timeout for the zookeeper connection.
-         * @param connectionTimeout A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         * @param connectionTimeout A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          *                          Default: {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT}
          * @return this builder
          */
@@ -124,7 +124,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         /**
          * Defines the base for the exponential backoff reconnection system
          * @param reconnectionDelay Exponential backoff base.
-         *                          A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         *                          A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          * @return this builder
          */
         public Builder setReconnectionDelay(Duration reconnectionDelay) {
