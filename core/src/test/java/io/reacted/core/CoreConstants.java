@@ -9,6 +9,9 @@
 package io.reacted.core;
 
 public final class CoreConstants {
+    private CoreConstants() {
+    }
+
     public static final String DESTINATION = "DESTINATION";
     public static final String DE_SERIALIZATION_SUCCESSFUL = "De/Serialization Successful!";
 
