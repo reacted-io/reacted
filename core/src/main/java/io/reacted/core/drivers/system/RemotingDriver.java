@@ -8,7 +8,6 @@
 
 package io.reacted.core.drivers.system;
 
-import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;

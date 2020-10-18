@@ -27,7 +27,6 @@ import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.exceptions.ChannelUnavailableException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.reactorsystem.NullReActorSystemRef;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;

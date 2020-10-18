@@ -485,11 +485,11 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                                      IllegalArgumentException::new);
             this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer);
             this.subscriberName = Objects.requireNonNull(builder.subscriberName);
-            this.sequencer = builder.sequencer == null
-                             ? builder.sequencer
-                             : ObjectUtils.requiredCondition(builder.sequencer,
+            this.sequencer = builder.sequencer != null
+                             ? ObjectUtils.requiredCondition(builder.sequencer,
                                                              sequencer -> sequencer.getMaximumPoolSize() == 1,
-                                                             IllegalArgumentException::new);
+                                                             IllegalArgumentException::new)
+                             : null;
         }
 
         public Flow.Subscriber<? super PayloadT> getSubscriber() { return subscriber; }
