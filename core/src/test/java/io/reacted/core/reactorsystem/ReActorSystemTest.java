@@ -43,31 +43,31 @@ class ReActorSystemTest {
     private static final String DISPATCHER_NAME = "TestDispatcher";
     private ReActorSystem reActorSystem;
     private final ReActorConfig reActorConfig = ReActorConfig.newBuilder()
-                                                             .setMailBoxProvider(ctx -> new BasicMbox())
-                                                             .setDispatcherName(DISPATCHER_NAME)
-                                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
-                                                             .setReActorName("Reactor Name")
-                                                             .build();
+            .setMailBoxProvider(ctx -> new BasicMbox())
+            .setDispatcherName(DISPATCHER_NAME)
+            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+            .setReActorName("Reactor Name")
+            .build();
 
     private final ReActorConfig childReActorConfig = ReActorConfig.newBuilder()
-                                                                  .setMailBoxProvider(ctx -> new BasicMbox())
-                                                                  .setDispatcherName(DISPATCHER_NAME)
-                                                                  .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
-                                                                  .setReActorName("Child reactor name")
-                                                                  .build();
+            .setMailBoxProvider(ctx -> new BasicMbox())
+            .setDispatcherName(DISPATCHER_NAME)
+            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+            .setReActorName("Child reactor name")
+            .build();
 
     @BeforeEach
     void prepareReactorSystem() {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
-                                                                     .setMsgFanOutPoolSize(2)
-                                                                     .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
-                                                                     .addDispatcherConfig(DispatcherConfig.newBuilder()
-                                                                                                          .setDispatcherName("TestDispatcher")
-                                                                                                          .setBatchSize(1_000)
-                                                                                                          .setDispatcherThreadsNum(1)
-                                                                                                          .build())
-                                                                     .build();
+                .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
+                .setMsgFanOutPoolSize(2)
+                .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
+                .addDispatcherConfig(DispatcherConfig.newBuilder()
+                        .setDispatcherName("TestDispatcher")
+                        .setBatchSize(1_000)
+                        .setDispatcherThreadsNum(1)
+                        .build())
+                .build();
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();
     }
@@ -116,42 +116,42 @@ class ReActorSystemTest {
         Try<ReActorRef> fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
 
         Try<ReActorRef> childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor.get(),
-                                                                childReActorConfig);
+                childReActorConfig);
         childReActor.map(ReActorRef::getReActorId)
-                    .map(reActorSystem::getReActor)
-                    .ifSuccessOrElse(raCtx -> Assertions.assertTrue(raCtx.isPresent()),
-                                     Assertions::fail);
+                .map(reActorSystem::getReActor)
+                .ifSuccessOrElse(raCtx -> Assertions.assertTrue(raCtx.isPresent()),
+                        Assertions::fail);
 
         Optional<ReActorContext> reActor = fatherActor.map(ReActorRef::getReActorId)
-                                                      .map(reActorSystem::getReActor)
-                                                      .orElseSneakyThrow();
+                .map(reActorSystem::getReActor)
+                .orElseSneakyThrow();
         childReActor.ifSuccessOrElse(child -> reActor.map(ReActorContext::getChildren)
-                                                     .filter(children -> children.size() == 1)
-                                                     .map(children -> children.get(0))
-                                                     .ifPresentOrElse(firstChild -> Assertions.assertEquals(firstChild,
-                                                                                                            childReActor.get()),
-                                                                      Assertions::fail),
-                                     Assertions::fail);
+                        .filter(children -> children.size() == 1)
+                        .map(children -> children.get(0))
+                        .ifPresentOrElse(firstChild -> Assertions.assertEquals(firstChild,
+                                childReActor.get()),
+                                Assertions::fail),
+                Assertions::fail);
     }
 
 
     @Test
     void reactorSystemCanStopChild() {
         ReActorRef fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig)
-                                              .orElseSneakyThrow();
+                .orElseSneakyThrow();
         ReActorRef childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor,
-                                                           childReActorConfig)
-                                               .orElseSneakyThrow();
+                childReActorConfig)
+                .orElseSneakyThrow();
 
         Optional<ReActorContext> fatherCtx = reActorSystem.getReActor(fatherActor.getReActorId());
 
         List<ReActorRef> children = fatherCtx.map(ReActorContext::getChildren)
-                                             .orElse(List.of());
+                .orElse(List.of());
         Assertions.assertEquals(1, children.size());
         reActorSystem.stop(childReActor.getReActorId())
-                     .map(CompletionStage::toCompletableFuture)
-                     .ifPresentOrElse(CompletableFuture::join,
-                                      () -> Assertions.fail("No ReActor found!?"));
+                .map(CompletionStage::toCompletableFuture)
+                .ifPresentOrElse(CompletableFuture::join,
+                        () -> Assertions.fail("No ReActor found!?"));
         Assertions.assertEquals(0, children.size());
     }
 
@@ -159,25 +159,25 @@ class ReActorSystemTest {
     void reActorSystemCanBroadcastToListeners() {
         // todo change to use local var
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
-                                                   .setReActorName("TR")
-                                                   .setDispatcherName("TestDispatcher")
-                                                   .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(Message.class))
-                                                   .build();
+                .setReActorName("TR")
+                .setDispatcherName("TestDispatcher")
+                .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(Message.class))
+                .build();
 
         reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig));
 
         reActorSystem.spawn(new MagicTestReActor(1, true, ReActorConfig.fromConfig(reActorConfig)
-                                                                       .setReActorName("2nd reactor name")
-                                                                       .build()));
+                .setReActorName("2nd reactor name")
+                .build()));
 
         Message originalMsg = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, 0x31337,
-                                          reActorSystem.getLocalReActorSystemId(), AckingPolicy.NONE,
-                                          CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
+                reActorSystem.getLocalReActorSystemId(), AckingPolicy.NONE,
+                CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
 
         reActorSystem.broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF, originalMsg);
 
         Awaitility.await()
-                  .until(MagicTestReActor.RECEIVED::intValue, CoreMatchers.equalTo(2));
+                .until(MagicTestReActor.RECEIVED::intValue, CoreMatchers.equalTo(2));
     }
 
 //    @Test
