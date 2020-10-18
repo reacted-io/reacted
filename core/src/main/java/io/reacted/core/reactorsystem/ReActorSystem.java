@@ -487,7 +487,7 @@ public class ReActorSystem {
      * Sends a message to all the local subscribers for the message type
      * @param msgSender A {@link ReActorRef} defining the sender of this message
      * @param payload The payload that should be broadcasted
-     * @param <PayLoadT>> Any {@link Serializable} object
+     * @param <PayLoadT> Any {@link Serializable} object
      * @return this builder
      */
     public <PayLoadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
