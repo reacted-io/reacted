@@ -132,7 +132,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         }
         boolean isAckRequired = !hasBeenSniffed &&
                                 message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
-        var deliverAttempt = (isAckRequired ? destination.tell(sender, payload) : destination.atell(sender, payload));
+        var deliverAttempt = (isAckRequired ? destination.atell(sender, payload) : destination.tell(sender, payload));
         if (isAckRequired) {
             deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
                                                                        getLocalReActorSystem().getNewSeqNum(), this,
