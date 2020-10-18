@@ -19,16 +19,16 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
-import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverCfg;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class ServicePublicationApp {
-    public static void main(String[] args) throws InterruptedException, IOException {
+    public static void main(String[] args) throws InterruptedException {
         String zookeeperConnectionString = args.length == 0 || Strings.isNullOrEmpty(args[0])
                                            ? "localhost:2181" : args[0];
         Properties serviceRegistryProperties = new Properties();
@@ -40,20 +40,20 @@ public class ServicePublicationApp {
         var clientGatePort = 54321;
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(serverReActorSystem,
                                                                       SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
-                                                                      List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
-                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                                                                                    .setServiceRegistryProperties(serviceRegistryProperties)
-                                                                                                                    .setReActorName("ZooKeeperDriver")
-                                                                                                                    .build())),
+                                                                      List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
+                                                                                                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                       .setServiceRegistryProperties(serviceRegistryProperties)
+                                                                                                                       .setReActorName("ZooKeeperDriver")
+                                                                                                                       .build())),
                                                                       List.of(new GrpcDriver(ExampleUtils.getGrpcDriverCfg(serverGatePort))));
 
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(clientReActorSystem,
                                                                       SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/client"),
-                                                                      List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
-                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                                                                                    .setServiceRegistryProperties(serviceRegistryProperties)
-                                                                                                                    .setReActorName("ZooKeeperDriver")
-                                                                                                                    .build())),
+                                                                      List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
+                                                                                                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                       .setServiceRegistryProperties(serviceRegistryProperties)
+                                                                                                                       .setReActorName("ZooKeeperDriver")
+                                                                                                                       .build())),
                                                                       List.of(new GrpcDriver(ExampleUtils.getGrpcDriverCfg(clientGatePort))));
 
         var server = new ReActorSystem(serverSystemCfg).initReActorSystem();
@@ -77,6 +77,7 @@ public class ServicePublicationApp {
                                       //Service Registry now
                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class))
                                       .setRouteeProvider(() -> new ClockReActor(serviceName))
+                                      .setIsRemoteService(true)
                                       .build();
 
         //Create a service. It will be published automatically on the service registry
@@ -85,8 +86,16 @@ public class ServicePublicationApp {
         TimeUnit.SECONDS.sleep(10);
         //Create a reactor in CLIENT reactor system that will query the service exported in SERVER
         //All the communication between the two reactor systems will be done using a GRPC channel
-        client.spawn(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
+        var timeReactor = client.spawn(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(10);
+        client.stop(timeReactor.getReActorId())
+              .map(onStop -> onStop.thenAccept(noVal -> client.spawn(new TimeReActor(serviceName, "1"))
+                                                              .orElseSneakyThrow()))
+              .orElse(CompletableFuture.completedFuture(null))
+              .toCompletableFuture()
+              .join();
+        System.out.println("Shutting down...");
         server.shutDown();
+        client.shutDown();
     }
 }

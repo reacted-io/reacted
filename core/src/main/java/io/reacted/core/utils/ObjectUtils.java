@@ -8,14 +8,37 @@
 
 package io.reacted.core.utils;
 
-import javax.annotation.Nonnull;
+import io.reacted.patterns.NonNullByDefault;
+
+import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+@NonNullByDefault
 public final class ObjectUtils {
     private ObjectUtils() { /* No instances allowed */ }
+
+    /**
+     * Checks if the provided interval is non null, bigger than {@link Duration#ZERO} and smaller than
+     * {@code limitAmount} {@code limitUnit}
+     * @param interval a {@link Duration}
+     * @param limitAmount inclusive upperbound of the allowed duration
+     * @param limitUnit {@link TimeUnit} of the {@code limitAmount}
+     * @return the argument provided
+     * @throws NullPointerException if the provided argument is null
+     * @throws IllegalArgumentException if the provided interval is not positive
+     */
+    public static Duration checkNonNullPositiveTimeIntervalWithLimit(@Nullable Duration interval, long limitAmount,
+                                                                     TimeUnit limitUnit) {
+        return requiredCondition(checkNonNullPositiveTimeInterval(interval),
+                                 positiveInterval -> positiveInterval.compareTo(Duration.of(limitAmount,
+                                                                                            limitUnit.toChronoUnit())) <= 0,
+                                 () -> new IllegalArgumentException("Provided interval is not within upperbound limit"));
+
+    }
 
     /**
      * Checks if the provided interval is non null and bigger than {@link Duration#ZERO}
@@ -24,7 +47,7 @@ public final class ObjectUtils {
      * @throws NullPointerException if the provided argument is null
      * @throws IllegalArgumentException if the provided interval is not positive
      */
-    public static Duration checkNonNullPositiveTimeInterval(@Nonnull Duration interval) {
+    public static Duration checkNonNullPositiveTimeInterval(@Nullable Duration interval) {
         return requiredCondition(Objects.requireNonNull(interval),
                                  nonNullInterval -> nonNullInterval.compareTo(Duration.ZERO) > 0,
                                  () -> new IllegalArgumentException("Provided interval is not positive"));
@@ -33,9 +56,9 @@ public final class ObjectUtils {
     public static <ElementT extends Comparable<ElementT>, ExceptionT extends RuntimeException>
     ElementT requiredInRange(ElementT element, ElementT inclusiveRangeStart, ElementT inclusiveRangeEnd,
                              Supplier<ExceptionT> onError) {
-        if (!(java.util.Objects.requireNonNull(inclusiveRangeEnd).compareTo(java.util.Objects.requireNonNull(inclusiveRangeStart)) < 0) &&
-            java.util.Objects.requireNonNull(element).compareTo(inclusiveRangeStart) >= 0 &&
-                element.compareTo(inclusiveRangeEnd) <= 0) {
+        if (!(Objects.requireNonNull(inclusiveRangeEnd).compareTo(Objects.requireNonNull(inclusiveRangeStart)) < 0) &&
+              Objects.requireNonNull(element).compareTo(inclusiveRangeStart) >= 0 &&
+              element.compareTo(inclusiveRangeEnd) <= 0) {
             return element;
         }
         throw onError.get();
@@ -44,8 +67,9 @@ public final class ObjectUtils {
     public static <ReturnT, OnErrorT extends RuntimeException>  ReturnT
     requiredCondition(ReturnT element, Predicate<ReturnT> controlPredicate,
                       Supplier<OnErrorT> onControlPredicateFailure) {
-        if (controlPredicate.negate().test(element)) {
-            throw onControlPredicateFailure.get();
+        if (Objects.requireNonNull(controlPredicate)
+                   .negate().test(Objects.requireNonNull(element))) {
+            throw Objects.requireNonNull(onControlPredicateFailure).get();
         }
         return element;
     }

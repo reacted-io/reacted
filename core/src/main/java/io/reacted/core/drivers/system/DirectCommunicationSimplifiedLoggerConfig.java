@@ -8,26 +8,24 @@
 
 package io.reacted.core.drivers.system;
 
-import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
 
 @NonNullByDefault
-public class DirectCommunicationSimplifiedLoggerCfg extends ChannelDriverCfg<DirectCommunicationSimplifiedLoggerCfg.Builder,
-                                                                             DirectCommunicationSimplifiedLoggerCfg> {
+public class DirectCommunicationSimplifiedLoggerConfig extends ChannelDriverConfig<DirectCommunicationSimplifiedLoggerConfig.Builder, DirectCommunicationSimplifiedLoggerConfig> {
     private final String logFilePath;
-    private DirectCommunicationSimplifiedLoggerCfg(Builder builder) {
+    private DirectCommunicationSimplifiedLoggerConfig(Builder builder) {
         super(builder);
         this.logFilePath = Objects.requireNonNull(builder.logFilePath);
     }
 
     public String getLogFilePath() { return logFilePath; }
 
-    public static DirectCommunicationSimplifiedLoggerCfg.Builder newBuilder() { return new Builder(); }
+    public static DirectCommunicationSimplifiedLoggerConfig.Builder newBuilder() { return new Builder(); }
 
-    public static class Builder extends ChannelDriverCfg.Builder<DirectCommunicationSimplifiedLoggerCfg.Builder,
-                                                                 DirectCommunicationSimplifiedLoggerCfg> {
+    public static class Builder extends ChannelDriverConfig.Builder<DirectCommunicationSimplifiedLoggerConfig.Builder, DirectCommunicationSimplifiedLoggerConfig> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String logFilePath;
         private Builder() { }
@@ -38,8 +36,8 @@ public class DirectCommunicationSimplifiedLoggerCfg extends ChannelDriverCfg<Dir
         }
 
         @Override
-        public DirectCommunicationSimplifiedLoggerCfg build() {
-            return new DirectCommunicationSimplifiedLoggerCfg(this);
+        public DirectCommunicationSimplifiedLoggerConfig build() {
+            return new DirectCommunicationSimplifiedLoggerConfig(this);
         }
     }
 }

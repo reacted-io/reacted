@@ -70,14 +70,14 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
 
     @Override
     public CompletionStage<Try<Void>> cleanDriverLoop() {
-        return CompletableFuture.completedFuture(Try.ofRunnable(() -> { Objects.requireNonNull(this.kafkaProducer).close();
-                                                                        Objects.requireNonNull(this.kafkaConsumer).close();
+        return CompletableFuture.completedFuture(Try.ofRunnable(() -> { Objects.requireNonNull(kafkaProducer).close();
+                                                                        Objects.requireNonNull(kafkaConsumer).close();
                                                                       }));
     }
 
     @Override
     public UnChecked.CheckedRunnable getDriverLoop() {
-        return () -> kafkaDriverLoop(Objects.requireNonNull(this.kafkaConsumer), this, getLocalReActorSystem());
+        return () -> kafkaDriverLoop(Objects.requireNonNull(kafkaConsumer), this, getLocalReActorSystem());
     }
 
     @Override
@@ -90,7 +90,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
 
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return Try.of(() -> Objects.requireNonNull(this.kafkaProducer)
+        return Try.of(() -> Objects.requireNonNull(kafkaProducer)
                                    .send(new ProducerRecord<>(getDriverConfig().getTopic(), message)).get())
                   .map(metaData -> DeliveryStatus.DELIVERED);
     }

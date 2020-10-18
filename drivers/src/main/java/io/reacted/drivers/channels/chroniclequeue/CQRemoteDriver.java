@@ -96,7 +96,8 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
 
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
 
-            @SuppressWarnings("ConstantConditions") var newMessage = Try.withResources(cqTailer::readingDocument,
+            @SuppressWarnings("ConstantConditions")
+            var newMessage = Try.withResources(cqTailer::readingDocument,
                                                documentCtx -> documentCtx.isPresent()
                                                               ? documentCtx.wire().read().object(Message.class)
                                                               : null)

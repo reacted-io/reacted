@@ -9,8 +9,6 @@
 package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.exceptions.DeliveryException;
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
@@ -28,6 +26,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class Ask<ReplyT extends Serializable> implements ReActor {
@@ -70,15 +70,15 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         try {
-            target.tell(raCtx.getSelf(), request).toCompletableFuture()
-                  .thenAccept(delivery -> delivery.filter(DeliveryStatus::isDelivered, DeliveryException::new)
-                                                  .ifError(error -> { raCtx.stop();
-                                                                      this.completionTrigger.completeAsync(() -> Try.ofFailure(error)); }));
-            this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
-                                                     this.askTimeout.toMillis(), TimeUnit.MILLISECONDS)
-                                  .thenAcceptAsync(reply -> raCtx.stop());
+            ifNotDelivered(target.tell(raCtx.getSelf(), request),
+                           error -> { raCtx.stop();
+                                      completionTrigger.completeAsync(() -> Try.ofFailure(error)); });
+
+            completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
+                                                askTimeout.toMillis(), TimeUnit.MILLISECONDS)
+                             .thenAcceptAsync(reply -> raCtx.stop());
         } catch (RejectedExecutionException poolCannotHandleRequest) {
-            this.completionTrigger.completeAsync(() -> Try.ofFailure(poolCannotHandleRequest));
+            completionTrigger.completeAsync(() -> Try.ofFailure(poolCannotHandleRequest));
             raCtx.stop();
         }
     }

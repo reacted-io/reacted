@@ -80,19 +80,19 @@ class StreamToMultipleSubscribersApp {
 
         @Override
         public void onNext(PayloadT item) {
-            this.updatesReceived.increment();
-            if (!this.isTerminated) {
-                if (this.payloadTComparator.compare(this.lastItem, item) >= 0) {
+            updatesReceived.increment();
+            if (!isTerminated) {
+                if (payloadTComparator.compare(lastItem, item) >= 0) {
                     throw new IllegalStateException("Unordered sequence detected");
                 }
                 this.lastItem = item;
-                this.subscription.request(1);
+                subscription.request(1);
             }
         }
 
         @Override
         public void onError(Throwable throwable) {
-            if (!this.isTerminated) {
+            if (!isTerminated) {
                 this.isTerminated = true;
                 throwable.printStackTrace();
             }
@@ -100,7 +100,7 @@ class StreamToMultipleSubscribersApp {
 
         @Override
         public void onComplete() {
-            if (!this.isTerminated) {
+            if (!isTerminated) {
                 this.isTerminated = true;
                 System.out.println("Feed is complete");
             }

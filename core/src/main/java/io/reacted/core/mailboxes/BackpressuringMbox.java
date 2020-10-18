@@ -81,8 +81,8 @@ public class BackpressuringMbox implements MailBox {
         }
         this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.ayncBackpressurer), bufferSize);
         this.reliableBackpressuringSubscriber = new BackpressuringSubscriber(requestOnStartup, mboxOwner,
-                                                                             realMbox::deliver, this.backpressurer);
-        this.backpressurer.subscribe(reliableBackpressuringSubscriber);
+                                                                             realMbox::deliver, backpressurer);
+        backpressurer.subscribe(reliableBackpressuringSubscriber);
     }
 
     public static Builder newBuilder() { return new Builder(); }
@@ -94,13 +94,13 @@ public class BackpressuringMbox implements MailBox {
     public boolean isFull() { return realMbox.isFull(); }
 
     @Override
-    public long getMsgNum() { return realMbox.getMsgNum() + Integer.max(this.backpressurer.estimateMaximumLag(), 0); }
+    public long getMsgNum() { return realMbox.getMsgNum() + Integer.max(backpressurer.estimateMaximumLag(), 0); }
 
     @Override
     public long getMaxSize() { return realMbox.getMaxSize(); }
 
     @Override
-    public Message getNextMessage() { return this.realMbox.getNextMessage(); }
+    public Message getNextMessage() { return realMbox.getNextMessage(); }
 
     @Override
     public DeliveryStatus deliver(Message message) { return realMbox.deliver(message); }
@@ -118,9 +118,9 @@ public class BackpressuringMbox implements MailBox {
         } else {
             try {
                 /* This one could stop but we cannot force the calling thread to stop */
-                this.sequencer.execute(() -> reliableDelivery(message, shouldNotBeBackPressured(payloadType)
-                                                                       ? RELIABLE_DELIVERY_TIMEOUT
-                                                                       : backpressureTimeout, trigger));
+                sequencer.execute(() -> reliableDelivery(message, shouldNotBeBackPressured(payloadType)
+                                                                  ? RELIABLE_DELIVERY_TIMEOUT
+                                                                  : backpressureTimeout, trigger));
             } catch (Exception anyException) {
                 trigger.complete(Try.ofFailure(anyException));
             }
@@ -129,18 +129,18 @@ public class BackpressuringMbox implements MailBox {
     }
 
     public void request(long messagesNum) {
-        Objects.requireNonNull(this.reliableBackpressuringSubscriber).request(messagesNum);
+        Objects.requireNonNull(reliableBackpressuringSubscriber).request(messagesNum);
     }
 
     @Override
     public void close() throws Exception {
         //https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8254060
-        this.reliableBackpressuringSubscriber.onComplete();
-        this.backpressurer.close();
+        reliableBackpressuringSubscriber.onComplete();
+        backpressurer.close();
         if (isPrivateSequencer) {
-            this.sequencer.shutdownNow();
+            sequencer.shutdownNow();
         }
-        this.realMbox.close();
+        realMbox.close();
     }
 
     /*
@@ -151,9 +151,9 @@ public class BackpressuringMbox implements MailBox {
     private void reliableDelivery(Message message, Duration backpressureTimeout,
                                   CompletableFuture<Try<DeliveryStatus>> trigger) {
         try {
-            var waitTime = this.backpressurer.offer(new DeliveryRequest(message, trigger),
-                                                         backpressureTimeout.toNanos(), TimeUnit.NANOSECONDS,
-                                                         BackpressuringMbox::onBackPressure);
+            var waitTime = backpressurer.offer(new DeliveryRequest(message, trigger),
+                                               backpressureTimeout.toNanos(), TimeUnit.NANOSECONDS,
+                                               BackpressuringMbox::onBackPressure);
             if (waitTime < 0) {
                 trigger.complete(Try.ofSuccess(DeliveryStatus.BACKPRESSURED));
             } else {
@@ -169,7 +169,7 @@ public class BackpressuringMbox implements MailBox {
     }
 
     private boolean shouldNotBeDelayed(Class<? extends Serializable> payloadType) {
-        return this.notDelayed.contains(payloadType);
+        return notDelayed.contains(payloadType);
     }
 
     private boolean canBeBackPressured(Class<? extends Serializable> payloadType) {
@@ -177,7 +177,7 @@ public class BackpressuringMbox implements MailBox {
     }
 
     private boolean shouldNotBeBackPressured(Class<? extends Serializable> payloadType) {
-        return this.notBackpressurable.contains(payloadType);
+        return notBackpressurable.contains(payloadType);
     }
 
     @SuppressWarnings("SameReturnValue")

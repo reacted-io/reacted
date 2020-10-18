@@ -9,7 +9,7 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.drivers.ChannelDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.messages.AckingPolicy;
@@ -32,11 +32,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public class LoopbackDriver<CfgT extends ChannelDriverCfg<?, CfgT>> extends ReActorSystemDriver<CfgT> {
-    private final LocalDriver<CfgT> localDriver;
+public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> extends ReActorSystemDriver<ConfigT> {
+    private final LocalDriver<ConfigT> localDriver;
     private final ReActorSystem localReActorSystem;
 
-    public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver<CfgT> localDriver) {
+    public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver<ConfigT> localDriver) {
         super(localDriver.getDriverConfig());
         this.localDriver = Objects.requireNonNull(localDriver);
         this.localReActorSystem = Objects.requireNonNull(reActorSystem);
@@ -57,9 +57,9 @@ public class LoopbackDriver<CfgT extends ChannelDriverCfg<?, CfgT>> extends ReAc
                                                                           localReActorSystem.getLocalReActorSystemId(),
                                                                           ackingPolicy, payload));
             if (isAckRequired) {
-                tellResult.thenAccept(deliveryStatusTry -> localDriver.removePendingAckTrigger(seqNum)
-                                                                      .ifPresent(deliveryAttempt -> deliveryAttempt.toCompletableFuture()
-                                                                                                                   .complete(deliveryStatusTry)));
+                tellResult.thenAccept(deliveryResult -> localDriver.removePendingAckTrigger(seqNum)
+                                                                   .ifPresent(deliveryAttempt -> deliveryAttempt.toCompletableFuture()
+                                                                                                                .complete(deliveryResult)));
                 tellResult = pendingAck;
             }
 
@@ -133,7 +133,7 @@ public class LoopbackDriver<CfgT extends ChannelDriverCfg<?, CfgT>> extends ReAc
         }
     }
 
-    private void propagateToSubscribers(LocalDriver<CfgT> localDriver, Collection<ReActorContext> subscribers,
+    private void propagateToSubscribers(LocalDriver<ConfigT> localDriver, Collection<ReActorContext> subscribers,
                                         ReActorId originalDestination, ReActorSystem localReActorSystem,
                                         ReActorRef src, Serializable payload) {
         subscribers.stream()

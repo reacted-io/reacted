@@ -41,9 +41,9 @@ class SendMessagesApp {
 
         IntStream.range(0, messagesToSend)
                  .parallel()
-                 //Tell and aTell are functionally the same if we do not care about the return value
-                 //aTell brings more overhead because of the acking system
-                 .forEach(msgNum -> newReActorReference.aTell("Ping Request" + pingDelim + msgNum));
+                 //Tell and atell are functionally the same if we do not care about the return value
+                 //atell brings more overhead because of the acking system
+                 .forEach(msgNum -> newReActorReference.atell("Ping Request" + pingDelim + msgNum));
         TimeUnit.SECONDS.sleep(1);
         simpleReActorSystem.shutDown();
     }

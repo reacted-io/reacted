@@ -27,11 +27,11 @@ public class InflatableMailbox extends BasicMbox {
     }
 
     public long adjustCapacity(int capacityDelta) {
-        return this.mailboxCapacity.addAndGet(capacityDelta);
+        return mailboxCapacity.addAndGet(capacityDelta);
     }
 
     public InflatableMailbox setCapacity(long newCapacity) {
-        this.mailboxCapacity.set(newCapacity);
+        mailboxCapacity.set(newCapacity);
         return this;
     }
 

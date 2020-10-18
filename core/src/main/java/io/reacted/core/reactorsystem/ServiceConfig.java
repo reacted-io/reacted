@@ -26,6 +26,7 @@ public class ServiceConfig extends ReActiveEntityConfig<ServiceConfig.Builder, S
     private final UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
     private final Service.LoadBalancingPolicy loadBalancingPolicy;
     private final Duration serviceRepublishReattemptDelayOnError;
+    private final boolean remoteService;
 
     private ServiceConfig(Builder builder) {
         super(builder);
@@ -34,6 +35,7 @@ public class ServiceConfig extends ReActiveEntityConfig<ServiceConfig.Builder, S
         this.routeeProvider = Objects.requireNonNull(builder.routeeProvider);
         this.loadBalancingPolicy = Objects.requireNonNull(builder.loadBalancingPolicy);
         this.serviceRepublishReattemptDelayOnError = ObjectUtils.checkNonNullPositiveTimeInterval(builder.serviceRepublishReattemptDelayOnError);
+        this.remoteService = builder.remoteService;
     }
 
     public int getRouteesNum() {
@@ -56,12 +58,15 @@ public class ServiceConfig extends ReActiveEntityConfig<ServiceConfig.Builder, S
         return serviceRepublishReattemptDelayOnError;
     }
 
+    public boolean isRemoteService() { return remoteService; }
+
     public static class Builder extends ReActiveEntityConfig.Builder<Builder, ServiceConfig> {
         private int routeesNum;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
         private Service.LoadBalancingPolicy loadBalancingPolicy = Service.LoadBalancingPolicy.ROUND_ROBIN;
         private Duration serviceRepublishReattemptDelayOnError = DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY;
+        private boolean remoteService;
 
         private Builder() { }
 
@@ -112,6 +117,17 @@ public class ServiceConfig extends ReActiveEntityConfig<ServiceConfig.Builder, S
          */
         public Builder setServiceRepublishReattemptDelayOnError(Duration republicationReattemptDelayOnError) {
             this.serviceRepublishReattemptDelayOnError = republicationReattemptDelayOnError;
+            return this;
+        }
+
+        /**
+         * Specify if this service should be published or not
+         *
+         * @param remoteService true if this service is meant to be published on the registries
+         * @return this builder
+         */
+        public Builder setIsRemoteService(boolean remoteService) {
+            this.remoteService = remoteService;
             return this;
         }
 
