@@ -385,7 +385,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         Optional<ChannelId> channelId = ChannelId.fromToString(reActorSystemNameAndChannelId.getNode());
         return channelId.map(channel -> reActorSystem.getSystemRemotingRoot()
                                                      .tell(driverReActor,
-                                                           new RegistryGateRemoved(reActorSystemNameAndChannelId.getPath().substring(1),
+                                                           new RegistryGateRemoved(reActorSystemNameAndChannelId.getPath()
+                                                                                                                .substring(1),
                                                                                    channel)))
                         .orElse(CompletableFuture.completedFuture(Try.ofFailure(new IllegalArgumentException("Unable to decode channel id from " +
                                 reActorSystemNameAndChannelId.toString()))));
