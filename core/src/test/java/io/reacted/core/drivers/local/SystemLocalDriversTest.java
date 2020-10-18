@@ -3,6 +3,9 @@ package io.reacted.core.drivers.local;
 import static org.mockito.Mockito.mock;
 
 import io.reacted.core.MessageHelper;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -33,7 +36,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class SystemLocalDriversTest {
     private static final String TMP_TEST_DIRECT_COMMUNICATION_TXT = "/tmp/testDirectCommunication.txt";
     private BasicMbox actorMbox;
-    private LocalDriver localDriver;
+    private LocalDriver<? extends ChannelDriverConfig<? ,?>> localDriver;
     private Message defaultMessage;
     private ReActorContext reActorContext;
 
@@ -45,9 +48,9 @@ class SystemLocalDriversTest {
                 .setReactorRef(ReActorRef.NO_REACTOR_REF)
                 .setReActorSystem(mock(ReActorSystem.class))
                 .setParentActor(ReActorRef.NO_REACTOR_REF)
-                .setInterceptRules()
                 .setDispatcher(mock(Dispatcher.class))
                 .setReActions(mock(ReActions.class))
+                .setSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                 .build();
         defaultMessage = MessageHelper.getDefaultMessage();
     }

@@ -13,6 +13,7 @@ import static org.mockito.Mockito.mock;
 import io.reacted.core.CoreConstants;
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
@@ -34,7 +35,7 @@ class LocalDriverTest {
     static ReActorSystem reActorSystem;
     static BasicMbox basicMbox;
     static Message originalMsg;
-    static LocalDriver localDriver;
+    static LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver;
     static ReActorContext reActorContext;
 
     @BeforeAll
