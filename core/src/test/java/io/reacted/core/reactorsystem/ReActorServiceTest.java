@@ -28,28 +28,28 @@ class ReActorServiceTest {
     @BeforeEach
     void setUp() {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
-                                                                     .setMsgFanOutPoolSize(2)
-                                                                     .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
-                                                                     .addDispatcherConfig(DispatcherConfig.newBuilder()
-                                                                                                          .setDispatcherName("TestDispatcher")
-                                                                                                          .setBatchSize(1_000)
-                                                                                                          .setDispatcherThreadsNum(1)
-                                                                                                          .build())
-                                                                     .build();
+                .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
+                .setMsgFanOutPoolSize(2)
+                .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
+                .addDispatcherConfig(DispatcherConfig.newBuilder()
+                        .setDispatcherName("TestDispatcher")
+                        .setBatchSize(1_000)
+                        .setDispatcherThreadsNum(1)
+                        .build())
+                .build();
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();
 
         reActorServiceConfig = ReActorServiceConfig.newBuilder()
-                                                   .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
-                                                   .setMailBoxProvider(ctx -> new BasicMbox())
-                                                   .setReActorName("TestRouter")
-                                                   .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                                   .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
-                                                   .setRouteesNum(1)
-                                                   .setRouteeProvider(() -> new MagicTestReActor(2, true,
-                                                                                                 "RouterChild"))
-                                                   .build();
+                .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
+                .setMailBoxProvider(ctx -> new BasicMbox())
+                .setReActorName("TestRouter")
+                .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+                .setRouteesNum(1)
+                .setRouteeProvider(() -> new MagicTestReActor(2, true,
+                        "RouterChild"))
+                .build();
     }
 
     @AfterEach
@@ -66,7 +66,7 @@ class ReActorServiceTest {
     void reactorSystemCanSpawnService() {
         ReActorRef router = reActorSystem.spawnService(reActorServiceConfig).orElseSneakyThrow();
         Assertions.assertEquals(router, reActorSystem.getReActor(router.getReActorId())
-                                                     .map(ReActorContext::getSelf)
-                                                     .orElse(ReActorRef.NO_REACTOR_REF));
+                .map(ReActorContext::getSelf)
+                .orElse(ReActorRef.NO_REACTOR_REF));
     }
 }
