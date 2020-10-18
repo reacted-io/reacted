@@ -84,7 +84,6 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
 
      protected static void rescheduleIfSuccess(Try<DeliveryStatus> deliveryResult, ReActorContext destination) {
           deliveryResult.filter(DeliveryStatus::isDelivered, DeliveryException::new)
-                        .peekFailure(error -> LOGGER.error("Unable to deliver: ", error))
                         .ifSuccess(deliveryStatus -> destination.reschedule());
      }
 
