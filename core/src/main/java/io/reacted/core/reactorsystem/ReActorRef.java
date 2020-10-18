@@ -76,6 +76,7 @@ public final class ReActorRef implements Externalizable {
      * Sends a message to this ReActor using system sync as source
      *
      * @param messagePayload payload
+     * @param <PayloadT> Any {@link Serializable} object
      * @return A completable future that is going to be completed once the message has been delivered into the
      * local driver bus, containing the outcome of the operation
      */
@@ -91,6 +92,7 @@ public final class ReActorRef implements Externalizable {
      *
      * @param msgSender      source of the message
      * @param messagePayload payload
+     * @param <PayloadT> Any {@link Serializable} object
      * @return A completable future that is going to be completed once the message has been delivered into the
      * local driver bus, containing the outcome of the operation
      */
@@ -105,6 +107,7 @@ public final class ReActorRef implements Externalizable {
      * mailbox. The sender of the message is going to be the system sink
      *
      * @param messagePayload message payload
+     * @param <PayloadT> Any {@link Serializable} object
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
@@ -121,6 +124,7 @@ public final class ReActorRef implements Externalizable {
      *
      * @param msgSender      message source
      * @param messagePayload message payload
+     * @param <PayloadT> Any {@link Serializable} object
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
@@ -137,6 +141,7 @@ public final class ReActorRef implements Externalizable {
      * @param expectedReply expected message type as reply to this request
      * @param requestName   name of the request. It must be unique reactor name in the reactor system as long as this
      *                      ask is alive
+     * @param <ReplyT>> Any {@link Serializable} object
      * @return A completable future that is going to be completed once an answer for the request has been received.
      * On failure, the received Try will contain the cause of the failure, otherwise the requested answer
      */
@@ -155,9 +160,10 @@ public final class ReActorRef implements Externalizable {
      * @param expireTimeout mark this request as completed and failed after this timeout
      * @param requestName   name of the request. It must be unique reactor name in the reactor system as long as this
      *                      ask is alive
-     * @return A completable future that is going to be completed once an answer for the request has been received or
-     * the specified timeout is expired. On failure, the received Try will contain the cause of the failure,
-     * otherwise the requested answer
+     * @param <ReplyT>> Any {@link Serializable} object
+     * @return A {@link CompletionStage}&lt;{@link Try}&lt;{@link ReplyT}&gt;&gt; that is going to be completed once an
+     * answer for the request has been received or the specified timeout is expired. On failure, the received Try will
+     * contain the cause of the failure, otherwise the requested answer
      */
     public <ReplyT extends Serializable, RequestT extends Serializable>
     CompletionStage<Try<ReplyT>> ask(RequestT request, Class<ReplyT> expectedReply, Duration expireTimeout,
