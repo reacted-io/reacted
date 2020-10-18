@@ -146,8 +146,8 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
 
             ACKs has to be sent using the same driver that processed the incoming message and have to be sent to the
             GENERATING reactor system from datalink layer, not from the nominal sender. If a nominal sender can be
-            overridden, a generating reactorsystem id cannot. This means that an ACK has to be sent to the
-            generating reactorsystem, using the same driver from where the message came from and using the channel id
+            overridden, a generating reactor system id cannot. This means that an ACK has to be sent to the
+            generating reactor system, using the same driver from where the message came from and using the channel id
             managed by the receiving driver.
 
             For GRPC this is not enough, because we need the properties containing the specific info of the remote
