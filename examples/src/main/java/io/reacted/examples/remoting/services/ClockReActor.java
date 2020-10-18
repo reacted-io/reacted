@@ -22,10 +22,10 @@ import java.time.ZonedDateTime;
 @NonNullByDefault
 @Immutable
 public class ClockReActor implements ReActor {
-    private final String workerDispatcherName;
+    private final String serviceName;
 
-    ClockReActor(String workerDispatcherName) {
-        this.workerDispatcherName = workerDispatcherName;
+    ClockReActor(String serviceName) {
+        this.serviceName = serviceName;
     }
 
     @Nonnull
@@ -42,8 +42,7 @@ public class ClockReActor implements ReActor {
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
-                            .setReActorName(ClockReActor.class.getSimpleName())
-                            .setDispatcherName(workerDispatcherName)
+                            .setReActorName(serviceName)
                             .setMailBoxProvider(ctx -> new BasicMbox())
                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .build();

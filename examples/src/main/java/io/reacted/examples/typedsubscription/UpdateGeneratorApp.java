@@ -34,8 +34,7 @@ public class UpdateGeneratorApp {
                                 .reAct(Update.class,
                                        (ctx, update) -> System.out.printf("Updates received %d%n",
                                                                           update.getUpdateId()))
-                                .reAct((ctx, any) -> {
-                                })
+                                .reAct(ReActions::noReAction)
                                 .build();
             }
 

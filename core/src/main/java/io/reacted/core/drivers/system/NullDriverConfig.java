@@ -9,20 +9,22 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.patterns.NonNullByDefault;
 
-public class NullDriverCfg extends ReActedDriverCfg<NullDriverCfg.Builder, NullDriverCfg> {
-    private NullDriverCfg(Builder builder) {
+@NonNullByDefault
+public class NullDriverConfig extends ChannelDriverConfig<NullDriverConfig.Builder, NullDriverConfig> {
+    private NullDriverConfig(Builder builder) {
         super(builder);
     }
 
     static Builder newBuilder() { return new Builder(); }
 
-    public static class Builder extends ReActedDriverCfg.Builder<Builder, NullDriverCfg> {
+    public static class Builder extends ChannelDriverConfig.Builder<Builder, NullDriverConfig> {
         private Builder() { setChannelName(ChannelId.NO_CHANNEL_ID.getChannelName()); }
         @Override
-        public NullDriverCfg build() {
-            return new NullDriverCfg(this);
+        public NullDriverConfig build() {
+            return new NullDriverConfig(this);
         }
     }
 }

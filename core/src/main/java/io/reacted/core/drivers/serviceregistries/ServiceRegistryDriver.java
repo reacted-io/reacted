@@ -8,21 +8,21 @@
 
 package io.reacted.core.drivers.serviceregistries;
 
-import io.reacted.core.config.reactors.ServiceRegistryCfg;
+import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.reactors.GenericReActor;
 
 import javax.annotation.Nonnull;
 
-public abstract class ServiceRegistryDriver<BuilderT extends ServiceRegistryCfg.Builder<BuilderT, BuiltT>,
-                                            BuiltT extends ServiceRegistryCfg<BuilderT, BuiltT>>
+public abstract class ServiceRegistryDriver<BuilderT extends ServiceRegistryConfig.Builder<BuilderT, BuiltT>,
+                                            BuiltT extends ServiceRegistryConfig<BuilderT, BuiltT>>
         implements GenericReActor<BuilderT, BuiltT> {
     @Nonnull
-    private final BuiltT driverCfg;
-    protected ServiceRegistryDriver(@Nonnull BuiltT driverCfg) {
-        this.driverCfg = driverCfg;
+    private final BuiltT config;
+    protected ServiceRegistryDriver(@Nonnull BuiltT config) {
+        this.config = config;
     }
 
     @Nonnull
     @Override
-    public final BuiltT getConfig() { return driverCfg;  }
+    public final BuiltT getConfig() { return config;  }
 }

@@ -71,10 +71,10 @@ public final class ReActorContext {
         this.dispatcher = Objects.requireNonNull(reActorCtxBuilder.dispatcher);
         this.isScheduled = new AtomicBoolean(false);
         this.structuralLock = new ReentrantReadWriteLock();
-        this.typedSubscriptions = Objects.requireNonNull(reActorCtxBuilder.interceptRules).length == 0
-                              ? TypedSubscription.NO_SUBSCRIPTIONS
-                              : Arrays.copyOf(reActorCtxBuilder.interceptRules,
-                                              reActorCtxBuilder.interceptRules.length);
+        this.typedSubscriptions = Objects.requireNonNull(reActorCtxBuilder.typedSubscriptions).length == 0
+                                                         ? TypedSubscription.NO_SUBSCRIPTIONS
+                                                         : Arrays.copyOf(reActorCtxBuilder.typedSubscriptions,
+                                                                         reActorCtxBuilder.typedSubscriptions.length);
         this.hierarchyTermination = new CompletableFuture<>();
         this.msgExecutionId = new AtomicLong();
         this.reActions = Objects.requireNonNull(reActorCtxBuilder.reActions);
@@ -107,13 +107,13 @@ public final class ReActorContext {
     @SuppressWarnings("UnusedReturnValue")
     public boolean acquireCoherence() { return !isAcquired; }
 
-    public void releaseCoherence() { isAcquired = false; }
+    public void releaseCoherence() { this.isAcquired = false; }
 
     public void refreshInterceptors(TypedSubscription... newInterceptedClasses) {
 
         getStructuralLock().writeLock().lock();
         try {
-            getReActorSystem().updateMessageInterceptors(this, this.typedSubscriptions, newInterceptedClasses);
+            getReActorSystem().updateMessageInterceptors(this, typedSubscriptions, newInterceptedClasses);
             this.typedSubscriptions = newInterceptedClasses;
         } finally {
             getStructuralLock().writeLock().unlock();
@@ -124,7 +124,7 @@ public final class ReActorContext {
         TypedSubscription[] interceptedMsgTypes;
 
         getStructuralLock().readLock().lock();
-        interceptedMsgTypes = Arrays.copyOf(this.typedSubscriptions, this.typedSubscriptions.length);
+        interceptedMsgTypes = Arrays.copyOf(typedSubscriptions, typedSubscriptions.length);
         getStructuralLock().readLock().unlock();
 
         return interceptedMsgTypes;
@@ -148,20 +148,20 @@ public final class ReActorContext {
 
     public Try<ScheduledFuture<CompletionStage<Try<DeliveryStatus>>>>
     rescheduleMessage(Serializable messageToBeRescheduled, Duration inHowLong) {
+        ReActorRef sender = getSender();
         return Try.of(() -> getReActorSystem().getSystemSchedulingService()
-                                              .schedule(() -> getSelf().tell(getSender(),
-                                                                             messageToBeRescheduled),
-                                                        inHowLong.toMillis(), TimeUnit.MILLISECONDS));
+                                              .schedule(() -> getSelf().tell(sender, messageToBeRescheduled),
+                                                              inHowLong.toMillis(), TimeUnit.MILLISECONDS));
     }
 
     /**
-     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#aTell(Serializable)}
+     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#atell(Serializable)}
      * @param sender {@link ReActorRef} identifying the sender of this reply
      * @param anyPayload payload to be sent
-     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#aTell(ReActorRef, Serializable)}
+     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#atell(ReActorRef, Serializable)}
      */
     public CompletionStage<Try<DeliveryStatus>> aReply(ReActorRef sender, Serializable anyPayload) {
-        return getSender().aTell(sender, anyPayload);
+        return getSender().atell(sender, anyPayload);
     }
 
     /**
@@ -171,7 +171,7 @@ public final class ReActorContext {
      * complete
      */
     public CompletionStage<Try<DeliveryStatus>> selfTell(Serializable anyPayload) {
-        return getSelf().tell(this.getSelf(), anyPayload);
+        return getSelf().tell(getSelf(), anyPayload);
     }
 
     /**
@@ -235,9 +235,7 @@ public final class ReActorContext {
         return getHierarchyTermination();
     }
 
-    public boolean isStop() {
-        return this.stop;
-    }
+    public boolean isStop() { return stop; }
 
     /**
      * Send a logging request for info level to the centralized logger reactor
@@ -280,7 +278,7 @@ public final class ReActorContext {
      * @return {@link ReActorRef} to the sender
      */
     public ReActorRef getSender() {
-        return this.lastMsgSender;
+        return lastMsgSender;
     }
 
     @Override
@@ -314,7 +312,7 @@ public final class ReActorContext {
         private ReActorRef reactorRef;
         private ReActorSystem reActorSystem;
         private ReActorRef parent;
-        private TypedSubscription[] interceptRules;
+        private TypedSubscription[] typedSubscriptions;
         private Dispatcher dispatcher;
         private ReActions reActions;
 
@@ -338,8 +336,8 @@ public final class ReActorContext {
             return this;
         }
 
-        public Builder setInterceptRules(TypedSubscription... interceptRules) {
-            this.interceptRules = interceptRules;
+        public Builder setSubscriptions(TypedSubscription... typedSubscriptions) {
+            this.typedSubscriptions = typedSubscriptions;
             return this;
         }
 

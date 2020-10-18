@@ -8,11 +8,11 @@
 
 package io.reacted.core.drivers.local;
 
-import io.reacted.core.drivers.system.DirectCommunicationCfg;
+import io.reacted.core.drivers.system.DirectCommunicationConfig;
 import io.reacted.core.drivers.system.DirectCommunicationDriver;
-import io.reacted.core.drivers.system.DirectCommunicationLoggerCfg;
+import io.reacted.core.drivers.system.DirectCommunicationLoggerConfig;
 import io.reacted.core.drivers.system.DirectCommunicationLoggerDriver;
-import io.reacted.core.drivers.system.DirectCommunicationSimplifiedLoggerCfg;
+import io.reacted.core.drivers.system.DirectCommunicationSimplifiedLoggerConfig;
 import io.reacted.core.drivers.system.DirectCommunicationSimplifiedLoggerDriver;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
@@ -22,9 +22,9 @@ public final class SystemLocalDrivers {
     private SystemLocalDrivers() { /* Not Required */ }
 
     public static final DirectCommunicationDriver DIRECT_COMMUNICATION =
-            new DirectCommunicationDriver(DirectCommunicationCfg.newBuilder()
-                                                                .setChannelName("DIRECT_COMMUNICATION")
-                                                                .build());
+            new DirectCommunicationDriver(DirectCommunicationConfig.newBuilder()
+                                                                   .setChannelName("DIRECT_COMMUNICATION")
+                                                                   .build());
 
     /**
      * Returns a {@link DirectCommunicationDriver} for <b>local</b> communication that after sending each message
@@ -36,10 +36,10 @@ public final class SystemLocalDrivers {
      * @return the {@link DirectCommunicationLoggerDriver}
      */
     public static DirectCommunicationLoggerDriver getDirectCommunicationLogger(String loggingFilePath) {
-        return new DirectCommunicationLoggerDriver(DirectCommunicationLoggerCfg.newBuilder()
-                                                                               .setLogFilePath(loggingFilePath)
-                                                                               .setChannelName("LOGGING_DIRECT_COMMUNICATION-")
-                                                                               .build());
+        return new DirectCommunicationLoggerDriver(DirectCommunicationLoggerConfig.newBuilder()
+                                                                                  .setLogFilePath(loggingFilePath)
+                                                                                  .setChannelName("LOGGING_DIRECT_COMMUNICATION-")
+                                                                                  .build());
     }
 
     /**
@@ -53,9 +53,9 @@ public final class SystemLocalDrivers {
      */
     public static DirectCommunicationSimplifiedLoggerDriver
     getDirectCommunicationSimplifiedLoggerDriver(String loggingFilePath) {
-        return new DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerCfg.newBuilder()
-                                                                                                   .setLogFilePath(loggingFilePath)
-                                                                                                   .setChannelName("SIMPLIFIED_LOGGING_DIRECT_COMMUNICATION-")
-                                                                                                   .build());
+        return new DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerConfig.newBuilder()
+                                                                                                      .setLogFilePath(loggingFilePath)
+                                                                                                      .setChannelName("SIMPLIFIED_LOGGING_DIRECT_COMMUNICATION-")
+                                                                                                      .build());
     }
 }

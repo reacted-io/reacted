@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 public abstract class Try<T> {
 
     public static final Try<Void> VOID = Try.of(Try::noOp);
+    @SuppressWarnings("StaticInitializerReferencesSubClass")
     private static final Try.Failure<NoSuchElementException> FILTER_FAILED = Try.ofFailure(new NoSuchElementException());
 
     private static final UnsupportedOperationException FAILURE_UNSUPPORTED_OPERATION_EXCEPTION =
@@ -898,7 +899,7 @@ public abstract class Try<T> {
 
         private Success() {
             /* Never Here */
-            throw new IllegalStateException("Illegal " + this.getClass().getSimpleName() + " Object State");
+            throw new IllegalStateException("Illegal " + getClass().getSimpleName() + " Object State");
         }
 
         private Success(T successValue) {
@@ -946,7 +947,7 @@ public abstract class Try<T> {
 
         private Failure() {
             /* Never Here */
-            throw new IllegalStateException("Illegal " + this.getClass().getSimpleName() + " Object State");
+            throw new IllegalStateException("Illegal " + getClass().getSimpleName() + " Object State");
         }
 
         private Failure(Throwable failureValue) {

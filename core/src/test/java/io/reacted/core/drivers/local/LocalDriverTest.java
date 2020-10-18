@@ -72,14 +72,14 @@ class LocalDriverTest {
 
 
         reActorContext = ReActorContext.newBuilder()
-                .setMbox(ctx -> basicMbox)
-                .setReactorRef(reActorRef)
-                .setReActorSystem(reActorSystem)
-                .setParentActor(ReActorRef.NO_REACTOR_REF)
-                .setInterceptRules(subscribedTypes)
-                .setDispatcher(mock(Dispatcher.class))
-                .setReActions(mock(ReActions.class))
-                .build();
+                                       .setMbox(ctx -> basicMbox)
+                                       .setReactorRef(reActorRef)
+                                       .setReActorSystem(reActorSystem)
+                                       .setParentActor(ReActorRef.NO_REACTOR_REF)
+                                       .setSubscriptions(subscribedTypes)
+                                       .setDispatcher(mock(Dispatcher.class))
+                                       .setReActions(mock(ReActions.class))
+                                       .build();
 
         originalMsg = new Message(ReActorRef.NO_REACTOR_REF, reActorRef, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
                                   AckingPolicy.NONE, CoreConstants.DE_SERIALIZATION_SUCCESSFUL);

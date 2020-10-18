@@ -8,6 +8,8 @@
 
 package io.reacted.core.config.reactors;
 
+import com.google.common.base.Objects;
+
 import java.io.Serializable;
 
 public class TypedSubscription {
@@ -24,4 +26,18 @@ public class TypedSubscription {
     public TypedSubscriptionPolicy getSubscriptionPolicy() { return typedSubscriptionPolicy; }
 
     public Class<? extends Serializable> getPayloadType() { return payloadType; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) { return true; }
+        if (o == null || getClass() != o.getClass()) { return false; }
+        TypedSubscription that = (TypedSubscription) o;
+        return typedSubscriptionPolicy == that.typedSubscriptionPolicy &&
+               Objects.equal(getPayloadType(), that.getPayloadType());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(typedSubscriptionPolicy, getPayloadType());
+    }
 }

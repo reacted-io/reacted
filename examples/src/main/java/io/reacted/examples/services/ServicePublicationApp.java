@@ -22,9 +22,9 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorServiceConfig;
+import io.reacted.core.reactorsystem.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.services.ReActorService;
+import io.reacted.core.services.Service;
 import io.reacted.core.services.SelectionType;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -80,24 +80,24 @@ public class ServicePublicationApp {
             @Override
             public ReActorConfig getConfig() { return routeeConfig; }
         };
-        var clockServiceConfig = ReActorServiceConfig.newBuilder()
-                                                     //Name of the service. It will be published with this name
-                                                     .setReActorName(serviceName)
-                                                     .setRouteeProvider(routeeProvider)
-                                                     //On service startup, 5 routees will be created
-                                                     .setRouteesNum(5)
-                                                     //and requests to the service will be balanced
-                                                     //among the routees using the following policy
-                                                     .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.LOWEST_LOAD)
-                                                     .setDispatcherName(serviceDispatcherName)
-                                                     //We can have at maximum 5 pending messages in the
-                                                     //service mailbox. The exceeding ones will be
-                                                     //dropped win an error to the sender
-                                                     .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
-                                                     //The service will intercept all the Service Discovery Requests
-                                                     //generated locally to this reactor system
-                                                     .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                     .build();
+        var clockServiceConfig = ServiceConfig.newBuilder()
+                                              //Name of the service. It will be published with this name
+                                              .setReActorName(serviceName)
+                                              .setRouteeProvider(routeeProvider)
+                                              //On service startup, 5 routees will be created
+                                              .setRouteesNum(5)
+                                              //and requests to the service will be balanced
+                                              //among the routees using the following policy
+                                              .setLoadBalancingPolicy(Service.LoadBalancingPolicy.LOWEST_LOAD)
+                                              .setDispatcherName(serviceDispatcherName)
+                                              //We can have at maximum 5 pending messages in the
+                                              //service mailbox. The exceeding ones will be
+                                              //dropped win an error to the sender
+                                              .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
+                                              //The service will intercept all the Service Discovery Requests
+                                              //generated locally to this reactor system
+                                              .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                              .build();
         reActorSystem.spawnService(clockServiceConfig).orElseSneakyThrow();
         //Ask for a reference to a service called Clock Service. A reference to the service itself will be returned
         //This means that all the requests sent to the returned reference will be routed to one of the available workers

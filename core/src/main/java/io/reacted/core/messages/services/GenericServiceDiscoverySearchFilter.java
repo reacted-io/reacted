@@ -13,6 +13,7 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.services.SelectionType;
+import io.reacted.core.services.Service;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -37,7 +38,7 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
     @Nullable
     private final InetAddress ipAddress;
     @Nullable
-    private final Pattern hostName;
+    private final Pattern hostNameExpr;
 
     protected GenericServiceDiscoverySearchFilter(Builder<BuilderT, BuiltT> builder) {
         super(builder);
@@ -45,21 +46,21 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
         this.selectionType = Objects.requireNonNull(builder.selectionType);
         this.cpuLoad = builder.cpuLoad;
         this.ipAddress = builder.ipAddress;
-        this.hostName = builder.hostName;
+        this.hostNameExpr = builder.hostNameExpr;
         this.channelIdSet = Objects.requireNonNull(builder.channelIdSet);
     }
 
-    public String getServiceName() { return this.serviceName; }
+    public String getServiceName() { return serviceName; }
 
-    public SelectionType getSelectionType() { return this.selectionType; }
+    public SelectionType getSelectionType() { return selectionType; }
 
-    public Optional<Range<Double>> getCpuLoad() { return Optional.ofNullable(this.cpuLoad); }
+    public Optional<Range<Double>> getCpuLoad() { return Optional.ofNullable(cpuLoad); }
 
-    public Set<ChannelId> getChannelIdSet() { return this.channelIdSet; }
+    public Set<ChannelId> getChannelIdSet() { return channelIdSet; }
 
-    public Optional<InetAddress> getIpAddress() { return Optional.ofNullable(this.ipAddress); }
+    public Optional<InetAddress> getIpAddress() { return Optional.ofNullable(ipAddress); }
 
-    public Optional<Pattern> getHostName() { return Optional.ofNullable(this.hostName); }
+    public Optional<Pattern> getHostNameExpr() { return Optional.ofNullable(hostNameExpr); }
 
     @Override
     public boolean matches(Properties serviceInfos, ReActorRef serviceGate) {
@@ -74,9 +75,9 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
         return Objects.equals(getServiceName(), serviceName);
     }
 
-    private boolean isCpuLoadMatching(@Nullable String cpuLoad) {
-        return cpuLoad == null ||
-               getCpuLoad().map(reqCpuLoad -> Try.of(() -> Double.valueOf(cpuLoad))
+    private boolean isCpuLoadMatching(@Nullable String serviceCpuLoad) {
+        return serviceCpuLoad == null ||
+               getCpuLoad().map(reqCpuLoad -> Try.of(() -> Double.valueOf(serviceCpuLoad))
                                                  .filter(reqCpuLoad::contains)
                                                  .isSuccess())
                            .orElse(true);
@@ -89,25 +90,25 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
                                                      .getChannelId());
     }
 
-    private boolean isIpAddressMatching(@Nullable String ipAddress) {
-        return ipAddress == null ||
-               getIpAddress().map(reqIpAddress -> Try.of(() -> InetAddress.getByName(ipAddress))
+    private boolean isIpAddressMatching(@Nullable String serviceIpAddress) {
+        return serviceIpAddress == null ||
+               getIpAddress().map(reqIpAddress -> Try.of(() -> InetAddress.getByName(serviceIpAddress))
                                                      .filter(reqIpAddress::equals)
                                                      .isSuccess())
                              .orElse(true);
     }
 
-    private boolean isHostNameMatching(@Nullable String hostName) {
-        return hostName == null ||
-               getHostName().map(reqHostName -> reqHostName.matcher(hostName).matches())
-                            .orElse(true);
+    private boolean isHostNameMatching(@Nullable String serviceHostName) {
+        return serviceHostName == null ||
+               getHostNameExpr().map(reqHostName -> reqHostName.matcher(serviceHostName).matches())
+                                .orElse(true);
     }
 
     @Override
     public String toString() {
         return "BasicServiceDiscoverySearchFilter{" + "serviceName='" + serviceName + '\'' + ", selectionType=" +
                selectionType + ", cpuLoad=" + cpuLoad + ", channelId=" + channelIdSet + ", ipAddress=" + ipAddress +
-               ", hostName=" + hostName + '}';
+               ", hostName=" + hostNameExpr + '}';
     }
 
     public static abstract class Builder<BuilderT, BuiltT> extends InheritableBuilder.Builder<BuilderT, BuiltT> {
@@ -120,7 +121,7 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
         @Nullable
         private InetAddress ipAddress;
         @Nullable
-        private Pattern hostName;
+        private Pattern hostNameExpr;
 
         protected Builder() { this.channelIdSet = Set.of(); }
 
@@ -146,11 +147,11 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
 
         /**
          *
-         * @param hostName regexp defining the hostname that the service should run onto
+         * @param hostNameExpr regexp defining the hostname that the service should run onto
          * @return this builder
          */
-        public final BuilderT setHostName(@Nullable Pattern hostName) {
-            this.hostName = hostName;
+        public final BuilderT setHostNameExpression(@Nullable Pattern hostNameExpr) {
+            this.hostNameExpr = hostNameExpr;
             return getThis();
         }
 
@@ -166,7 +167,7 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
 
         /**
          *
-         * @param selectionType Definition on the type of {@link io.reacted.core.services.ReActorService}
+         * @param selectionType Definition on the type of {@link Service}
          *                      {@link ReActorRef} required.
          *                      @see SelectionType
          * @return this builder

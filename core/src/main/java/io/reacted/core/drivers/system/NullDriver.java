@@ -26,14 +26,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public final class NullDriver extends ReActorSystemDriver<NullDriverCfg> {
-    public static final NullDriver NULL_DRIVER = new NullDriver(NullDriverCfg.newBuilder()
-                                                                             .build());
+public final class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
+    public static final NullDriver NULL_DRIVER = new NullDriver(NullDriverConfig.newBuilder()
+                                                                                .build());
     public static final Properties NULL_DRIVER_PROPERTIES = new Properties();
 
     private final ChannelId channelId;
-    private NullDriver(NullDriverCfg cfg) {
-        super(cfg);
+    private NullDriver(NullDriverConfig config) {
+        super(config);
         this.channelId = ChannelId.NO_CHANNEL_ID;
     }
 

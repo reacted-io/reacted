@@ -78,7 +78,7 @@ public class ReActorRelationsApp {
         }
 
         private void onThankYou(ReActorContext raCtx, ThankYouFather thanks) {
-            if (--this.requestedChildren == 0) {
+            if (--requestedChildren == 0) {
                 raCtx.stop()
                      .thenAcceptAsync(voidVal -> raCtx.reply(ReActorRef.NO_REACTOR_REF, new ByeByeUncle()));
             }
@@ -132,8 +132,8 @@ public class ReActorRelationsApp {
         }
 
         private void onInit(ReActorContext raCtx, ReActorInit init) {
-            this.breedRequester.tell(raCtx.getParent(),
-                                     new Greetings("Hello from " + childConfig.getReActorName()));
+            breedRequester.tell(raCtx.getParent(),
+                                new Greetings("Hello from " + childConfig.getReActorName()));
         }
     }
 

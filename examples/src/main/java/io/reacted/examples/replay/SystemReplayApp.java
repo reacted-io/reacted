@@ -63,7 +63,7 @@ public class SystemReplayApp {
 
         IntStream.range(0, 5)
                  .mapToObj(cycle -> "Message number " + cycle)
-                 .forEachOrdered(echoReference::aTell);
+                 .forEachOrdered(echoReference::atell);
         TimeUnit.SECONDS.sleep(1);
         recordedReactorSystem.shutDown();
         TimeUnit.SECONDS.sleep(1);

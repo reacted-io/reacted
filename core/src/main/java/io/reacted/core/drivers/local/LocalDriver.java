@@ -8,8 +8,9 @@
 
 package io.reacted.core.drivers.local;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
@@ -26,12 +27,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public abstract class LocalDriver<CfgT extends ReActedDriverCfg<?, CfgT>>
-        extends ReActorSystemDriver<CfgT> {
+public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>>
+        extends ReActorSystemDriver<ConfigT> {
      private static final Try<DeliveryStatus> TARGET_MISSING = Try.ofFailure(new NoSuchElementException());
 
-     protected LocalDriver(CfgT driverCfg) {
-          super(driverCfg);
+     protected LocalDriver(ConfigT config) {
+          super(config);
      }
 
      @Override
@@ -52,11 +53,13 @@ public abstract class LocalDriver<CfgT extends ReActedDriverCfg<?, CfgT>>
           var ackTrigger = removePendingAckTrigger(message.getSequenceNumber());
 
           if (deliveryAttempt.isPresent()) {
-               var deliveryAttemptStatus = deliveryAttempt.get();
-               deliveryAttemptStatus.thenAccept(deliveryStatus -> ackTrigger.ifPresent(trigger -> trigger.complete(deliveryStatus)));
+               var attemptResult = deliveryAttempt.get();
+               attemptResult.thenAccept(status -> ackTrigger.ifPresent(trigger -> trigger.toCompletableFuture()
+                                                                                         .complete(status)));
 
           } else {
-               ackTrigger.ifPresent(trigger -> trigger.complete(TARGET_MISSING));
+               ackTrigger.ifPresent(trigger -> trigger.toCompletableFuture()
+                                                      .complete(TARGET_MISSING));
                propagateToDeadLetters(getLocalReActorSystem().getSystemDeadLetters(), message);
           }
      }
@@ -67,23 +70,21 @@ public abstract class LocalDriver<CfgT extends ReActedDriverCfg<?, CfgT>>
      }
 
      protected static Try<DeliveryStatus> localDeliver(ReActorContext destination, Message message) {
-          Try<DeliveryStatus> deliverOperation = Try.of(() -> destination.getMbox()
-                                                                         .deliver(message));
+          Try<DeliveryStatus> deliverOperation = Try.of(() -> destination.getMbox().deliver(message));
           rescheduleIfSuccess(deliverOperation, destination);
           return deliverOperation;
      }
 
      protected static CompletionStage<Try<DeliveryStatus>> asyncLocalDeliver(ReActorContext destination,
                                                                              Message message) {
-          var asyncDeliverResult = destination.getMbox()
-                                              .asyncDeliver(message);
+          var asyncDeliverResult = destination.getMbox().asyncDeliver(message);
           asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result, destination));
           return asyncDeliverResult;
      }
 
      protected static void rescheduleIfSuccess(Try<DeliveryStatus> deliveryResult, ReActorContext destination) {
-          deliveryResult.peekFailure(error -> LOGGER.error("Unable to deliver: ", error))
-                        .filter(DeliveryStatus::isDelivered)
+          deliveryResult.filter(DeliveryStatus::isDelivered, DeliveryException::new)
+                        .peekFailure(error -> LOGGER.error("Unable to deliver: ", error))
                         .ifSuccess(deliveryStatus -> destination.reschedule());
      }
 

@@ -9,7 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.drivers.system.NullDriver;
-import io.reacted.core.drivers.system.NullDriverCfg;
+import io.reacted.core.drivers.system.NullDriverConfig;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -29,7 +29,7 @@ public final class NullReActorSystemRef extends ReActorSystemRef {
 
     public NullReActorSystemRef() { /* Required by Externalizable */ }
     public NullReActorSystemRef(ReActorSystemId reActorSystemId, Properties channelProperties,
-                                ReActorSystemDriver<NullDriverCfg> reActorSystemDriver) {
+                                ReActorSystemDriver<NullDriverConfig> reActorSystemDriver) {
         super(reActorSystemDriver, channelProperties, reActorSystemId);
     }
 

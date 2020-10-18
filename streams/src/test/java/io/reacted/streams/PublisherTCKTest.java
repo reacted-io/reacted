@@ -48,21 +48,21 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
 
     @Override
     public Flow.Publisher<Long> createFlowPublisher(long l) {
-        var publisher = new ReactedSubmissionPublisher<Long>(this.localReActorSystem,
+        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem,
                                                              "TckFeed-" + counter.getAndIncrement());
-        this.generatedFlows.add(publisher);
+        generatedFlows.add(publisher);
         asyncPublishMessages(publisher, l);
         return publisher;
     }
 
     @Override
     public Flow.Publisher<Long> createFailedFlowPublisher() {
-        var publisher = new ReactedSubmissionPublisher<Long>(this.localReActorSystem,
+        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem,
                                                              "FailedTckFeed-" + counter.getAndIncrement());
         publisher.close();
         Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(20))
            .ifError(error -> Thread.currentThread().interrupt());
-        this.generatedFlows.add(publisher);
+        generatedFlows.add(publisher);
         return publisher;
     }
 
@@ -72,9 +72,9 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     }
 
     @AfterMethod
-    private void cleanupTest() throws InterruptedException {
-        if (this.submitterThread != null) {
-            this.submitterThread.shutdownNow();
+    private void cleanupTest() {
+        if (submitterThread != null) {
+            submitterThread.shutdownNow();
         }
         while(!generatedFlows.isEmpty()) {
             var publisher = generatedFlows.poll();
@@ -84,19 +84,19 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
 
     @BeforeSuite
     public void init() {
-        this.localReActorSystem.initReActorSystem();
+        localReActorSystem.initReActorSystem();
         this.submitterThread = Executors.newSingleThreadExecutor();
     }
 
     @AfterSuite
     public void cleanup() {
-        this.submitterThread.shutdownNow();
-        this.localReActorSystem.shutDown();
+        submitterThread.shutdownNow();
+        localReActorSystem.shutDown();
     }
 
     private void asyncPublishMessages(ReactedSubmissionPublisher<Long> publisher,
                                       long messagesNum) {
-        this.submitterThread.submit(() -> {
+        submitterThread.submit(() -> {
             Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(150));
             for(long cycle = 0; cycle < messagesNum && !Thread.currentThread().isInterrupted(); cycle++) {
                 publisher.submit(cycle);
