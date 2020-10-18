@@ -53,7 +53,8 @@ public abstract class Try<T> {
     /**
      * Identity function. May be used as placeholder as mapper
      * @param <U> any type
-     * @return the same value passed as input
+     * @param value any value
+     * @return U the same value passed as input
      */
     public static <U> U identity(U value) {
         return value;
@@ -284,6 +285,7 @@ public abstract class Try<T> {
      * }</pre>
      * @param <X> any {@link Throwable}
      * @return the value contained in the Try if it is successful
+     * @throws X Any Throwable of any type that might have been generated during the processing of the previous steps
      */
     public <X extends Throwable> T orElseSneakyThrow() throws X {
         if(isFailure()) {
@@ -762,6 +764,7 @@ public abstract class Try<T> {
      *
      * @param ifError if Try is a failure, consumer will be applied to the contained exception
      * @param throwableClass inspect if the failure belongs to the specified class
+     * @param <ExceptionT> The type of error that should be peeked
      * @return the untouched Try
      */
     @SuppressWarnings("UnusedReturnValue")
@@ -802,6 +805,7 @@ public abstract class Try<T> {
      * @param ifSuccess      consumer for the Try value in case the Try is a
      *                       success
      * @param ifError        consumer for the Throwable in case Try is a failure
+     * @param <ExceptionT> Any exception or error type that we want to peek
      * @return the untouched Try
      */
     @SuppressWarnings("unchecked")
