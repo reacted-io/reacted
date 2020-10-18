@@ -94,7 +94,7 @@ class PingPongApp {
         var clientReActor = clientSystem.spawn(new ClientReActor(remoteService)).orElseSneakyThrow();
 
         //The reactors are executing now
-        TimeUnit.SECONDS.sleep(5);
+        TimeUnit.SECONDS.sleep(350);
         //The game is finished, shut down
         clientSystem.shutDown();
         serverSystem.shutDown();
