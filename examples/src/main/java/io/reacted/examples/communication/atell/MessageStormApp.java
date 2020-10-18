@@ -38,7 +38,7 @@ import java.util.Properties;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
-class PingPongApp {
+class MessageStormApp {
     public static void main(String[] args) throws InterruptedException {
         Properties zooKeeperProps = new Properties();
         zooKeeperProps.put(ZooKeeperDriver.ZK_CONNECTION_STRING, "localhost:2181");
