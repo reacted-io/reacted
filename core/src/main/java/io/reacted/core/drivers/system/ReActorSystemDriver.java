@@ -24,10 +24,12 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
 import io.reacted.core.reactors.ReActorId;
+import io.reacted.core.reactorsystem.NullReActorSystemRef;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.reactorsystem.ReActorSystemRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -177,10 +179,23 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                                         Try<DeliveryStatus> deliveryResult, Message originalMessage) {
         var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
                                                            deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED));
+        /* An ack has to be sent not to the nominal sender, but to the reactorsystem that actually generated the message
+           because that is the one that is actually waiting for an ACK
+         */
+        var destSystem = gate.getLocalReActorSystem()
+                             .findGate(originalMessage.getDataLink().getGeneratingReActorSystem(),
+                                       gate.getChannelId())
+                             //The point of the below statement is just returning empty properties because
+                             //the gate and so the channel id are already known
+                             //As a future optimization this could be changed to NullReActorSystemRef, but if it's
+                             //not required the below approach is the type-clean approach
+                             .orElseGet(() -> new ReActorSystemRef(gate, new Properties(),
+                                                                   originalMessage.getDataLink()
+                                                                                  .getGeneratingReActorSystem()));
+
         return gate.sendMessage(ReActorContext.NO_REACTOR_CTX,
                                 new Message(ReActorRef.NO_REACTOR_REF,
-                                            new ReActorRef(ReActorId.NO_REACTOR_ID,
-                                                           originalMessage.getSender().getReActorSystemRef()),
+                                            new ReActorRef(ReActorId.NO_REACTOR_ID, destSystem),
                                             ackSeqNum, localReActorSystemId, AckingPolicy.NONE, statusUpdatePayload));
     }
 

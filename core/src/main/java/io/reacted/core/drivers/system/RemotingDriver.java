@@ -8,6 +8,7 @@
 
 package io.reacted.core.drivers.system;
 
+import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
@@ -137,8 +138,8 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
                                                                        getLocalReActorSystem().getNewSeqNum(), this,
                                                                        deliveryResult, message)
-                                                        .ifError(error -> getLocalReActorSystem().logError("Unable to send ack",
-                                                                                                           error)));
+                                                        .ifError(error -> getLocalReActorSystem()
+                                                                            .logError("Unable to send ack", error)));
         }
     }
 }

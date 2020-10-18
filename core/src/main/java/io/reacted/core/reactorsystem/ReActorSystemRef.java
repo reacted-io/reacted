@@ -110,7 +110,7 @@ public class ReActorSystemRef implements Externalizable {
                                                                                        driverCtx.getDecodingDriver()
                                                                                                 .getChannelId()))
                       .ifPresentOrElse(gateRoute -> setBackingDriver(gateRoute.getBackingDriver())
-                                                            .setGateProperties(gateRoute.getGateProperties()),
+                                                    .setGateProperties(gateRoute.getGateProperties()),
                                        //We do not know how to communicate with the target reactor system, so
                                        //let's use the Null Driver that provides always failing implementations
                                        () -> setBackingDriver(NullDriver.NULL_DRIVER)
