@@ -11,7 +11,6 @@ package io.reacted.core;
 public final class CoreConstants {
     public static final String DESTINATION = "DESTINATION";
     public static final String DE_SERIALIZATION_SUCCESSFUL = "De/Serialization Successful!";
-    public static final String DISPATCHER = "Dispatcher";
 
     public static final String HIGH_PRIORITY = "high priority";
 
