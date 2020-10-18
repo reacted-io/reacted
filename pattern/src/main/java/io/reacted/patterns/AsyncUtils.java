@@ -31,7 +31,7 @@ public final class AsyncUtils {
      * @param onErrorAlternative if the step results into an exception, provide this value as input for the next stage                      
      * @param iterations a positive number of iterations to be executed
      * @param <PayloadT> input type for the operation
-     * @return a {@link CompletionStage&lt;{@code PayloadT}&gt;} that is going to contain the output of the last
+     * @return a {@link CompletionStage}&lt;{@code PayloadT}&gt; that is going to contain the output of the last
      * operation
      * @throws IllegalArgumentException if {@code iterations} is negative
      */
@@ -52,7 +52,7 @@ public final class AsyncUtils {
      * @param onError mapper to handle exceptions in the middle of the loop                     
      * @param iterations a positive number of iterations to be executed
      * @param <PayloadT> input type for the operation
-     * @return a {@link CompletionStage&lt;{@code PayloadT}&gt;} that is going to contain the output of the last
+     * @return a {@link CompletionStage}&lt;{@code PayloadT}&gt; that is going to contain the output of the last
      * operation
      * @throws IllegalArgumentException if {@code iterations} is negative
      */
@@ -73,7 +73,7 @@ public final class AsyncUtils {
      * @param <PayloadT> input type for the operation
      * @param onErrorAlternative mapper to handle exceptions in the middle of the loop
      * @param asyncExecutor async executor used to run the loop
-     * @return a {@link CompletionStage&lt;{@code PayloadT}&gt;} that is going to contain the output of the last
+     * @return a {@link CompletionStage}&lt;{@code PayloadT}&gt; that is going to contain the output of the last
      * operation
      * @throws IllegalArgumentException if {@code iterations} is negative
      */
@@ -95,7 +95,7 @@ public final class AsyncUtils {
      * @param <PayloadT> input type for the operation
      * @param onError mapper to handle exceptions in the middle of the loop
      * @param asyncExecutor async executor used to run the loop
-     * @return a {@link CompletionStage&lt;{@code PayloadT}&gt;} that is going to contain the output of the last
+     * @return a {@link CompletionStage}&lt;{@code PayloadT}&gt; that is going to contain the output of the last
      * operation
      * @throws IllegalArgumentException if {@code iterations} is negative
      */
