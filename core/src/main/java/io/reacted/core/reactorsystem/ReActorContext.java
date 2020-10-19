@@ -138,8 +138,8 @@ public final class ReActorContext {
         return reply(getSelf(), anyPayload);
     }
 
-    public CompletionStage<Try<DeliveryStatus>> aReply(Serializable anyPayload) {
-        return aReply(getSelf(), anyPayload);
+    public CompletionStage<Try<DeliveryStatus>> areply(Serializable anyPayload) {
+        return areply(getSelf(), anyPayload);
     }
 
     public CompletionStage<Try<DeliveryStatus>> reply(ReActorRef sender, Serializable anyPayload) {
@@ -160,7 +160,7 @@ public final class ReActorContext {
      * @param anyPayload payload to be sent
      * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#atell(ReActorRef, Serializable)}
      */
-    public CompletionStage<Try<DeliveryStatus>> aReply(ReActorRef sender, Serializable anyPayload) {
+    public CompletionStage<Try<DeliveryStatus>> areply(ReActorRef sender, Serializable anyPayload) {
         return getSender().atell(sender, anyPayload);
     }
 
