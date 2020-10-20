@@ -37,8 +37,8 @@
             <organization>ReActed</organization>
             <organizationUrl>http://www.reacted.io</organizationUrl>
             <roles>
-                <role>architect</role>
-                <role>developer</role>
+                <role>Architect</role>
+                <role>Engineer</role>
             </roles>
         </developer>
         <developer>
@@ -110,6 +110,7 @@
         <module>core</module>
         <module>streams</module>
         <module>drivers</module>
+        <module>framework</module>
     </modules>
     <dependencyManagement>
         <dependencies>
@@ -189,6 +190,11 @@
             <dependency>
                 <groupId>io.reacted</groupId>
                 <artifactId>reacted-streams</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.reacted</groupId>
+                <artifactId>reacted-framework</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

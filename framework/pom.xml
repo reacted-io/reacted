@@ -1,17 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  ~ Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
-  ~ All rights reserved.
-  ~
-  ~ This source code is licensed under the BSD-style license found in the
-  ~ LICENSE file in the root directory of this source tree.
-  -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>reacted-all</artifactId>
         <groupId>io.reacted</groupId>
         <version>1.3.2-SNAPSHOT</version>
     </parent>
+    <modelVersion>4.0.0</modelVersion>
 
     <developers>
         <developer>
@@ -23,7 +19,7 @@
             <organizationUrl>http://www.reacted.io</organizationUrl>
             <roles>
                 <role>Architect</role>
-                <role>Engineer</role>
+                <role>Developer</role>
             </roles>
         </developer>
         <developer>
@@ -39,24 +35,12 @@
         </developer>
     </developers>
 
-    <modelVersion>4.0.0</modelVersion>
-
-    <artifactId>reacted-streams</artifactId>
+    <artifactId>reacted-framework</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-            <version>7.1.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.reactivestreams</groupId>
-            <artifactId>reactive-streams-tck-flow</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.reactivestreams</groupId>
-            <artifactId>reactive-streams</artifactId>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-pattern</artifactId>
         </dependency>
         <dependency>
             <groupId>io.reacted</groupId>
@@ -64,15 +48,12 @@
         </dependency>
         <dependency>
             <groupId>io.reacted</groupId>
-            <artifactId>reacted-pattern</artifactId>
+            <artifactId>reacted-drivers</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-streams</artifactId>
         </dependency>
     </dependencies>
+
 </project>
