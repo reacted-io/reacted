@@ -14,12 +14,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 @NonNullByDefault
 @Immutable
 public final class AsyncUtils {
     private AsyncUtils() { /* No implementations allowed */ }
+
 
     /**
      * Asynchronously executes {@code operation} {@code iterations} times. Every loops iteration begins when the
@@ -84,7 +87,7 @@ public final class AsyncUtils {
                          error -> CompletableFuture.completedFuture(onErrorAlternative),
                          asyncExecutor);
     }
-    
+
     /**
      * Asynchronously executes {@code operation} {@code iterations} times. Every loops iteration begins when the
      * previous one is terminated
@@ -105,26 +108,35 @@ public final class AsyncUtils {
         if (iterations <= 0) {
             throw new IllegalArgumentException("Iterations must be positive. Provided [" + iterations + "]");
         }
+        AtomicLong counter = new AtomicLong(0);
+        return asyncLoop(operation, firstArgument, input ->  counter.getAndIncrement() < iterations,
+                         onError, asyncExecutor);
+    }
+
+    public static <PayloadT> CompletionStage<PayloadT>
+    asyncLoop(Function<PayloadT, CompletionStage<PayloadT>> operation, @Nullable PayloadT firstArgument,
+              Predicate<PayloadT> shallContinue, Function<Throwable, CompletionStage<PayloadT>> onError,
+              Executor asyncExecutor) {
         CompletableFuture<PayloadT> finalTrigger = new CompletableFuture<>();
-        asyncExecutor.execute(() -> asyncMainLoop(operation, firstArgument, iterations, finalTrigger, 
+        asyncExecutor.execute(() -> asyncMainLoop(operation, firstArgument, shallContinue, finalTrigger,
                                                   onError, asyncExecutor));
         return finalTrigger;
     }
 
     private static <PayloadT> CompletionStage<PayloadT>
     asyncMainLoop(Function<PayloadT, CompletionStage<PayloadT>> operation,
-                  @Nullable PayloadT firstArgument, long iterations, CompletionStage<PayloadT> finalTrigger,
-                  Function<Throwable, CompletionStage<PayloadT>> onError, Executor executorService) {
-        return operation.apply(firstArgument)
-                        .exceptionallyComposeAsync(onError, executorService)
-                        .thenComposeAsync(result -> {
-                            long leftIterations = iterations - 1;
-                            if (leftIterations > 0) {
-                                return asyncMainLoop(operation, result, leftIterations,
-                                                     finalTrigger, onError, executorService);
-                            }
-                            finalTrigger.toCompletableFuture().complete(result);
-                            return finalTrigger;
-                        }, executorService);
+                  @Nullable PayloadT firstArgument, Predicate<PayloadT> shallContinue,
+                  CompletionStage<PayloadT> finalTrigger, Function<Throwable, CompletionStage<PayloadT>> onError,
+                  Executor executorService) {
+        if (shallContinue.test(firstArgument)) {
+            return operation.apply(firstArgument)
+                            .exceptionallyComposeAsync(onError, executorService)
+                            .thenComposeAsync(result -> asyncMainLoop(operation, result, shallContinue, finalTrigger,
+                                                                      onError, executorService), executorService);
+        } else {
+            finalTrigger.toCompletableFuture()
+                        .complete(firstArgument);
+            return finalTrigger;
+        }
     }
 }
