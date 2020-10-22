@@ -46,7 +46,9 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
 
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
-        this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir()).build();
+        this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir())
+                                       .blockSize(65536)
+                                       .build();
         this.cqAppender = chronicle.acquireAppender();
         this.cqTailer = chronicle.createTailer().toEnd();
     }

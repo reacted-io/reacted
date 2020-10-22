@@ -1,0 +1,130 @@
+/*
+ * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+package io.reacted.examples.webappbackend.handlers;
+
+import com.sun.net.httpserver.HttpExchange;
+import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.messages.reactors.ReActorInit;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
+import io.reacted.core.messages.services.ServiceDiscoveryReply;
+import io.reacted.core.reactors.ReActions;
+import io.reacted.core.reactors.ReActor;
+import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.examples.webappbackend.Backend;
+import io.reacted.examples.webappbackend.db.QueryReply;
+import io.reacted.examples.webappbackend.db.QueryRequest;
+import io.reacted.patterns.Try;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.OutputStream;
+import java.io.Serializable;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+
+public class GetHandler implements ReActor {
+    @Nullable
+    private final HttpExchange httpExchange;
+    private final String requestId;
+    private final ExecutorService asyncService;
+    private ReActorRef dbGate;
+    private String requestKey;
+    public GetHandler(@Nullable HttpExchange httpExchange, String requestId, ExecutorService asyncService) {
+        this.httpExchange = httpExchange;
+        this.requestId = Objects.requireNonNull(requestId);
+        this.asyncService = Objects.requireNonNull(asyncService);
+    }
+
+    @Nonnull
+    @Override
+    public ReActorConfig getConfig() {
+        return ReActorConfig.newBuilder()
+                            .setReActorName(requestId)
+                            .build();
+    }
+
+    @Nonnull
+    @Override
+    public ReActions getReActions() {
+        return ReActions.newBuilder()
+                        .reAct(ReActorInit.class, (raCtx, init) -> onInit(raCtx))
+                        .reAct(ProcessGet.class, this::onProcessGet)
+                        .reAct(ServiceDiscoveryReply.class, this::onDbServiceDiscoveryReply)
+                        .build();
+    }
+
+    private void onInit(ReActorContext raCtx) {
+        if (httpExchange != null) {
+            CompletableFuture.runAsync(() -> Try.ofRunnable(() -> httpExchange.sendResponseHeaders(200, 0)), asyncService)
+                             .toCompletableFuture()
+                             .thenAccept(noVal -> raCtx.selfTell(new ProcessGet(httpExchange.getRequestURI()
+                                                                                            .toString())));
+        }
+        // start a request in parallel
+        raCtx.getReActorSystem()
+             .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
+                                                                .setServiceName(Backend.DB_SERVICE_NAME)
+                                                                .build(), raCtx.getSelf());
+    }
+
+    private void onProcessGet(ReActorContext raCtx, ProcessGet getRequest) {
+        try {
+            this.requestKey = extractGetFirstParameter(getRequest.getRequest);
+            if (dbGate != null) {
+                retrieveEntry(raCtx, requestKey, dbGate);
+            }
+        } catch (Exception anyParseException) {
+            sendReplyMessage("Invalid request format");
+            raCtx.stop();
+        }
+    }
+
+    private void onDbServiceDiscoveryReply(ReActorContext raCtx, ServiceDiscoveryReply serviceDiscoveryReply) {
+        if (serviceDiscoveryReply.getServiceGates().isEmpty()) {
+            /* No db to retrieve data from */
+            sendReplyMessage("No database could be found");
+            raCtx.stop();
+            return;
+        }
+        this.dbGate = serviceDiscoveryReply.getServiceGates().iterator().next();
+        if (requestKey != null) {
+            retrieveEntry(raCtx, requestKey, dbGate);
+        }
+    }
+
+    private void retrieveEntry(ReActorContext raCtx, String key, ReActorRef dbGate) {
+        dbGate.ask(new QueryRequest(key), QueryReply.class, raCtx.getSelf().getReActorId().toString())
+              .thenAccept(queryReply -> queryReply.ifSuccessOrElse(reply -> sendReplyMessage(reply.getPayload()),
+                                                                   error -> sendReplyMessage(error.getMessage())));
+    }
+    private static String extractGetFirstParameter(String getRequest) {
+        return getRequest.split("\\?")[1].split("=")[1];
+    }
+
+    private void sendReplyMessage(String message) {
+        if (httpExchange != null) {
+            CompletableFuture.runAsync(() -> Try.withResources(httpExchange::getResponseBody,
+                                                               response -> sendData(response, message)),
+                                       asyncService);
+        } else {
+            System.out.println(message);
+        }
+    }
+    private static Try<Void> sendData(OutputStream outputStream, String data) {
+        return Try.ofRunnable(() -> outputStream.write(data.getBytes()));
+    }
+    private static class ProcessGet implements Serializable {
+        private final String getRequest;
+        private ProcessGet(String getRequest) {
+            this.getRequest = getRequest;
+        }
+    }
+}

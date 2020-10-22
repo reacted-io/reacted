@@ -95,7 +95,7 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
     private void replayerMainLoop(ReActorSystem localReActorSystem, ChronicleQueue chronicle) {
         ExcerptTailer chronicleReader = chronicle.createTailer();
         Map<ReActorId, Map<Long, Message>> dstToMessageBySeqNum = new HashMap<>();
-        Pauser pauser = Pauser.balanced();
+        Pauser pauser = Pauser.millis(1000, 2000);
 
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
 
@@ -106,6 +106,8 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
                                                 .flatMap(Function.identity())
                                                 .orElse(null);
             if (nextMessage == null) {
+                pauser.pause();
+                pauser.reset();
                 continue;
             }
             if (!isForLocalReActorSystem(localReActorSystem, nextMessage)) {
