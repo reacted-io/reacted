@@ -71,7 +71,6 @@ public class DatabaseService implements ReActor {
                        .first().subscribe(new MongoSubscribers.MongoQuerySubscriber(raCtx.getSelf(),
                                                                                     raCtx.getSender()));
     }
-
     private <PayloadT extends Serializable>
     void ifNotReplaying(BiConsumer<ReActorContext, PayloadT> realCall,
                                 ReActorContext raCtx, PayloadT anyPayload) {
