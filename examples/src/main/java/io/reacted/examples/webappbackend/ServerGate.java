@@ -107,16 +107,12 @@ public class ServerGate implements ReActor, HttpHandler {
 
     private static class SpawnPostHandler implements Serializable {
         private final String requestId;
-        private SpawnPostHandler(String requestId) {
-            this.requestId = requestId;
-        }
+        private SpawnPostHandler(String requestId) { this.requestId = requestId; }
 
         String getRequestId() { return requestId; }
     }
     private static class SpawnGetHandler extends SpawnPostHandler {
-        private SpawnGetHandler(String requestId) {
-            super(requestId);
-        }
+        private SpawnGetHandler(String requestId) { super(requestId); }
     }
 
     private static class SpawnUnknownHandler extends SpawnPostHandler {

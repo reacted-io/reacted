@@ -18,7 +18,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 @NonNullByDefault
-public final class MongoSubscribers {
+final class MongoSubscribers {
     static class MongoQuerySubscriber implements Subscriber<Document> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private Subscription subscription;
@@ -39,7 +39,8 @@ public final class MongoSubscribers {
         @Override
         public void onNext(Document item) {
             requester.tell(mongoGate, new StorageMessages.QueryReply(item.get(DatabaseService.PAYLOAD_FIELD)
-                                                                         .toString()));
+                                                                         .toString()))
+                     .thenAccept(delivery -> subscription.request(1));
         }
 
         @Override
@@ -51,8 +52,6 @@ public final class MongoSubscribers {
     static class MongoStoreSubscriber implements Subscriber<InsertOneResult> {
         private final ReActorRef requester;
         private final ReActorRef mongoGate;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private Subscription subscription;
         MongoStoreSubscriber(ReActorRef mongoGate, ReActorRef requester) {
             this.requester = requester;
             this.mongoGate = mongoGate;
@@ -60,7 +59,6 @@ public final class MongoSubscribers {
 
         @Override
         public void onSubscribe(Subscription subscription) {
-            this.subscription = subscription;
             subscription.request(1);
         }
 
@@ -75,7 +73,6 @@ public final class MongoSubscribers {
         @Override
         public void onComplete() {
             requester.tell(mongoGate, new StorageMessages.StoreReply());
-            subscription.cancel();
         }
     }
 }

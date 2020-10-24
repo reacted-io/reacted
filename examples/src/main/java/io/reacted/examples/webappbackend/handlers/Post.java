@@ -29,15 +29,14 @@ import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class Post implements ReActor {
-    private static final AtomicLong KEYS = new AtomicLong();
     @Nullable
     private final HttpExchange httpExchange;
     private final ExecutorService ioAsyncExecutor;
@@ -93,8 +92,10 @@ public class Post implements ReActor {
         reply.filter(services -> !services.getServiceGates().isEmpty())
              .map(services -> services.getServiceGates().iterator().next())
              .mapOrElse(dbGate -> dbGate.tell(raCtx.getSelf(),
-                                              new StorageMessages.StoreRequest(KEYS.getAndIncrement() + "", payloadBuilder.toString())),
-                        error -> raCtx.selfTell(new DbNotReachable()));
+                                              new StorageMessages.StoreRequest(String.valueOf(Instant.now()
+                                                                                                     .toEpochMilli()),
+                                                                               payloadBuilder.toString())),
+                        error -> raCtx.selfTell(new StorageMessages.StoreError(new RuntimeException("No database found"))));
     }
 
     private void onStoreReply(ReActorContext raCtx, StorageMessages.StoreReply storeReply) {
@@ -169,5 +170,4 @@ public class Post implements ReActor {
     }
 
     private static final class DataChunksCompleted implements Serializable {}
-    private static final class DbNotReachable implements Serializable {}
 }

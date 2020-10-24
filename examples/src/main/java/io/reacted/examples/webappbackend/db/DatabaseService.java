@@ -51,8 +51,10 @@ public class DatabaseService implements ReActor {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, (raCtx, init) -> ifNotReplaying(this::onMongoInit, raCtx, init))
-                        .reAct(StorageMessages.StoreRequest.class, (raCtx, store) -> ifNotReplaying(this::onStoreRequest, raCtx, store))
-                        .reAct(StorageMessages.QueryRequest.class, (raCtx, query) -> ifNotReplaying(this::onQueryRequest, raCtx, query))
+                        .reAct(StorageMessages.StoreRequest.class,
+                               (raCtx, store) -> ifNotReplaying(this::onStoreRequest, raCtx, store))
+                        .reAct(StorageMessages.QueryRequest.class,
+                               (raCtx, query) -> ifNotReplaying(this::onQueryRequest, raCtx, query))
                         .build();
     }
 
@@ -61,9 +63,9 @@ public class DatabaseService implements ReActor {
                                       .getCollection(COLLECTION);
     }
     private void onStoreRequest(ReActorContext raCtx, StorageMessages.StoreRequest request) {
-        mongoCollection.insertOne(new Document(Map.of("_id", request.getKey(),
-                                                      PAYLOAD_FIELD, request.getPayload())))
-                       .subscribe(new MongoSubscribers.MongoStoreSubscriber(raCtx.getSelf(), raCtx.getSender()));
+        var publisher = mongoCollection.insertOne(new Document(Map.of("_id", request.getKey(),
+                                                                      PAYLOAD_FIELD, request.getPayload())));
+        publisher.subscribe(new MongoSubscribers.MongoStoreSubscriber(raCtx.getSelf(), raCtx.getSender()));
     }
 
     private void onQueryRequest(ReActorContext raCtx, StorageMessages.QueryRequest request) {
@@ -72,8 +74,7 @@ public class DatabaseService implements ReActor {
                                                                                     raCtx.getSender()));
     }
     private <PayloadT extends Serializable>
-    void ifNotReplaying(BiConsumer<ReActorContext, PayloadT> realCall,
-                                ReActorContext raCtx, PayloadT anyPayload) {
+    void ifNotReplaying(BiConsumer<ReActorContext, PayloadT> realCall, ReActorContext raCtx, PayloadT anyPayload) {
         if (mongoClient != null) {
             realCall.accept(raCtx, anyPayload);
         }

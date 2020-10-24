@@ -12,44 +12,27 @@ import io.reacted.patterns.NonNullByDefault;
 
 import java.io.Serializable;
 import java.util.Objects;
-
+@NonNullByDefault
 public final class StorageMessages {
     private StorageMessages() { /* No implementation required*/ }
-
-    @NonNullByDefault
     public static class QueryReply implements Serializable {
         private final String payload;
         public QueryReply(String payload) {
             this.payload = Objects.requireNonNull(payload);
         }
-
-        public String getPayload() {
-            return payload;
-        }
+        public String getPayload() { return payload; }
     }
-
-    @NonNullByDefault
     public static class QueryRequest implements Serializable {
         private final String key;
-        public QueryRequest(String key) {
-            this.key = Objects.requireNonNull(key);
-        }
-
-        public String getKey() {
-            return key;
-        }
+        public QueryRequest(String key) { this.key = Objects.requireNonNull(key); }
+        public String getKey() { return key; }
     }
 
-    @NonNullByDefault
     public static class StoreError extends Throwable {
-        public StoreError(Throwable anyError) {
-            super(anyError);
-        }
+        public StoreError(Throwable anyError) { super(anyError); }
     }
 
     public static class StoreReply implements Serializable { }
-
-    @NonNullByDefault
     public static class StoreRequest implements Serializable {
         private final String payload;
         private final String key;
@@ -58,7 +41,6 @@ public final class StorageMessages {
             this.key = Objects.requireNonNull(key);
         }
         public Serializable getPayload() { return payload; }
-
         public String getKey() { return key; }
     }
 }
