@@ -20,6 +20,8 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.examples.webappbackend.Backend;
 import io.reacted.examples.webappbackend.db.StorageMessages;
 import io.reacted.patterns.Try;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -32,6 +34,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 public class Get implements ReActor {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Get.class);
     @Nullable
     private final HttpExchange httpExchange;
     private final String requestId;
@@ -114,9 +117,10 @@ public class Get implements ReActor {
     }
 
     private CompletionStage<Try<Void>> sendReplyMessage(String message) {
-        System.out.println(message);
         return httpExchange == null
                 ? CompletableFuture.completedStage(Try.ofSuccess(null))
+                                   .thenApply(noVal -> Try.ofRunnable(() -> LOGGER.info("Payload Received: {}",
+                                                                                        message)))
                 : CompletableFuture.supplyAsync(() -> Try.withResources(httpExchange::getResponseBody,
                                                                         response -> sendData(response, message)),
                                                 asyncService);
