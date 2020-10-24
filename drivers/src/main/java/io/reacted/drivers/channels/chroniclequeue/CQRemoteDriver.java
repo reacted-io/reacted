@@ -92,7 +92,7 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     }
 
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {
-        Pauser readPauser = Pauser.sleepy();
+        Pauser readPauser = Pauser.millis(100, 500);
 
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
 

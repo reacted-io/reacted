@@ -20,6 +20,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.examples.webappbackend.Backend;
+import io.reacted.examples.webappbackend.db.StoreError;
 import io.reacted.examples.webappbackend.db.StoreReply;
 import io.reacted.examples.webappbackend.db.StoreRequest;
 import io.reacted.patterns.AsyncUtils;
@@ -28,12 +29,8 @@ import io.reacted.patterns.Try;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -63,6 +60,7 @@ public class PostHandler implements ReActor {
                         .reAct(DataChunkPush.class, this::onNewDataChunk)
                         .reAct(DataChunksCompleted.class, (raCtx, complete) -> onPostComplete(raCtx))
                         .reAct(StoreReply.class, this::onStoreReply)
+                        .reAct(StoreError.class, this::onStoreError)
                         .build();
     }
 
@@ -84,6 +82,7 @@ public class PostHandler implements ReActor {
     }
 
     private void onPostComplete(ReActorContext raCtx) {
+        ((BackpressuringMbox)raCtx.getMbox()).request(1);
         raCtx.getReActorSystem()
              .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                 .setServiceName(Backend.DB_SERVICE_NAME)
@@ -92,17 +91,29 @@ public class PostHandler implements ReActor {
     }
 
     private void onDbServiceReply(ReActorContext raCtx, Try<ServiceDiscoveryReply> reply) {
+        ((BackpressuringMbox)raCtx.getMbox()).request(1);
         reply.filter(services -> !services.getServiceGates().isEmpty())
              .map(services -> services.getServiceGates().iterator().next())
-             .mapOrElse(dbGate -> dbGate.tell(new StoreRequest(KEYS.getAndIncrement() + "",
-                                                               payloadBuilder.toString())),
+             .mapOrElse(dbGate -> dbGate.tell(raCtx.getSelf(),
+                                              new StoreRequest(KEYS.getAndIncrement() + "", payloadBuilder.toString())),
                         error -> raCtx.selfTell(new DbNotReachable()));
     }
 
     private void onStoreReply(ReActorContext raCtx, StoreReply storeReply) {
+        ((BackpressuringMbox)raCtx.getMbox()).request(1);
         if (httpExchange != null) {
             Try.ofRunnable(() -> httpExchange.getResponseBody().close())
                .ifError(error -> raCtx.logError("Error closing output stream", error));
+        }
+        raCtx.stop();
+    }
+
+    private void onStoreError(ReActorContext raCtx, StoreError error) {
+        raCtx.logError("Error storing payload: ", error);
+        if (httpExchange != null) {
+            Try.ofRunnable(() -> { httpExchange.getResponseBody().write(error.toString().getBytes());
+                                   httpExchange.getResponseBody().close(); })
+               .ifError(replyError -> raCtx.logError("Error closing output stream", replyError));
         }
         raCtx.stop();
     }

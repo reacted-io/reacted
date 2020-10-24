@@ -30,13 +30,16 @@ public class Backend {
     public static final String DB_SERVICE_NAME = "DB_GATE";
     public static void main(String[] args) throws IOException {
         ReActorSystem backendSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
-                                                                           //.setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/backend"))
-                                                                           .setLocalDriver(new ReplayLocalDriver(CQDriverConfig.newBuilder()
+                                                                           .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/backend"))
+                                                                            /*
+                                                                           .setLocalDriver(new CQLocalDriver(CQDriverConfig.newBuilder()
                                                                                                                                .setChronicleFilesDir("/tmp/mserver")
                                                                                                                                .setChannelName("LocalChannel")
                                                                                                                                .setTopicName("ReplaySession")
                                                                                                                                .setChannelRequiresDeliveryAck(true)
                                                                                                                                .build()))
+
+                                                                             */
                                                                            .setReactorSystemName("BackendSystem")
                                                                            .setRecordExecution(true)
                                                                            .build()).initReActorSystem();

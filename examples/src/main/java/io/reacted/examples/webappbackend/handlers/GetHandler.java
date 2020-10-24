@@ -24,10 +24,12 @@ import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 public class GetHandler implements ReActor {
@@ -102,24 +104,27 @@ public class GetHandler implements ReActor {
 
     private void retrieveEntry(ReActorContext raCtx, String key, ReActorRef dbGate) {
         dbGate.ask(new QueryRequest(key), QueryReply.class, raCtx.getSelf().getReActorId().toString())
-              .thenAccept(queryReply -> queryReply.ifSuccessOrElse(reply -> sendReplyMessage(reply.getPayload()),
-                                                                   error -> sendReplyMessage(error.getMessage())));
+              .thenComposeAsync(queryReply -> sendReplyMessage(queryReply.map(QueryReply::getPayload)
+                                                                         .orElseGet(Throwable::getMessage)),
+                                asyncService)
+              .thenAccept(sendReturn -> { sendReturn.ifError(error -> raCtx.logError("Unable to send back reply", error));
+                                          raCtx.stop(); });
     }
     private static String extractGetFirstParameter(String getRequest) {
         return getRequest.split("\\?")[1].split("=")[1];
     }
 
-    private void sendReplyMessage(String message) {
-        if (httpExchange != null) {
-            CompletableFuture.runAsync(() -> Try.withResources(httpExchange::getResponseBody,
-                                                               response -> sendData(response, message)),
-                                       asyncService);
-        } else {
-            System.out.println(message);
-        }
+    private CompletionStage<Try<Void>> sendReplyMessage(String message) {
+        System.out.println(message);
+        return httpExchange == null
+                ? CompletableFuture.completedStage(Try.ofSuccess(null))
+                : CompletableFuture.supplyAsync(() -> Try.withResources(httpExchange::getResponseBody,
+                                                                        response -> sendData(response, message)),
+                                                asyncService);
     }
-    private static Try<Void> sendData(OutputStream outputStream, String data) {
-        return Try.ofRunnable(() -> outputStream.write(data.getBytes()));
+    private static Void sendData(OutputStream outputStream, String data) throws IOException {
+        outputStream.write(data.getBytes());
+        return null;
     }
     private static class ProcessGet implements Serializable {
         private final String getRequest;

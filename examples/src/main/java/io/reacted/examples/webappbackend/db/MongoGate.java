@@ -16,6 +16,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.patterns.NonNullByDefault;
 import org.bson.Document;
 import com.mongodb.client.model.Filters;
 import org.reactivestreams.Subscriber;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
+@NonNullByDefault
 public class MongoGate implements ReActor {
     private static final String DB_NAME = "reactedapp";
     private static final String COLLECTION = "data";
@@ -116,16 +118,18 @@ public class MongoGate implements ReActor {
         }
 
         @Override
-        public void onNext(InsertOneResult item) {
-            requester.tell(mongoGate, new StoreReply());
-            subscription.cancel();
+        public void onNext(InsertOneResult item) { }
+
+        @Override
+        public void onError(Throwable throwable) {
+            requester.tell(mongoGate, new StoreError(throwable));
         }
 
         @Override
-        public void onError(Throwable throwable) { }
-
-        @Override
-        public void onComplete() { }
+        public void onComplete() {
+            requester.tell(mongoGate, new StoreReply());
+            subscription.cancel();
+        }
     }
 
     private <PayloadT extends Serializable>
