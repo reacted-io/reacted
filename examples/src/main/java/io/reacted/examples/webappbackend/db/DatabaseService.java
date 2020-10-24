@@ -30,14 +30,15 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 
 @NonNullByDefault
-public class MongoGate implements ReActor {
+public class DatabaseService implements ReActor {
     private static final String DB_NAME = "reactedapp";
     private static final String COLLECTION = "data";
     private static final String PAYLOAD_FIELD = "payload";
     @Nullable
     private final MongoClient mongoClient;
+    @SuppressWarnings("NotNullFieldNotInitialized")
     private MongoCollection<Document> mongoCollection;
-    public MongoGate(@Nullable MongoClient mongoClient) {
+    public DatabaseService(@Nullable MongoClient mongoClient) {
         this.mongoClient = mongoClient;
     }
 
@@ -45,7 +46,7 @@ public class MongoGate implements ReActor {
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
-                            .setReActorName(MongoGate.class.getSimpleName())
+                            .setReActorName(DatabaseService.class.getSimpleName())
                             .build();
     }
 
@@ -54,8 +55,8 @@ public class MongoGate implements ReActor {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, (raCtx, init) -> ifNotReplaying(this::onMongoInit, raCtx, init))
-                        .reAct(StoreRequest.class, (raCtx, store) -> ifNotReplaying(this::onStoreRequest, raCtx, store))
-                        .reAct(QueryRequest.class, (raCtx, query) -> ifNotReplaying(this::onQueryRequest, raCtx, query))
+                        .reAct(StorageMessages.StoreRequest.class, (raCtx, store) -> ifNotReplaying(this::onStoreRequest, raCtx, store))
+                        .reAct(StorageMessages.QueryRequest.class, (raCtx, query) -> ifNotReplaying(this::onQueryRequest, raCtx, query))
                         .build();
     }
 
@@ -63,19 +64,20 @@ public class MongoGate implements ReActor {
         this.mongoCollection = Objects.requireNonNull(mongoClient).getDatabase(DB_NAME)
                                       .getCollection(COLLECTION);
     }
-    private void onStoreRequest(ReActorContext raCtx, StoreRequest request) {
+    private void onStoreRequest(ReActorContext raCtx, StorageMessages.StoreRequest request) {
         mongoCollection.insertOne(new Document(Map.of("_id", request.getKey(),
                                                       PAYLOAD_FIELD, request.getPayload())))
                        .subscribe(new MongoStoreSubscriber(raCtx.getSelf(), raCtx.getSender()));
     }
 
-    private void onQueryRequest(ReActorContext raCtx, QueryRequest request) {
+    private void onQueryRequest(ReActorContext raCtx, StorageMessages.QueryRequest request) {
         mongoCollection.find(Filters.eq("_id", request.getKey()))
                        .first().subscribe(new MongoQuerySubscriber(raCtx.getSelf(),
                                                                    raCtx.getSender()));
     }
 
     public static class MongoQuerySubscriber implements Subscriber<Document> {
+        @SuppressWarnings("NotNullFieldNotInitialized")
         private Subscription subscription;
         private final ReActorRef mongoGate;
         private final ReActorRef requester;
@@ -91,7 +93,7 @@ public class MongoGate implements ReActor {
 
         @Override
         public void onNext(Document item) {
-            requester.tell(mongoGate, new QueryReply(item.get(PAYLOAD_FIELD).toString()));
+            requester.tell(mongoGate, new StorageMessages.QueryReply(item.get(PAYLOAD_FIELD).toString()));
             this.subscription.cancel();
         }
 
@@ -105,6 +107,7 @@ public class MongoGate implements ReActor {
     private static class MongoStoreSubscriber implements Subscriber<InsertOneResult> {
         private final ReActorRef requester;
         private final ReActorRef mongoGate;
+        @SuppressWarnings("NotNullFieldNotInitialized")
         private Subscription subscription;
         private MongoStoreSubscriber(ReActorRef mongoGate, ReActorRef requester) {
             this.requester = requester;
@@ -122,12 +125,12 @@ public class MongoGate implements ReActor {
 
         @Override
         public void onError(Throwable throwable) {
-            requester.tell(mongoGate, new StoreError(throwable));
+            requester.tell(mongoGate, new StorageMessages.StoreError(throwable));
         }
 
         @Override
         public void onComplete() {
-            requester.tell(mongoGate, new StoreReply());
+            requester.tell(mongoGate, new StorageMessages.StoreReply());
             subscription.cancel();
         }
     }

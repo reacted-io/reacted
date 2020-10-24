@@ -18,8 +18,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.examples.webappbackend.Backend;
-import io.reacted.examples.webappbackend.db.QueryReply;
-import io.reacted.examples.webappbackend.db.QueryRequest;
+import io.reacted.examples.webappbackend.db.StorageMessages;
 import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
@@ -32,14 +31,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
-public class GetHandler implements ReActor {
+public class Get implements ReActor {
     @Nullable
     private final HttpExchange httpExchange;
     private final String requestId;
     private final ExecutorService asyncService;
     private ReActorRef dbGate;
     private String requestKey;
-    public GetHandler(@Nullable HttpExchange httpExchange, String requestId, ExecutorService asyncService) {
+    public Get(@Nullable HttpExchange httpExchange, String requestId, ExecutorService asyncService) {
         this.httpExchange = httpExchange;
         this.requestId = Objects.requireNonNull(requestId);
         this.asyncService = Objects.requireNonNull(asyncService);
@@ -103,8 +102,8 @@ public class GetHandler implements ReActor {
     }
 
     private void retrieveEntry(ReActorContext raCtx, String key, ReActorRef dbGate) {
-        dbGate.ask(new QueryRequest(key), QueryReply.class, raCtx.getSelf().getReActorId().toString())
-              .thenComposeAsync(queryReply -> sendReplyMessage(queryReply.map(QueryReply::getPayload)
+        dbGate.ask(new StorageMessages.QueryRequest(key), StorageMessages.QueryReply.class, raCtx.getSelf().getReActorId().toString())
+              .thenComposeAsync(queryReply -> sendReplyMessage(queryReply.map(StorageMessages.QueryReply::getPayload)
                                                                          .orElseGet(Throwable::getMessage)),
                                 asyncService)
               .thenAccept(sendReturn -> { sendReturn.ifError(error -> raCtx.logError("Unable to send back reply", error));

@@ -20,9 +20,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.examples.webappbackend.Backend;
-import io.reacted.examples.webappbackend.db.StoreError;
-import io.reacted.examples.webappbackend.db.StoreReply;
-import io.reacted.examples.webappbackend.db.StoreRequest;
+import io.reacted.examples.webappbackend.db.StorageMessages;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.Try;
 
@@ -38,14 +36,14 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PostHandler implements ReActor {
+public class Post implements ReActor {
     private static final AtomicLong KEYS = new AtomicLong();
     @Nullable
     private final HttpExchange httpExchange;
     private final ExecutorService ioAsyncExecutor;
     private final String requestId;
     private final StringBuilder payloadBuilder;
-    public PostHandler(@Nullable HttpExchange httpExchange, String requestId, ExecutorService ioAsyncExecutor) {
+    public Post(@Nullable HttpExchange httpExchange, String requestId, ExecutorService ioAsyncExecutor) {
         this.httpExchange = httpExchange;
         this.ioAsyncExecutor = Objects.requireNonNull(ioAsyncExecutor);
         this.requestId = requestId;
@@ -59,8 +57,8 @@ public class PostHandler implements ReActor {
                         .reAct(ReActorInit.class, (raCtx, init) -> onRequestHandlingInit(raCtx))
                         .reAct(DataChunkPush.class, this::onNewDataChunk)
                         .reAct(DataChunksCompleted.class, (raCtx, complete) -> onPostComplete(raCtx))
-                        .reAct(StoreReply.class, this::onStoreReply)
-                        .reAct(StoreError.class, this::onStoreError)
+                        .reAct(StorageMessages.StoreReply.class, this::onStoreReply)
+                        .reAct(StorageMessages.StoreError.class, this::onStoreError)
                         .build();
     }
 
@@ -95,11 +93,11 @@ public class PostHandler implements ReActor {
         reply.filter(services -> !services.getServiceGates().isEmpty())
              .map(services -> services.getServiceGates().iterator().next())
              .mapOrElse(dbGate -> dbGate.tell(raCtx.getSelf(),
-                                              new StoreRequest(KEYS.getAndIncrement() + "", payloadBuilder.toString())),
+                                              new StorageMessages.StoreRequest(KEYS.getAndIncrement() + "", payloadBuilder.toString())),
                         error -> raCtx.selfTell(new DbNotReachable()));
     }
 
-    private void onStoreReply(ReActorContext raCtx, StoreReply storeReply) {
+    private void onStoreReply(ReActorContext raCtx, StorageMessages.StoreReply storeReply) {
         ((BackpressuringMbox)raCtx.getMbox()).request(1);
         if (httpExchange != null) {
             Try.ofRunnable(() -> httpExchange.getResponseBody().close())
@@ -108,7 +106,7 @@ public class PostHandler implements ReActor {
         raCtx.stop();
     }
 
-    private void onStoreError(ReActorContext raCtx, StoreError error) {
+    private void onStoreError(ReActorContext raCtx, StorageMessages.StoreError error) {
         raCtx.logError("Error storing payload: ", error);
         if (httpExchange != null) {
             Try.ofRunnable(() -> { httpExchange.getResponseBody().write(error.toString().getBytes());
