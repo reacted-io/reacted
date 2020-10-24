@@ -54,7 +54,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
                         .reAct(expectedReplyType, this::onExpectedReply)
-                        .reAct(ReActions::noReAction)
+                        .reAct(this::onUnexpected)
                         .build();
     }
 
@@ -72,19 +72,26 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
         try {
             ifNotDelivered(target.tell(raCtx.getSelf(), request),
                            error -> { raCtx.stop();
-                                      completionTrigger.completeAsync(() -> Try.ofFailure(error)); });
+                                      this.completionTrigger.completeAsync(() -> Try.ofFailure(error)); });
 
-            completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
-                                                askTimeout.toMillis(), TimeUnit.MILLISECONDS)
-                             .thenAcceptAsync(reply -> raCtx.stop());
+            this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
+                                                     askTimeout.toMillis(), TimeUnit.MILLISECONDS)
+                                  .thenAcceptAsync(reply -> raCtx.stop());
         } catch (RejectedExecutionException poolCannotHandleRequest) {
-            completionTrigger.completeAsync(() -> Try.ofFailure(poolCannotHandleRequest));
+            this.completionTrigger.completeAsync(() -> Try.ofFailure(poolCannotHandleRequest));
             raCtx.stop();
         }
     }
 
     private void onExpectedReply(ReActorContext raCtx, ReplyT reply) {
         this.completionTrigger.completeAsync(() -> Try.ofSuccess(reply));
+        raCtx.stop();
+    }
+
+    private void onUnexpected(ReActorContext raCtx, Serializable anyType) {
+        this.completionTrigger.completeAsync(() -> Try.ofFailure(new IllegalArgumentException(String.format("Received %s instead of %s",
+                                                                                                            anyType.getClass().getName(),
+                                                                                                            expectedReplyType.getName()))));
         raCtx.stop();
     }
 }
