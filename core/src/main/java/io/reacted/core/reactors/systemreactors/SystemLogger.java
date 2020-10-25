@@ -21,11 +21,10 @@ import org.slf4j.LoggerFactory;
 public class SystemLogger {
     private final static Logger LOGGER = LoggerFactory.getLogger(SystemLogger.class);
     public static final ReActions SYSTEM_LOGGER = ReActions.newBuilder()
-            .reAct(ReActorInit.class, ReActions::noReAction)
-            .reAct(ReActorStop.class, ReActions::noReAction)
             .reAct(ReActedError.class, SystemLogger::onErrorMessage)
             .reAct(ReActedDebug.class, SystemLogger::onDebugMessage)
             .reAct(ReActedInfo.class, SystemLogger::onInfoMessage)
+            .reAct(ReActions::noReAction)
             .build();
 
     private static void onErrorMessage(ReActorContext ctx, ReActedError payload) {
