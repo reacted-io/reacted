@@ -79,7 +79,7 @@ public class Post implements ReActor {
     }
 
     private void onPostComplete(ReActorContext raCtx) {
-        ((BackpressuringMbox)raCtx.getMbox()).request(1);
+        raCtx.getMbox().request(1);
         raCtx.getReActorSystem()
              .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                 .setServiceName(Backend.DB_SERVICE_NAME)
@@ -88,7 +88,7 @@ public class Post implements ReActor {
     }
 
     private void onDbServiceReply(ReActorContext raCtx, Try<ServiceDiscoveryReply> reply) {
-        ((BackpressuringMbox)raCtx.getMbox()).request(1);
+        raCtx.getMbox().request(1);
         reply.filter(services -> !services.getServiceGates().isEmpty())
              .map(services -> services.getServiceGates().iterator().next())
              .mapOrElse(dbGate -> dbGate.tell(raCtx.getSelf(),
@@ -99,7 +99,7 @@ public class Post implements ReActor {
     }
 
     private void onStoreReply(ReActorContext raCtx, StorageMessages.StoreReply storeReply) {
-        ((BackpressuringMbox)raCtx.getMbox()).request(1);
+        raCtx.getMbox().request(1);
         if (httpExchange != null) {
             Try.ofRunnable(() -> httpExchange.getResponseBody().close())
                .ifError(error -> raCtx.logError("Error closing output stream", error));
@@ -118,8 +118,8 @@ public class Post implements ReActor {
     }
 
     private void onNewDataChunk(ReActorContext raCtx, DataChunkPush newChunk) {
+        raCtx.getMbox().request(1);
         payloadBuilder.append(newChunk.lineRead);
-        ((BackpressuringMbox)raCtx.getMbox()).request(1);
     }
 
     private void onRequestHandlingInit(ReActorContext raCtx) {

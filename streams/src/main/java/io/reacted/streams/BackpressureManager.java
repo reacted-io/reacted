@@ -42,7 +42,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     private final BackpressuringMbox.Builder bpMailboxBuilder;
     private final CompletionStage<Void> onSubscriptionCompleteTrigger;
     @Nullable
-    private BackpressuringMbox backpressuringMbox;
+    private MailBox backpressuringMbox;
     @Nullable
     private volatile ReActorContext backpressurerCtx;
 
@@ -149,7 +149,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         this.backpressurerCtx = raCtx;
-        this.backpressuringMbox = (BackpressuringMbox)raCtx.getMbox();
+        this.backpressuringMbox = raCtx.getMbox();
 
         Try.TryConsumer<Throwable> onSubscriptionError = error -> { subscriber.onSubscribe(this);
                                                                     errorTermination(raCtx, error, subscriber); };

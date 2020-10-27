@@ -37,6 +37,7 @@ public interface MailBox extends AutoCloseable {
     @Nonnull
     CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message);
 
+    default void request(long messagesNum) { }
     @Override
     default void close() throws Exception { }
 }

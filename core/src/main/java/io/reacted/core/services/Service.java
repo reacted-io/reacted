@@ -27,6 +27,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ServiceConfig;
+import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -36,9 +37,11 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
+@NonNullByDefault
 public class Service implements ReActiveEntity {
     private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
@@ -58,14 +61,22 @@ public class Service implements ReActiveEntity {
     @Nonnull
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(this::routeMessage)
-                        .reAct(ServiceRegistryNotAvailable.class, this::onServiceRegistryNotAvailable)
-                        .reAct(ServiceDiscoveryRequest.class, this::serviceDiscovery)
-                        .reAct(RouteeReSpawnRequest.class, this::respawnRoutee)
-                        .reAct(ReActorInit.class, this::initService)
-                        .reAct(ReActorStop.class, this::stopService)
-                        .reAct(ServicePublicationRequestError.class, this::onServicePublicationError)
-                        .reAct(SystemMonitorReport.class, this::onSystemInfoReport)
+                        .reAct((raCtx, message) -> requestNextMessage(raCtx, message, this::routeMessage))
+                        .reAct(ServiceRegistryNotAvailable.class,
+                               (raCtx, message) -> requestNextMessage(raCtx, message,
+                                                                      this::onServiceRegistryNotAvailable))
+                        .reAct(ServiceDiscoveryRequest.class,
+                               (raCtx, message) -> requestNextMessage(raCtx, message, this::serviceDiscovery))
+                        .reAct(RouteeReSpawnRequest.class,
+                               (raCtx, message) -> requestNextMessage(raCtx, message, this::respawnRoutee))
+                        .reAct(ReActorInit.class,
+                               (raCtx, message) -> requestNextMessage(raCtx, message, this::initService))
+                        .reAct(ReActorStop.class,
+                               (raCtx, message) -> requestNextMessage(raCtx, message, this::stopService))
+                        .reAct(ServicePublicationRequestError.class,
+                               (raCtx, message) -> requestNextMessage(raCtx, message, this::onServicePublicationError))
+                        .reAct(SystemMonitorReport.class,
+                               (raCtx, message) -> requestNextMessage(raCtx, message, this::onSystemInfoReport))
                         .build();
     }
 
@@ -191,6 +202,12 @@ public class Service implements ReActiveEntity {
         return raCtx.getReActorSystem()
                     .getSystemRemotingRoot()
                     .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), serviceInfo));
+    }
+
+    private static <PayloadT extends Serializable>
+    void requestNextMessage(ReActorContext raCtx, PayloadT payload, BiConsumer<ReActorContext, PayloadT> realCall) {
+        raCtx.getMbox().request(1);
+        realCall.accept(raCtx, payload);
     }
 
     public static class RouteeReSpawnRequest implements Serializable {
