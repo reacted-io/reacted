@@ -79,7 +79,7 @@ public class BackpressuringMbox implements MailBox {
             this.sequencer = builder.sequencer;
             this.isPrivateSequencer = false;
         }
-        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.ayncBackpressurer), bufferSize);
+        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.asyncBackpressurer), bufferSize);
         this.reliableBackpressuringSubscriber = new BackpressuringSubscriber(requestOnStartup, mboxOwner,
                                                                              realMbox::deliver, backpressurer);
         backpressurer.subscribe(reliableBackpressuringSubscriber);
@@ -206,7 +206,7 @@ public class BackpressuringMbox implements MailBox {
         private int bufferSize;
         private int requestOnStartup;
         @SuppressWarnings("NotNullFieldNotInitialized")
-        private Executor ayncBackpressurer;
+        private Executor asyncBackpressurer;
         @Nullable
         private ThreadPoolExecutor sequencer;
         @SuppressWarnings("NotNullFieldNotInitialized")
@@ -240,7 +240,7 @@ public class BackpressuringMbox implements MailBox {
 
         /**
          *
-         * @param bufferSize how many updates we can cache befor beginning to backpressure new updates.
+         * @param bufferSize how many updates we can cache before beginning to backpressure new updates.
          *                   Must be a positive integer
          * @return this builder
          */
@@ -266,7 +266,7 @@ public class BackpressuringMbox implements MailBox {
          * @return this builder
          */
         public Builder setAsyncBackpressurer(Executor asyncBackpressurer) {
-            this.ayncBackpressurer = asyncBackpressurer;
+            this.asyncBackpressurer = asyncBackpressurer;
             return this;
         }
 

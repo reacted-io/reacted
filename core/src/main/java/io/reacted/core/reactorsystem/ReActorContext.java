@@ -225,7 +225,7 @@ public final class ReActorContext {
                                     .toArray(TypedSubscription[]::new));
     }
     /**
-     * Request termination for this reactor and the underlying hierachy
+     * Request termination for this reactor and the underlying hierarchy
      * @return a {@link CompletionStage} that is going to be completed when the last reactor in the hierarchy
      * is terminated
      */

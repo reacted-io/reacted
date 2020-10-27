@@ -56,7 +56,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     private final ConfigT driverConfig;
     private final Cache<Long, CompletableFuture<Try<DeliveryStatus>>> pendingAcksTriggers;
     @Nullable
-    private ScheduledFuture<?> cacheMainteinanceTask;
+    private ScheduledFuture<?> cacheMaintenanceTask;
     @Nullable
     private ReActorSystem localReActorSystem;
     @Nullable
@@ -121,8 +121,8 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                                                                  thread.getName(), error))
                 .build();
         this.driverThread = Executors.newFixedThreadPool(1, driverThreadDetails);
-        this.cacheMainteinanceTask = localReActorSystem.getSystemSchedulingService()
-                                                       .scheduleWithFixedDelay(pendingAcksTriggers::cleanUp,
+        this.cacheMaintenanceTask = localReActorSystem.getSystemSchedulingService()
+                                                      .scheduleWithFixedDelay(pendingAcksTriggers::cleanUp,
                                                                                getDriverConfig().getAckCacheCleanupInterval()
                                                                                                 .toMillis(),
                                                                                getDriverConfig().getAckCacheCleanupInterval()
@@ -143,7 +143,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     }
 
     public CompletionStage<Try<Void>> stopDriverCtx(ReActorSystem reActorSystem) {
-        Objects.requireNonNull(cacheMainteinanceTask).cancel(true);
+        Objects.requireNonNull(cacheMaintenanceTask).cancel(true);
         Objects.requireNonNull(driverThread).shutdownNow();
         return cleanDriverLoop();
     }
@@ -173,10 +173,10 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
         return messageAckingPolicy != AckingPolicy.NONE && isAckRequiredByChannel;
     }
 
-    protected static Try<DeliveryStatus> sendDeliveyAck(ReActorSystemId localReActorSystemId,
-                                                        long ackSeqNum,
-                                                        ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> gate,
-                                                        Try<DeliveryStatus> deliveryResult, Message originalMessage) {
+    protected static Try<DeliveryStatus> sendDeliveryAck(ReActorSystemId localReActorSystemId,
+                                                         long ackSeqNum,
+                                                         ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> gate,
+                                                         Try<DeliveryStatus> deliveryResult, Message originalMessage) {
         var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
                                                            deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED));
         /* An ack has to be sent not to the nominal sender, but to the reactorsystem that actually generated the message

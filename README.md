@@ -13,7 +13,7 @@
  ReActed can manage for you:
  
  - Parallelization: leveraging the actor paradigm, reactor can manage for you parallelization, saving the programmer the
- effort to write and mantain concurrent code. Synchronization or memory visibility issues problems are structurally removed
+ effort to write and maintain concurrent code. Synchronization or memory visibility issues problems are structurally removed
  from your code
  
  - Distribution: a ReActed instance can naturally and automatically create a cluster with other instances. Resources can

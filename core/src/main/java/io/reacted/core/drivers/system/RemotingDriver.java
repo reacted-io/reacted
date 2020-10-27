@@ -134,9 +134,9 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                                 message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
         var deliverAttempt = (isAckRequired ? destination.atell(sender, payload) : destination.tell(sender, payload));
         if (isAckRequired) {
-            deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
-                                                                       getLocalReActorSystem().getNewSeqNum(), this,
-                                                                       deliveryResult, message)
+            deliverAttempt.thenAccept(deliveryResult -> sendDeliveryAck(getLocalReActorSystem().getLocalReActorSystemId(),
+                                                                        getLocalReActorSystem().getNewSeqNum(), this,
+                                                                        deliveryResult, message)
                                                         .ifError(error -> getLocalReActorSystem()
                                                                             .logError("Unable to send ack", error)));
         }

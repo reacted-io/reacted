@@ -77,8 +77,8 @@ public class DispatcherConfig {
         /**
          * Dispatcher name must be unique in a reactor system
          *
-         * @param dispatcherName Unique name of a dispatcher. Reactors can request to be scheduled on thid
-         *                       dispacher specifying this name
+         * @param dispatcherName Unique name of a dispatcher. Reactors can request to be scheduled on this
+         *                       dispatcher specifying this name
          * @return this builder
          */
         public Builder setDispatcherName(String dispatcherName) {

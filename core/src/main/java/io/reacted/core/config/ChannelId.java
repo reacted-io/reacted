@@ -35,7 +35,7 @@ public class ChannelId implements Serializable {
 
     public static Optional<ChannelId> fromToString(String inputString) {
         return Try.of(() -> inputString.split(SEPARATOR))
-                  .map(splitted -> new ChannelId(ChannelType.valueOf(splitted[0]), splitted[1]))
+                  .map(split -> new ChannelId(ChannelType.valueOf(split[0]), split[1]))
                   .toOptional();
     }
 

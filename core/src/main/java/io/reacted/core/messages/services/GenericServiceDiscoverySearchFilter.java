@@ -63,12 +63,12 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
     public Optional<Pattern> getHostNameExpr() { return Optional.ofNullable(hostNameExpr); }
 
     @Override
-    public boolean matches(Properties serviceInfos, ReActorRef serviceGate) {
-        return isServiceNameMatching(Objects.requireNonNull(serviceInfos).getProperty(FIELD_NAME_SERVICE_NAME)) &&
-               isCpuLoadMatching(serviceInfos.getProperty(FIELD_NAME_CPU_LOAD)) &&
+    public boolean matches(Properties serviceInfo, ReActorRef serviceGate) {
+        return isServiceNameMatching(Objects.requireNonNull(serviceInfo).getProperty(FIELD_NAME_SERVICE_NAME)) &&
+               isCpuLoadMatching(serviceInfo.getProperty(FIELD_NAME_CPU_LOAD)) &&
                isChannelIdMatching(Objects.requireNonNull(serviceGate)) &&
-               isIpAddressMatching(serviceInfos.getProperty(FIELD_NAME_IP_ADDRESS)) &&
-               isHostNameMatching(serviceInfos.getProperty(FIELD_NAME_HOSTNAME));
+               isIpAddressMatching(serviceInfo.getProperty(FIELD_NAME_IP_ADDRESS)) &&
+               isHostNameMatching(serviceInfo.getProperty(FIELD_NAME_HOSTNAME));
     }
 
     private boolean isServiceNameMatching(@Nullable String serviceName) {

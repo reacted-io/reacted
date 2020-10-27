@@ -41,7 +41,7 @@ public class ServicePublicationAutomaticDiscoveryPolicyApp {
         DispatcherConfig serviceDispatcherCfg = DispatcherConfig.newBuilder()
                                                                 //High overhead, but very reactive
                                                                 .setBatchSize(1)
-                                                                //This dispatcher will have this label in the thead list
+                                                                //This dispatcher will have this label in the thread list
                                                                 .setDispatcherName(serviceDispatcherName)
                                                                 .setDispatcherThreadsNum(1)
                                                                 .build();
@@ -68,7 +68,7 @@ public class ServicePublicationAutomaticDiscoveryPolicyApp {
                                        .reAct(TimeRequest.class, ServicePublicationAutomaticDiscoveryPolicyApp::onTimeRequest)
                                        .reAct((raCtx, any) -> {})
                                        .build();
-        //Here we define how a routee behaves. This is going to be the actual body of our servuce
+        //Here we define how a routee behaves. This is going to be the actual body of our service
         UnChecked.CheckedSupplier<ReActor> routeeProvider = () -> new ReActor() {
             @Nonnull
             @Override

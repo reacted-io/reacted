@@ -87,7 +87,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
                                                           .reAct(PublisherShutdown.class,
-                                                                 (raCtx, shutown) -> raCtx.stop())
+                                                                 (raCtx, shutdown) -> raCtx.stop())
                                                           .reAct(PublisherInterrupt.class,
                                                                  this::onInterrupt)
                                                           .reAct(ReActorStop.class, this::onStop)

@@ -45,11 +45,11 @@ public class SystemReplayApp {
                         .initReActorSystem();
         //Every message sent within the reactor system is going to be saved now
         var echoReActions = ReActions.newBuilder()
-                                     .reAct((ctx, paylod) -> System.out.printf("Received %s from %s @ %s%n",
-                                                                               paylod.toString(),
-                                                                               ctx.getSender().getReActorId().getReActorName(),
-                                                                               ctx.getReActorSystem().getSystemConfig()
-                                                                                  .getReActorSystemName()))
+                                     .reAct((ctx, payload) -> System.out.printf("Received %s from %s @ %s%n",
+                                                                                payload.toString(),
+                                                                                ctx.getSender().getReActorId().getReActorName(),
+                                                                                ctx.getReActorSystem().getSystemConfig()
+                                                                                   .getReActorSystemName()))
                                      .build();
         var echoReActorConfig = ReActorConfig.newBuilder()
                                              .setReActorName("EchoReActor")
