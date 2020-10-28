@@ -137,6 +137,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * processed will be lost. This subscriber consumption speed will not affect the producer,
      * but delivery speed to the subscriber could.
      * For the non lost updates, strict message ordering is guaranteed to be the same of submission
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      *
      * @param subscriber Java Flow compliant subscriber
      * @throws NullPointerException if subscriber is null
@@ -179,6 +180,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
      * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize) {
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
@@ -231,6 +233,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
      * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, Executor asyncBackpressurer,
                                            Duration backpressureErrorTimeout) {
@@ -257,6 +260,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
      * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout) {
@@ -343,6 +347,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
      * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            Duration backpressureErrorTimeout) {
@@ -373,6 +378,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
      * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            Executor asyncBackpressurer, Duration backpressureErrorTimeout) {
@@ -588,7 +594,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
             /**
              *
-             * @param sequencer An optional thread for asynchronously attempting the submission tasks. If not specified
+             * @param sequencer An optional *single* thread for asynchronously attempting the submission tasks. If not specified
              *                  a new thread will be automatically created for this
              * @return this builder
              */
