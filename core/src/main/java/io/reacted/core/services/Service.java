@@ -145,10 +145,9 @@ public class Service implements ReActiveEntity {
             return;
         }
 
-        Optional<ReActorRef> serviceSelection = switch (request.getSearchFilter().getSelectionType()) {
-            case ROUTED -> Optional.of(raCtx.getSelf());
-            case DIRECT -> selectRoutee(raCtx, msgReceived);
-        };
+        Optional<ReActorRef> serviceSelection = request.getSearchFilter().getSelectionType() == SelectionType.ROUTED
+                                                ? Optional.of(raCtx.getSelf())
+                                                : selectRoutee(raCtx, msgReceived);
 
         serviceSelection.map(ServiceDiscoveryReply::new)
                         .ifPresent(discoveryReply -> raCtx.getSender().tell(raCtx.getSelf(),

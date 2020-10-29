@@ -359,18 +359,28 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
             return SUCCESS;
         }
 
-        return switch (treeCacheEvent.getType()) {
-            case CONNECTION_SUSPENDED, CONNECTION_LOST, INITIALIZED -> SUCCESS;
-            case CONNECTION_RECONNECTED -> reActorSystem.getSystemRemotingRoot().tell(driverReActor,
-                                                                                      new RegistryDriverInitComplete());
-            case NODE_ADDED, NODE_UPDATED -> ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
-                                             ? ZooKeeperDriver.upsertGate(reActorSystem, driverReActor,
-                                                                          treeCacheEvent.getData())
-                                             : SUCCESS;
-            case NODE_REMOVED -> ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
-                                 ? ZooKeeperDriver.removeGate(reActorSystem, driverReActor, treeCacheEvent.getData())
-                                 : SUCCESS;
-        };
+        CompletionStage<Try<DeliveryStatus>> handlingAction = CompletableFuture.failedFuture(new UnsupportedOperationException());
+        switch (treeCacheEvent.getType()) {
+            case CONNECTION_SUSPENDED:
+            case CONNECTION_LOST:
+            case INITIALIZED: handlingAction = SUCCESS;
+                              break;
+            case CONNECTION_RECONNECTED:  handlingAction = reActorSystem.getSystemRemotingRoot()
+                                                                        .tell(driverReActor, new RegistryDriverInitComplete());
+                                          break;
+            case NODE_ADDED:
+            case NODE_UPDATED: handlingAction = ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
+                                                               ? ZooKeeperDriver.upsertGate(reActorSystem,
+                                                                                            driverReActor,
+                                                                                            treeCacheEvent.getData())
+                                                               : SUCCESS;
+                               break;
+            case NODE_REMOVED: handlingAction = ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
+                                                ? ZooKeeperDriver.removeGate(reActorSystem, driverReActor,
+                                                                             treeCacheEvent.getData())
+                                                : SUCCESS;
+        }
+        return handlingAction;
     }
 
     private static CompletionStage<Try<DeliveryStatus>> removeGate(ReActorSystem reActorSystem, ReActorRef driverReActor,
@@ -407,18 +417,19 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                 @Nullable CuratorCache curatorCache, ConnectionState newState) {
 
         switch (newState) {
-            case LOST, SUSPENDED -> raCtx.getReActorSystem().getSystemRemotingRoot()
-                                         .tell(raCtx.getSelf(), new RegistryConnectionLost());
-            case RECONNECTED -> Optional.ofNullable(curatorCache)
-                                        .map(CuratorCache::stream)
-                                        .ifPresent(children -> children.forEachOrdered(child -> refreshGate(raCtx.getSelf(),
-                                                                                                            raCtx.getReActorSystem(),
-                                                                                                            curator,
-                                                                                                            child)));
-            case CONNECTED, READ_ONLY -> {}
+            case LOST:
+            case SUSPENDED: raCtx.getReActorSystem().getSystemRemotingRoot().tell(raCtx.getSelf(),
+                                                                                  new RegistryConnectionLost());
+                            break;
+            case RECONNECTED: Optional.ofNullable(curatorCache)
+                                      .map(CuratorCache::stream)
+                                      .ifPresent(children -> children.forEachOrdered(child -> refreshGate(raCtx.getSelf(),
+                                                                                                          raCtx.getReActorSystem(),
+                                                                                                          curator,
+                                                                                                          child)));
+                              break;
         }
     }
-
     private static void refreshGate(ReActorRef zkDriver, ReActorSystem reActorSystem, CuratorFramework curator,
                                     ChildData childData) {
         cacheEventsRouter(curator, new TreeCacheEvent(TreeCacheEvent.Type.NODE_ADDED, childData),

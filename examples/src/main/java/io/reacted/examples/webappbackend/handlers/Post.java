@@ -138,8 +138,7 @@ public class Post implements ReActor {
         var reader = new BufferedReader(new InputStreamReader(requestStream));
         CompletionStage<Try<DeliveryStatus>> whileLoop;
         whileLoop = AsyncUtils.asyncLoop(deliveryStatus -> sendTillAvailable(raCtx, reader),
-                                         Try.ofSuccess(DeliveryStatus.DELIVERED), Objects::nonNull,
-                                         error -> CompletableFuture.completedStage(Try.ofFailure(error)),
+                                         Try.ofSuccess(DeliveryStatus.DELIVERED), Objects::nonNull, Try::ofFailure,
                                          ioAsyncExecutor);
         whileLoop.thenAccept(result -> Try.ofRunnable(reader::close)
                                           .ifSuccessOrElse(noVal -> raCtx.logInfo("Stream closed"),

@@ -41,8 +41,7 @@ public final class AsyncUtils {
     public static <PayloadT> CompletionStage<PayloadT>
     asyncLoop(Function<PayloadT, CompletionStage<PayloadT>> operation, @Nullable PayloadT firstArgument,
               @Nullable PayloadT onErrorAlternative, long iterations) {
-        return asyncLoop(operation, firstArgument, iterations,
-                         error -> CompletableFuture.completedFuture(onErrorAlternative),
+        return asyncLoop(operation, firstArgument, iterations, error -> onErrorAlternative,
                          ForkJoinPool.commonPool());
     }
     
@@ -61,7 +60,7 @@ public final class AsyncUtils {
      */
     public static <PayloadT> CompletionStage<PayloadT>
     asyncLoop(Function<PayloadT, CompletionStage<PayloadT>> operation, @Nullable PayloadT firstArgument,
-              Function<Throwable, CompletionStage<PayloadT>> onError, long iterations) {
+              Function<Throwable, PayloadT> onError, long iterations) {
         return asyncLoop(operation, firstArgument, iterations, onError, ForkJoinPool.commonPool());
     }
 
@@ -84,7 +83,7 @@ public final class AsyncUtils {
     asyncLoop(Function<PayloadT, CompletionStage<PayloadT>> operation, @Nullable PayloadT firstArgument,
               @Nullable PayloadT onErrorAlternative, long iterations, Executor asyncExecutor) {
         return asyncLoop(operation, firstArgument, iterations,
-                         error -> CompletableFuture.completedFuture(onErrorAlternative),
+                         error -> onErrorAlternative,
                          asyncExecutor);
     }
 
@@ -104,7 +103,7 @@ public final class AsyncUtils {
      */
     public static <PayloadT> CompletionStage<PayloadT>
     asyncLoop(Function<PayloadT, CompletionStage<PayloadT>> operation, @Nullable PayloadT firstArgument,
-              long iterations, Function<Throwable, CompletionStage<PayloadT>> onError, Executor asyncExecutor) {
+              long iterations, Function<Throwable, PayloadT> onError, Executor asyncExecutor) {
         if (iterations <= 0) {
             throw new IllegalArgumentException("Iterations must be positive. Provided [" + iterations + "]");
         }
@@ -115,7 +114,7 @@ public final class AsyncUtils {
 
     public static <PayloadT> CompletionStage<PayloadT>
     asyncLoop(Function<PayloadT, CompletionStage<PayloadT>> operation, @Nullable PayloadT firstArgument,
-              Predicate<PayloadT> shallContinue, Function<Throwable, CompletionStage<PayloadT>> onError,
+              Predicate<PayloadT> shallContinue, Function<Throwable, PayloadT> onError,
               Executor asyncExecutor) {
         CompletableFuture<PayloadT> finalTrigger = new CompletableFuture<>();
         asyncExecutor.execute(() -> asyncMainLoop(operation, firstArgument, shallContinue, finalTrigger,
@@ -126,11 +125,11 @@ public final class AsyncUtils {
     private static <PayloadT> CompletionStage<PayloadT>
     asyncMainLoop(Function<PayloadT, CompletionStage<PayloadT>> operation,
                   @Nullable PayloadT firstArgument, Predicate<PayloadT> shallContinue,
-                  CompletionStage<PayloadT> finalTrigger, Function<Throwable, CompletionStage<PayloadT>> onError,
+                  CompletionStage<PayloadT> finalTrigger, Function<Throwable, PayloadT> onError,
                   Executor executorService) {
         if (shallContinue.test(firstArgument)) {
             return operation.apply(firstArgument)
-                            .exceptionallyComposeAsync(onError, executorService)
+                            .exceptionally(onError)
                             .thenComposeAsync(result -> asyncMainLoop(operation, result, shallContinue, finalTrigger,
                                                                       onError, executorService), executorService);
         } else {

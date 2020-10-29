@@ -50,7 +50,6 @@ public class BackpressuringMbox implements MailBox {
 
     /*
      * BackpressuringMbox wrapper for any other mailbox type.
-     *
      */
     private BackpressuringMbox(Builder builder) {
         ReActorContext mboxOwner = Objects.requireNonNull(builder.realMailboxOwner);
