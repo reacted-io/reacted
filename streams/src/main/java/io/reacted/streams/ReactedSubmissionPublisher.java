@@ -443,7 +443,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     public void submit(PayloadT message) {
-        subscribers.forEach(subscribed -> subscribed.atell(subscribed, message));
+        subscribers.forEach(subscribed -> subscribed.tell(subscribed, message));
     }
 
     private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {

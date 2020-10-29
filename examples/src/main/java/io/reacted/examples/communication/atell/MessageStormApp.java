@@ -41,7 +41,6 @@ import java.util.concurrent.TimeUnit;
 class MessageStormApp {
     public static void main(String[] args) throws InterruptedException {
         Properties zooKeeperProps = new Properties();
-        zooKeeperProps.put(ZooKeeperDriver.ZK_CONNECTION_STRING, "localhost:2181");
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Client",
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()

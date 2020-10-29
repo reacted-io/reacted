@@ -29,11 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 public class ServicePublicationApp {
     public static void main(String[] args) throws InterruptedException {
-        String zookeeperConnectionString = args.length == 0 || Strings.isNullOrEmpty(args[0])
-                                           ? "localhost:2181" : args[0];
         Properties serviceRegistryProperties = new Properties();
         //The two reactor system will discover each other automatically using this service registry
-        serviceRegistryProperties.setProperty(ZooKeeperDriver.ZK_CONNECTION_STRING, zookeeperConnectionString);
         var serverReActorSystem = "SERVER_REACTORSYSTEM";
         var serverGatePort = 12345;
         var clientReActorSystem = "CLIENT_REACTORSYSTEM";

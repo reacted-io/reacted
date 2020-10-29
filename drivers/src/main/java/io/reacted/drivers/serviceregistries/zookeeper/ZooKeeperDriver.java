@@ -73,7 +73,6 @@ import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig.Builder, ZooKeeperDriverConfig> {
-    public static final String ZK_CONNECTION_STRING = "zkConnectionString";
     private static final String REACTED_REACTORSYSTEMS_ROOT = "REACTED_REACTOR_SYSTEMS";
     private static final String REACTED_SERVICES_ROOT = "REACTED_SERVICES";
     private static final String CLUSTER_REGISTRY_ROOT_PATH = ZKPaths.makePath("", "REACTED_CLUSTER_ROOT");
@@ -137,11 +136,6 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                         .reAct(ZooKeeperDriver::onSpuriousMessage)
                         .build();
     }
-
-    private String getZkConnectionString() {
-        return getConfig().getServiceRegistryProperties().getProperty(ZK_CONNECTION_STRING);
-    }
-
     private void onServiceCancellationRequest(ReActorContext raCtx, ServiceCancellationRequest cancellationRequest) {
         getConfig().getAsyncExecutionService()
                    .execute(() -> getServiceInstance(cancellationRequest.getServiceName(),
@@ -247,7 +241,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         if (asyncClient == null) {
-            var curatorClient = CuratorFrameworkFactory.newClient(getZkConnectionString(),
+            var curatorClient = CuratorFrameworkFactory.newClient(getConfig().getConnectionString(),
                                                                  (int) getConfig().getSessionTimeout()
                                                                                  .toMillis(),
                                                                  (int) getConfig().getConnectionTimeout()
