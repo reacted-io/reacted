@@ -95,7 +95,7 @@
         <slf4j-api.version>2.0.0-alpha1</slf4j-api.version>
         <slf4j-simple.version>2.0.0-alpha1</slf4j-simple.version>
         <apache-curator.version>5.1.0</apache-curator.version>
-        <apache-curator-discovery.version>5.0.0</apache-curator-discovery.version>
+        <apache-curator-discovery.version>5.1.0</apache-curator-discovery.version>
         <jackson.databind.version>2.11.0</jackson.databind.version>
         <grpc.version>1.32.1</grpc.version>
         <protobuf.version>3.12.2</protobuf.version>

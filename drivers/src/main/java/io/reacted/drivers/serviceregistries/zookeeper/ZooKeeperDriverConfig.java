@@ -9,6 +9,8 @@
 package io.reacted.drivers.serviceregistries.zookeeper;
 
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
+import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
@@ -78,7 +80,9 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         private int maxReconnectionAttempts = ZOOKEEPER_DEFAULT_MAX_RECONNECTION_ATTEMPTS;
         private Executor asyncExecutorService = ForkJoinPool.commonPool();
 
-        private Builder() { /* No implementation required */ }
+        private Builder() {
+            setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class));
+        }
 
         /**
          * Specify after how often a ping should be sent to Zookeeper

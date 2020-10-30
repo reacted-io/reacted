@@ -8,12 +8,10 @@
 
 package io.reacted.examples.remoting.services;
 
-import com.google.common.base.Strings;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.SystemMonitorReport;
-import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactorsystem.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
@@ -38,7 +36,6 @@ public class ServicePublicationApp {
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(serverReActorSystem,
                                                                       SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
                                                                       List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
-                                                                                                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                        .setServiceRegistryProperties(serviceRegistryProperties)
                                                                                                                        .setReActorName("ZooKeeperDriver")
                                                                                                                        .build())),
@@ -47,7 +44,6 @@ public class ServicePublicationApp {
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(clientReActorSystem,
                                                                       SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/client"),
                                                                       List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
-                                                                                                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                        .setServiceRegistryProperties(serviceRegistryProperties)
                                                                                                                        .setReActorName("ZooKeeperDriver")
                                                                                                                        .build())),
