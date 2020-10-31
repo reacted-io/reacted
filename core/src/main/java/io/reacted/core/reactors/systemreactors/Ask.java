@@ -10,6 +10,7 @@ package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.messages.reactors.ReActorInit;
+import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -53,6 +54,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
+                        .reAct(ReActorStop.class, (raCtx, stop) -> onStop())
                         .reAct(expectedReplyType, this::onExpectedReply)
                         .reAct(this::onUnexpected)
                         .build();
@@ -71,12 +73,12 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         try {
             ifNotDelivered(target.tell(raCtx.getSelf(), request),
-                           error -> { raCtx.stop();
-                                      this.completionTrigger.completeAsync(() -> Try.ofFailure(error)); });
+                           error -> this.completionTrigger.completeAsync(() -> Try.ofFailure(error))
+                                                          .thenAccept(completion -> raCtx.stop()));
 
             this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
                                                      askTimeout.toMillis(), TimeUnit.MILLISECONDS)
-                                  .thenAcceptAsync(reply -> raCtx.stop());
+                                  .thenAccept(reply -> raCtx.stop());
         } catch (RejectedExecutionException poolCannotHandleRequest) {
             this.completionTrigger.completeAsync(() -> Try.ofFailure(poolCannotHandleRequest));
             raCtx.stop();
@@ -88,6 +90,9 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
         raCtx.stop();
     }
 
+    private void onStop() {
+        this.completionTrigger.complete(Try.ofFailure(new IllegalStateException()));
+    }
     private void onUnexpected(ReActorContext raCtx, Serializable anyType) {
         this.completionTrigger.completeAsync(() -> Try.ofFailure(new IllegalArgumentException(String.format("Received %s instead of %s",
                                                                                                             anyType.getClass().getName(),
