@@ -10,6 +10,7 @@ package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -35,9 +36,12 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
@@ -115,6 +119,11 @@ public class Service implements ReActiveEntity {
     private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
         //All the services can receive service stats
         raCtx.addTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class));
+
+        if (BackpressuringMbox.class.isAssignableFrom(raCtx.getMbox().getClass())) {
+            BackpressuringMbox myMbox = (BackpressuringMbox)raCtx.getMbox();
+            myMbox.setNotDelayedMessageTypes(getNonDelayedMessageTypes(myMbox.getNotDelayedMessageTypes()));
+        }
 
         //spawn the minimum number or routees
         for (int currentRoutee = 0; currentRoutee < serviceConfig.getRouteesNum(); currentRoutee++) {
@@ -207,6 +216,16 @@ public class Service implements ReActiveEntity {
     void requestNextMessage(ReActorContext raCtx, PayloadT payload, BiConsumer<ReActorContext, PayloadT> realCall) {
         raCtx.getMbox().request(1);
         realCall.accept(raCtx, payload);
+    }
+
+    //Messages required for the Service management logic cannot be backpressured
+    private static Set<Class<? extends Serializable>>
+    getNonDelayedMessageTypes(Set<Class<? extends Serializable>> userDefinedNotDelayedMessageTypes) {
+        return Stream.concat(userDefinedNotDelayedMessageTypes.stream(),
+                             Stream.of(ReActorInit.class, ServiceRegistryNotAvailable.class,
+                                       ServiceDiscoveryRequest.class, RouteeReSpawnRequest.class,
+                                       ServicePublicationRequestError.class, SystemMonitorReport.class))
+                     .collect(Collectors.toUnmodifiableSet());
     }
 
     public static class RouteeReSpawnRequest implements Serializable {
