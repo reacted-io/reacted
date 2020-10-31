@@ -88,6 +88,10 @@ public class BackpressuringMbox implements MailBox {
 
     public static Builder newBuilder() { return new Builder(); }
 
+    public static BackpressuringMbox newDefaultMailBox(ReActorContext reActorContext) {
+        return newBuilder().setRealMailboxOwner(reActorContext).build();
+    }
+
     @Override
     public boolean isEmpty() { return realMbox.isEmpty(); }
 
