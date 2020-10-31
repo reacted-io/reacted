@@ -57,6 +57,7 @@ public class ServicePublicationApp {
                                                               //We can add as many dispatchers as we want
                                                               .addDispatcherConfig(serviceDispatcherCfg)
                                                               .build();
+
         var reActorSystem = new ReActorSystem(systemConfig).initReActorSystem();
 
         ReActorConfig routeeConfig = ReActorConfig.newBuilder()

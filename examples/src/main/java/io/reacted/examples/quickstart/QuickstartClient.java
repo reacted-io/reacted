@@ -32,7 +32,6 @@ public class QuickstartClient {
                                                  .setBootstrapEndpoint("localhost:9092")
                                                  .build();
         var showOffClientSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
-                                                                       .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/client"))
                                                                        .addServiceRegistryDriver(new ZooKeeperDriver(zooKeeperDriverConfig))
                                                                        .addRemotingDriver(new KafkaDriver(kafkaDriverConfig))
                                                                        .setReactorSystemName("ShowOffClientReActorSystemName")
