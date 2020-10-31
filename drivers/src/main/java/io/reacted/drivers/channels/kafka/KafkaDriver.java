@@ -72,7 +72,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     public CompletionStage<Try<Void>> cleanDriverLoop() {
         return CompletableFuture.completedFuture(Try.ofRunnable(() -> { Objects.requireNonNull(kafkaProducer).close();
                                                                         Objects.requireNonNull(kafkaConsumer).close();
-                                                                      }));
+                                                                       }));
     }
 
     @Override
@@ -128,8 +128,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
                         (Try.TryValueSupplier<ConsumerRecords<Long, Message>>) ConsumerRecords::empty)
                .ifSuccessOrElse(records -> records.forEach(record -> thisDriver.offerMessage(record.value())),
                                 error -> localReActorSystem.logError("Unable to fetch messages from kafka", error))
-               .ifError(error -> LOGGER.error("WUT!?!?!?", error));
-
+               .ifError(error -> LOGGER.error("CRITIC! Error offering message", error));
         }
         Thread.currentThread().interrupt();
     }
@@ -137,22 +136,20 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     public static class MessageDecoder implements Deserializer<Message> {
         @Override
         public Message deserialize(String topic, byte[] data) {
-            return (Message)
-                    Try.withResources(() -> new ObjectInputStream(new ByteArrayInputStream(data)),
-                                    ObjectInputStream::readObject)
-                       .orElseGet(() -> NO_VALID_PAYLOAD,
-                                  error -> LOGGER.error("Unable to properly decode message", error));
+            return (Message) Try.withResources(() -> new ObjectInputStream(new ByteArrayInputStream(data)),
+                                               ObjectInputStream::readObject)
+                                .orElseGet(() -> NO_VALID_PAYLOAD,
+                                           error -> LOGGER.error("Unable to properly decode message", error));
         }
     }
 
     public static class MessageEncoder implements Serializer<Message> {
         @Override
         public byte[] serialize(String topic, Message data) {
-            return Try.withChainedResources(ByteArrayOutputStream::new, ObjectOutputStream::new, (byteArray,
-                                                                                                  objectOutput) -> {
-                objectOutput.writeObject(data);
-                return byteArray.toByteArray();
-            })
+            return Try.withChainedResources(ByteArrayOutputStream::new,
+                                            ObjectOutputStream::new,
+                                            (byteArray, objectOutput) -> { objectOutput.writeObject(data);
+                                                                           return byteArray.toByteArray(); })
                       .orElseGet(() -> NO_SERIALIZED_PAYLOAD,
                                  error -> LOGGER.error("Unable to encode message", error));
         }
