@@ -30,14 +30,11 @@ final class GreeterService implements ReActor {
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, ((reActorContext, init) -> reActorContext.logInfo("A reactor was " +
-                                                                                                    "born")))
+                        .reAct(ReActorInit.class,
+                               (reActorContext, init) -> reActorContext.logInfo("A reactor was born"))
                         .reAct(GreetingsRequest.class,
-                               (raCtx, greetingsRequest) -> {
-                                       raCtx.logInfo("Replying to {} with {}",
-                                                     raCtx.getSender().getReActorId().getReActorName(),
-                                                     raCtx.getSender().getReActorSystemRef().getBackingDriver().getChannelId().toString());
-                                       raCtx.reply("Hello from " + GreeterService.class.getSimpleName()); } )
+                               (raCtx, greetingsRequest) ->
+                                       raCtx.reply("Hello from " + GreeterService.class.getSimpleName()))
                         .build();
     }
     static final class GreetingsRequest implements Serializable { }

@@ -68,7 +68,6 @@ public class ServicePublicationApp {
                                                   .build();
         var routeeReActions = ReActions.newBuilder()
                                        .reAct(TimeRequest.class, ServicePublicationApp::onTimeRequest)
-                                       .reAct((raCtx, any) -> {})
                                        .build();
         //Here we define how a routee behaves. This is going to be the actual body of our service
         UnChecked.CheckedSupplier<ReActor> routeeProvider = () -> new ReActor() {
@@ -109,7 +108,7 @@ public class ServicePublicationApp {
                      .thenApply(services -> services.filter(list -> !list.isEmpty()))
                      //get the first gate available
                      .thenApply(services -> services.map(list -> list.iterator().next()))
-                     .thenApply(Try::orElseSneakyThrow)
+                     .thenApply(serviceGate -> serviceGate.orElse(ReActorRef.NO_REACTOR_REF))
                      //Ask the service for the time
                      .thenCompose(gate -> gate.ask(new TimeRequest(), ZonedDateTime.class, "Request the time"))
                      //print the answer

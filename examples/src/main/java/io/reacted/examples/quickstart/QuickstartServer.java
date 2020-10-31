@@ -10,6 +10,8 @@ package io.reacted.examples.quickstart;
 
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
+import io.reacted.core.mailboxes.BackpressuringMbox;
+import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ServiceConfig;
 import io.reacted.drivers.channels.kafka.KafkaDriver;
@@ -40,12 +42,15 @@ public class QuickstartServer {
         try {
             String serviceName = "Greetings";
             showOffServerSystem.spawnService(ServiceConfig.newBuilder()
-                                                    .setReActorName(serviceName)
-                                                    .setRouteesNum(2)
-                                                    .setRouteeProvider(GreeterService::new)
-                                                    .setIsRemoteService(true)
-                                                    .build())
-                         .orElseSneakyThrow();
+                                                          .setMailBoxProvider(raCtx -> BackpressuringMbox.newBuilder()
+                                                                                                         .setRealMailboxOwner(raCtx)
+                                                                                                         .build())
+                                                          .setReActorName(serviceName)
+                                                          .setRouteesNum(2)
+                                                          .setRouteeProvider(GreeterService::new)
+                                                          .setIsRemoteService(true)
+                                                          .build())
+                               .orElseSneakyThrow();
         } catch (Exception anyException) {
             anyException.printStackTrace();
             showOffServerSystem.shutDown();
