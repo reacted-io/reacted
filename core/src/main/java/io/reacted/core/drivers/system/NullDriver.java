@@ -21,6 +21,7 @@ import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -30,16 +31,24 @@ public final class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     public static final NullDriver NULL_DRIVER = new NullDriver(NullDriverConfig.newBuilder()
                                                                                 .build());
     public static final Properties NULL_DRIVER_PROPERTIES = new Properties();
-
     private final ChannelId channelId;
+    @SuppressWarnings("NotNullFieldNotInitialized")
+    private volatile ReActorSystem localReActorSystem;
     private NullDriver(NullDriverConfig config) {
         super(config);
         this.channelId = ChannelId.NO_CHANNEL_ID;
     }
-
     @Override
     public Try<Void> initDriverCtx(ReActorSystem localReActorSystem) {
+        this.localReActorSystem = localReActorSystem;
         return Try.VOID;
+    }
+
+    @Override
+    public ReActorSystem getLocalReActorSystem() {
+        //If this is null it means that someone is trying to use the driver
+        //before its initialization
+        return Objects.requireNonNull(localReActorSystem);
     }
 
     @Override
