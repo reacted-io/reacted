@@ -71,8 +71,6 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
             } else {
                 LOGGER.error("Critic! Deadletters not found!? Source {} Destination {} Message {}",
                              src, dst, payload);
-                localReActorSystem.logError("Critic! Deadletters not found! Source {} Destination {} " +
-                                            "Message {}", src, dst, payload, new RuntimeException());
             }
         }
         return tellResult;

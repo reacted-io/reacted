@@ -285,7 +285,7 @@ public class ReActorSystem {
                                                              newReActorSystem -> new ConcurrentHashMap<>());
         return channelMap.computeIfAbsent(driver.getChannelId(),
                                           channelId -> new ReActorSystemRef(driver, channelProperties,
-                                                                            reActorSystemId));
+                                                                            driver.getChannelId(), reActorSystemId));
     }
 
     //XXX Same as above

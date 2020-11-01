@@ -62,9 +62,14 @@ public class ReActorSystemRef implements Externalizable {
 
     public ReActorSystemRef(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> backingDriver,
                             Properties gateProperties, ReActorSystemId reActorSystemId) {
+        this(backingDriver, gateProperties, ChannelId.INVALID_CHANNEL_ID, reActorSystemId);
+    }
+
+    public ReActorSystemRef(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> backingDriver,
+                            Properties gateProperties, ChannelId channelId, ReActorSystemId reActorSystemId) {
         this.backingDriver = backingDriver;
         this.reActorSystemId = reActorSystemId;
-        this.channelId = ChannelId.INVALID_CHANNEL_ID;
+        this.channelId = channelId;
         this.gateProperties = gateProperties;
     }
 
@@ -138,11 +143,10 @@ public class ReActorSystemRef implements Externalizable {
     private void setReActorSystemId(ReActorSystemId reActorSystemId) {
         SerializationUtils.setObjectField(this, REACTORSYSTEM_ID_OFFSET, reActorSystemId);
     }
-    protected void setChannelId(ChannelId channelId) {
+    private void setChannelId(ChannelId channelId) {
         SerializationUtils.setObjectField(this, CHANNEL_ID_OFFSET, channelId);
     }
-
-    public void setBackingDriver(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> gateDriver) {
+    private void setBackingDriver(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> gateDriver) {
         SerializationUtils.setObjectField(this, BACKING_DRIVER_OFFSET, gateDriver);
     }
 

@@ -33,8 +33,7 @@ public final class NullReActorSystemRef extends ReActorSystemRef {
     public NullReActorSystemRef() { /* Required by Externalizable */ }
     private NullReActorSystemRef(ReActorSystemId reActorSystemId, Properties channelProperties,
                                 ReActorSystemDriver<NullDriverConfig> reActorSystemDriver) {
-        super(reActorSystemDriver, channelProperties, reActorSystemId);
-        super.setChannelId(ChannelId.NO_CHANNEL_ID);
+        super(reActorSystemDriver, channelProperties, ChannelId.NO_CHANNEL_ID, reActorSystemId);
     }
 
     @Override
