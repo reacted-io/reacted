@@ -589,23 +589,33 @@ public class ReActorSystem {
 
         this.systemSchedulingService = createSystemScheduleService(getSystemConfig().getReActorSystemName(),
                                                                    SYSTEM_TASK_SCHEDULER_POOL_SIZE);
+
         this.msgFanOutPool = createFanOutPool(getLocalReActorSystemId().getReActorSystemName(),
                                               getSystemConfig().getMsgFanOutPoolSize());
 
-        LoopbackDriver<? extends ChannelDriverConfig<?, ?>> loopbackDriver =
-                new LoopbackDriver<>(this, getSystemConfig().getLocalDriver());
+        LoopbackDriver<? extends ChannelDriverConfig<?, ?>> loopbackDriver;
+        loopbackDriver = new LoopbackDriver<>(this, getSystemConfig().getLocalDriver());
+
         registerReActorSystemDriver(loopbackDriver).orElseSneakyThrow();
+
         this.loopback = registerNewRoute(localReActorSystemId, loopbackDriver, loopbackDriver.getChannelId(),
                                          new Properties());
+
         registerReActorSystemDriver(NullDriver.NULL_DRIVER).orElseSneakyThrow();
+
         registerNewRoute(ReActorSystemId.NO_REACTORSYSTEM_ID, NullDriver.NULL_DRIVER,
                          NullDriver.NULL_DRIVER.getChannelId(), new Properties());
+
         spawnReActorSystemReActors();
+
         initAllDispatchers(dispatchers.values(), getSystemSink(), systemConfig.isRecordedExecution(),
                            this::unRegisterReActor);
+
         initReActorSystemReActors();
+
         getSystemConfig().getRemotingDrivers().forEach(remotingDriver -> this.registerReActorSystemDriver(remotingDriver)
                                                                              .orElseSneakyThrow());
+
         initServiceRegistryDrivers(getSystemConfig().getServiceRegistryDrivers());
     }
 
