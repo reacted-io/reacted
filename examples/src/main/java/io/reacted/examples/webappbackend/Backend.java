@@ -11,7 +11,7 @@ package io.reacted.examples.webappbackend;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.sun.net.httpserver.HttpServer;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactorsystem.ReActorSystem;
@@ -52,7 +52,7 @@ public class Backend {
 
         backendSystem.spawnService(ServiceConfig.newBuilder()
                                                 .setRouteesNum(2)
-                                                .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                 .setReActorName(DB_SERVICE_NAME)
                                                 .setLoadBalancingPolicy(Service.LoadBalancingPolicy.LOWEST_LOAD)
                                                 .setRouteeProvider(() -> new DatabaseService(mongoReactiveClient))

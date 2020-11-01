@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.atell;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -44,7 +44,7 @@ class MessageStormApp {
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Client",
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
-                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                     .setReActorName("ZooKeeperDriver")
                                                                                                                     .setAsyncExecutor(new ForkJoinPool())
                                                                                                                     .setServiceRegistryProperties(zooKeeperProps)
@@ -59,7 +59,7 @@ class MessageStormApp {
                                                                    //SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
-                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                     .setAsyncExecutor(new ForkJoinPool(2))
                                                                                                                     .setReActorName("ZooKeeperDriver")
                                                                                                                     .setServiceRegistryProperties(zooKeeperProps)

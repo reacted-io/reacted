@@ -12,7 +12,6 @@ import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.TypedSubscription;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.system.LoopbackDriver;
@@ -35,7 +34,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.mock;
 
@@ -161,7 +159,7 @@ class ReActorSystemTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("TR")
                                                    .setDispatcherName("TestDispatcher")
-                                                   .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(Message.class))
                                                    .build();
 
         reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig));

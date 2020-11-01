@@ -20,7 +20,6 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.LoopbackDriver;
@@ -107,7 +106,8 @@ public class ReActorSystem {
     /* All the reactors spawned by a specific reactor system instance */
     private final Map<ReActorId, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
-    private final MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, TypedSubscriptionPolicy,
+    private final MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>,
+                                                         TypedSubscription.TypedSubscriptionPolicy,
                                                          ReActorContext> typedSubscribers;
     private final Map<String, Dispatcher> dispatchers;
     private final ReActorSystemConfig systemConfig;
@@ -149,7 +149,8 @@ public class ReActorSystem {
         this.reActorSystemsGates = new ConcurrentHashMap<>();
         this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
         this.reActors = new ConcurrentHashMap<>(10_000_000, 0.5f);
-        this.typedSubscribers = new MultiMaps.CopyOnWriteHashMapOfEnumMaps<>(1000, 0.5f, TypedSubscriptionPolicy.class);
+        this.typedSubscribers = new MultiMaps.CopyOnWriteHashMapOfEnumMaps<>(1000, 0.5f,
+                                                                             TypedSubscription.TypedSubscriptionPolicy.class);
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.systemConfig = Objects.requireNonNull(config);
         this.localReActorSystemId = new ReActorSystemId(config.getReActorSystemName());
@@ -265,8 +266,9 @@ public class ReActorSystem {
     }
 
     //XXX Get all the typed (sniff) subscribers. Used as a cache for the propagations
-    public MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, TypedSubscriptionPolicy,
-            ReActorContext> getTypedSubscribers() {
+    public MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>,
+                                                  TypedSubscription.TypedSubscriptionPolicy, ReActorContext>
+    getTypedSubscribers() {
         return typedSubscribers;
     }
 
@@ -333,12 +335,25 @@ public class ReActorSystem {
         return stopProcess;
     }
 
-    //XXX Returns the ReActorSystemReference for a given ReActorSystem/Channel Id.
-    public Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId, ChannelId decodingDriverChannelId) {
-        return Optional.ofNullable(RemotingDriver.isLocalReActorSystem(getLocalReActorSystemId(), reActorSystemId)
-                                   ? getLoopback()
-                                   : reActorSystemsGates.getOrDefault(reActorSystemId, Map.of())
-                                                        .get(decodingDriverChannelId));
+    /**
+     * Tries to find a route for the specified pair reactor system / channel id.
+     * It if it is not possible, an alternate route is attempted.
+     *
+     * @param reActorSystemId Target reactor system
+     * @param preferredChannelId Preferred {@link ChannelId} to use
+     * @return A route/reference towards the requested reactor system
+     */
+    public Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId,
+                                               ChannelId preferredChannelId) {
+        if (RemotingDriver.isLocalReActorSystem(getLocalReActorSystemId(), reActorSystemId)) {
+            return Optional.of(getLoopback());
+        }
+        var routesToReActorSystem = reActorSystemsGates.getOrDefault(reActorSystemId, Map.of());
+        var route = routesToReActorSystem.get(preferredChannelId);
+        if (route == null && routesToReActorSystem.size() != 0) {
+            return routesToReActorSystem.values().stream().findAny();
+        }
+        return Optional.ofNullable(route);
     }
 
     /**
@@ -548,13 +563,13 @@ public class ReActorSystem {
                                    TypedSubscription[] newIntercepted) {
 
         Arrays.stream(oldIntercepted)
-              .forEach(sniffSubscription -> typedSubscribers.remove(sniffSubscription.getPayloadType(),
-                                                                    sniffSubscription.getSubscriptionPolicy(),
+              .forEach(typedSubscription -> typedSubscribers.remove(typedSubscription.getPayloadType(),
+                                                                    typedSubscription.getSubscriptionPolicy(),
                                                                     targetActor));
 
         Arrays.stream(newIntercepted)
-              .forEach(sniffSubscription -> typedSubscribers.add(sniffSubscription.getPayloadType(),
-                                                                 sniffSubscription.getSubscriptionPolicy(),
+              .forEach(typedSubscription -> typedSubscribers.add(typedSubscription.getPayloadType(),
+                                                                 typedSubscription.getSubscriptionPolicy(),
                                                                  targetActor));
     }
 

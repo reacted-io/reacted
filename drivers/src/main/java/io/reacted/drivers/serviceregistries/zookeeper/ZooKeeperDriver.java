@@ -82,7 +82,6 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                                                        REACTED_SERVICES_ROOT);
     private static final String CLUSTER_GATE_PUBLICATION_PATH = ZKPaths.makePath(CLUSTER_REGISTRY_REACTORSYSTEMS_ROOT_PATH,
                                                                                  "%s","%s");
-    private static final CompletionStage<Try<DeliveryStatus>> SUCCESS = CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
     private static final byte[] NO_PAYLOAD = new byte[0];
     @Nullable
     private volatile ServiceDiscovery<ServicePublicationRequest> serviceDiscovery;
@@ -356,14 +355,14 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                       ReActorRef driverReActor) {
         //Lack of data? Ignore the update
         if (treeCacheEvent.getData() == null || treeCacheEvent.getData().getPath() == null) {
-            return SUCCESS;
+            return CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
         }
 
         CompletionStage<Try<DeliveryStatus>> handlingAction = CompletableFuture.failedFuture(new UnsupportedOperationException());
         switch (treeCacheEvent.getType()) {
             case CONNECTION_SUSPENDED:
             case CONNECTION_LOST:
-            case INITIALIZED: handlingAction = SUCCESS;
+            case INITIALIZED: handlingAction = CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
                               break;
             case CONNECTION_RECONNECTED:  handlingAction = reActorSystem.getSystemRemotingRoot()
                                                                         .tell(driverReActor, new RegistryDriverInitComplete());
@@ -373,12 +372,12 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                                ? ZooKeeperDriver.upsertGate(reActorSystem,
                                                                                             driverReActor,
                                                                                             treeCacheEvent.getData())
-                                                               : SUCCESS;
+                                                               : CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
                                break;
             case NODE_REMOVED: handlingAction = ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
                                                 ? ZooKeeperDriver.removeGate(reActorSystem, driverReActor,
                                                                              treeCacheEvent.getData())
-                                                : SUCCESS;
+                                                : CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
         }
         return handlingAction;
     }

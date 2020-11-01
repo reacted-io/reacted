@@ -29,8 +29,6 @@ import java.util.concurrent.CompletionStage;
 @NonNullByDefault
 public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>>
         extends ReActorSystemDriver<ConfigT> {
-     private static final Try<DeliveryStatus> TARGET_MISSING = Try.ofFailure(new NoSuchElementException());
-
      protected LocalDriver(ConfigT config) {
           super(config);
      }
@@ -59,7 +57,7 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
 
           } else {
                ackTrigger.ifPresent(trigger -> trigger.toCompletableFuture()
-                                                      .complete(TARGET_MISSING));
+                                                      .complete(Try.ofFailure(new NoSuchElementException())));
                propagateToDeadLetters(getLocalReActorSystem().getSystemDeadLetters(), message);
           }
      }

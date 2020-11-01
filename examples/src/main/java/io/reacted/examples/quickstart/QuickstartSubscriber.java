@@ -9,7 +9,7 @@
 package io.reacted.examples.quickstart;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
@@ -40,8 +40,7 @@ public class QuickstartSubscriber {
                                                .build(),
                                       ReActorConfig.newBuilder()
                                                    .setReActorName("Message Interceptor")
-                                                   .setTypedSubscriptions(TypedSubscriptionPolicy.REMOTE.forType(GreeterService.GreetingsRequest.class),
-                                                                          TypedSubscriptionPolicy.LOCAL.forType(GreeterService.GreetingsRequest.class))
+                                                   .setTypedSubscriptions(TypedSubscription.REMOTE.forType(GreeterService.GreetingsRequest.class))
                                                    .build())
                                .ifError(error -> showOffSubscriberSystem.shutDown());
     }

@@ -16,7 +16,6 @@ import com.google.common.cache.RemovalNotification;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.DataLink;
@@ -134,9 +133,10 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                                 .thenApplyAsync(vV -> Try.ofRunnable(() -> initDriverLoop(localReActorSystem)),
                                                                 driverThread)
                                                 .join();
-        initDriver.ifSuccessOrElse(vV -> CompletableFuture.supplyAsync(() -> Try.ofRunnable(getDriverLoop()), driverThread)
-                                                          .thenAccept(retVal -> retVal.peekFailure(error -> LOGGER.error("Driver body failed:", error))
-                                                                                      .ifError(error -> stopDriverCtx(localReActorSystem))),
+        initDriver.ifSuccessOrElse(vV -> CompletableFuture.supplyAsync(() -> Try.ofRunnable(getDriverLoop())
+                                                                                .peekFailure(error -> LOGGER.error("Driver body failed:", error))
+                                                                                .ifError(error -> stopDriverCtx(localReActorSystem)),
+                                                                       driverThread),
                                    error -> { LOGGER.error("Driver {} init failed", getClass().getSimpleName(), error);
                                               stopDriverCtx(localReActorSystem); });
         return initDriver;
@@ -161,12 +161,6 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     protected static boolean isMessageComingFromLocalReActorSystem(ReActorSystemId localReActorSystemId,
                                                                    DataLink msgDataLink) {
         return localReActorSystemId.equals(msgDataLink.getGeneratingReActorSystem());
-    }
-
-    protected static boolean isTypeSniffed(ReActorSystem localReActorSystem, Class<? extends Serializable> payloadType) {
-        var subscribersGroup = localReActorSystem.getTypedSubscribers().getKeyGroup(payloadType);
-        return !(subscribersGroup.get(TypedSubscriptionPolicy.LOCAL).isEmpty() &&
-                 subscribersGroup.get(TypedSubscriptionPolicy.REMOTE).isEmpty());
     }
 
     protected static boolean isAckRequired(boolean isAckRequiredByChannel, AckingPolicy messageAckingPolicy) {
