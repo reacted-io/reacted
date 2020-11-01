@@ -280,12 +280,12 @@ public class ReActorSystem {
     @SuppressWarnings("UnusedReturnValue")
     public ReActorSystemRef registerNewRoute(ReActorSystemId reActorSystemId,
                                              ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driver,
-                                             Properties channelProperties) {
+                                             ChannelId channelId, Properties channelProperties) {
         var channelMap = reActorSystemsGates.computeIfAbsent(reActorSystemId,
                                                              newReActorSystem -> new ConcurrentHashMap<>());
-        return channelMap.computeIfAbsent(driver.getChannelId(),
-                                          channelId -> new ReActorSystemRef(driver, channelProperties,
-                                                                            driver.getChannelId(), reActorSystemId));
+        return channelMap.computeIfAbsent(channelId, newChannelId -> new ReActorSystemRef(driver, channelProperties,
+                                                                                          newChannelId,
+                                                                                          reActorSystemId));
     }
 
     //XXX Same as above
@@ -293,7 +293,8 @@ public class ReActorSystem {
         getReActorSystemDrivers().stream()
                                  .filter(driver -> driver.getChannelId().equals(channelId))
                                  .findFirst()
-                                 .ifPresent(driver -> registerNewRoute(reActorSystemId, driver, channelProperties));
+                                 .ifPresent(driver -> registerNewRoute(reActorSystemId, driver, channelId,
+                                                                       channelProperties));
     }
 
     //XXX Forget how to reach a given reactor system through a specific channel. i.e. the remote reactor system
@@ -594,9 +595,11 @@ public class ReActorSystem {
         LoopbackDriver<? extends ChannelDriverConfig<?, ?>> loopbackDriver =
                 new LoopbackDriver<>(this, getSystemConfig().getLocalDriver());
         registerReActorSystemDriver(loopbackDriver).orElseSneakyThrow();
-        this.loopback = registerNewRoute(localReActorSystemId, loopbackDriver, new Properties());
+        this.loopback = registerNewRoute(localReActorSystemId, loopbackDriver, loopbackDriver.getChannelId(),
+                                         new Properties());
         registerReActorSystemDriver(NullDriver.NULL_DRIVER).orElseSneakyThrow();
-        registerNewRoute(ReActorSystemId.NO_REACTORSYSTEM_ID, NullDriver.NULL_DRIVER, new Properties());
+        registerNewRoute(ReActorSystemId.NO_REACTORSYSTEM_ID, NullDriver.NULL_DRIVER,
+                         NullDriver.NULL_DRIVER.getChannelId(), new Properties());
         spawnReActorSystemReActors();
         initAllDispatchers(dispatchers.values(), getSystemSink(), systemConfig.isRecordedExecution(),
                            this::unRegisterReActor);

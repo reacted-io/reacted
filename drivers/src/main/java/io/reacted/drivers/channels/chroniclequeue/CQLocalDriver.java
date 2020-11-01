@@ -95,27 +95,21 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
                                                dCtx -> dCtx.isPresent()
                                                        ? dCtx.wire().read().object(Message.class)
                                                        : null)
-                                .orElse(null, error -> error.printStackTrace());
+                                .orElse(null, error -> LOGGER.error("Unable to decode data", error));
 
             if (newMessage == null) {
                 waitForNextMsg.pause();
                 waitForNextMsg.reset();
                 continue;
             }
-            System.out.println("Decoded: " + newMessage.getPayload());
             offerMessage(newMessage);
         }
         Thread.currentThread().interrupt();
     }
-
     private Try<DeliveryStatus> sendMessage(Message message) {
-        System.out.println("Sending " + message.getPayload());
         BiConsumer<ValueOut, Message> msgWriter;
         msgWriter = (vOut, payload) -> vOut.object(Message.class, payload);
-        var retval = Try.ofRunnable(() -> Objects.requireNonNull(cqAppender).writeDocument(message, msgWriter))
-                  .map(dummy -> DeliveryStatus.DELIVERED)
-                  .orElseTry(Try::ofFailure);
-        System.out.println("Sent " + message.getPayload() + " is failure " + retval.isFailure());
-        return retval;
+        return Try.ofRunnable(() -> Objects.requireNonNull(cqAppender).writeDocument(message, msgWriter))
+                  .map(dummy -> DeliveryStatus.DELIVERED);
     }
 }
