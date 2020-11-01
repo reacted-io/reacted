@@ -35,8 +35,6 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
-    private ExcerptAppender cqAppender;
-    @Nullable
     private ExcerptTailer cqTailer;
     @Nullable
     private ReActorSystem localReActorSystem;
@@ -48,7 +46,6 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     @Override
     public void initDriverLoop(ReActorSystem reActorSystem) {
         this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir()).build();
-        this.cqAppender = chronicle.acquireAppender();
         this.cqTailer = chronicle.createTailer().toEnd();
         this.localReActorSystem = reActorSystem;
     }
@@ -90,7 +87,8 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
 
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return sendMessage(Objects.requireNonNull(cqAppender), getDriverConfig().getTopic(), message);
+        return sendMessage(Objects.requireNonNull(chronicle)
+                                  .acquireAppender(), getDriverConfig().getTopic(), message);
     }
 
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {

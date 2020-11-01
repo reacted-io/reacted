@@ -18,10 +18,8 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import net.openhft.chronicle.queue.ChronicleQueue;
-import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
-import net.openhft.chronicle.wire.ValueOut;
 import org.apache.log4j.Logger;
 
 import javax.annotation.Nullable;
@@ -29,16 +27,12 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
-
 
 @NonNullByDefault
 public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     private static final Logger LOGGER = Logger.getLogger(CQLocalDriver.class);
     @Nullable
     private ChronicleQueue chronicle;
-    @Nullable
-    private ExcerptAppender cqAppender;
     @Nullable
     private ExcerptTailer cqTailer;
 
@@ -50,7 +44,6 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     public void initDriverLoop(ReActorSystem localReActorSystem) {
         this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir())
                                        .build();
-        this.cqAppender = chronicle.acquireAppender();
         this.cqTailer = chronicle.createTailer().toEnd();
     }
 
@@ -108,8 +101,8 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
         Thread.currentThread().interrupt();
     }
     private Try<DeliveryStatus> sendMessage(Message message) {
-        BiConsumer<ValueOut, Message> msgWriter;
-        return Try.ofRunnable(() -> Objects.requireNonNull(cqAppender)
+        return Try.ofRunnable(() -> Objects.requireNonNull(Objects.requireNonNull(chronicle)
+                                                                  .acquireAppender())
                                            .writeMessage(getDriverConfig().getTopic(), message))
                   .map(dummy -> DeliveryStatus.DELIVERED);
     }
