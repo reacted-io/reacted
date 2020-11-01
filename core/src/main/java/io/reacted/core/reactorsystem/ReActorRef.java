@@ -212,19 +212,13 @@ public final class ReActorRef implements Externalizable {
                           .ifError(spawnError -> returnValue.complete(Try.ofFailure(spawnError)));
         return returnValue;
     }
-
-    @SuppressWarnings("UnusedReturnValue")
-    private ReActorRef setReActorId(ReActorId reActorId) {
-        return SerializationUtils.setObjectField(this, REACTOR_ID_OFFSET, reActorId);
+    private void setReActorId(ReActorId reActorId) {
+        SerializationUtils.setObjectField(this, REACTOR_ID_OFFSET, reActorId);
     }
-
-    @SuppressWarnings("UnusedReturnValue")
-    private ReActorRef setReActorSystemRef(ReActorSystemRef reActorSystemRef) {
-        return SerializationUtils.setObjectField(this, REACTORSYSTEMREF_OFFSET, reActorSystemRef);
+    private void setReActorSystemRef(ReActorSystemRef reActorSystemRef) {
+        SerializationUtils.setObjectField(this, REACTORSYSTEMREF_OFFSET, reActorSystemRef);
     }
-
-    @SuppressWarnings("UnusedReturnValue")
-    private ReActorRef setHashCode(int hashCode) {
-        return SerializationUtils.setIntField(this, HASHCODE_OFFSET, hashCode);
+    private void setHashCode(int hashCode) {
+        SerializationUtils.setIntField(this, HASHCODE_OFFSET, hashCode);
     }
 }

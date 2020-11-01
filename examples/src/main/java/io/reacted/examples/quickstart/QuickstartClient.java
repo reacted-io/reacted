@@ -9,7 +9,6 @@
 package io.reacted.examples.quickstart;
 
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.drivers.channels.kafka.KafkaDriver;

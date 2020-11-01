@@ -25,7 +25,6 @@ import io.reacted.core.reactorsystem.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.core.services.SelectionType;
-import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
 import javax.annotation.Nonnull;
