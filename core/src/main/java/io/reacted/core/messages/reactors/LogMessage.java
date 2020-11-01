@@ -18,19 +18,15 @@ import java.util.Objects;
 @NonNullByDefault
 public abstract class LogMessage implements Serializable {
     private final String format;
-    private final String[] arguments;
+    private final Serializable[] arguments;
     public LogMessage(String format, Serializable ...arguments) {
         this.format = Objects.requireNonNull(format);
-        this.arguments = Arrays.stream(Objects.requireNonNull(arguments))
-                               .map(argument -> argument instanceof Throwable
-                                                ? ExceptionUtils.getStackTrace((Throwable)argument)
-                                                : argument.toString())
-                               .toArray(String[]::new);
+        this.arguments = Objects.requireNonNull(arguments);
     }
 
     public String getFormat() { return format; }
 
-    public String[] getArguments() { return arguments; }
+    public Serializable[] getArguments() { return arguments; }
 
     @Override
     public String toString() {

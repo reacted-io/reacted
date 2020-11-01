@@ -93,7 +93,8 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
             @SuppressWarnings("ConstantConditions")
             var newMessage = Try.withResources(tailer::readingDocument,
                                                dCtx -> dCtx.isPresent()
-                                                       ? dCtx.wire().read().object(Message.class)
+                                                       ? dCtx.wire().read(getDriverConfig().getTopic())
+                                                                    .object(Message.class)
                                                        : null)
                                 .orElse(null, error -> LOGGER.error("Unable to decode data", error));
 
@@ -108,8 +109,8 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     }
     private Try<DeliveryStatus> sendMessage(Message message) {
         BiConsumer<ValueOut, Message> msgWriter;
-        msgWriter = (vOut, payload) -> vOut.object(Message.class, payload);
-        return Try.ofRunnable(() -> Objects.requireNonNull(cqAppender).writeDocument(message, msgWriter))
+        return Try.ofRunnable(() -> Objects.requireNonNull(cqAppender)
+                                           .writeMessage(getDriverConfig().getTopic(), message))
                   .map(dummy -> DeliveryStatus.DELIVERED);
     }
 }

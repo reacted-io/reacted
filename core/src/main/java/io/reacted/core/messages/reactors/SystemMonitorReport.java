@@ -26,19 +26,15 @@ public class SystemMonitorReport implements Serializable {
                                                                                              builder.freeMemorySize));
     }
 
-    public double getCpuLoad() {
-        return cpuLoad;
-    }
+    public double getCpuLoad() { return cpuLoad; }
 
-    public long getFreeMemorySize() {
-        return freeMemorySize;
-    }
+    public long getFreeMemorySize() { return freeMemorySize; }
+    public static Builder newBuilder() { return new Builder(); }
 
     @Override
     public String toString() {
         return "SystemMonitorReport{" + "cpuLoad=" + cpuLoad + ", freeMemorySize=" + freeMemorySize + '}';
     }
-    public static Builder newBuilder() { return new Builder(); }
 
     public static class Builder {
         private double cpuLoad = Double.NaN;
