@@ -110,6 +110,7 @@ public class Service implements ReActiveEntity {
     }
 
     private void stopService(ReActorContext raCtx, ReActorStop stop) {
+        System.out.println("Stop requested");
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
              .tell(raCtx.getSelf(), new ServiceCancellationRequest(raCtx.getReActorSystem().getLocalReActorSystemId(),

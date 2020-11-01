@@ -34,6 +34,10 @@ public class SystemMonitorReport implements Serializable {
         return freeMemorySize;
     }
 
+    @Override
+    public String toString() {
+        return "SystemMonitorReport{" + "cpuLoad=" + cpuLoad + ", freeMemorySize=" + freeMemorySize + '}';
+    }
     public static Builder newBuilder() { return new Builder(); }
 
     public static class Builder {

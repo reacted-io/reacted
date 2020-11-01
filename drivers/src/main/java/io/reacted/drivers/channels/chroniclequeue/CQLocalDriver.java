@@ -95,8 +95,8 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
                                                dCtx -> dCtx.isPresent()
                                                        ? dCtx.wire().read().object(Message.class)
                                                        : null)
-                                .peekFailure(error -> LOGGER.error("Unable to properly decode message", error))
-                                .orElse(null);
+                                .orElse(null, error -> error.printStackTrace());
+
             if (newMessage == null) {
                 waitForNextMsg.pause();
                 waitForNextMsg.reset();
@@ -109,10 +109,13 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     }
 
     private Try<DeliveryStatus> sendMessage(Message message) {
+        System.out.println("Sending " + message.getPayload());
         BiConsumer<ValueOut, Message> msgWriter;
         msgWriter = (vOut, payload) -> vOut.object(Message.class, payload);
-        return Try.ofRunnable(() -> Objects.requireNonNull(cqAppender).writeDocument(message, msgWriter))
+        var retval = Try.ofRunnable(() -> Objects.requireNonNull(cqAppender).writeDocument(message, msgWriter))
                   .map(dummy -> DeliveryStatus.DELIVERED)
                   .orElseTry(Try::ofFailure);
+        System.out.println("Sent " + message.getPayload() + " is failure " + retval.isFailure());
+        return retval;
     }
 }

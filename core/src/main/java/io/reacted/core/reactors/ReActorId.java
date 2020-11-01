@@ -55,7 +55,7 @@ public final class ReActorId implements Externalizable {
 
     @Override
     public String toString() {
-        return "ReActorId{" + "reActorUUID=" + reActorUUID + ", actorName='" + reActorName + '\'' + '}';
+        return "ReActorId{" + "reActorUUID=" + reActorUUID + ", reActorName='" + reActorName + '\'' + ", hashCode=" + hashCode + '}';
     }
 
     @Override

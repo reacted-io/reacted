@@ -35,7 +35,6 @@ import java.util.concurrent.CompletionStage;
  */
 public class ReActorSystemRef implements Externalizable {
     private static final long serialVersionUID = 1;
-    private static final ChannelId NEVER_RECEIVED = null;
     private static final long REACTORSYSTEM_ID_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemRef.class,
                                                                                 "reActorSystemId")
                                                                           .orElseSneakyThrow();
@@ -50,14 +49,13 @@ public class ReActorSystemRef implements Externalizable {
                                                                          .orElseSneakyThrow();
 
     private final ReActorSystemId reActorSystemId;
-    @Nullable
     private final ChannelId channelId;
     private final transient ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> backingDriver;
     private final transient Properties gateProperties;
 
     public ReActorSystemRef() {
         this.reActorSystemId = ReActorSystemId.NO_REACTORSYSTEM_ID;
-        this.channelId = NEVER_RECEIVED;
+        this.channelId = ChannelId.INVALID_CHANNEL_ID;
         this.backingDriver = NullDriver.NULL_DRIVER;
         this.gateProperties = NullDriver.NULL_DRIVER_PROPERTIES;
     }
@@ -66,7 +64,7 @@ public class ReActorSystemRef implements Externalizable {
                             Properties gateProperties, ReActorSystemId reActorSystemId) {
         this.backingDriver = backingDriver;
         this.reActorSystemId = reActorSystemId;
-        this.channelId = NEVER_RECEIVED;
+        this.channelId = ChannelId.INVALID_CHANNEL_ID;
         this.gateProperties = gateProperties;
     }
 
@@ -101,13 +99,13 @@ public class ReActorSystemRef implements Externalizable {
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         Objects.requireNonNull(reActorSystemId).writeExternal(out);
-        out.writeObject(channelId);
+        channelId.writeExternal(out);
     }
 
     @Override
     public String toString() {
-        return "ReActorSystemRef{" + "reActorSystemId=" + reActorSystemId + ", backingDriver=" + backingDriver + ", " +
-               "gateProperties=" + gateProperties + '}';
+        return "ReActorSystemRef{" + "reActorSystemId=" + reActorSystemId + ", channelId=" + channelId + ", " +
+               "backingDriver=" + backingDriver + ", gateProperties=" + gateProperties + '}';
     }
 
     @Override
@@ -125,11 +123,12 @@ public class ReActorSystemRef implements Externalizable {
            If a driver should not be found given the specified channel id, the system tries to re-route the reference
            using another channel towards the destination
          */
-        ChannelId sourceChannelId = (ChannelId) in.readObject();
+        ChannelId sourceChannelId = new ChannelId();
+        sourceChannelId.readExternal(in);
         RemotingDriver.getDriverCtx()
                       .flatMap(driverCtx -> driverCtx.getLocalReActorSystem()
                                                      .findGate(reActorSystemId,
-                                                               sourceChannelId == NEVER_RECEIVED
+                                                               sourceChannelId.equals(ChannelId.INVALID_CHANNEL_ID)
                                                                ? driverCtx.getDecodingDriver().getChannelId()
                                                                : sourceChannelId))
                       .ifPresent(gateRoute -> { setBackingDriver(gateRoute.getBackingDriver());
@@ -139,7 +138,7 @@ public class ReActorSystemRef implements Externalizable {
     private void setReActorSystemId(ReActorSystemId reActorSystemId) {
         SerializationUtils.setObjectField(this, REACTORSYSTEM_ID_OFFSET, reActorSystemId);
     }
-    private void setChannelId(ChannelId channelId) {
+    protected void setChannelId(ChannelId channelId) {
         SerializationUtils.setObjectField(this, CHANNEL_ID_OFFSET, channelId);
     }
 
