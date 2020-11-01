@@ -9,7 +9,7 @@
 package io.reacted.examples.typedsubscription;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
@@ -45,7 +45,7 @@ public class UpdateGeneratorApp {
                                     .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                     .setReActorName("PassiveUpdatesListener")
                                     .setMailBoxProvider(ctx -> new BasicMbox())
-                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(Update.class))
+                                    .setTypedSubscriptions(TypedSubscription.LOCAL.forType(Update.class))
                                     .build();
             }
         }).orElseSneakyThrow();

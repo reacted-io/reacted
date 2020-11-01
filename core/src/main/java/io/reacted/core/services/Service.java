@@ -9,7 +9,7 @@
 package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -87,7 +87,7 @@ public class Service implements ReActiveEntity {
     private void onServiceRegistryNotAvailable(ReActorContext raCtx, ServiceRegistryNotAvailable notAvailable) {
         raCtx.logInfo("{} makes itself discoverable",
                       this.serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME));
-        raCtx.addTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class));
+        raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class));
     }
 
     public void onServicePublicationError(ReActorContext raCtx, ServicePublicationRequestError error) {
@@ -118,7 +118,7 @@ public class Service implements ReActiveEntity {
 
     private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
         //All the services can receive service stats
-        raCtx.addTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class));
+        raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class));
 
         if (BackpressuringMbox.class.isAssignableFrom(raCtx.getMbox().getClass())) {
             BackpressuringMbox myMbox = (BackpressuringMbox)raCtx.getMbox();

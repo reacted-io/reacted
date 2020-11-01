@@ -10,7 +10,7 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -71,8 +71,6 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
             } else {
                 LOGGER.error("Critic! Deadletters not found!? Source {} Destination {} Message {}",
                              src, dst, payload);
-                localReActorSystem.logError("Critic! Deadletters not found! Source {} Destination {} " +
-                                            "Message {}", src, dst, payload, new RuntimeException());
             }
         }
         return tellResult;
@@ -124,8 +122,8 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     public Properties getChannelProperties() { return localDriver.getChannelProperties(); }
 
     private void propagateMessage(ReActorId originalDst, Serializable msgPayload, ReActorRef src) {
-        var subscribers = localReActorSystem.getTypedSubscribers().get(msgPayload.getClass(),
-                                                                       TypedSubscriptionPolicy.LOCAL);
+        var subscribers = localReActorSystem.getTypedSubscribers()
+                                            .get(msgPayload.getClass(), TypedSubscription.LOCAL);
         if (!subscribers.isEmpty()) {
             localReActorSystem.getMsgFanOutPool()
                               .submit(() -> propagateToSubscribers(localDriver, subscribers, originalDst,

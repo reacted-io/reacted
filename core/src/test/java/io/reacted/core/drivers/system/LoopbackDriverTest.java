@@ -12,7 +12,7 @@ import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.AckingPolicy;
@@ -57,7 +57,7 @@ class LoopbackDriverTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("ReActorName")
                                                    .setDispatcherName(testDispatcher)
-                                                   .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(Message.class))
                                                    .build();
 
         destReActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))

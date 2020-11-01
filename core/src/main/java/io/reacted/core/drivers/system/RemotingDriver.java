@@ -9,6 +9,7 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -16,6 +17,7 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -122,7 +124,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         } else {
             //If it was not meant for a ReActor within this reactor system it might still be of some interest for typed
             //subscribers
-            if (!isTypeSniffed(getLocalReActorSystem(), payloadType)) {
+            if (!isTypeSubscribed(getLocalReActorSystem(), payloadType)) {
                 return;
             }
             //Mark the sink as destination. Once the message has been sent within the main flow, it will be
@@ -140,5 +142,10 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                                                         .ifError(error -> getLocalReActorSystem()
                                                                             .logError("Unable to send ack", error)));
         }
+    }
+    private static boolean isTypeSubscribed(ReActorSystem localReActorSystem,
+                                            Class<? extends Serializable> payloadType) {
+        var subscribersGroup = localReActorSystem.getTypedSubscribers().getKeyGroup(payloadType);
+        return !subscribersGroup.get(TypedSubscription.REMOTE).isEmpty();
     }
 }

@@ -8,7 +8,7 @@
 
 package io.reacted.examples.remoting.services;
 
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.SystemMonitorReport;
@@ -68,7 +68,7 @@ public class ServicePublicationApp {
                                       .setMailBoxProvider(ctx -> new BasicMbox())
                                       //We do not need to listen for ServiceDiscoveryRequests, we have the
                                       //Service Registry now
-                                      .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class))
+                                      .setTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class))
                                       .setRouteeProvider(() -> new ClockReActor(serviceName))
                                       .setIsRemoteService(true)
                                       .build();

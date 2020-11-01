@@ -22,6 +22,7 @@ import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.ValueOut;
+import org.apache.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
@@ -33,6 +34,7 @@ import java.util.function.BiConsumer;
 
 @NonNullByDefault
 public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
+    private static final Logger LOGGER = Logger.getLogger(CQLocalDriver.class);
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
@@ -88,13 +90,13 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
 
         while(!Thread.currentThread().isInterrupted()) {
 
-            @SuppressWarnings("ConstantConditions") var newMessage = Try.withResources(tailer::readingDocument,
+            @SuppressWarnings("ConstantConditions")
+            var newMessage = Try.withResources(tailer::readingDocument,
                                                dCtx -> dCtx.isPresent()
-                                                        ? dCtx.wire().read().object(Message.class)
-                                                        : null)
-                                .peekFailure(error -> logErrorDecodingMessage(getLocalReActorSystem()::logError, error))
-                                .toOptional()
-                                .orElse(null);
+                                                       ? dCtx.wire().read().object(Message.class)
+                                                       : null)
+                                .orElse(null, error -> LOGGER.error("Unable to decode data", error));
+
             if (newMessage == null) {
                 waitForNextMsg.pause();
                 waitForNextMsg.reset();
@@ -104,16 +106,10 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
         }
         Thread.currentThread().interrupt();
     }
-
     private Try<DeliveryStatus> sendMessage(Message message) {
         BiConsumer<ValueOut, Message> msgWriter;
         msgWriter = (vOut, payload) -> vOut.object(Message.class, payload);
         return Try.ofRunnable(() -> Objects.requireNonNull(cqAppender).writeDocument(message, msgWriter))
-                  .map(dummy -> DeliveryStatus.DELIVERED)
-                  .orElseTry(Try::ofFailure);
-    }
-
-    private static void logErrorDecodingMessage(BiConsumer<String, Throwable> logger, Throwable error) {
-        logger.accept("Unable to properly decode message", error);
+                  .map(dummy -> DeliveryStatus.DELIVERED);
     }
 }

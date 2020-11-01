@@ -8,6 +8,7 @@
 
 package io.reacted.core.reactorsystem;
 
+import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.NullDriverConfig;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
@@ -32,7 +33,7 @@ public final class NullReActorSystemRef extends ReActorSystemRef {
     public NullReActorSystemRef() { /* Required by Externalizable */ }
     private NullReActorSystemRef(ReActorSystemId reActorSystemId, Properties channelProperties,
                                 ReActorSystemDriver<NullDriverConfig> reActorSystemDriver) {
-        super(reActorSystemDriver, channelProperties, reActorSystemId);
+        super(reActorSystemDriver, channelProperties, ChannelId.NO_CHANNEL_ID, reActorSystemId);
     }
 
     @Override
