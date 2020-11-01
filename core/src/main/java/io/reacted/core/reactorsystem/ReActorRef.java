@@ -72,6 +72,11 @@ public final class ReActorRef implements Externalizable {
         return hashCode;
     }
 
+    @Override
+    public String toString() {
+        return "ReActorRef{" + "reActorId=" + reActorId + ", hashCode=" + hashCode + ", reActorSystemRef=" + reActorSystemRef + '}';
+    }
+
     /**
      * Sends a message to this ReActor using system sync as source
      *
@@ -173,15 +178,6 @@ public final class ReActorRef implements Externalizable {
         return ask(Objects.requireNonNull(getReActorSystemRef().getBackingDriver().getLocalReActorSystem()), this,
                    Objects.requireNonNull(request), Objects.requireNonNull(expectedReply),
                    Objects.requireNonNull(expireTimeout), Objects.requireNonNull(requestName));
-    }
-
-    @Override
-    public String toString() {
-        return "ReActorRef{" +
-                "reActorId=" + reActorId +
-                ", hashCode=" + hashCode +
-                ", reActorSystemRef=" + reActorSystemRef +
-                '}';
     }
 
     public ReActorId getReActorId() { return reActorId; }
