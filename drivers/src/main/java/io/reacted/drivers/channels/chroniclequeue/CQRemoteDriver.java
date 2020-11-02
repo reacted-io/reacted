@@ -36,8 +36,6 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     private ChronicleQueue chronicle;
     @Nullable
     private ExcerptTailer cqTailer;
-    @Nullable
-    private ReActorSystem localReActorSystem;
 
     public CQRemoteDriver(CQDriverConfig driverConfig) {
         super(driverConfig);
@@ -47,7 +45,6 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     public void initDriverLoop(ReActorSystem reActorSystem) {
         this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir()).build();
         this.cqTailer = chronicle.createTailer().toEnd();
-        this.localReActorSystem = reActorSystem;
     }
 
     @Override

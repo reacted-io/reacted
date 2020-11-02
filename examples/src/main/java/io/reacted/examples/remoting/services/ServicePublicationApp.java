@@ -8,11 +8,11 @@
 
 package io.reacted.examples.remoting.services;
 
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.SystemMonitorReport;
-import io.reacted.core.reactorsystem.ServiceConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;

@@ -12,7 +12,7 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.reactorsystem.ServiceConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.drivers.channels.kafka.KafkaDriver;
 import io.reacted.drivers.channels.kafka.KafkaDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;

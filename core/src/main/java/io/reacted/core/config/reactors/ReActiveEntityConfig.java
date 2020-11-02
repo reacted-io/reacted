@@ -14,6 +14,7 @@ import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Arrays;

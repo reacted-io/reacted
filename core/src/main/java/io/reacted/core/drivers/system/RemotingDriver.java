@@ -9,7 +9,6 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -145,7 +144,6 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     }
     private static boolean isTypeSubscribed(ReActorSystem localReActorSystem,
                                             Class<? extends Serializable> payloadType) {
-        var subscribersGroup = localReActorSystem.getTypedSubscribers().getKeyGroup(payloadType);
-        return !subscribersGroup.get(TypedSubscription.REMOTE).isEmpty();
+        return localReActorSystem.getTypedSubscriptionsManager().hasFullSubscribers(payloadType);
     }
 }

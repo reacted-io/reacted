@@ -9,7 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -17,6 +17,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -72,9 +73,8 @@ public final class ReActorContext {
         this.isScheduled = new AtomicBoolean(false);
         this.structuralLock = new ReentrantReadWriteLock();
         this.typedSubscriptions = Objects.requireNonNull(reActorCtxBuilder.typedSubscriptions).length == 0
-                                                         ? TypedSubscription.NO_SUBSCRIPTIONS
-                                                         : Arrays.copyOf(reActorCtxBuilder.typedSubscriptions,
-                                                                         reActorCtxBuilder.typedSubscriptions.length);
+                                  ? TypedSubscription.NO_SUBSCRIPTIONS
+                                  : TypedSubscriptionsManager.getNormalizedSubscriptions(reActorCtxBuilder.typedSubscriptions);
         this.hierarchyTermination = new CompletableFuture<>();
         this.msgExecutionId = new AtomicLong();
         this.reActions = Objects.requireNonNull(reActorCtxBuilder.reActions);
@@ -210,7 +210,7 @@ public final class ReActorContext {
     public final void setTypedSubscriptions(TypedSubscription ...newTypedSubscriptions) {
         refreshInterceptors(Objects.requireNonNull(newTypedSubscriptions).length == 0
                             ? TypedSubscription.NO_SUBSCRIPTIONS
-                            : Arrays.copyOf(newTypedSubscriptions, newTypedSubscriptions.length));
+                            : TypedSubscriptionsManager.getNormalizedSubscriptions(newTypedSubscriptions));
     }
 
     /**
@@ -219,10 +219,9 @@ public final class ReActorContext {
      *
      */
     public final void addTypedSubscriptions(TypedSubscription ...typedSubscriptionsToAdd) {
-        setTypedSubscriptions(Stream.concat(Arrays.stream(typedSubscriptionsToAdd),
-                                            Arrays.stream(getTypedSubscriptions()))
-                                    .distinct()
-                                    .toArray(TypedSubscription[]::new));
+        setTypedSubscriptions(TypedSubscriptionsManager.getNormalizedSubscriptions(Stream.concat(Arrays.stream(typedSubscriptionsToAdd),
+                                                                                                 Arrays.stream(getTypedSubscriptions()))
+                                                                                         .toArray(TypedSubscription[]::new)));
     }
     /**
      * Request termination for this reactor and the underlying hierarchy

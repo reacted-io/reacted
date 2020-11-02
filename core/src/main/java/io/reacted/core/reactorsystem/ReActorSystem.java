@@ -10,12 +10,12 @@ package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.config.reactors.TypedSubscription;
-import io.reacted.core.datastructure.MultiMaps;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
@@ -51,6 +51,7 @@ import io.reacted.core.reactors.systemreactors.SystemMonitor;
 import io.reacted.core.reactors.systemreactors.SystemLogger;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.services.Service;
+import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.slf4j.Logger;
@@ -106,9 +107,7 @@ public class ReActorSystem {
     /* All the reactors spawned by a specific reactor system instance */
     private final Map<ReActorId, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
-    private final MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>,
-                                                         TypedSubscription.TypedSubscriptionPolicy,
-                                                         ReActorContext> typedSubscribers;
+    private final TypedSubscriptionsManager typedSubscriptionsManager;
     private final Map<String, Dispatcher> dispatchers;
     private final ReActorSystemConfig systemConfig;
     private final AtomicLong newSeqNum;
@@ -149,8 +148,7 @@ public class ReActorSystem {
         this.reActorSystemsGates = new ConcurrentHashMap<>();
         this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
         this.reActors = new ConcurrentHashMap<>(10_000_000, 0.5f);
-        this.typedSubscribers = new MultiMaps.CopyOnWriteHashMapOfEnumMaps<>(1000, 0.5f,
-                                                                             TypedSubscription.TypedSubscriptionPolicy.class);
+        this.typedSubscriptionsManager = new TypedSubscriptionsManager();
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.systemConfig = Objects.requireNonNull(config);
         this.localReActorSystemId = new ReActorSystemId(config.getReActorSystemName());
@@ -265,11 +263,9 @@ public class ReActorSystem {
         return localReActorSystemId;
     }
 
-    //XXX Get all the typed (sniff) subscribers. Used as a cache for the propagations
-    public MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>,
-                                                  TypedSubscription.TypedSubscriptionPolicy, ReActorContext>
-    getTypedSubscribers() {
-        return typedSubscribers;
+    //XXX Get all the typed subscribers. Used as a cache for the propagations
+    public TypedSubscriptionsManager getTypedSubscriptionsManager() {
+        return typedSubscriptionsManager;
     }
 
     //XXX Define how a given reactor system / channel is reached from the current reactor system
@@ -564,14 +560,14 @@ public class ReActorSystem {
                                    TypedSubscription[] newIntercepted) {
 
         Arrays.stream(oldIntercepted)
-              .forEach(typedSubscription -> typedSubscribers.remove(typedSubscription.getPayloadType(),
-                                                                    typedSubscription.getSubscriptionPolicy(),
-                                                                    targetActor));
+              .forEach(typedSubscription -> typedSubscriptionsManager.removeSubscription(typedSubscription.getPayloadType(),
+                                                                                         typedSubscription.getSubscriptionPolicy(),
+                                                                                         targetActor));
 
         Arrays.stream(newIntercepted)
-              .forEach(typedSubscription -> typedSubscribers.add(typedSubscription.getPayloadType(),
-                                                                 typedSubscription.getSubscriptionPolicy(),
-                                                                 targetActor));
+              .forEach(typedSubscription -> typedSubscriptionsManager.addSubscription(typedSubscription.getPayloadType(),
+                                                                                      typedSubscription.getSubscriptionPolicy(),
+                                                                                      targetActor));
     }
 
     private Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {

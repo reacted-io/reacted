@@ -9,7 +9,7 @@
 package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -27,7 +27,7 @@ import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ServiceConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import javax.annotation.Nonnull;

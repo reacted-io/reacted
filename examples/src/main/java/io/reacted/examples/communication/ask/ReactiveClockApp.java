@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.ask;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;

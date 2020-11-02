@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.atell;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -19,7 +19,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ServiceConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;

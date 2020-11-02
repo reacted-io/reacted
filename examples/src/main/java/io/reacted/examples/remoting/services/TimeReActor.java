@@ -10,7 +10,7 @@ package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;

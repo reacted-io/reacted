@@ -12,7 +12,7 @@ import io.reacted.core.CoreConstants;
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.AckingPolicy;

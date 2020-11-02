@@ -9,7 +9,7 @@
 package io.reacted.drivers.serviceregistries.zookeeper;
 
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;

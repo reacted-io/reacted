@@ -13,7 +13,6 @@ import io.reacted.core.messages.reactors.ReActedDebug;
 import io.reacted.core.messages.reactors.ReActedError;
 import io.reacted.core.messages.reactors.ReActedInfo;
 import io.reacted.core.reactors.ReActions;
-import io.reacted.core.reactorsystem.ReActorContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

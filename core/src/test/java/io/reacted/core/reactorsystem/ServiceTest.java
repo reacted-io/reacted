@@ -10,7 +10,8 @@ package io.reacted.core.reactorsystem;
 
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.config.reactors.ServiceConfig;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;

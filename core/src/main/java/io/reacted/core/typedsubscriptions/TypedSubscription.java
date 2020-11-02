@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.config.reactors;
+package io.reacted.core.typedsubscriptions;
 
 import com.google.common.base.Objects;
 import io.reacted.patterns.NonNullByDefault;
@@ -17,7 +17,7 @@ import java.io.Serializable;
 public class TypedSubscription {
     public static final TypedSubscription[] NO_SUBSCRIPTIONS = new TypedSubscription[]{};
     public static final TypedSubscriptionPolicy LOCAL = TypedSubscriptionPolicy.LOCAL;
-    public static final TypedSubscriptionPolicy REMOTE = TypedSubscriptionPolicy.REMOTE;
+    public static final TypedSubscriptionPolicy FULL = TypedSubscriptionPolicy.FULL;
 
     private final TypedSubscriptionPolicy typedSubscriptionPolicy;
     private final Class<? extends Serializable> payloadType;
@@ -42,16 +42,15 @@ public class TypedSubscription {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hashCode(typedSubscriptionPolicy, getPayloadType());
-    }
+    public int hashCode() { return Objects.hashCode(typedSubscriptionPolicy, getPayloadType()); }
+
     public enum TypedSubscriptionPolicy {
         /** Messages will be intercepted if sent within the local ReactorSystem */
         LOCAL,
-        /** Messages will be intercepted if received from a remote ReActorSystem */
-        REMOTE;
-        public boolean isLocal() { return this != REMOTE; }
-        public boolean isRemote() { return this != LOCAL; }
+        /** Messages will be intercepted if received from the local or a remote ReActorSystem */
+        FULL;
+        public boolean isLocal() { return this != FULL; }
+        public boolean isFull() { return this != LOCAL; }
 
         public TypedSubscription forType(Class<? extends Serializable> payloadType) {
             return new TypedSubscription(this, payloadType);
