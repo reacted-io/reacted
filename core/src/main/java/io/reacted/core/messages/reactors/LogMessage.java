@@ -9,32 +9,21 @@
 package io.reacted.core.messages.reactors;
 
 import io.reacted.patterns.NonNullByDefault;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.slf4j.helpers.MessageFormatter;
 
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Objects;
-
 @NonNullByDefault
 public abstract class LogMessage implements Serializable {
-    private final String format;
-    private final String[] arguments;
+    private final String message;
     public LogMessage(String format, Serializable ...arguments) {
-        this.format = Objects.requireNonNull(format);
-        this.arguments = Arrays.stream(Objects.requireNonNull(arguments))
-                               .map(argument -> argument instanceof Throwable
-                                                ? ExceptionUtils.getStackTrace((Throwable)argument)
-                                                : argument.toString())
-                               .toArray(String[]::new);
+        this.message = MessageFormatter.arrayFormat(format, arguments)
+                                       .getMessage();
     }
 
-    public String getFormat() { return format; }
-
-    public String[] getArguments() { return arguments; }
+    public String getMessage() { return message; }
 
     @Override
     public String toString() {
-        return "LogMessage{" + "format='" + format + '\'' + ", arguments=" + Arrays.toString(arguments) + '}';
+        return "LogMessage{" + "message='" + message + '\'' + '}';
     }
 }
