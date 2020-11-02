@@ -213,10 +213,12 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
 
     private void onSynchronizationWithRegistryRequest(ReActorContext raCtx,
                                                       SynchronizationWithServiceRegistryRequest subRequest) {
+        CompletableFuture<?> cacheStarted = CompletableFuture.completedFuture(null);
         if (curatorCache == null) {
             this.curatorCache = CuratorCache.builder(Objects.requireNonNull(asyncClient).unwrap(),
                                                      CLUSTER_REGISTRY_ROOT_PATH)
-                                            .withExceptionHandler(Throwable::printStackTrace)
+                                            .withExceptionHandler(error -> raCtx.logError("ZooKeeper Cache error",
+                                                                                          error))
                                             .build();
             Objects.requireNonNull(curatorCache).listenable()
                         .addListener(CuratorCacheListener.builder()
@@ -224,12 +226,13 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                                        getTreeListener(raCtx.getReActorSystem(),
                                                                                        raCtx.getSelf()))
                                                          .build(), getConfig().getAsyncExecutionService());
-            Objects.requireNonNull(curatorCache).start();
+            cacheStarted = CompletableFuture.runAsync(() -> Objects.requireNonNull(curatorCache).start(),
+                                                      getConfig().getAsyncExecutionService());
         }
-
-        raCtx.getReActorSystem()
-             .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new SynchronizationWithServiceRegistryComplete());
+        cacheStarted.thenAccept(noVal -> raCtx.getReActorSystem()
+                                              .getSystemRemotingRoot()
+                                              .tell(raCtx.getSelf(),
+                                                    new SynchronizationWithServiceRegistryComplete()));
     }
 
     private void onStop(ReActorContext raCtx) {
