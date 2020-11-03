@@ -9,6 +9,8 @@
 package io.reacted.core.messages.reactors;
 
 import io.reacted.patterns.NonNullByDefault;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.helpers.MessageFormatter;
 
 import java.io.Serializable;
@@ -16,8 +18,10 @@ import java.io.Serializable;
 public abstract class LogMessage implements Serializable {
     private final String message;
     public LogMessage(String format, Serializable ...arguments) {
-        this.message = MessageFormatter.arrayFormat(format, arguments)
-                                       .getMessage();
+        var formattingTuple = MessageFormatter.arrayFormat(format, arguments);
+        this.message = formattingTuple.getMessage() + (formattingTuple.getThrowable() != null
+                                                       ? ExceptionUtils.getStackTrace(formattingTuple.getThrowable())
+                                                       : "");
     }
 
     public String getMessage() { return message; }
