@@ -11,9 +11,26 @@ package io.reacted.drivers.channels.grpc;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
+import io.grpc.Attributes;
+import io.grpc.CallOptions;
+import io.grpc.Channel;
+import io.grpc.ClientCall;
+import io.grpc.ClientInterceptor;
+import io.grpc.ConnectivityState;
+import io.grpc.Context;
+import io.grpc.ForwardingClientCall;
+import io.grpc.ForwardingClientCallListener;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
 import io.grpc.Server;
+import io.grpc.ServerCall;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerInterceptor;
+import io.grpc.ServerStreamTracer;
+import io.grpc.ServerTransportFilter;
+import io.grpc.Status;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
@@ -29,6 +46,7 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -39,14 +57,17 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -173,11 +194,16 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             return Try.ofFailure(new ChannelUnavailableException());
         }
         SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram> grpcLink;
-        grpcLink = gatesStubs.computeIfAbsent(dstChannelIdName,
-                                              channelName -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties,
-                                                                                                         Objects.requireNonNull(grpcExecutor)),
-                                                                                                ReActedLinkGrpc::newStub,
-                                                                                                stub -> stub.link(getEmptyMessageHandler(getLocalReActorSystem()))));
+        var peerChannelKey = getChannelPeerKey(dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST),
+                                               dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_PORT));
+        grpcLink = gatesStubs.computeIfAbsent(peerChannelKey,
+                                              newPeerChannelKey -> SystemLinkContainer.ofChannel(newPeerChannelKey,
+                                                                                                 getNewChannel(dstChannelIdProperties,
+                                                                                                               Objects.requireNonNull(grpcExecutor),
+                                                                                                               () -> removeStaleChannel(newPeerChannelKey)),
+                                                                                                 ReActedLinkGrpc::newStub,
+                                                                                                 stub -> stub.link(getEmptyMessageHandler(getLocalReActorSystem()))));
+
         var byteArray = new ByteArrayOutputStream();
 
         try(ObjectOutputStream oos = new ObjectOutputStream(byteArray)) {
@@ -192,8 +218,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             return Try.ofSuccess(DeliveryStatus.DELIVERED);
 
         } catch (Exception error) {
-            gatesStubs.remove(dstChannelIdName, grpcLink);
-            grpcLink.channel.shutdownNow();
+            removeStaleChannel(peerChannelKey);
             getLocalReActorSystem().logError("Error sending message {}", message.toString(), error);
             return Try.ofFailure(error);
         }
@@ -205,7 +230,12 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     @Override
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
-    private static ManagedChannel getNewChannel(Properties channelIdProperties, Executor grpcExecutor) {
+    private void removeStaleChannel(String peerChannelKey) {
+        ObjectUtils.ifNotNull(this.gatesStubs.remove(peerChannelKey),
+                              linkContainer -> linkContainer.channel.shutdownNow());
+    }
+    private static ManagedChannel getNewChannel(Properties channelIdProperties, Executor grpcExecutor,
+                                                Runnable onCloseCleanup) {
         int port = Integer.parseInt(channelIdProperties.getProperty(GrpcDriverConfig.GRPC_PORT));
         String host = channelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST);
         return ManagedChannelBuilder.forAddress(host, port)
@@ -214,23 +244,43 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                     .enableRetry()
                                     .usePlaintext()
                                     .executor(grpcExecutor)
+                                    .intercept(new ClientInterceptor() {
+                                        @Override
+                                        public <ReqT, RespT> ClientCall<ReqT, RespT>
+                                        interceptCall(MethodDescriptor<ReqT, RespT> methodDescriptor,
+                                                      CallOptions callOptions, Channel channel) {
+                                            return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(channel.newCall(methodDescriptor, callOptions)) {
+                                                @Override
+                                                public void start(Listener<RespT> responseListener, Metadata headers) {
+                                                    delegate().start(new ForwardingClientCallListener.SimpleForwardingClientCallListener<RespT>(responseListener) {
+                                                        @Override
+                                                        public void onClose(Status status, Metadata trailers) {
+                                                            super.onClose(status, trailers);
+                                                            onCloseCleanup.run();
+                                                        }
+                                                    }, headers);
+                                                }
+                                            };
+                                        }
+                                    })
                                     .build();
     }
-
+    private static String getChannelPeerKey(String peerHostname, String peerPort) {
+        return peerHostname + "|" + peerPort;
+    }
     private static class GrpcServer extends ReActedLinkGrpc.ReActedLinkImplBase {
         private final GrpcDriver thisDriver;
 
         public GrpcServer(GrpcDriver thisDriver) {
             this.thisDriver = thisDriver;
         }
-
         @Override
         public StreamObserver<ReActedLinkProtocol.ReActedDatagram> link(StreamObserver<Empty> responseObserver) {
             return new StreamObserver<>() {
                 @Override
                 public void onNext(ReActedLinkProtocol.ReActedDatagram reActedDatagram) {
                     try (ObjectInputStream msgSource = new ObjectInputStream(new ByteArrayInputStream(reActedDatagram.getBinaryPayload()
-                                                                                                          .toByteArray()))) {
+                                                                                                                     .toByteArray()))) {
                         thisDriver.offerMessage((Message)msgSource.readObject());
                     } catch (Exception deserializationError) {
                         throw new RuntimeException(deserializationError);
@@ -267,17 +317,18 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     private static final class SystemLinkContainer<InputTypeT> {
         private final ManagedChannel channel;
         private final StreamObserver<InputTypeT> link;
+        private final String channelKey;
 
-        private SystemLinkContainer(ManagedChannel channel,
-                                    StreamObserver<InputTypeT> link) {
+        private SystemLinkContainer(String channelKey, ManagedChannel channel, StreamObserver<InputTypeT> link) {
             this.channel = channel;
             this.link = link;
+            this.channelKey = channelKey;
         }
-
         private static <StubT, InputTypeT>
-        SystemLinkContainer<InputTypeT> ofChannel(ManagedChannel channel, Function<ManagedChannel, StubT> toStub,
+        SystemLinkContainer<InputTypeT> ofChannel(String channelKey,
+                                                  ManagedChannel channel, Function<ManagedChannel, StubT> toStub,
                                                   Function<StubT, StreamObserver<InputTypeT>> toLink) {
-            return new SystemLinkContainer<>(channel, toLink.apply(toStub.apply(channel)));
+            return new SystemLinkContainer<>(channelKey, channel, toLink.apply(toStub.apply(channel)));
         }
     }
 }
