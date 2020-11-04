@@ -518,7 +518,6 @@ public abstract class Try<T> {
      *                  does not pass the filter, a failed Try will be returned
      * @return a Try for which the predicate is true or failure
      */
-    @SuppressWarnings("unchecked")
     public Try<T> filter(UnChecked.CheckedPredicate<? super T> predicate) {
         try {
             if (isFailure() ||

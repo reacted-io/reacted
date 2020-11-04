@@ -9,7 +9,6 @@
 package io.reacted.core.messages.reactors;
 
 import io.reacted.patterns.NonNullByDefault;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.helpers.MessageFormatter;
 

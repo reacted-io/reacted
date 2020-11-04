@@ -31,7 +31,6 @@ public final class ObjectUtils {
         return Objects.requireNonNull(ifNotNull).apply(input);
     }
 
-    @Nullable
     public static <InputT> void runIfNotNull(@Nullable InputT input, Consumer<InputT> ifNotNull) {
         if (input != null) {
             Objects.requireNonNull(ifNotNull).accept(input);
