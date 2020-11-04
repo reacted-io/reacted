@@ -9,6 +9,7 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.config.ChannelType;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -40,8 +41,7 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
      */
     public DirectCommunicationLoggerDriver(DirectCommunicationLoggerConfig config) {
         super(config);
-        this.channelId =  new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION,
-                                        config.getChannelName());
+        this.channelId = ChannelType.DIRECT_COMMUNICATION.withChannelName(config.getChannelName());
         this.logFile = Try.of(() -> new FileWriter(config.getLogFilePath(), false))
                           .map(PrintWriter::new)
                           .orElseThrow(ioException -> new UncheckedIOException((IOException)ioException));

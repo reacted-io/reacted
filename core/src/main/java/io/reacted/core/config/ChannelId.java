@@ -23,9 +23,9 @@ import java.util.Optional;
 @Immutable
 @NonNullByDefault
 public class ChannelId implements Externalizable {
-    public static final ChannelId NO_CHANNEL_ID = new ChannelId(ChannelType.NULL_CHANNEL_TYPE,"");
-    public static final ChannelId INVALID_CHANNEL_ID = new ChannelId(ChannelType.INVALID_CHANNEL_TYPE,
-                                                                     "INVALID CHANNEL NAME");
+    public static final ChannelId NO_CHANNEL_ID = ChannelType.NULL_CHANNEL_TYPE.withChannelName("");
+    public static final ChannelId INVALID_CHANNEL_ID = ChannelType.INVALID_CHANNEL_TYPE
+                                                                  .withChannelName("INVALID CHANNEL NAME");
     private static final String SEPARATOR = "@";
 
     private static final long CHANNEL_NAME_OFFSET = SerializationUtils.getFieldOffset(ChannelId.class,
@@ -51,7 +51,7 @@ public class ChannelId implements Externalizable {
         this.hashCode = INVALID_CHANNEL_ID.hashCode;
     }
 
-    public ChannelId(ChannelType channelType, String channelName) {
+    ChannelId(ChannelType channelType, String channelName) {
         this.channelType = channelType;
         this.channelName = channelName;
         this.channelString = channelType.name() + SEPARATOR + channelName;
@@ -110,18 +110,5 @@ public class ChannelId implements Externalizable {
         SerializationUtils.setObjectField(this, CHANNEL_STRING_OFFSET, channelString);
     }
 
-    private void setHashCode(int hashCode) {
-        SerializationUtils.setIntField(this, HASHCODE_OFFSET, hashCode);
-    }
-
-    public enum ChannelType {
-        INVALID_CHANNEL_TYPE,
-        NULL_CHANNEL_TYPE,
-        DIRECT_COMMUNICATION,
-        REPLAY_CHRONICLE_QUEUE,
-        LOCAL_CHRONICLE_QUEUE,
-        REMOTING_CHRONICLE_QUEUE,
-        KAFKA,
-        GRPC
-    }
+    private void setHashCode(int hashCode) { SerializationUtils.setIntField(this, HASHCODE_OFFSET, hashCode); }
 }

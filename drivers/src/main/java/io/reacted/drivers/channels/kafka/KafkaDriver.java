@@ -9,6 +9,7 @@
 package io.reacted.drivers.channels.kafka;
 
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.config.ChannelType;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -82,7 +83,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return new ChannelId(ChannelId.ChannelType.KAFKA, getDriverConfig().getChannelName());
+        return ChannelType.KAFKA.withChannelName(getDriverConfig().getChannelName());
     }
 
     @Override

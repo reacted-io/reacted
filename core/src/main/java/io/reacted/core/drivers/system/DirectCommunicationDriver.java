@@ -9,6 +9,7 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.config.ChannelType;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -27,7 +28,7 @@ public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCo
     private final ChannelId channelId;
     public DirectCommunicationDriver(DirectCommunicationConfig config) {
         super(config);
-        this.channelId = new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION, config.getChannelName());
+        this.channelId = ChannelType.DIRECT_COMMUNICATION.withChannelName(config.getChannelName());
     }
 
     @Override
