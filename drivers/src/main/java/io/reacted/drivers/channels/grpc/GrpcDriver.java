@@ -197,8 +197,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
         var peerChannelKey = getChannelPeerKey(dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST),
                                                dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_PORT));
         grpcLink = gatesStubs.computeIfAbsent(peerChannelKey,
-                                              newPeerChannelKey -> SystemLinkContainer.ofChannel(newPeerChannelKey,
-                                                                                                 getNewChannel(dstChannelIdProperties,
+                                              newPeerChannelKey -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties,
                                                                                                                Objects.requireNonNull(grpcExecutor),
                                                                                                                () -> removeStaleChannel(newPeerChannelKey)),
                                                                                                  ReActedLinkGrpc::newStub,
@@ -244,25 +243,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                     .enableRetry()
                                     .usePlaintext()
                                     .executor(grpcExecutor)
-                                    .intercept(new ClientInterceptor() {
-                                        @Override
-                                        public <ReqT, RespT> ClientCall<ReqT, RespT>
-                                        interceptCall(MethodDescriptor<ReqT, RespT> methodDescriptor,
-                                                      CallOptions callOptions, Channel channel) {
-                                            return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(channel.newCall(methodDescriptor, callOptions)) {
-                                                @Override
-                                                public void start(Listener<RespT> responseListener, Metadata headers) {
-                                                    delegate().start(new ForwardingClientCallListener.SimpleForwardingClientCallListener<RespT>(responseListener) {
-                                                        @Override
-                                                        public void onClose(Status status, Metadata trailers) {
-                                                            super.onClose(status, trailers);
-                                                            onCloseCleanup.run();
-                                                        }
-                                                    }, headers);
-                                                }
-                                            };
-                                        }
-                                    })
+                                    .intercept(newStreamClosureDetector(onCloseCleanup))
                                     .build();
     }
     private static String getChannelPeerKey(String peerHostname, String peerPort) {
@@ -298,7 +279,27 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             };
         }
     }
-
+    private static ClientInterceptor newStreamClosureDetector(Runnable onStreamClosed) {
+        return new ClientInterceptor() {
+            @Override
+            public <ReqT, RespT> ClientCall<ReqT, RespT>
+            interceptCall(MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions, Channel channel) {
+                return new ForwardingClientCall.SimpleForwardingClientCall<>(channel.newCall(methodDescriptor,
+                                                                                             callOptions)) {
+                    @Override
+                    public void start(Listener<RespT> responseListener, Metadata headers) {
+                        delegate().start(new ForwardingClientCallListener.SimpleForwardingClientCallListener<>(responseListener) {
+                            @Override
+                            public void onClose(Status status, Metadata trailers) {
+                                super.onClose(status, trailers);
+                                onStreamClosed.run();
+                            }
+                        }, headers);
+                    }
+                };
+            }
+        };
+    }
     private static StreamObserver<Empty> getEmptyMessageHandler(ReActorSystem localReActorSystem) {
         return new StreamObserver<>() {
             @Override
@@ -317,18 +318,14 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     private static final class SystemLinkContainer<InputTypeT> {
         private final ManagedChannel channel;
         private final StreamObserver<InputTypeT> link;
-        private final String channelKey;
-
-        private SystemLinkContainer(String channelKey, ManagedChannel channel, StreamObserver<InputTypeT> link) {
+        private SystemLinkContainer(ManagedChannel channel, StreamObserver<InputTypeT> link) {
             this.channel = channel;
             this.link = link;
-            this.channelKey = channelKey;
         }
         private static <StubT, InputTypeT>
-        SystemLinkContainer<InputTypeT> ofChannel(String channelKey,
-                                                  ManagedChannel channel, Function<ManagedChannel, StubT> toStub,
+        SystemLinkContainer<InputTypeT> ofChannel(ManagedChannel channel, Function<ManagedChannel, StubT> toStub,
                                                   Function<StubT, StreamObserver<InputTypeT>> toLink) {
-            return new SystemLinkContainer<>(channelKey, channel, toLink.apply(toStub.apply(channel)));
+            return new SystemLinkContainer<>(channel, toLink.apply(toStub.apply(channel)));
         }
     }
 }

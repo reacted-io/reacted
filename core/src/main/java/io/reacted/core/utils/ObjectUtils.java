@@ -14,12 +14,29 @@ import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 @NonNullByDefault
 public final class ObjectUtils {
     private ObjectUtils() { /* No instances allowed */ }
+
+    @Nullable
+    public static <InputT, OutputT> OutputT ifNotNull(@Nullable InputT input, Function<InputT, OutputT> ifNotNull) {
+        if (input == null) {
+            return null;
+        }
+        return Objects.requireNonNull(ifNotNull).apply(input);
+    }
+
+    @Nullable
+    public static <InputT> void runIfNotNull(@Nullable InputT input, Consumer<InputT> ifNotNull) {
+        if (input != null) {
+            Objects.requireNonNull(ifNotNull).accept(input);
+        }
+    }
 
     /**
      * Checks if the provided interval is non null, bigger than {@link Duration#ZERO} and smaller than
