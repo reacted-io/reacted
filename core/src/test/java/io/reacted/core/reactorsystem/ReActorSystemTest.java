@@ -30,8 +30,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -125,7 +125,7 @@ class ReActorSystemTest {
                                                       .orElseSneakyThrow();
         childReActor.ifSuccessOrElse(child -> reActor.map(ReActorContext::getChildren)
                                                      .filter(children -> children.size() == 1)
-                                                     .map(children -> children.get(0))
+                                                     .map(children -> children.iterator().next())
                                                      .ifPresentOrElse(firstChild -> Assertions.assertEquals(firstChild,
                                                                                                             childReActor.get()),
                                                                       Assertions::fail),
@@ -143,8 +143,8 @@ class ReActorSystemTest {
 
         Optional<ReActorContext> fatherCtx = reActorSystem.getReActor(fatherActor.getReActorId());
 
-        List<ReActorRef> children = fatherCtx.map(ReActorContext::getChildren)
-                                             .orElse(List.of());
+        Set<ReActorRef> children = fatherCtx.map(ReActorContext::getChildren)
+                                             .orElse(Set.of());
         Assertions.assertEquals(1, children.size());
         reActorSystem.stop(childReActor.getReActorId())
                      .map(CompletionStage::toCompletableFuture)

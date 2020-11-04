@@ -25,11 +25,11 @@ import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,7 +47,7 @@ public final class ReActorContext {
     private final MailBox actorMbox;
     private final ReActorRef reactorRef;
     private final ReActorSystem reActorSystem;
-    private final List<ReActorRef> children;
+    private final Set<ReActorRef> children;
     private final ReActorRef parent;
     private final Dispatcher dispatcher;
     private final AtomicBoolean isScheduled;
@@ -67,7 +67,7 @@ public final class ReActorContext {
         this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider).apply(this));
         this.reactorRef = Objects.requireNonNull(reActorCtxBuilder.reactorRef);
         this.reActorSystem = Objects.requireNonNull(reActorCtxBuilder.reActorSystem);
-        this.children = new CopyOnWriteArrayList<>();
+        this.children = ConcurrentHashMap.newKeySet();
         this.parent = Objects.requireNonNull(reActorCtxBuilder.parent);
         this.dispatcher = Objects.requireNonNull(reActorCtxBuilder.dispatcher);
         this.isScheduled = new AtomicBoolean(false);
@@ -86,14 +86,12 @@ public final class ReActorContext {
 
     public ReActorSystem getReActorSystem() { return reActorSystem; }
 
-    public List<ReActorRef> getChildren() { return children; }
+    public Set<ReActorRef> getChildren() { return children; }
 
     public ReActorRef getParent() { return parent; }
 
     public Dispatcher getDispatcher() { return dispatcher; }
-
     public MailBox getMbox() { return actorMbox; }
-
     public CompletionStage<Void> getHierarchyTermination() { return hierarchyTermination; }
 
     public long getNextMsgExecutionId() { return msgExecutionId.getAndIncrement(); }
@@ -130,13 +128,9 @@ public final class ReActorContext {
         return interceptedMsgTypes;
     }
 
-    public final void reschedule() {
-        getDispatcher().dispatch(this);
-    }
+    public final void reschedule() { getDispatcher().dispatch(this); }
 
-    public CompletionStage<Try<DeliveryStatus>> reply(Serializable anyPayload) {
-        return reply(getSelf(), anyPayload);
-    }
+    public CompletionStage<Try<DeliveryStatus>> reply(Serializable anyPayload) { return reply(getSelf(), anyPayload); }
 
     public CompletionStage<Try<DeliveryStatus>> areply(Serializable anyPayload) {
         return areply(getSelf(), anyPayload);

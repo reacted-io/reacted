@@ -32,7 +32,9 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import javax.annotation.Nonnull;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
@@ -47,18 +49,20 @@ import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class Service implements ReActiveEntity {
-    private static final String ROUTEE_REACTIONS_RETRIEVAL_ERROR = "Unable to get routee reactions from specified provider";
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
     private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router {}";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
     private final Properties serviceInfo;
     private final ServiceConfig serviceConfig;
+    private final ArrayList<ReActorRef> routeesMap;
     private long msgReceived;
+
 
     public Service(ServiceConfig serviceConfig) {
         this.serviceInfo = new Properties();
         this.serviceConfig = Objects.requireNonNull(serviceConfig);
         this.msgReceived = 1;
+        this.routeesMap = new ArrayList<>(serviceConfig.getRouteesNum());
         this.serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME, serviceConfig.getReActorName());
     }
 
@@ -139,7 +143,7 @@ public class Service implements ReActiveEntity {
                 ReActorConfig newRouteeCfg = ReActorConfig.fromConfig(routeeConfig)
                                                           .setReActorName(routeeNewName)
                                                           .build();
-                spawnRoutee(raCtx, routeeReActions, newRouteeCfg);
+                this.routeesMap.add(spawnRoutee(raCtx, routeeReActions, newRouteeCfg));
             } catch (Throwable routeeSpawnError) {
                 raCtx.logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);
             }
@@ -171,27 +175,28 @@ public class Service implements ReActiveEntity {
     }
 
     private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived) {
-        return serviceConfig.getLoadBalancingPolicy().selectRoutee(routerCtx, msgReceived);
+        return serviceConfig.getLoadBalancingPolicy().selectRoutee(routerCtx, this, msgReceived);
     }
 
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
-        Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider()
-                                                         .get()))
-           .peekFailure(error -> raCtx.logError(ROUTEE_REACTIONS_RETRIEVAL_ERROR, error))
-           .ifSuccess(routee -> spawnRoutee(raCtx, routee.getReActions(), reSpawnRequest.routeeConfig))
-           .ifError(spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR, spawnError));
+        this.routeesMap.remove(reSpawnRequest.deadRoutee);
+        Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider().get()))
+           .map(routee -> spawnRoutee(raCtx, routee.getReActions(), reSpawnRequest.routeeConfig))
+           .ifSuccessOrElse(this.routeesMap::add, spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR, spawnError));
     }
 
-    private void spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions, ReActorConfig routeeConfig) {
+    private ReActorRef spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions, ReActorConfig routeeConfig) {
         ReActorRef routee = routerCtx.spawnChild(routeeReActions, routeeConfig).orElseSneakyThrow();
         ReActorContext routeeCtx = routerCtx.getReActorSystem().getReActor(routee.getReActorId())
                                             .orElseThrow();
         //when a routee dies, asks the father to be respawn. If the father is stopped (i.e. on system shutdown)
         //the message will be simply routed to deadletter
         routeeCtx.getHierarchyTermination()
-                 .thenAccept(terminated -> { if (!routeeCtx.isStop()) {
-                                                  routerCtx.getSelf().tell(ReActorRef.NO_REACTOR_REF,
-                                                                           new RouteeReSpawnRequest(routeeConfig)); }});
+                 .thenAccept(terminated -> { if (routeeCtx.isStop()) {
+                                                this.routeesMap.remove(routee);
+                                             } else { routerCtx.selfTell(new RouteeReSpawnRequest(routeeConfig,
+                                                                                                  routee)); }});
+        return routee;
     }
 
     private void updateServiceRegistry(ReActorContext raCtx, Properties serviceInfo) {
@@ -229,24 +234,29 @@ public class Service implements ReActiveEntity {
     }
 
     public static class RouteeReSpawnRequest implements Serializable {
-        final ReActorConfig routeeConfig;
-        public RouteeReSpawnRequest(ReActorConfig routeeConfig) {
+        private final ReActorConfig routeeConfig;
+        private final ReActorRef deadRoutee;
+        public RouteeReSpawnRequest(ReActorConfig routeeConfig, ReActorRef deadRoutee) {
             this.routeeConfig = routeeConfig;
+            this.deadRoutee = deadRoutee;
         }
     }
 
     public enum LoadBalancingPolicy {
         ROUND_ROBIN {
             @Override
-            public Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgNum) {
-                int routeeIdx = (int) ((msgNum % Integer.MAX_VALUE) % routerCtx.getChildren().size());
-                return Try.of(() -> routerCtx.getChildren().get(routeeIdx))
+            public Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
+                                                     Service thisService, long msgNum) {
+                List<ReActorRef> routees = thisService.routeesMap;
+                int routeeIdx = (int) ((msgNum % Integer.MAX_VALUE) % routees.size());
+                return Try.of(() -> routees.get(routeeIdx))
                           .toOptional();
             }
         },
         LOWEST_LOAD {
             @Override
-            public Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgNum) {
+            public Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
+                                                     Service thisService, long msgNum) {
                 return routerCtx.getChildren().stream()
                                 .map(ReActorRef::getReActorId)
                                 .map(routerCtx.getReActorSystem()::getReActor)
@@ -255,6 +265,7 @@ public class Service implements ReActiveEntity {
                                 .map(ReActorContext::getSelf);
             }
         };
-        abstract Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgNum);
+        abstract Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
+                                                   Service thisService, long msgNum);
     }
 }

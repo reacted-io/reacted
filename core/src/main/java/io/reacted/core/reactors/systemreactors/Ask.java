@@ -54,7 +54,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
-                        .reAct(ReActorStop.class, (raCtx, stop) -> onStop())
+                        .reAct(ReActorStop.class, (raCtx, stop) -> onStop(raCtx))
                         .reAct(expectedReplyType, this::onExpectedReply)
                         .reAct(this::onUnexpected)
                         .build();
@@ -64,7 +64,8 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
-                            .setReActorName(requestName + "|" + target.getReActorId().getReActorUUID() + "|" +
+                            .setReActorName(Ask.class.getSimpleName() + "|" + requestName + "|" +
+                                            target.getReActorId().getReActorUUID() + "|" +
                                             request.getClass().getSimpleName() + "|" +
                                             expectedReplyType.getSimpleName())
                             .build();
@@ -73,30 +74,32 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         try {
             ifNotDelivered(target.tell(raCtx.getSelf(), request),
-                           error -> this.completionTrigger.completeAsync(() -> Try.ofFailure(error))
-                                                          .thenAccept(completion -> raCtx.stop()));
+                           error -> { this.completionTrigger.complete(Try.ofFailure(error));
+                                      raCtx.stop(); });
 
             this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
                                                      askTimeout.toMillis(), TimeUnit.MILLISECONDS)
                                   .thenAccept(reply -> raCtx.stop());
         } catch (RejectedExecutionException poolCannotHandleRequest) {
-            this.completionTrigger.completeAsync(() -> Try.ofFailure(poolCannotHandleRequest));
+            this.completionTrigger.complete(Try.ofFailure(poolCannotHandleRequest));
             raCtx.stop();
         }
     }
 
     private void onExpectedReply(ReActorContext raCtx, ReplyT reply) {
-        this.completionTrigger.completeAsync(() -> Try.ofSuccess(reply));
+        this.completionTrigger.complete(Try.ofSuccess(reply));
         raCtx.stop();
     }
 
-    private void onStop() {
-        this.completionTrigger.complete(Try.ofFailure(new IllegalStateException()));
+    private void onStop(ReActorContext raCtx) {
+        if(this.completionTrigger.complete(Try.ofFailure(new IllegalStateException()))) {
+            raCtx.logError("Illegal termination? {}", raCtx.getSelf());
+        }
     }
     private void onUnexpected(ReActorContext raCtx, Serializable anyType) {
-        this.completionTrigger.completeAsync(() -> Try.ofFailure(new IllegalArgumentException(String.format("Received %s instead of %s",
-                                                                                                            anyType.getClass().getName(),
-                                                                                                            expectedReplyType.getName()))));
+        this.completionTrigger.complete(Try.ofFailure(new IllegalArgumentException(String.format("Received %s instead of %s",
+                                                                                                 anyType.getClass().getName(),
+                                                                                                 expectedReplyType.getName()))));
         raCtx.stop();
     }
 }

@@ -855,7 +855,7 @@ public class ReActorSystem {
         return stopHook;
     }
 
-    private static CompletionStage<Void> allChildrenTerminationFuture(List<ReActorRef> children,
+    private static CompletionStage<Void> allChildrenTerminationFuture(Collection<ReActorRef> children,
                                                                       ReActorSystem reActorSystem) {
         return children.stream()
                        .map(ReActorRef::getReActorId)
