@@ -23,9 +23,15 @@ import java.util.Optional;
 @Immutable
 @NonNullByDefault
 public class ChannelId implements Externalizable {
-    public static final ChannelId NO_CHANNEL_ID = ChannelType.NULL_CHANNEL_TYPE.withChannelName("");
+    public static final ChannelType GRPC = ChannelType.GRPC;
+    public static final ChannelType KAFKA = ChannelType.KAFKA;
+    public static final ChannelType DIRECT_COMMUNICATION = ChannelType.DIRECT_COMMUNICATION;
+    public static final ChannelType REPLAY_CHRONICLE_QUEUE = ChannelType.REPLAY_CHRONICLE_QUEUE;
+    public static final ChannelType LOCAL_CHRONICLE_QUEUE = ChannelType.LOCAL_CHRONICLE_QUEUE;
+    public static final ChannelType REMOTING_CHRONICLE_QUEUE = ChannelType.REMOTING_CHRONICLE_QUEUE;
+    public static final ChannelId NO_CHANNEL_ID = ChannelType.NULL_CHANNEL_TYPE.forChannelName("");
     public static final ChannelId INVALID_CHANNEL_ID = ChannelType.INVALID_CHANNEL_TYPE
-                                                                  .withChannelName("INVALID CHANNEL NAME");
+                                                                  .forChannelName("INVALID CHANNEL NAME");
     private static final String SEPARATOR = "@";
 
     private static final long CHANNEL_NAME_OFFSET = SerializationUtils.getFieldOffset(ChannelId.class,
@@ -51,7 +57,7 @@ public class ChannelId implements Externalizable {
         this.hashCode = INVALID_CHANNEL_ID.hashCode;
     }
 
-    ChannelId(ChannelType channelType, String channelName) {
+    private ChannelId(ChannelType channelType, String channelName) {
         this.channelType = channelType;
         this.channelName = channelName;
         this.channelString = channelType.name() + SEPARATOR + channelName;
@@ -111,4 +117,16 @@ public class ChannelId implements Externalizable {
     }
 
     private void setHashCode(int hashCode) { SerializationUtils.setIntField(this, HASHCODE_OFFSET, hashCode); }
+
+    public enum ChannelType {
+        INVALID_CHANNEL_TYPE,
+        NULL_CHANNEL_TYPE,
+        DIRECT_COMMUNICATION,
+        REPLAY_CHRONICLE_QUEUE,
+        LOCAL_CHRONICLE_QUEUE,
+        REMOTING_CHRONICLE_QUEUE,
+        KAFKA,
+        GRPC;
+        public ChannelId forChannelName(String channelName) { return new ChannelId(this, channelName); }
+    }
 }

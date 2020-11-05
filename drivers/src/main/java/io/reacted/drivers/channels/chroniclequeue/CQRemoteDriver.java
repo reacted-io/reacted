@@ -9,7 +9,6 @@
 package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.ChannelType;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -74,7 +73,7 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return ChannelType.REMOTING_CHRONICLE_QUEUE.withChannelName(getDriverConfig().getChannelName());
+        return ChannelId.REMOTING_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override

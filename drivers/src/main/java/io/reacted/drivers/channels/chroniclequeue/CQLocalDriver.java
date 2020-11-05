@@ -9,7 +9,6 @@
 package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.ChannelType;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -55,7 +54,7 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return ChannelType.LOCAL_CHRONICLE_QUEUE.withChannelName(getDriverConfig().getChannelName());
+        return ChannelId.LOCAL_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override

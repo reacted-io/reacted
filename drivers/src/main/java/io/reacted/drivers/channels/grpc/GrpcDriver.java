@@ -30,7 +30,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.config.ChannelType;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
@@ -78,7 +77,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public GrpcDriver(GrpcDriverConfig grpcDriverConfig) {
         super(grpcDriverConfig);
         this.gatesStubs = new ConcurrentHashMap<>(1000, 0.5f);
-        this.channelId = ChannelType.GRPC.withChannelName(grpcDriverConfig.getChannelName());
+        this.channelId = ChannelId.GRPC.forChannelName(grpcDriverConfig.getChannelName());
     }
 
     @Override
