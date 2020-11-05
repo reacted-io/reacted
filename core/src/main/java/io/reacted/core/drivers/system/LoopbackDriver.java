@@ -32,11 +32,11 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.RejectedExecutionException;
 
 @NonNullByDefault
 public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> extends ReActorSystemDriver<ConfigT> {
-    @Nullable
-    private static final TriConsumer<ReActorId, Serializable, ReActorRef> DO_NOT_PROPAGATE = null;
+    private static final TriConsumer<ReActorId, Serializable, ReActorRef> DO_NOT_PROPAGATE = (a, b, c) -> { };
     private final TriConsumer<ReActorId, Serializable, ReActorRef> PROPAGATE_TO_SUBSCRIBERS = this::propagateMessage;
     private final LocalDriver<ConfigT> localDriver;
     private final ReActorSystem localReActorSystem;
@@ -62,7 +62,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     @Override
     public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-         @Nullable TriConsumer<ReActorId, Serializable, ReActorRef> toSubscribers, PayloadT payload) {
+         TriConsumer<ReActorId, Serializable, ReActorRef> toSubscribers, PayloadT payload) {
         ReActorContext dstCtx = localReActorSystem.getNullableReActorCtx(dst.getReActorId());
         CompletionStage<Try<DeliveryStatus>> tellResult;
         boolean isAckRequired = isAckRequired(localDriver.channelRequiresDeliveryAck(), ackingPolicy);
@@ -81,9 +81,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
                 tellResult = pendingAck;
             }
 
-            if (toSubscribers != null) {
-                toSubscribers.accept(dst.getReActorId(), payload, src);
-            }
+            toSubscribers.accept(dst.getReActorId(), payload, src);
 
         } else {
             tellResult = CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.NOT_DELIVERED));
@@ -147,9 +145,14 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
         var subscribers = localReActorSystem.getTypedSubscriptionsManager()
                                             .getLocalSubscribers(msgPayload.getClass());
         if (!subscribers.isEmpty()) {
-            localReActorSystem.getMsgFanOutPool()
-                              .submit(() -> propagateToSubscribers(localDriver, subscribers, originalDst,
-                                                                   localReActorSystem, src, msgPayload));
+            try {
+                localReActorSystem.getMsgFanOutPool()
+                                  .submit(() -> propagateToSubscribers(localDriver, subscribers, originalDst,
+                                                                       localReActorSystem, src, msgPayload));
+            } catch (RejectedExecutionException propagationFailed) {
+                localReActorSystem.logError("Error propagating {} towards subscribers",
+                                            msgPayload, propagationFailed);
+            }
         }
     }
 
