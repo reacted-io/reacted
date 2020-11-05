@@ -79,6 +79,12 @@ public class ReActorSystemRef implements Externalizable {
         return backingDriver.tell(src, dst, ackingPolicy, message);
     }
 
+    <PayloadT extends Serializable>
+    CompletionStage<Try<DeliveryStatus>> route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                              PayloadT message) {
+        return backingDriver.route(src, dst, ackingPolicy, message);
+    }
+
     public ReActorSystemId getReActorSystemId() {
         return reActorSystemId;
     }

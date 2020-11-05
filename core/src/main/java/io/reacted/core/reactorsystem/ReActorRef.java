@@ -108,6 +108,22 @@ public final class ReActorRef implements Externalizable {
     }
 
     /**
+     * Sends a message to this ReActor. All the subscribers for this message type will not be notified.
+     * @see io.reacted.core.typedsubscriptions.TypedSubscription
+     *
+     * @param msgSender      source of the message
+     * @param messagePayload payload
+     * @param <PayloadT> Any {@link Serializable} object
+     * @return A completable future that is going to be completed once the message has been delivered into the
+     * local driver bus, containing the outcome of the operation
+     */
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    route(ReActorRef msgSender, PayloadT messagePayload) {
+        return reActorSystemRef.route(Objects.requireNonNull(msgSender), this, AckingPolicy.NONE,
+                                        Objects.requireNonNull(messagePayload));
+    }
+
+    /**
      * Sends a message to a this ReActor requiring an ack as a confirmation of the delivery into the target reactor's
      * mailbox. The sender of the message is going to be the system sink
      *
@@ -137,6 +153,22 @@ public final class ReActorRef implements Externalizable {
                                                                                       PayloadT messagePayload) {
         return reActorSystemRef.tell(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
                                      Objects.requireNonNull(messagePayload));
+    }
+
+    /**
+     * Sends a message to a this ReActor requiring an ack as a confirmation of the delivery into the target reactor's
+     * mailbox. All the subscribers for {@code PayloadT} type will not be notified
+     *
+     * @param msgSender      message source
+     * @param messagePayload message payload
+     * @param <PayloadT> Any {@link Serializable} object
+     * @return A completable future that is going to be completed when an ack from the destination reactor system
+     * is received containing the outcome of the delivery of the message into the target actor mailbox
+     */
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    aroute(ReActorRef msgSender, PayloadT messagePayload) {
+        return reActorSystemRef.route(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
+                                      Objects.requireNonNull(messagePayload));
     }
 
     /**

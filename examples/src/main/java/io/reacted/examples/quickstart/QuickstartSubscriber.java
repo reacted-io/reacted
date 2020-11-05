@@ -9,6 +9,8 @@
 package io.reacted.examples.quickstart;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
+import io.reacted.core.reactors.ReActor;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.reactors.ReActions;
@@ -16,6 +18,8 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.drivers.channels.kafka.KafkaDriver;
 import io.reacted.drivers.channels.kafka.KafkaDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
+
+import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class QuickstartSubscriber {
@@ -31,17 +35,36 @@ public class QuickstartSubscriber {
                                                                            .addRemotingDriver(new KafkaDriver(kafkaDriverConfig))
                                                                            .setReactorSystemName("ShowOffSubscriberReActorSystemName")
                                                                            .build()).initReActorSystem();
-        showOffSubscriberSystem.spawn(ReActions.newBuilder()
-                                               .reAct(GreeterService.GreetingsRequest.class,
-                                                      (raCtx, greetingsRequest) ->
-                                                       raCtx.logInfo("{} asked for a greeting",
-                                                                     raCtx.getSender().getReActorId()
-                                                                                      .getReActorName()))
-                                               .build(),
-                                      ReActorConfig.newBuilder()
-                                                   .setReActorName("Message Interceptor")
-                                                   .setTypedSubscriptions(TypedSubscription.FULL.forType(GreeterService.GreetingsRequest.class))
-                                                   .build())
+        showOffSubscriberSystem.spawnService(ServiceConfig.newBuilder()
+                                                          .setRouteeProvider(GreetingsRequestSubscriber::new)
+                                                          .setReActorName("DataCaptureService")
+                                                          .setRouteesNum(4)
+                                                          .setTypedSubscriptions(TypedSubscription.FULL.forType(GreeterService.GreetingsRequest.class))
+                                                          .build())
+                               .peekFailure(Throwable::printStackTrace)
                                .ifError(error -> showOffSubscriberSystem.shutDown());
+    }
+
+    private static class GreetingsRequestSubscriber implements ReActor {
+        @Nonnull
+        @Override
+        public ReActorConfig getConfig() {
+            return  ReActorConfig.newBuilder()
+                                 .setReActorName("Worker")
+                                 .build();
+        }
+
+        @Nonnull
+        @Override
+        public ReActions getReActions() {
+            return ReActions.newBuilder()
+                            .reAct(GreeterService.GreetingsRequest.class,
+                                   (raCtx, greetingsRequest) ->
+                                           raCtx.logInfo("{} intercepted {} asked from {}",
+                                                         raCtx.getSelf().getReActorId().getReActorName(),
+                                                         greetingsRequest,
+                                                         raCtx.getSender().getReActorId().getReActorName()))
+                            .build();
+        }
     }
 }

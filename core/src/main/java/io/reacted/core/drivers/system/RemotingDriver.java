@@ -14,11 +14,14 @@ import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
+import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.patterns.UnChecked;
+import io.reacted.patterns.UnChecked.TriConsumer;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -68,6 +71,22 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             tellResult = CompletableFuture.completedFuture(sendResult);
         }
         return tellResult;
+    }
+
+    @Override
+    public final <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+         TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+        //While sending towards a remote peer, propagation towards subscribers never takes place
+        return tell(src, dst, ackingPolicy, message);
+    }
+
+    @Override
+    public final <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+        //While sending towards a remote peer, propagation towards subscribers never takes place,
+        //so tell and route behave in the same way
+        return tell(src, dst, ackingPolicy, message);
     }
 
     @Override

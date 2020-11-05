@@ -38,9 +38,10 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         if (Strings.isNullOrEmpty(builder.dispatcherName)) {
             throw new IllegalArgumentException("DispatcherName cannot be empty or null");
         }
-        this.reActorName = Objects.requireNonNull(builder.reActorName);
-        this.mailBoxProvider = Objects.requireNonNull(builder.mailBoxProvider);
-        this.typedSubscriptions = Objects.requireNonNull(builder.typedSubscriptions).length == 0
+        this.reActorName = Objects.requireNonNull(builder.reActorName, "ReActor name is mandatory");
+        this.mailBoxProvider = Objects.requireNonNull(builder.mailBoxProvider, "Mailbox provider is mandatory");
+        this.typedSubscriptions = Objects.requireNonNull(builder.typedSubscriptions,
+                                                         "Typed Subscriptions cannot be null").length == 0
                                        ? TypedSubscription.NO_SUBSCRIPTIONS
                                        : Arrays.copyOf(builder.typedSubscriptions,
                                                        builder.typedSubscriptions.length);

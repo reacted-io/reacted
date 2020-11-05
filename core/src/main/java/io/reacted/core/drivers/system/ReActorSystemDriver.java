@@ -31,6 +31,7 @@ import io.reacted.core.reactorsystem.ReActorSystemRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+import io.reacted.patterns.UnChecked.TriConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,10 +94,13 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      * @return a completion stage that is going to be completed on error or when the message is successfully delivered
      *         to the target mailbox
      */
-    abstract public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> tell(ReActorRef src,
-                                                                                              ReActorRef dst,
-                                                                                              AckingPolicy ackingPolicy,
-                                                                                              PayloadT message);
+    abstract public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
+    abstract public  <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+         TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message);
+    abstract public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
 
     public Optional<CompletionStage<Try<DeliveryStatus>>> removePendingAckTrigger(long msgSeqNum) {
         var ackTrigger = pendingAcksTriggers.getIfPresent(msgSeqNum);

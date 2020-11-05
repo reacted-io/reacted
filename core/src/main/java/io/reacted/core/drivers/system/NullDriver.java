@@ -13,12 +13,14 @@ import io.reacted.core.exceptions.NoRouteToReActorSystem;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+import io.reacted.patterns.UnChecked.TriConsumer;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -74,6 +76,18 @@ public final class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
         return CompletableFuture.completedFuture(Try.ofFailure(new NoRouteToReActorSystem()));
     }
 
+    @Override
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+         TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+        return CompletableFuture.completedFuture(Try.ofFailure(new NoRouteToReActorSystem()));
+    }
+
+    @Override
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+        return CompletableFuture.completedFuture(Try.ofFailure(new NoRouteToReActorSystem()));
+    }
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
         return Try.ofFailure(new NoRouteToReActorSystem());

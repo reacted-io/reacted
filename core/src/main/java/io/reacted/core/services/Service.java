@@ -163,13 +163,13 @@ public class Service implements ReActiveEntity {
                                                 : selectRoutee(raCtx, msgReceived);
 
         serviceSelection.map(ServiceDiscoveryReply::new)
-                        .ifPresent(discoveryReply -> raCtx.getSender().tell(raCtx.getSelf(),
-                                                                                     discoveryReply));
+                        .ifPresent(discoveryReply -> raCtx.getSender()
+                                                          .tell(raCtx.getSelf(), discoveryReply));
     }
 
     private void routeMessage(ReActorContext raCtx, Serializable newMessage) {
         selectRoutee(raCtx, ++msgReceived)
-                .ifPresentOrElse(routee -> routee.tell(raCtx.getSender(), newMessage),
+                .ifPresentOrElse(routee -> routee.route(raCtx.getSender(), newMessage),
                                  () -> raCtx.logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
                                                       serviceConfig.getReActorName(), new IllegalStateException()));
     }
