@@ -33,7 +33,8 @@ final class GreeterService implements ReActor {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class,
-                               (reActorContext, init) -> reActorContext.logInfo("A reactor was born"))
+                               (raCtx, init) ->
+                                       raCtx.logInfo("{} was born", raCtx.getSelf().getReActorId().getReActorName()))
                         .reAct(GreetingsRequest.class,
                                (raCtx, greetingsRequest) ->
                                        raCtx.reply("Hello from " + GreeterService.class.getSimpleName()))
