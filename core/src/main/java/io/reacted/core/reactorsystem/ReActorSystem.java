@@ -836,7 +836,10 @@ public class ReActorSystem {
         //Avoid spawning a child while it's being stopped
         stopMe.getStructuralLock().writeLock().lock();
         try {
-            if (reActors.remove(stopMe.getSelf().getReActorId()) != null) {
+            //If it is already stopped don't process further, otherwise the remove could remove the name
+            //of a new reactor with the same name that has just been spawned
+            if (!stopMe.getHierarchyTermination().toCompletableFuture().isDone() &&
+                reActors.remove(stopMe.getSelf().getReActorId()) != null) {
                 updateMessageInterceptors(stopMe, stopMe.getTypedSubscriptions(),
                                           TypedSubscription.NO_SUBSCRIPTIONS);
                 Try.ofRunnable(() -> stopMe.reAct(reActorStop))
@@ -846,7 +849,7 @@ public class ReActorSystem {
                 var allChildrenTerminated = allChildrenTerminationFuture(stopMe.getChildren(), this);
                 CompletableFuture<Void> myTerminationHook = stopMe.getHierarchyTermination()
                                                                   .toCompletableFuture();
-                allChildrenTerminated.thenAccept(lastChild -> myTerminationHook.complete(null));
+                allChildrenTerminated.thenAcceptAsync(lastChild -> myTerminationHook.complete(null));
                 stopHook = Optional.of(myTerminationHook);
             }
         } finally {
@@ -863,8 +866,7 @@ public class ReActorSystem {
                        .flatMap(Optional::stream)
                        //exploit the dispatcher for stopping the actor
                        .map(ReActorContext::stop)
-                       .reduce((firstChild, secondChild) -> firstChild.thenComposeAsync(res -> secondChild,
-                                                                                        ForkJoinPool.commonPool()))
+                       .reduce((firstChild, secondChild) -> firstChild.thenComposeAsync(res -> secondChild))
                        //no children no party
                        .orElse(CompletableFuture.completedFuture(null));
     }
