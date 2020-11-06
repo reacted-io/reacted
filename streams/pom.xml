@@ -10,7 +10,7 @@
     <parent>
         <artifactId>reacted-all</artifactId>
         <groupId>io.reacted</groupId>
-        <version>1.4.1</version>
+        <version>1.4.2-SNAPSHOT</version>
     </parent>
 
     <developers>
