@@ -54,7 +54,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
-                        .reAct(ReActorStop.class, (raCtx, stop) -> onStop(raCtx))
+                        .reAct(ReActorStop.class, ReActions::noReAction)
                         .reAct(expectedReplyType, this::onExpectedReply)
                         .reAct(this::onUnexpected)
                         .build();
@@ -72,34 +72,25 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
-        try {
-            ifNotDelivered(target.tell(raCtx.getSelf(), request),
-                           error -> { this.completionTrigger.complete(Try.ofFailure(error));
-                                      raCtx.stop(); });
+        ifNotDelivered(target.tell(raCtx.getSelf(), request),
+                       error -> raCtx.stop()
+                                     .thenAccept(noVal -> this.completionTrigger.complete(Try.ofFailure(error))));
 
-            this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
-                                                     askTimeout.toMillis(), TimeUnit.MILLISECONDS)
-                                  .thenAccept(reply -> raCtx.stop());
-        } catch (RejectedExecutionException poolCannotHandleRequest) {
-            this.completionTrigger.complete(Try.ofFailure(poolCannotHandleRequest));
-            raCtx.stop();
-        }
+        this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
+                                                 askTimeout.toMillis(), TimeUnit.MILLISECONDS)
+                              .thenAccept(reply -> raCtx.stop());
     }
 
     private void onExpectedReply(ReActorContext raCtx, ReplyT reply) {
-        this.completionTrigger.complete(Try.ofSuccess(reply));
-        raCtx.stop();
-    }
+        raCtx.stop()
+             .thenAccept(noVal -> this.completionTrigger.complete(Try.ofSuccess(reply)));
 
-    private void onStop(ReActorContext raCtx) {
-        if(this.completionTrigger.complete(Try.ofFailure(new IllegalStateException()))) {
-            raCtx.logError("Illegal termination? {}", raCtx.getSelf());
-        }
     }
     private void onUnexpected(ReActorContext raCtx, Serializable anyType) {
-        this.completionTrigger.complete(Try.ofFailure(new IllegalArgumentException(String.format("Received %s instead of %s",
-                                                                                                 anyType.getClass().getName(),
-                                                                                                 expectedReplyType.getName()))));
-        raCtx.stop();
+        var failure = new IllegalArgumentException(String.format("Received %s instead of %s",
+                                                                 anyType.getClass().getName(),
+                                                                 expectedReplyType.getName()));
+        raCtx.stop()
+             .thenAccept(noVal -> this.completionTrigger.complete(Try.ofFailure(failure)));
     }
 }
