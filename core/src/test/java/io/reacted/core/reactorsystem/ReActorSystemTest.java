@@ -39,6 +39,7 @@ import static org.mockito.Mockito.mock;
 
 class ReActorSystemTest {
     private static final String DISPATCHER_NAME = "TestDispatcher";
+    public static final String NO_RE_ACTOR_FOUND = "No ReActor found";
     private ReActorSystem reActorSystem;
     private final ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                              .setMailBoxProvider(ctx -> new BasicMbox())
@@ -112,7 +113,6 @@ class ReActorSystemTest {
     @Test
     void reactorSystemCanSpawnNewChild() {
         Try<ReActorRef> fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
-
         Try<ReActorRef> childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor.get(),
                                                                 childReActorConfig);
         childReActor.map(ReActorRef::getReActorId)
@@ -132,6 +132,23 @@ class ReActorSystemTest {
                                      Assertions::fail);
     }
 
+    @Test
+    void reactorSystemCanSpawnAStoppedReactorHavingTheSameName() {
+        Try<ReActorRef> actor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
+        actor.map(ReActorRef::getReActorId)
+                .map(reActorSystem::getReActor)
+                .orElseSneakyThrow();
+
+        reActorSystem.stop(actor.get().getReActorId())
+                .map(CompletionStage::toCompletableFuture)
+                .ifPresentOrElse(CompletableFuture::join,
+                        () -> Assertions.fail(NO_RE_ACTOR_FOUND));
+
+        reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
+        var reActorId = actor.map(ReActorRef::getReActorId)
+                .orElseSneakyThrow();
+        Assertions.assertTrue(reActorSystem.getReActor(reActorId).isPresent());
+    }
 
     @Test
     void reactorSystemCanStopChild() {
@@ -149,7 +166,7 @@ class ReActorSystemTest {
         reActorSystem.stop(childReActor.getReActorId())
                      .map(CompletionStage::toCompletableFuture)
                      .ifPresentOrElse(CompletableFuture::join,
-                                      () -> Assertions.fail("No ReActor found!?"));
+                                      () -> Assertions.fail(NO_RE_ACTOR_FOUND));
         Assertions.assertEquals(0, children.size());
     }
 
