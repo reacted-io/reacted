@@ -146,9 +146,10 @@ class ReActorSystemTest {
                             () -> Assertions.fail(NO_RE_ACTOR_FOUND));
 
             reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
-            var reActorId = actor.map(ReActorRef::getReActorId)
-                    .orElseSneakyThrow();
-            Assertions.assertTrue(reActorSystem.getReActor(reActorId).isPresent());
+            actor.map(ReActorRef::getReActorId)
+                    .map(reActorSystem::getReActor)
+                    .ifSuccessOrElse(raCtx -> Assertions.assertTrue(raCtx.isPresent()),
+                            Assertions::fail);
         }
     }
 
