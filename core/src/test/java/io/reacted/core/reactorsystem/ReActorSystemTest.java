@@ -139,15 +139,17 @@ class ReActorSystemTest {
                 .map(reActorSystem::getReActor)
                 .orElseSneakyThrow();
 
-        reActorSystem.stop(actor.get().getReActorId())
-                .map(CompletionStage::toCompletableFuture)
-                .ifPresentOrElse(CompletableFuture::join,
-                        () -> Assertions.fail(NO_RE_ACTOR_FOUND));
+        for (int i = 0; i <= 1000; i++) {
+            reActorSystem.stop(actor.get().getReActorId())
+                    .map(CompletionStage::toCompletableFuture)
+                    .ifPresentOrElse(CompletableFuture::join,
+                            () -> Assertions.fail(NO_RE_ACTOR_FOUND));
 
-        reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
-        var reActorId = actor.map(ReActorRef::getReActorId)
-                .orElseSneakyThrow();
-        Assertions.assertTrue(reActorSystem.getReActor(reActorId).isPresent());
+            reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
+            var reActorId = actor.map(ReActorRef::getReActorId)
+                    .orElseSneakyThrow();
+            Assertions.assertTrue(reActorSystem.getReActor(reActorId).isPresent());
+        }
     }
 
     @Test
