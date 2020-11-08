@@ -12,6 +12,7 @@ import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.serviceregistry.DuplicatedPublicationError;
 import io.reacted.core.messages.serviceregistry.FilterServiceDiscoveryRequest;
 import io.reacted.core.messages.serviceregistry.RegistryConnectionLost;
 import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
@@ -30,16 +31,20 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static io.reacted.core.utils.ReActedUtils.*;
 
 @Immutable
 public class RemotingRoot {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RemotingRoot.class);
     private final Collection<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> remotingDrivers;
     private final ReActorSystemId localReActorSystem;
 
@@ -61,11 +66,18 @@ public class RemotingRoot {
                         .reAct(ServiceCancellationRequest.class, RemotingRoot::onCancelService)
                         .reAct(FilterServiceDiscoveryRequest.class, RemotingRoot::onFilterServiceDiscoveryRequest)
                         .reAct(RegistryConnectionLost.class, this::onRegistryConnectionLost)
+                        .reAct(DuplicatedPublicationError.class, RemotingRoot::onDuplicatedPublicationError)
                         .reAct(ReActorStop.class, RemotingRoot::onStop)
                         .reAct(RemotingRoot::onSpuriousMessage)
                         .build();
     }
 
+    private static void onDuplicatedPublicationError(ReActorContext raCtx,
+                                                     DuplicatedPublicationError duplicatedPublicationError) {
+        LOGGER.error("CRITIC! Duplicated ReActor System detected. ReActorSystem names must be unique within" +
+                     "a cluster. Shutting down reporting driver: {}", raCtx.getSender().getReActorId().getReActorName());
+        raCtx.getReActorSystem().stop(raCtx.getSender().getReActorId());
+    }
     @SuppressWarnings("EmptyMethod")
     private static void onStop(ReActorContext raCtx, ReActorStop stop) { /* Nothing to do */ }
 
