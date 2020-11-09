@@ -17,6 +17,8 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.drivers.channels.kafka.KafkaDriver;
 import io.reacted.drivers.channels.kafka.KafkaDriverConfig;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
@@ -31,9 +33,13 @@ public class QuickstartSubscriber {
                                                  .setMaxPollRecords(1)
                                                  .setBootstrapEndpoint("localhost:9092")
                                                  .build();
+        var zooKeeperDriverConfig = ZooKeeperDriverConfig.newBuilder()
+                                                         .setReActorName("LocalhostCluster")
+                                                         .build();
         var showOffSubscriberSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                            .addRemotingDriver(new KafkaDriver(kafkaDriverConfig))
-                                                                           .setReactorSystemName("ShowOffSubscriberReActorSystemName")
+                                                                           .setReactorSystemName("ShowOffServerSubscriberSystemName")
+                                                                           .addServiceRegistryDriver(new ZooKeeperDriver(zooKeeperDriverConfig))
                                                                            .build()).initReActorSystem();
         showOffSubscriberSystem.spawnService(ServiceConfig.newBuilder()
                                                           .setRouteeProvider(GreetingsRequestSubscriber::new)

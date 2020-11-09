@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static io.reacted.core.utils.ReActedUtils.*;
@@ -74,8 +73,9 @@ public class RemotingRoot {
 
     private static void onDuplicatedPublicationError(ReActorContext raCtx,
                                                      DuplicatedPublicationError duplicatedPublicationError) {
-        LOGGER.error("CRITIC! Duplicated ReActor System detected. ReActorSystem names must be unique within" +
-                     "a cluster. Shutting down reporting driver: {}", raCtx.getSender().getReActorId().getReActorName());
+        raCtx.logError("CRITIC! Duplicated ReActor System detected. ReActorSystem names must be unique within" +
+                       "a cluster. Shutting down reporting driver: {}",
+                       raCtx.getSender().getReActorId().getReActorName());
         raCtx.getReActorSystem().stop(raCtx.getSender().getReActorId());
     }
     @SuppressWarnings("EmptyMethod")
@@ -135,12 +135,12 @@ public class RemotingRoot {
                           upsert.getChannelId().toString(), upsert.getReActorSystemId().getReActorSystemName());
             raCtx.getReActorSystem().unregisterRoute(upsert.getReActorSystemId(), upsert.getChannelId());
             raCtx.getReActorSystem().registerNewRoute(upsert.getReActorSystemId(), upsert.getChannelId(),
-                                                      upsert.getChannelData());
+                                                      upsert.getChannelData(), raCtx.getSender());
         }
     }
 
     private void onRegistryConnectionLost(ReActorContext raCtx, RegistryConnectionLost connectionLost) {
-        raCtx.getReActorSystem().flushAllRemoteGates();
+        raCtx.getReActorSystem().flushRemoteGatesForDriver(raCtx.getSender());
     }
 
     private void onRegistryGateRemoval(ReActorContext raCtx, RegistryGateRemoved removed) {

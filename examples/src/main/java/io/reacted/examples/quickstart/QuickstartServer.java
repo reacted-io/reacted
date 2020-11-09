@@ -36,7 +36,7 @@ public class QuickstartServer {
                                                                        .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"))
                                                                        .addServiceRegistryDriver(new ZooKeeperDriver(zooKeeperDriverConfig))
                                                                        .addRemotingDriver(new KafkaDriver(kafkaDriverConfig))
-                                                                       .setReactorSystemName("ShowOffServerActorSystemName")
+                                                                       .setReactorSystemName("ShowOffServerReActorSystemName")
                                                                        .build()).initReActorSystem();
         try {
             String serviceName = "Greetings";
