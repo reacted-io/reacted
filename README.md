@@ -1,4 +1,4 @@
-![ReActed Logo](https://github.com/wireknight/reacted/blob/master/doc/artwork/logo.png)
+![ReActed Logo](https://github.com/reacted-io/reacted-io-doc/blob/master/_media/logo.svg)
 
 <p align="center">
 <a href="https://www.reacted.io">Reactive Actor framework for flexible/distributed/scalable and monitorable applications</a>
@@ -36,5 +36,6 @@ ReActed provides you a flexible and dependable environment that allows the devel
 
 ## Getting Started
 
-If you want to jump into the code, you can give a look to the [examples](https://github.com/wireknight/reacted/tree/master/examples) directory, otherwise give a look to the quickstart guide in the official documentation
+If you want to jump into the code, you can give a look to the [examples](https://github.com/reacted-io/reacted/blob/master/examples) directory, otherwise give a 
+look to the quickstart guide in the official documentation
 
