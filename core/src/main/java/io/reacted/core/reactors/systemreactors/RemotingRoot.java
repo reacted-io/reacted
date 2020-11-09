@@ -130,7 +130,7 @@ public class RemotingRoot {
     private void onRegistryGateUpsert(ReActorContext raCtx, RegistryGateUpserted upsert) {
         //skip self notifications
         if (!raCtx.getReActorSystem().getLocalReActorSystemId().equals(upsert.getReActorSystemId())) {
-            raCtx.logInfo("Gate added for {} : {}@{}", raCtx.getReActorSystem().getLocalReActorSystemId()
+            raCtx.logInfo("Gate added in {} : {} -> {}", raCtx.getReActorSystem().getLocalReActorSystemId()
                                                             .getReActorSystemName(),
                           upsert.getChannelId().toString(), upsert.getReActorSystemId().getReActorSystemName());
             raCtx.getReActorSystem().unregisterRoute(upsert.getReActorSystemId(), upsert.getChannelId());
@@ -149,6 +149,9 @@ public class RemotingRoot {
             raCtx.getSelf().tell(raCtx.getSender(), new SynchronizationWithServiceRegistryComplete());
             return;
         }
+        raCtx.logInfo("Gate removed in {} : {} -> {}",
+                      raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
+                      removed.getChannelId().toString(), removed.getReActorSystem().getReActorSystemName());
         raCtx.getReActorSystem().unregisterRoute(removed.getReActorSystem(), removed.getChannelId());
     }
 

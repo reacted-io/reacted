@@ -38,7 +38,7 @@ public class QuickstartSubscriber {
                                                          .build();
         var showOffSubscriberSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                            .addRemotingDriver(new KafkaDriver(kafkaDriverConfig))
-                                                                           .setReactorSystemName("ShowOffServerSubscriberSystemName")
+                                                                           .setReactorSystemName("ShowOffSubscriberSystemName")
                                                                            .addServiceRegistryDriver(new ZooKeeperDriver(zooKeeperDriverConfig))
                                                                            .build()).initReActorSystem();
         showOffSubscriberSystem.spawnService(ServiceConfig.newBuilder()

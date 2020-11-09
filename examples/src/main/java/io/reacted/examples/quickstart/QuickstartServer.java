@@ -18,6 +18,7 @@ import io.reacted.drivers.channels.kafka.KafkaDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
+import java.time.Duration;
 
 @NonNullByDefault
 public class QuickstartServer {
@@ -37,6 +38,7 @@ public class QuickstartServer {
                                                                        .addServiceRegistryDriver(new ZooKeeperDriver(zooKeeperDriverConfig))
                                                                        .addRemotingDriver(new KafkaDriver(kafkaDriverConfig))
                                                                        .setReactorSystemName("ShowOffServerReActorSystemName")
+                                                                       .setSystemMonitorRefreshInterval(Duration.ofMinutes(1))
                                                                        .build()).initReActorSystem();
         try {
             String serviceName = "Greetings";
