@@ -45,6 +45,7 @@ class MessageStormApp {
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
                                                                                                                     .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setSessionTimeout(Duration.ofSeconds(10))
                                                                                                                     .setReActorName("ZooKeeperDriver")
                                                                                                                     .setAsyncExecutor(new ForkJoinPool())
                                                                                                                     .setServiceRegistryProperties(zooKeeperProps)
@@ -60,6 +61,7 @@ class MessageStormApp {
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
                                                                                                                     .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setSessionTimeout(Duration.ofSeconds(10))
                                                                                                                     .setAsyncExecutor(new ForkJoinPool(2))
                                                                                                                     .setReActorName("ZooKeeperDriver")
                                                                                                                     .setServiceRegistryProperties(zooKeeperProps)
@@ -139,7 +141,7 @@ class MessageStormApp {
             long start = System.nanoTime();
             AsyncUtils.asyncLoop(noval -> serverReference.atell("Not received"),
                                  Try.of(() -> DeliveryStatus.DELIVERED),
-                                 (Try<DeliveryStatus>) null, 1_000_000L)
+                                 (Try<DeliveryStatus>) null, 10_000_000L)
                       .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
                                                               Duration.ofNanos(System.nanoTime() - start)
                                                                       .toString(),
