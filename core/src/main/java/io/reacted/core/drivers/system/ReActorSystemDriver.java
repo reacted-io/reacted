@@ -102,10 +102,11 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     abstract public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
 
-    public Optional<CompletionStage<Try<DeliveryStatus>>> removePendingAckTrigger(long msgSeqNum) {
+    @Nullable
+    public CompletionStage<Try<DeliveryStatus>> removePendingAckTrigger(long msgSeqNum) {
         var ackTrigger = pendingAcksTriggers.getIfPresent(msgSeqNum);
         pendingAcksTriggers.invalidate(msgSeqNum);
-        return Optional.ofNullable(ackTrigger);
+        return ackTrigger;
     }
 
     public CompletionStage<Try<DeliveryStatus>> newPendingAckTrigger(long msgSeqNum) {

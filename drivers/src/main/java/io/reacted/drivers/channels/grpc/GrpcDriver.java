@@ -67,7 +67,9 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     @Nullable
     private Server grpcServer;
     @Nullable
-    private ExecutorService grpcExecutor;
+    private ExecutorService grpcServerExecutor;
+    @Nullable
+    private ExecutorService grpcClientExecutor;
     @Nullable
     private EventLoopGroup workerEventLoopGroup;
     @Nullable
@@ -83,21 +85,29 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
         DriverCtx grpcDriverCtx = RemotingDriver.REACTOR_SYSTEM_CTX.get();
-        this.grpcExecutor = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder()
+        this.grpcServerExecutor = Executors.newFixedThreadPool(3, new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> localReActorSystem.logError("Uncaught exception in {}",
                                                                                                 thread.getName(), throwable))
-                .setNameFormat("Grpc-Executor-" + grpcDriverCtx.getLocalReActorSystem().getLocalReActorSystemId()
-                                                               .getReActorSystemName() + "-%d")
+                .setNameFormat("Grpc-Server-Executor-" + grpcDriverCtx.getLocalReActorSystem().getLocalReActorSystemId()
+                                                                      .getReActorSystemName() + "-%d")
                 .build());
-        this.grpcExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
-        this.workerEventLoopGroup = new NioEventLoopGroup(5);
+        this.grpcClientExecutor = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder()
+                .setUncaughtExceptionHandler((thread, throwable) -> localReActorSystem.logError("Uncaught exception in {}",
+                                                                                                thread.getName(), throwable))
+                .setNameFormat("Grpc-Client-Executor-" + grpcDriverCtx.getLocalReActorSystem().getLocalReActorSystemId()
+                                                                      .getReActorSystemName() + "-%d")
+                .build());
+        this.grpcClientExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
+        this.workerEventLoopGroup = new NioEventLoopGroup(2);
         this.bossEventLoopGroup = new NioEventLoopGroup(1);
         this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(getDriverConfig().getHostName(),
                                                                               getDriverConfig().getPort()))
                                             .channelType(NioServerSocketChannel.class)
-                                            .executor(grpcExecutor)
+                                            .executor(grpcServerExecutor)
                                             .bossEventLoopGroup(bossEventLoopGroup)
                                             .workerEventLoopGroup(workerEventLoopGroup)
+                                            .permitKeepAliveWithoutCalls(true)
+                                            .permitKeepAliveTime(6, TimeUnit.MINUTES)
                                             .addService(new HealthStatusManager().getHealthService())
                                             .addService(new GrpcServer(this))
                                             .build();
@@ -118,8 +128,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
         if (workerEventLoopGroup != null) {
             workerEventLoopGroup.shutdownGracefully();
         }
-        if (grpcExecutor != null) {
-            grpcExecutor.shutdown();
+        if (grpcServerExecutor != null) {
+            grpcServerExecutor.shutdown();
+        }
+        if (grpcClientExecutor != null) {
+            grpcClientExecutor.shutdown();
         }
         gatesStubs.clear();
         return CompletableFuture.completedFuture(Try.ofSuccess(null));
@@ -187,7 +200,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                                dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_PORT));
         grpcLink = gatesStubs.computeIfAbsent(peerChannelKey,
                                               newPeerChannelKey -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties,
-                                                                                                               Objects.requireNonNull(grpcExecutor),
+                                                                                                               Objects.requireNonNull(grpcClientExecutor),
                                                                                                                () -> removeStaleChannel(newPeerChannelKey)),
                                                                                                  ReActedLinkGrpc::newStub,
                                                                                                  stub -> stub.link(getEmptyMessageHandler(getLocalReActorSystem()))));
