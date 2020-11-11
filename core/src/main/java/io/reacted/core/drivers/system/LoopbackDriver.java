@@ -25,7 +25,6 @@ import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Objects;
@@ -75,8 +74,8 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
                                                                           localReActorSystem.getLocalReActorSystemId(),
                                                                           ackingPolicy, payload));
             if (isAckRequired) {
-                tellResult.thenAccept(deliveryResult -> localDriver.removePendingAckTrigger(seqNum)
-                                                                   .ifPresent(deliveryAttempt -> deliveryAttempt.toCompletableFuture()
+                tellResult.thenAccept(deliveryResult -> ObjectUtils.ifNotNull(localDriver.removePendingAckTrigger(seqNum),
+                                                                              deliveryAttempt -> deliveryAttempt.toCompletableFuture()
                                                                                                                 .complete(deliveryResult)));
                 tellResult = pendingAck;
             }

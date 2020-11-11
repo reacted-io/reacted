@@ -20,7 +20,6 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
 import java.io.Serializable;
@@ -67,13 +66,15 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           var ackTrigger = removePendingAckTrigger(message.getSequenceNumber());
 
           if (deliveryAttempt.isPresent()) {
-               var attemptResult = deliveryAttempt.get();
-               attemptResult.thenAccept(status -> ackTrigger.ifPresent(trigger -> trigger.toCompletableFuture()
-                                                                                         .complete(status)));
-
+               if (ackTrigger != null) {
+                    var attemptResult = deliveryAttempt.get();
+                    attemptResult.thenAccept(status -> ackTrigger.toCompletableFuture().complete(status));
+               }
           } else {
-               ackTrigger.ifPresent(trigger -> trigger.toCompletableFuture()
-                                                      .complete(Try.ofFailure(new NoSuchElementException())));
+               if(ackTrigger != null) {
+                    ackTrigger.toCompletableFuture()
+                              .complete(Try.ofFailure(new NoSuchElementException()));
+               }
                propagateToDeadLetters(getLocalReActorSystem().getSystemDeadLetters(), message);
           }
      }

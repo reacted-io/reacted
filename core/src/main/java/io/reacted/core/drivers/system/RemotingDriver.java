@@ -20,7 +20,6 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
 import javax.annotation.Nullable;
@@ -129,9 +128,11 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             //If so, this is an ACK confirmation for a message sent with atell
             if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
-                removePendingAckTrigger(deliveryStatusUpdate.getMsgSeqNum())
-                        .ifPresent(pendingAckTrigger -> pendingAckTrigger.toCompletableFuture()
-                                                                         .complete(Try.ofSuccess(deliveryStatusUpdate.getDeliveryStatus())));
+                var pendingAckTrigger = removePendingAckTrigger(deliveryStatusUpdate.getMsgSeqNum());
+                if (pendingAckTrigger != null) {
+                    pendingAckTrigger.toCompletableFuture()
+                                     .complete(Try.ofSuccess(deliveryStatusUpdate.getDeliveryStatus()));
+                }
                 //This is functionally useless because systemSink by design swallows received messages, it is required
                 //only for consistent logging if a logging direct communication local driver is used because in this way
                 //also the ACK will appear in logs

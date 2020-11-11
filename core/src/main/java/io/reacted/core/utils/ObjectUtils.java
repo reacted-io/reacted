@@ -11,8 +11,12 @@ package io.reacted.core.utils;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nullable;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -88,5 +92,18 @@ public final class ObjectUtils {
             throw Objects.requireNonNull(onControlPredicateFailure).get();
         }
         return element;
+    }
+
+    public static byte[] toBytes(Properties properties) throws IOException {
+        var byteArrayOutputStream = new ByteArrayOutputStream();
+        properties.store(byteArrayOutputStream,"");
+        return byteArrayOutputStream.toByteArray();
+    }
+
+    public static Properties fromBytes(byte[] data) throws IOException {
+        var byteArrayInputStream = new ByteArrayInputStream(data);
+        var properties = new Properties();
+        properties.load(byteArrayInputStream);
+        return properties;
     }
 }

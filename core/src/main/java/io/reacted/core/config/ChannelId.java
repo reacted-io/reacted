@@ -37,30 +37,23 @@ public class ChannelId implements Externalizable {
     private static final long CHANNEL_NAME_OFFSET = SerializationUtils.getFieldOffset(ChannelId.class,
                                                                                       "channelName")
                                                                       .orElseSneakyThrow();
-    private static final long CHANNEL_TYPE_OFFSET = SerializationUtils.getFieldOffset(ChannelId.class,
-                                                                                      "channelType")
+    private static final long CHANNEL_TYPE_OFFSET = SerializationUtils.getFieldOffset(ChannelId.class, "channelType")
                                                                       .orElseSneakyThrow();
-    private static final long CHANNEL_STRING_OFFSET = SerializationUtils.getFieldOffset(ChannelId.class,
-                                                                                        "channelString")
-                                                                        .orElseSneakyThrow();
     private static final long HASHCODE_OFFSET = SerializationUtils.getFieldOffset(ChannelId.class, "hashCode")
                                                                   .orElseSneakyThrow();
     private final String channelName;
     private final ChannelType channelType;
-    private final String channelString;
     private final int hashCode;
 
     public ChannelId() {
         this.channelName = INVALID_CHANNEL_ID.channelName;
         this.channelType = INVALID_CHANNEL_ID.channelType;
-        this.channelString = INVALID_CHANNEL_ID.channelString;
         this.hashCode = INVALID_CHANNEL_ID.hashCode;
     }
 
     private ChannelId(ChannelType channelType, String channelName) {
         this.channelType = channelType;
         this.channelName = channelName;
-        this.channelString = channelType.name() + SEPARATOR + channelName;
         this.hashCode = Objects.hash(channelType, channelName);
     }
 
@@ -76,7 +69,6 @@ public class ChannelId implements Externalizable {
         setChannelType((ChannelType)in.readObject());
         setChannelName((String)in.readObject());
         setHashCode(in.readInt());
-        setChannelStringOffset(channelType.name() + SEPARATOR + channelName);
     }
 
     public static Optional<ChannelId> fromToString(String inputString) {
@@ -102,7 +94,7 @@ public class ChannelId implements Externalizable {
     public int hashCode() { return hashCode; }
 
     @Override
-    public String toString() { return channelString; }
+    public String toString() { return channelType.name() + SEPARATOR + channelName; }
 
     private void setChannelName(String channelName) {
         SerializationUtils.setObjectField(this, CHANNEL_NAME_OFFSET, channelName);
@@ -110,10 +102,6 @@ public class ChannelId implements Externalizable {
 
     private void setChannelType(ChannelType channelType) {
         SerializationUtils.setObjectField(this, CHANNEL_TYPE_OFFSET, channelType);
-    }
-
-    private void setChannelStringOffset(String channelString) {
-        SerializationUtils.setObjectField(this, CHANNEL_STRING_OFFSET, channelString);
     }
 
     private void setHashCode(int hashCode) { SerializationUtils.setIntField(this, HASHCODE_OFFSET, hashCode); }
