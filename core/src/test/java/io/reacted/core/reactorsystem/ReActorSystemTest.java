@@ -8,10 +8,11 @@
 
 package io.reacted.core.reactorsystem;
 
+import static org.mockito.Mockito.mock;
+
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.system.LoopbackDriver;
@@ -22,20 +23,18 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.Try;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import org.awaitility.Awaitility;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-import static org.mockito.Mockito.mock;
 
 class ReActorSystemTest {
     private static final String DISPATCHER_NAME = "TestDispatcher";
@@ -134,23 +133,14 @@ class ReActorSystemTest {
 
     @Test
     void reactorSystemCanSpawnAStoppedReactorHavingTheSameName() {
-        Try<ReActorRef> actor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
-        actor.map(ReActorRef::getReActorId)
-                .map(reActorSystem::getReActor)
-                .orElseSneakyThrow();
-
-        for (int i = 0; i <= 1000; i++) {
-            reActorSystem.stop(actor.get().getReActorId())
+        int iteration = 0;
+        do {
+            ReActorRef actor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig).orElseSneakyThrow();
+            reActorSystem.stop(actor.getReActorId())
                     .map(CompletionStage::toCompletableFuture)
                     .ifPresentOrElse(CompletableFuture::join,
-                            () -> Assertions.fail(NO_RE_ACTOR_FOUND));
-
-            reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
-            actor.map(ReActorRef::getReActorId)
-                    .map(reActorSystem::getReActor)
-                    .ifSuccessOrElse(raCtx -> Assertions.assertTrue(raCtx.isPresent()),
-                            Assertions::fail);
-        }
+                                     () -> Assertions.fail(NO_RE_ACTOR_FOUND));
+        } while (iteration++ < 500_000);
     }
 
     @Test
