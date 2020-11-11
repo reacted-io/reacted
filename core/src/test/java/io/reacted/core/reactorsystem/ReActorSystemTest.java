@@ -8,10 +8,11 @@
 
 package io.reacted.core.reactorsystem;
 
+import static org.mockito.Mockito.mock;
+
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.system.LoopbackDriver;
@@ -22,7 +23,12 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.Try;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import org.awaitility.Awaitility;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
@@ -30,15 +36,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-import static org.mockito.Mockito.mock;
-
 class ReActorSystemTest {
     private static final String DISPATCHER_NAME = "TestDispatcher";
+    public static final String NO_RE_ACTOR_FOUND = "No ReActor found";
     private ReActorSystem reActorSystem;
     private final ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                              .setMailBoxProvider(ctx -> new BasicMbox())
@@ -112,7 +112,6 @@ class ReActorSystemTest {
     @Test
     void reactorSystemCanSpawnNewChild() {
         Try<ReActorRef> fatherActor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
-
         Try<ReActorRef> childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor.get(),
                                                                 childReActorConfig);
         childReActor.map(ReActorRef::getReActorId)
@@ -132,6 +131,17 @@ class ReActorSystemTest {
                                      Assertions::fail);
     }
 
+    @Test
+    void reactorSystemCanSpawnAStoppedReactorHavingTheSameName() {
+        int iteration = 0;
+        do {
+            ReActorRef actor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig).orElseSneakyThrow();
+            reActorSystem.stop(actor.getReActorId())
+                    .map(CompletionStage::toCompletableFuture)
+                    .ifPresentOrElse(CompletableFuture::join,
+                                     () -> Assertions.fail(NO_RE_ACTOR_FOUND));
+        } while (iteration++ < 500_000);
+    }
 
     @Test
     void reactorSystemCanStopChild() {
@@ -149,7 +159,7 @@ class ReActorSystemTest {
         reActorSystem.stop(childReActor.getReActorId())
                      .map(CompletionStage::toCompletableFuture)
                      .ifPresentOrElse(CompletableFuture::join,
-                                      () -> Assertions.fail("No ReActor found!?"));
+                                      () -> Assertions.fail(NO_RE_ACTOR_FOUND));
         Assertions.assertEquals(0, children.size());
     }
 
