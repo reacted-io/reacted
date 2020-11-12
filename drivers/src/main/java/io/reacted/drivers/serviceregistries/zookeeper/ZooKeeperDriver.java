@@ -8,7 +8,6 @@
 
 package io.reacted.drivers.serviceregistries.zookeeper;
 
-import io.netty.util.internal.ObjectUtil;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -60,8 +59,6 @@ import org.apache.curator.x.discovery.ServiceType;
 import org.apache.zookeeper.CreateMode;
 
 import javax.annotation.Nullable;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;

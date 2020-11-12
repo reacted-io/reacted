@@ -408,8 +408,9 @@ public class ReActorSystem {
      * a failed Try on failure
      */
     public Try<ReActorRef> spawn(ReActions reActions, ReActiveEntityConfig<?, ?> reActorConfig) {
-        return spawnChild(Objects.requireNonNull(reActions), Objects.requireNonNull(userReActorsRoot),
-                          Objects.requireNonNull(reActorConfig));
+        return spawnChild(Objects.requireNonNull(reActions, "ReActions cannot be null"),
+                          Objects.requireNonNull(userReActorsRoot, "System not inited correctly"),
+                          Objects.requireNonNull(reActorConfig, "ReActorConfig cannot be null"));
     }
 
     /**
