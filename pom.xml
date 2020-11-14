@@ -111,6 +111,7 @@
         <module>core</module>
         <module>streams</module>
         <module>drivers</module>
+        <module>flow</module>
         <module>framework</module>
     </modules>
     <dependencyManagement>
@@ -191,6 +192,11 @@
             <dependency>
                 <groupId>io.reacted</groupId>
                 <artifactId>reacted-streams</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.reacted</groupId>
+                <artifactId>reacted-flow</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
