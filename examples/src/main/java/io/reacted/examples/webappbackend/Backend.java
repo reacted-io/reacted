@@ -28,7 +28,7 @@ import java.util.concurrent.Executors;
 
 public class Backend {
     public static final String DB_SERVICE_NAME = "StorageGate";
-    public static final boolean IS_REPLAY = true;
+    public static final boolean IS_REPLAY = false;
 
     public static void main(String[] args) throws IOException {
         var chronicleDriverConfig = CQDriverConfig.newBuilder()
