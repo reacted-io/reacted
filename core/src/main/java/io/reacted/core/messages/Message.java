@@ -119,7 +119,12 @@ public final class Message implements Externalizable, Comparable<Message> {
         datalink.readExternal(in);
         setDataLink(datalink);
         setSequenceNumber(in.readLong());
-        setPayload((Serializable)in.readObject());
+        try {
+            setPayload((Serializable)in.readObject());
+        } catch (Exception exc) {
+            exc.printStackTrace();
+            System.exit(0);
+        }
     }
 
     @SuppressWarnings("UnusedReturnValue")

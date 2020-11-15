@@ -22,7 +22,7 @@ public class ReActorConfig extends ReActiveEntityConfig<ReActorConfig.Builder, R
     public static Builder fromConfig(ReActorConfig reActorConfig) {
         return newBuilder().setMailBoxProvider(reActorConfig.getMailBoxProvider())
                            .setDispatcherName(reActorConfig.getDispatcherName())
-                           .setTypedSubscriptions(reActorConfig.getTypedSniffSubscriptions())
+                           .setTypedSubscriptions(reActorConfig.getTypedSubscriptions())
                            .setReActorName(reActorConfig.getReActorName());
     }
 

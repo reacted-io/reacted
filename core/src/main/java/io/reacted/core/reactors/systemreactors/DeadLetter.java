@@ -13,7 +13,7 @@ import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.core.services.ReActorService;
+import io.reacted.core.services.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +27,7 @@ public class DeadLetter {
                                                                 (ctx, payload) -> ctx.getSelf()
                                                                                      .tell(ctx.getSender(),
                                                                                            payload.getPayload()))
-                                                         .reAct(ReActorService.RouteeReSpawnRequest.class,
+                                                         .reAct(Service.RouteeReSpawnRequest.class,
                                                                 ReActions::noReAction)
                                                          .reAct(ReActorInit.class, ReActions::noReAction)
                                                          .reAct(ReActorStop.class, ReActions::noReAction)
@@ -39,9 +39,7 @@ public class DeadLetter {
     private static <PayloadT extends Serializable>
     void onMessage(ReActorContext raCtx, PayloadT message) {
         LOGGER.debug("{} of {}: {}", DeadLetter.class.getSimpleName(),
-                    raCtx.getReActorSystem()
-                         .getLocalReActorSystemId()
-                         .getReActorSystemName(), message.toString());
+                    raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(), message.toString());
         RECEIVED.incrementAndGet();
     }
 }

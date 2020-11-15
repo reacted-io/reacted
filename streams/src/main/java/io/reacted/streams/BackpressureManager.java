@@ -11,7 +11,6 @@ package io.reacted.streams;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.mailboxes.MailBox;
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
@@ -34,6 +33,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
 
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
+
 @NonNullByDefault
 public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription, AutoCloseable {
     private final Flow.Subscriber<? super PayloadT> subscriber;
@@ -41,7 +42,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     private final BackpressuringMbox.Builder bpMailboxBuilder;
     private final CompletionStage<Void> onSubscriptionCompleteTrigger;
     @Nullable
-    private BackpressuringMbox backpressuringMbox;
+    private MailBox backpressuringMbox;
     @Nullable
     private volatile ReActorContext backpressurerCtx;
 
@@ -76,11 +77,11 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     @Override
     public void request(long elements) {
         if (elements <= 0) {
-            errorTermination(Objects.requireNonNull(this.backpressurerCtx),
-                             new IllegalArgumentException("non-positive subscription request"), this.subscriber);
+            errorTermination(Objects.requireNonNull(backpressurerCtx),
+                             new IllegalArgumentException("non-positive subscription request"), subscriber);
         } else {
-            if (this.backpressurerCtx != null && this.backpressuringMbox != null) {
-                this.backpressuringMbox.request(elements);
+            if (backpressurerCtx != null && backpressuringMbox != null) {
+                backpressuringMbox.request(elements);
             }
         }
     }
@@ -90,14 +91,13 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
 
     @Override
     public void close() {
-        if (this.backpressurerCtx != null) {
-            var ctx = Objects.requireNonNull(this.backpressurerCtx);
-            ctx.stop();
+        if (backpressurerCtx != null) {
+            Objects.requireNonNull(backpressurerCtx).stop();
         }
     }
 
     Function<ReActorContext, MailBox> getManagerMailbox() {
-        return mboxOwner -> this.bpMailboxBuilder.setRealMailboxOwner(mboxOwner).build();
+        return mboxOwner -> bpMailboxBuilder.setRealMailboxOwner(mboxOwner).build();
     }
 
     ReActions getReActions() {
@@ -113,49 +113,48 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        this.feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(raCtx.getSelf()));
+        feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(raCtx.getSelf()));
     }
 
     private void forwarder(ReActorContext raCtx, Object anyPayload) {
         try {
             //noinspection unchecked
-            this.subscriber.onNext((PayloadT) anyPayload);
+            subscriber.onNext((PayloadT) anyPayload);
         } catch (Exception anyException) {
-           errorTermination(raCtx, anyException, this.subscriber);
+           errorTermination(raCtx, anyException, subscriber);
         }
     }
 
     private void onSubscriptionReply(ReActorContext raCtx, SubscriptionReply payload) {
-        this.onSubscriptionCompleteTrigger.toCompletableFuture().complete(null);
+        onSubscriptionCompleteTrigger.toCompletableFuture().complete(null);
         if (payload.isSuccess()) {
-            Try.ofRunnable(() -> this.subscriber.onSubscribe(this))
-               .ifError(error -> errorTermination(raCtx, error, this.subscriber));
+            Try.ofRunnable(() -> subscriber.onSubscribe(this))
+               .ifError(error -> errorTermination(raCtx, error, subscriber));
         } else {
-            errorTermination(raCtx, new RuntimeException("RemoteRegistrationException"), this.subscriber);
+            errorTermination(raCtx, new RuntimeException("RemoteRegistrationException"), subscriber);
         }
     }
 
     private void onSubscriberError(ReActorContext raCtx, SubscriberError error) {
-        errorTermination(raCtx, error.getError(), this.subscriber);
+        errorTermination(raCtx, error.getError(), subscriber);
     }
 
     private void onPublisherComplete(ReActorContext raCtx, PublisherComplete publisherComplete) {
-        completeTermination(raCtx, this.subscriber);
+        completeTermination(raCtx, subscriber);
     }
 
     private void onPublisherInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
-        completeTermination(raCtx, this.subscriber);
+        completeTermination(raCtx, subscriber);
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         this.backpressurerCtx = raCtx;
-        this.backpressuringMbox = (BackpressuringMbox)raCtx.getMbox();
-        var requestDelivery = this.feedGate.tell(raCtx.getSelf(),
-                                                 new SubscriptionRequest(raCtx.getSelf()));
-        Try.TryConsumer<Throwable> onSubscriptionError = error -> { this.subscriber.onSubscribe(this);
-                                                                    errorTermination(raCtx, error, this.subscriber); };
-        requestDelivery.thenAccept(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered)
-                                                                         .ifError(onSubscriptionError));
+        this.backpressuringMbox = raCtx.getMbox();
+
+        Try.TryConsumer<Throwable> onSubscriptionError = error -> { subscriber.onSubscribe(this);
+                                                                    errorTermination(raCtx, error, subscriber); };
+        ifNotDelivered(feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())),
+                       onSubscriptionError);
     }
 
     private void completeTermination(ReActorContext raCtx, Flow.Subscriber<? super PayloadT> localSubscriber) {

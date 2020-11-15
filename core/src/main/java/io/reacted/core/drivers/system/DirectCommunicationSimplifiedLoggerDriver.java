@@ -27,20 +27,21 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<DirectCommunicationSimplifiedLoggerCfg> {
+public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<DirectCommunicationSimplifiedLoggerConfig> {
     private final ChannelId channelId;
     private final PrintWriter logFile;
 
     /**
      * A local delivery driver that logs on a file just the main information about a message.
      * This is the simplified/less noisy version of {@link DirectCommunicationLoggerDriver}
-     * @param cfg driver configuration
+     * @param config driver configuration
      * @throws UncheckedIOException if there are problems opening the logfile
      */
-    public DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerCfg cfg) {
-        super(cfg);
-        this.channelId = new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION, getDriverConfig().getChannelName());
-        this.logFile = Try.of(() -> new FileWriter(cfg.getLogFilePath(), false))
+    public DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerConfig config) {
+        super(config);
+        this.channelId = ChannelId.DIRECT_COMMUNICATION
+                                    .forChannelName(getDriverConfig().getChannelName());
+        this.logFile = Try.of(() -> new FileWriter(config.getLogFilePath(), false))
                           .map(PrintWriter::new)
                           .orElseThrow(ioException -> new UncheckedIOException((IOException)ioException));
     }

@@ -6,11 +6,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.reactorsystem;
+package io.reacted.core.config.reactors;
 
-import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.reactors.ReActor;
-import io.reacted.core.services.ReActorService;
+import io.reacted.core.services.Service;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;
@@ -19,29 +18,31 @@ import java.time.Duration;
 import java.util.Objects;
 
 @NonNullByDefault
-public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceConfig.Builder,
-                                                               ReActorServiceConfig> {
+public class ServiceConfig extends ReActiveEntityConfig<ServiceConfig.Builder, ServiceConfig> {
+    public static final int MIN_ROUTEES_PER_SERVICE = 1;
     public static final int MAX_ROUTEES_PER_SERVICE = 1000;
     public static final Duration DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY = Duration.ofMinutes(2);
     private final int routeesNum;
     private final UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
-    private final ReActorService.LoadBalancingPolicy loadBalancingPolicy;
+    private final Service.LoadBalancingPolicy loadBalancingPolicy;
     private final Duration serviceRepublishReattemptDelayOnError;
+    private final boolean remoteService;
 
-    private ReActorServiceConfig(Builder builder) {
+    private ServiceConfig(Builder builder) {
         super(builder);
-        this.routeesNum = ObjectUtils.requiredInRange(builder.routeesNum, 1, MAX_ROUTEES_PER_SERVICE,
-                                                      IllegalArgumentException::new);
+        this.routeesNum = ObjectUtils.requiredInRange(builder.routeesNum, MIN_ROUTEES_PER_SERVICE,
+                                                      MAX_ROUTEES_PER_SERVICE, IllegalArgumentException::new);
         this.routeeProvider = Objects.requireNonNull(builder.routeeProvider);
         this.loadBalancingPolicy = Objects.requireNonNull(builder.loadBalancingPolicy);
         this.serviceRepublishReattemptDelayOnError = ObjectUtils.checkNonNullPositiveTimeInterval(builder.serviceRepublishReattemptDelayOnError);
+        this.remoteService = builder.remoteService;
     }
 
     public int getRouteesNum() {
         return routeesNum;
     }
 
-    public ReActorService.LoadBalancingPolicy getLoadBalancingPolicy() {
+    public Service.LoadBalancingPolicy getLoadBalancingPolicy() {
         return loadBalancingPolicy;
     }
 
@@ -57,21 +58,25 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
         return serviceRepublishReattemptDelayOnError;
     }
 
-    public static class Builder extends ReActiveEntityConfig.Builder<Builder, ReActorServiceConfig> {
-        private int routeesNum;
+    public boolean isRemoteService() { return remoteService; }
+
+    public static class Builder extends ReActiveEntityConfig.Builder<Builder, ServiceConfig> {
+        private int routeesNum = MIN_ROUTEES_PER_SERVICE;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
-        private ReActorService.LoadBalancingPolicy loadBalancingPolicy = ReActorService.LoadBalancingPolicy.ROUND_ROBIN;
+        private Service.LoadBalancingPolicy loadBalancingPolicy = Service.LoadBalancingPolicy.ROUND_ROBIN;
         private Duration serviceRepublishReattemptDelayOnError = DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY;
+        private boolean remoteService;
 
         private Builder() { }
 
         /**
          * A Service exposes the behavior of a reactor in a resilient and load balanced manneer. Here we specify
          * how many instances of the exposed reactor should be automatically created and mantained by the router.
-         * Valid range [1, {@link ReActorServiceConfig#MAX_ROUTEES_PER_SERVICE}]
+         * Valid range [{@link ServiceConfig#MIN_ROUTEES_PER_SERVICE}, {@link ServiceConfig#MAX_ROUTEES_PER_SERVICE}]
          *
          * @param routeesNum number of instances of the exposed reactor that should be created/mantained
+         * @return this builder
          */
         public Builder setRouteesNum(int routeesNum) {
             this.routeesNum = routeesNum;
@@ -83,6 +88,7 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
          * their factory
          *
          * @param routeeProvider Used to spawn a new routee reactor on request
+         * @return this builder
          */
         public Builder setRouteeProvider(UnChecked.CheckedSupplier<ReActor> routeeProvider) {
             this.routeeProvider = routeeProvider;
@@ -91,12 +97,13 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
 
         /**
          * A service automatically load balances messages to its routees. Here we define how that should be done
-         * Default value: {@link ReActorService.LoadBalancingPolicy#ROUND_ROBIN}
+         * Default value: {@link Service.LoadBalancingPolicy#ROUND_ROBIN}
          *
          * @param loadBalancingPolicy Policy to use for selecting the destination among routee when a message
          *                            when a message for a routee is received by the service
+         * @return this builder
          */
-        public Builder setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy loadBalancingPolicy) {
+        public Builder setLoadBalancingPolicy(Service.LoadBalancingPolicy loadBalancingPolicy) {
             this.loadBalancingPolicy = loadBalancingPolicy;
             return this;
         }
@@ -106,7 +113,7 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
          * the service would not be discoverable. This parameter defines in how long the service should reattempt to
          * publish itself on the service registries
          *
-         * Default value: {@link ReActorServiceConfig#DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY}
+         * Default value: {@link ServiceConfig#DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY}
          *
          * @param republicationReattemptDelayOnError delay after than the republication should be reattempted
          * @return this builder
@@ -116,9 +123,20 @@ public class ReActorServiceConfig extends ReActiveEntityConfig<ReActorServiceCon
             return this;
         }
 
+        /**
+         * Specify if this service should be published or not
+         *
+         * @param remoteService true if this service is meant to be published on the registries
+         * @return this builder
+         */
+        public Builder setIsRemoteService(boolean remoteService) {
+            this.remoteService = remoteService;
+            return this;
+        }
+
         @Override
-        public ReActorServiceConfig build() {
-            return new ReActorServiceConfig(this);
+        public ServiceConfig build() {
+            return new ServiceConfig(this);
         }
     }
 }

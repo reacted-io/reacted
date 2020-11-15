@@ -6,10 +6,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.examples.communication.aTell;
+package io.reacted.examples.communication.atell;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -19,13 +19,13 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorServiceConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.services.ReActorService;
+import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
-import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverCfg;
+import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.Try;
@@ -35,24 +35,21 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
-import java.util.stream.IntStream;
 
-class PingPongApp {
+class MessageStormApp {
     public static void main(String[] args) throws InterruptedException {
         Properties zooKeeperProps = new Properties();
-        zooKeeperProps.put(ZooKeeperDriver.ZK_CONNECTION_STRING, "localhost:2181");
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Client",
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
-                                                                   List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
-                                                                                                                 .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                                                                                 .setReActorName("ZooKeeperDriver")
-                                                                                                                 .setAsyncExecutor(new ForkJoinPool())
-                                                                                                                 .setServiceRegistryProperties(zooKeeperProps)
-                                                                                                                 .build())),
+                                                                   List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
+                                                                                                                    .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setSessionTimeout(Duration.ofSeconds(10))
+                                                                                                                    .setReActorName("ZooKeeperDriver")
+                                                                                                                    .setAsyncExecutor(new ForkJoinPool())
+                                                                                                                    .setServiceRegistryProperties(zooKeeperProps)
+                                                                                                                    .build())),
                                                                    List.of(new GrpcDriver(GrpcDriverConfig.newBuilder()
                                                                                                           .setHostName("localhost")
                                                                                                           .setPort(12345)
@@ -62,12 +59,13 @@ class PingPongApp {
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Server",
                                                                    //SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
-                                                                   List.of(new ZooKeeperDriver(ZooKeeperDriverCfg.newBuilder()
-                                                                                                                 .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
-                                                                                                                 .setAsyncExecutor(new ForkJoinPool(2))
-                                                                                                                 .setReActorName("ZooKeeperDriver")
-                                                                                                                 .setServiceRegistryProperties(zooKeeperProps)
-                                                                                                                 .build())),
+                                                                   List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
+                                                                                                                    .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setSessionTimeout(Duration.ofSeconds(10))
+                                                                                                                    .setAsyncExecutor(new ForkJoinPool(2))
+                                                                                                                    .setReActorName("ZooKeeperDriver")
+                                                                                                                    .setServiceRegistryProperties(zooKeeperProps)
+                                                                                                                    .build())),
                                                                    List.of(new GrpcDriver(GrpcDriverConfig.newBuilder()
                                                                                                           .setHostName("localhost")
                                                                                                           .setPort(54321)
@@ -79,13 +77,14 @@ class PingPongApp {
 
         TimeUnit.SECONDS.sleep(10);
 
-        var serverReActor = serverSystem.spawnService(ReActorServiceConfig.newBuilder()
-                                                                          .setRouteeProvider(ServerReActor::new)
-                                                                          .setLoadBalancingPolicy(ReActorService.LoadBalancingPolicy.ROUND_ROBIN)
-                                                                          .setReActorName("ServerService")
-                                                                          .setRouteesNum(1)
-                                                                          .build()).orElseSneakyThrow();
-        TimeUnit.SECONDS.sleep(10);
+        var serverReActor = serverSystem.spawnService(ServiceConfig.newBuilder()
+                                                                   .setRouteeProvider(ServerReActor::new)
+                                                                   .setLoadBalancingPolicy(Service.LoadBalancingPolicy.ROUND_ROBIN)
+                                                                   .setReActorName("ServerService")
+                                                                   .setRouteesNum(1)
+                                                                   .setIsRemoteService(true)
+                                                                   .build()).orElseSneakyThrow();
+        TimeUnit.SECONDS.sleep(5);
         var remoteService = clientSystem.serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                            .setServiceName("ServerService")
                                                                                            .build())
@@ -96,11 +95,7 @@ class PingPongApp {
         var clientReActor = clientSystem.spawn(new ClientReActor(remoteService)).orElseSneakyThrow();
 
         //The reactors are executing now
-        TimeUnit.SECONDS.sleep(3600);
-        remoteService.aTell("Banana").thenAccept(ds -> ds.filter(DeliveryStatus::isDelivered)
-                                                         .ifSuccessOrElse(success -> System.out.println("Delivered also banana"),
-                                                                          Throwable::printStackTrace));
-        TimeUnit.SECONDS.sleep(5);
+        TimeUnit.SECONDS.sleep(350);
         //The game is finished, shut down
         clientSystem.shutDown();
         serverSystem.shutDown();
@@ -144,9 +139,9 @@ class PingPongApp {
 
         private void onInit(ReActorContext raCtx) {
             long start = System.nanoTime();
-            AsyncUtils.asyncLoop(noval -> this.serverReference.aTell("Not received"),
+            AsyncUtils.asyncLoop(noval -> serverReference.atell("Not received"),
                                  Try.of(() -> DeliveryStatus.DELIVERED),
-                                 (Try<DeliveryStatus>) null, 1_000_000L)
+                                 (Try<DeliveryStatus>) null, 10_000_000L)
                       .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
                                                               Duration.ofNanos(System.nanoTime() - start)
                                                                       .toString(),

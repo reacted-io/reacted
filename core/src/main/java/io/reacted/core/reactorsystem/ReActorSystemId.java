@@ -91,7 +91,7 @@ public class ReActorSystemId implements Externalizable  {
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         setReActorSystemUUID(new UUID(in.readLong(), in.readLong()))
-                .setReActorSystemName((String)in.readObject())
+                .setReActorSystemName((String)(in.readObject()))
                 .setHashCode(in.readInt());
     }
 

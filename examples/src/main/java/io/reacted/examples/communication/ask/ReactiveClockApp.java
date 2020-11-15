@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.ask;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
@@ -42,12 +42,12 @@ public class ReactiveClockApp {
                                                .build();
         var reactiveClock = reActorSystem.spawn(reactiveClockReactions, reactiveClockConfig)
                                          .orElseSneakyThrow();
-        //Note: we do not need anoter reactor to intercept the answer
+        //Note: we do not need another reactor to intercept the answer
         reactiveClock.ask(new TimeRequest(), Instant.class, "What's the time?")
                      //Ignore the exception, it's just an example
                      .thenApply(Try::orElseSneakyThrow)
                      .thenAccept(time -> System.out.printf("It's %s%n",
                                                            ZonedDateTime.ofInstant(time, ZoneId.systemDefault())))
-                     .thenAccept(nullValue -> reActorSystem.shutDown());
+                     .thenAcceptAsync(nullValue -> reActorSystem.shutDown());
     }
 }

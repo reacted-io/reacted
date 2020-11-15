@@ -9,13 +9,12 @@
 package io.reacted.streams;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.SerializationUtils;
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
@@ -51,6 +50,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
+
 @NonNullByDefault
 public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
                                                                                   AutoCloseable, Externalizable {
@@ -78,7 +79,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     public ReactedSubmissionPublisher(ReActorSystem localReActorSystem, String feedName) {
         this.localReActorSystem = Objects.requireNonNull(localReActorSystem);
         this.subscribers = ConcurrentHashMap.newKeySet(10);
-        var feedGateCfg = ReActorConfig.newBuilder()
+        var feedGateConfig = ReActorConfig.newBuilder()
                                        .setReActorName(ReactedSubmissionPublisher.class.getSimpleName() + "-" +
                                                        Objects.requireNonNull(feedName))
                                        .setMailBoxProvider(ctx -> new BasicMbox())
@@ -86,7 +87,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
                                                           .reAct(PublisherShutdown.class,
-                                                                 (raCtx, shutown) -> raCtx.stop())
+                                                                 (raCtx, shutdown) -> raCtx.stop())
                                                           .reAct(PublisherInterrupt.class,
                                                                  this::onInterrupt)
                                                           .reAct(ReActorStop.class, this::onStop)
@@ -94,7 +95,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                                  this::onSubscriptionRequest)
                                                           .reAct(UnsubscriptionRequest.class,
                                                                  this::onUnSubscriptionRequest)
-                                                          .build(), feedGateCfg)
+                                                          .build(), feedGateConfig)
                                           .orElseThrow(IllegalArgumentException::new);
     }
 
@@ -108,35 +109,35 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeObject(this.feedGate);
+        out.writeObject(feedGate);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         ReActorRef feedGate = new ReActorRef();
         feedGate.readExternal(in);
-        this.setFeedGate(feedGate)
-            .setLocalReActorSystem(RemotingDriver.getDriverCtx()
-                                                 .map(DriverCtx::getLocalReActorSystem)
-                                                 .orElseThrow());
+        setFeedGate(feedGate).setLocalReActorSystem(RemotingDriver.getDriverCtx()
+                                                                  .map(DriverCtx::getLocalReActorSystem)
+                                                                  .orElseThrow());
     }
 
     /**
      *  Stop the publisher. All the subscribers will be able to consume all the messages already sent
      */
     @Override
-    public void close() { this.feedGate.tell(feedGate, new PublisherShutdown()); }
+    public void close() { feedGate.tell(feedGate, new PublisherShutdown()); }
 
     /**
      *  Stop the publisher. All the subscribers will be notified immediately of the termination
      */
-    public void interrupt() { this.feedGate.tell(feedGate, new PublisherInterrupt()); }
+    public void interrupt() { feedGate.tell(feedGate, new PublisherInterrupt()); }
 
     /**
      + Registers a best effort subscriber. All the updates sent to this subscriber that cannot be
      * processed will be lost. This subscriber consumption speed will not affect the producer,
      * but delivery speed to the subscriber could.
      * For the non lost updates, strict message ordering is guaranteed to be the same of submission
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      *
      * @param subscriber Java Flow compliant subscriber
      * @throws NullPointerException if subscriber is null
@@ -155,6 +156,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param subscriber     Java Flow compliant subscriber
      * @param subscriberName This name must be unique and if deterministic it allows cold replay
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, String subscriberName) {
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
@@ -177,6 +179,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param bufferSize How many elements can be buffered in the best effort subscriber. <b>Positive</b> values only
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize) {
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
@@ -202,6 +206,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                       it allows cold replay
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            String subscriberName) {
@@ -227,6 +232,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                           thread
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, Executor asyncBackpressurer,
                                            Duration backpressureErrorTimeout) {
@@ -252,6 +259,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                                 before signaling an error
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout) {
@@ -278,6 +287,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param subscriberName This name must be unique and if deterministic it allows cold replay
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout, String subscriberName) {
@@ -306,6 +316,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param subscriberName This name must be unique and if deterministic it allows cold replay
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout, Executor asyncBackpressurer,
@@ -335,6 +346,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            Duration backpressureErrorTimeout) {
@@ -364,6 +377,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            Executor asyncBackpressurer, Duration backpressureErrorTimeout) {
@@ -384,24 +399,25 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * Strict message ordering is guaranteed to be the same of submission
      *
      * @param subscription A {@link ReActedSubscription}
-     *
+     * SneakyThrows any exception raised
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(ReActedSubscription<PayloadT> subscription) {
         CompletionStage<Void> subscriptionComplete = new CompletableFuture<>();
-        var backpressureManager = new BackpressureManager<>(subscription, this.feedGate, subscriptionComplete);
+        var backpressureManager = new BackpressureManager<>(subscription, feedGate, subscriptionComplete);
 
-        var subscriberCfg = ReActorConfig.newBuilder()
-                                         .setReActorName(this.feedGate.getReActorId().getReActorName() +
+        var subscriberConfig = ReActorConfig.newBuilder()
+                                         .setReActorName(feedGate.getReActorId().getReActorName() +
                                                          "_subscriber_" + subscription.getSubscriberName() + "_" +
-                                                         this.feedGate.getReActorId().getReActorUUID().toString())
+                                                         feedGate.getReActorId().getReActorUUID().toString())
                                          .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                          .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                          .setMailBoxProvider(backpressureManager.getManagerMailbox())
                                          .build();
 
-        this.localReActorSystem.spawnChild(backpressureManager.getReActions(), localReActorSystem.getUserReActorsRoot(),
-                                           subscriberCfg)
-                               .orElseSneakyThrow();
+        localReActorSystem.spawnChild(backpressureManager.getReActions(), localReActorSystem.getUserReActorsRoot(),
+                                      subscriberConfig)
+                          .orElseSneakyThrow();
         return subscriptionComplete;
     }
 
@@ -417,9 +433,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * delivered to all the subscribers
      */
     public CompletionStage<Void> backpressurableSubmit(PayloadT message) {
-        var deliveries = this.subscribers.stream()
-                                         .map(subscribed -> subscribed.aTell(subscribed, message))
-                                         .collect(Collectors.toUnmodifiableList());
+        var deliveries = subscribers.stream()
+                                    .map(subscribed -> subscribed.atell(subscribed, message))
+                                    .collect(Collectors.toUnmodifiableList());
         return deliveries.stream()
                          .reduce((first, second) -> first.thenCompose(delivery -> second))
                          .map(lastDelivery -> lastDelivery.thenAccept(lastRetVal -> {}))
@@ -427,32 +443,30 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     public void submit(PayloadT message) {
-        this.subscribers.forEach(subscribed -> subscribed.aTell(subscribed, message));
+        subscribers.forEach(subscribed -> subscribed.tell(subscribed, message));
     }
 
     private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
-        this.subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), interrupt));
-        this.subscribers.clear();
+        subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), interrupt));
+        subscribers.clear();
         raCtx.stop();
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        this.subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), new PublisherComplete()));
-        this.subscribers.clear();
+        subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), new PublisherComplete()));
+        subscribers.clear();
     }
 
     private void onSubscriptionRequest(ReActorContext raCtx, SubscriptionRequest subscription) {
-        subscription.getSubscriptionBackpressuringManager()
-                    .aTell(raCtx.getSelf(),
-                           new SubscriptionReply(this.subscribers.add(subscription.getSubscriptionBackpressuringManager())))
-                    .thenAccept(delivery -> delivery.filter(DeliveryStatus::isDelivered, IllegalStateException::new)
-                                                    .ifError(error -> raCtx.logError("Unable to deliver subscription confirmation to {}",
-                                                                                     subscription.getSubscriptionBackpressuringManager(),
-                                                                                     error)));
+        var backpressuringManager = subscription.getSubscriptionBackpressuringManager();
+        ifNotDelivered(backpressuringManager.atell(raCtx.getSelf(),
+                                                   new SubscriptionReply(subscribers.add(backpressuringManager))),
+                    error -> raCtx.logError("Unable to deliver subscription confirmation to {}",
+                                            subscription.getSubscriptionBackpressuringManager(), error));
     }
 
     private void onUnSubscriptionRequest(ReActorContext raCtx, UnsubscriptionRequest unsubscriptionRequest) {
-        this.subscribers.remove(unsubscriptionRequest.getSubscriptionBackpressuringManager());
+        subscribers.remove(unsubscriptionRequest.getSubscriptionBackpressuringManager());
     }
 
     private ReactedSubmissionPublisher<PayloadT> setFeedGate(ReActorRef feedGate) {
@@ -481,15 +495,16 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
             this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                           IllegalArgumentException::new);
             this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
-                                                                     timeout -> timeout.compareTo(RELIABLE_SUBSCRIPTION) <= 0,
+                                                                     timeout -> timeout.compareTo(RELIABLE_SUBSCRIPTION) <= 0 &&
+                                                                                !timeout.isNegative(),
                                                                      IllegalArgumentException::new);
             this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer);
             this.subscriberName = Objects.requireNonNull(builder.subscriberName);
-            this.sequencer = builder.sequencer == null
-                             ? builder.sequencer
-                             : ObjectUtils.requiredCondition(builder.sequencer,
+            this.sequencer = builder.sequencer != null
+                             ? ObjectUtils.requiredCondition(builder.sequencer,
                                                              sequencer -> sequencer.getMaximumPoolSize() == 1,
-                                                             IllegalArgumentException::new);
+                                                             IllegalArgumentException::new)
+                             : null;
         }
 
         public Flow.Subscriber<? super PayloadT> getSubscriber() { return subscriber; }
@@ -579,7 +594,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
             /**
              *
-             * @param sequencer An optional thread for asynchronously attempting the submission tasks. If not specified
+             * @param sequencer An optional *single* thread for asynchronously attempting the submission tasks. If not specified
              *                  a new thread will be automatically created for this
              * @return this builder
              */

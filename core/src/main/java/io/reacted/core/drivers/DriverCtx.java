@@ -8,7 +8,7 @@
 
 package io.reacted.core.drivers;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
@@ -16,14 +16,14 @@ import io.reacted.patterns.NonNullByDefault;
 @NonNullByDefault
 public class DriverCtx {
     private final ReActorSystem localReActorSystem;
-    private final ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> decodingDriver;
+    private final ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> decodingDriver;
 
-    public DriverCtx(ReActorSystem reActorSystem, ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> driver) {
+    public DriverCtx(ReActorSystem reActorSystem, ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driver) {
         this.localReActorSystem = reActorSystem;
         this.decodingDriver = driver;
     }
 
     public ReActorSystem getLocalReActorSystem() { return localReActorSystem; }
 
-    public ReActorSystemDriver<? extends ReActedDriverCfg<?, ?>> getDecodingDriver() { return decodingDriver; }
+    public ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> getDecodingDriver() { return decodingDriver; }
 }

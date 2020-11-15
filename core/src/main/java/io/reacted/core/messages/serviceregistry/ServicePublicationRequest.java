@@ -30,6 +30,7 @@ public class ServicePublicationRequest implements Serializable {
     private final ReActorRef serviceGate;
     private final Properties serviceProperties;
 
+    //Required by jackson
     private ServicePublicationRequest() {
         this.serviceGate = ReActorRef.NO_REACTOR_REF;
         this.serviceProperties = new Properties();
@@ -40,9 +41,9 @@ public class ServicePublicationRequest implements Serializable {
         this.serviceProperties = Objects.requireNonNull(serviceProperties);
     }
 
-    public ReActorRef getServiceGate() { return this.serviceGate; }
+    public ReActorRef getServiceGate() { return serviceGate; }
 
-    public Properties getServiceProperties() { return this.serviceProperties; }
+    public Properties getServiceProperties() { return serviceProperties; }
 
     @SuppressWarnings({"UnusedReturnValue", "unused"})
     private ServicePublicationRequest setServiceGate(ReActorRef reactorRef) {

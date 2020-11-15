@@ -8,30 +8,31 @@
 
 package io.reacted.core.drivers.system;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
+import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystemRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.patterns.UnChecked.TriConsumer;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> extends ReActorSystemDriver<CfgT> {
+public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>>
+        extends ReActorSystemDriver<ConfigT> {
 
-    protected RemotingDriver(CfgT cfg) {
-        super(cfg);
-    }
+    protected RemotingDriver(ConfigT config) { super(config); }
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
@@ -61,7 +62,7 @@ public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> ext
                                                  ackingPolicy, message));
         CompletionStage<Try<DeliveryStatus>> tellResult;
         if (isAckRequired) {
-            tellResult = sendResult.filter(DeliveryStatus::isDelivered)
+            tellResult = sendResult.filter(DeliveryStatus::isDelivered, DeliveryException::new)
                                    .map(success -> pendingAck)
                                    .peekFailure(error -> removePendingAckTrigger(nextSeqNum))
                                    .orElseGet(() -> CompletableFuture.completedFuture(sendResult));
@@ -69,6 +70,22 @@ public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> ext
             tellResult = CompletableFuture.completedFuture(sendResult);
         }
         return tellResult;
+    }
+
+    @Override
+    public final <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+         TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+        //While sending towards a remote peer, propagation towards subscribers never takes place
+        return tell(src, dst, ackingPolicy, message);
+    }
+
+    @Override
+    public final <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+        //While sending towards a remote peer, propagation towards subscribers never takes place,
+        //so tell and route behave in the same way
+        return tell(src, dst, ackingPolicy, message);
     }
 
     @Override
@@ -108,11 +125,14 @@ public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> ext
         //reactor system is the source channel is a 1:N channel such as a kafka topic
         if (isLocalReActorSystem(getLocalReActorSystem().getLocalReActorSystemId(),
                                  destination.getReActorSystemRef().getReActorSystemId())) {
-            //If so, this is an ACK confirmation for a message sent with aTell
+            //If so, this is an ACK confirmation for a message sent with atell
             if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
-                removePendingAckTrigger(deliveryStatusUpdate.getMsgSeqNum())
-                        .ifPresent(pendingAckTrigger -> pendingAckTrigger.complete(Try.ofSuccess(deliveryStatusUpdate.getDeliveryStatus())));
+                var pendingAckTrigger = removePendingAckTrigger(deliveryStatusUpdate.getMsgSeqNum());
+                if (pendingAckTrigger != null) {
+                    pendingAckTrigger.toCompletableFuture()
+                                     .complete(Try.ofSuccess(deliveryStatusUpdate.getDeliveryStatus()));
+                }
                 //This is functionally useless because systemSink by design swallows received messages, it is required
                 //only for consistent logging if a logging direct communication local driver is used because in this way
                 //also the ACK will appear in logs
@@ -123,7 +143,7 @@ public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> ext
         } else {
             //If it was not meant for a ReActor within this reactor system it might still be of some interest for typed
             //subscribers
-            if (!isTypeSniffed(getLocalReActorSystem(), payloadType)) {
+            if (!isTypeSubscribed(getLocalReActorSystem(), payloadType)) {
                 return;
             }
             //Mark the sink as destination. Once the message has been sent within the main flow, it will be
@@ -132,19 +152,18 @@ public abstract class RemotingDriver<CfgT extends ReActedDriverCfg<?, CfgT>> ext
             hasBeenSniffed = true;
         }
         boolean isAckRequired = !hasBeenSniffed &&
-                                isAckRequired(message.getDataLink().getAckingPolicy(),
-                                              getLocalReActorSystem().findGate(message.getDataLink()
-                                                                                      .getGeneratingReActorSystem(),
-                                                                               getChannelId())
-                                                                     .map(ReActorSystemRef::getGateProperties)
-                                                                     .orElseGet(Properties::new));
-        var deliverAttempt = (isAckRequired ? destination.tell(sender, payload) : destination.aTell(sender, payload)).toCompletableFuture();
+                                message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
+        var deliverAttempt = (isAckRequired ? destination.atell(sender, payload) : destination.tell(sender, payload));
         if (isAckRequired) {
-            deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
-                                                                       getLocalReActorSystem().getNewSeqNum(), this,
-                                                                       deliveryResult, message)
-                                    .peekFailure(Throwable::printStackTrace)
-                                  .ifError(error -> getLocalReActorSystem().logError("Unable to send ack", error)));
+            deliverAttempt.thenAccept(deliveryResult -> sendDeliveryAck(getLocalReActorSystem().getLocalReActorSystemId(),
+                                                                        getLocalReActorSystem().getNewSeqNum(), this,
+                                                                        deliveryResult, message)
+                                                        .ifError(error -> getLocalReActorSystem()
+                                                                            .logError("Unable to send ack", error)));
         }
+    }
+    private static boolean isTypeSubscribed(ReActorSystem localReActorSystem,
+                                            Class<? extends Serializable> payloadType) {
+        return localReActorSystem.getTypedSubscriptionsManager().hasFullSubscribers(payloadType);
     }
 }

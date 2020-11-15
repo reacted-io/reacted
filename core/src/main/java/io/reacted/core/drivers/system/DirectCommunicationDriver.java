@@ -23,11 +23,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCfg> {
+public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationConfig> {
     private final ChannelId channelId;
-    public DirectCommunicationDriver(DirectCommunicationCfg cfg) {
-        super(cfg);
-        this.channelId = new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION, cfg.getChannelName());
+    public DirectCommunicationDriver(DirectCommunicationConfig config) {
+        super(config);
+        this.channelId = ChannelId.DIRECT_COMMUNICATION.forChannelName(config.getChannelName());
     }
 
     @Override

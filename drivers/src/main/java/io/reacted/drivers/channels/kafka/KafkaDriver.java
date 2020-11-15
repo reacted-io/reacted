@@ -70,19 +70,19 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
 
     @Override
     public CompletionStage<Try<Void>> cleanDriverLoop() {
-        return CompletableFuture.completedFuture(Try.ofRunnable(() -> { Objects.requireNonNull(this.kafkaProducer).close();
-                                                                        Objects.requireNonNull(this.kafkaConsumer).close();
-                                                                      }));
+        return CompletableFuture.completedFuture(Try.ofRunnable(() -> { Objects.requireNonNull(kafkaProducer).close();
+                                                                        Objects.requireNonNull(kafkaConsumer).close();
+                                                                       }));
     }
 
     @Override
     public UnChecked.CheckedRunnable getDriverLoop() {
-        return () -> kafkaDriverLoop(Objects.requireNonNull(this.kafkaConsumer), this, getLocalReActorSystem());
+        return () -> kafkaDriverLoop(Objects.requireNonNull(kafkaConsumer), this, getLocalReActorSystem());
     }
 
     @Override
     public ChannelId getChannelId() {
-        return new ChannelId(ChannelId.ChannelType.KAFKA, getDriverConfig().getChannelName());
+        return ChannelId.KAFKA.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override
@@ -90,7 +90,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
 
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return Try.of(() -> Objects.requireNonNull(this.kafkaProducer)
+        return Try.of(() -> Objects.requireNonNull(kafkaProducer)
                                    .send(new ProducerRecord<>(getDriverConfig().getTopic(), message)).get())
                   .map(metaData -> DeliveryStatus.DELIVERED);
     }
@@ -128,8 +128,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
                         (Try.TryValueSupplier<ConsumerRecords<Long, Message>>) ConsumerRecords::empty)
                .ifSuccessOrElse(records -> records.forEach(record -> thisDriver.offerMessage(record.value())),
                                 error -> localReActorSystem.logError("Unable to fetch messages from kafka", error))
-               .ifError(error -> LOGGER.error("WUT!?!?!?", error));
-
+               .ifError(error -> LOGGER.error("CRITIC! Error offering message", error));
         }
         Thread.currentThread().interrupt();
     }
@@ -137,22 +136,20 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     public static class MessageDecoder implements Deserializer<Message> {
         @Override
         public Message deserialize(String topic, byte[] data) {
-            return (Message)
-                    Try.withResources(() -> new ObjectInputStream(new ByteArrayInputStream(data)),
-                                    ObjectInputStream::readObject)
-                       .orElseGet(() -> NO_VALID_PAYLOAD,
-                                  error -> LOGGER.error("Unable to properly decode message", error));
+            return (Message) Try.withResources(() -> new ObjectInputStream(new ByteArrayInputStream(data)),
+                                               ObjectInputStream::readObject)
+                                .orElseGet(() -> NO_VALID_PAYLOAD,
+                                           error -> LOGGER.error("Unable to properly decode message", error));
         }
     }
 
     public static class MessageEncoder implements Serializer<Message> {
         @Override
         public byte[] serialize(String topic, Message data) {
-            return Try.withChainedResources(ByteArrayOutputStream::new, ObjectOutputStream::new, (byteArray,
-                                                                                                  objectOutput) -> {
-                objectOutput.writeObject(data);
-                return byteArray.toByteArray();
-            })
+            return Try.withChainedResources(ByteArrayOutputStream::new,
+                                            ObjectOutputStream::new,
+                                            (byteArray, objectOutput) -> { objectOutput.writeObject(data);
+                                                                           return byteArray.toByteArray(); })
                       .orElseGet(() -> NO_SERIALIZED_PAYLOAD,
                                  error -> LOGGER.error("Unable to encode message", error));
         }

@@ -10,7 +10,7 @@
     <parent>
         <artifactId>reacted-all</artifactId>
         <groupId>io.reacted</groupId>
-        <version>1.2.2-SNAPSHOT</version>
+        <version>1.4.5-SNAPSHOT</version>
     </parent>
 
     <developers>
@@ -22,8 +22,8 @@
             <organization>ReActed</organization>
             <organizationUrl>http://www.reacted.io</organizationUrl>
             <roles>
-                <role>architect</role>
-                <role>developer</role>
+                <role>Architect</role>
+                <role>Engineer</role>
             </roles>
         </developer>
         <developer>

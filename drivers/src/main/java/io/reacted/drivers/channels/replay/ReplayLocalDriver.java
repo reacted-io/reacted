@@ -25,6 +25,7 @@ import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
+import org.apache.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -38,11 +39,10 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 @NonNullByDefault
 public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
+    private final static Logger LOGGER = Logger.getLogger(ReplayLocalDriver.class);
     private final Set<ReActorId> spawnedReActors;
     @Nullable
     private ChronicleQueue chronicle;
@@ -67,7 +67,7 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return new ChannelId(ChannelId.ChannelType.REPLAY_CHRONICLE_QUEUE, getDriverConfig().getChannelName());
+        return ChannelId.REPLAY_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override
@@ -95,17 +95,17 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
     private void replayerMainLoop(ReActorSystem localReActorSystem, ChronicleQueue chronicle) {
         ExcerptTailer chronicleReader = chronicle.createTailer();
         Map<ReActorId, Map<Long, Message>> dstToMessageBySeqNum = new HashMap<>();
-        Pauser pauser = Pauser.balanced();
+        Pauser pauser = Pauser.millis(1000, 2000);
 
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
 
             var nextMessageAttempt = Try.withResources(chronicleReader::readingDocument, ReplayLocalDriver::getNextMessage);
-            var nextMessage = nextMessageAttempt.peekFailure(error -> logFailureOnMessageRetrieve(localReActorSystem::logError,
-                                                                                                  error))
-                                                .toOptional()
-                                                .flatMap(Function.identity())
+            var nextMessage = nextMessageAttempt.orElse(Optional.empty(),
+                                                        error -> LOGGER.error("Error reading message from CQ", error))
                                                 .orElse(null);
             if (nextMessage == null) {
+                pauser.pause();
+                pauser.reset();
                 continue;
             }
             if (!isForLocalReActorSystem(localReActorSystem, nextMessage)) {
@@ -152,9 +152,5 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
     private boolean isTargetReactorAlreadySpawned(Message newMessage) {
         //Every spawned reactor receives an init message, so there must be a send for it
         return spawnedReActors.contains(newMessage.getSender().getReActorId());
-    }
-
-    private static void logFailureOnMessageRetrieve(BiConsumer<String, Throwable> logger, Throwable error) {
-        logger.accept("Error reading message from CQ",error);
     }
 }

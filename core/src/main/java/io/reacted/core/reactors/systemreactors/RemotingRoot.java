@@ -8,12 +8,13 @@
 
 package io.reacted.core.reactors.systemreactors;
 
-import io.reacted.core.config.drivers.ReActedDriverCfg;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.RemotingDriver;
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.serviceregistry.DuplicatedPublicationError;
 import io.reacted.core.messages.serviceregistry.FilterServiceDiscoveryRequest;
+import io.reacted.core.messages.serviceregistry.RegistryConnectionLost;
 import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
 import io.reacted.core.messages.serviceregistry.RegistryGateRemoved;
 import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
@@ -30,19 +31,24 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+import static io.reacted.core.utils.ReActedUtils.*;
+
 @Immutable
 public class RemotingRoot {
-    private final Collection<RemotingDriver<? extends ReActedDriverCfg<?, ?>>> remotingDrivers;
+    private static final Logger LOGGER = LoggerFactory.getLogger(RemotingRoot.class);
+    private final Collection<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> remotingDrivers;
     private final ReActorSystemId localReActorSystem;
 
     public RemotingRoot(ReActorSystemId localReActorSystem,
-                        Collection<RemotingDriver<? extends ReActedDriverCfg<?, ?>>> remotingDrivers) {
+                        Collection<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> remotingDrivers) {
         this.remotingDrivers = remotingDrivers;
         this.localReActorSystem = localReActorSystem;
     }
@@ -58,11 +64,20 @@ public class RemotingRoot {
                         .reAct(RegistryServicePublicationFailed.class, RemotingRoot::onRegistryServicePublicationFailure)
                         .reAct(ServiceCancellationRequest.class, RemotingRoot::onCancelService)
                         .reAct(FilterServiceDiscoveryRequest.class, RemotingRoot::onFilterServiceDiscoveryRequest)
+                        .reAct(RegistryConnectionLost.class, this::onRegistryConnectionLost)
+                        .reAct(DuplicatedPublicationError.class, RemotingRoot::onDuplicatedPublicationError)
                         .reAct(ReActorStop.class, RemotingRoot::onStop)
                         .reAct(RemotingRoot::onSpuriousMessage)
                         .build();
     }
 
+    private static void onDuplicatedPublicationError(ReActorContext raCtx,
+                                                     DuplicatedPublicationError duplicatedPublicationError) {
+        raCtx.logError("CRITIC! Duplicated ReActor System detected. ReActorSystem names must be unique within" +
+                       "a cluster. Shutting down reporting driver: {}",
+                       raCtx.getSender().getReActorId().getReActorName());
+        raCtx.getReActorSystem().stop(raCtx.getSender().getReActorId());
+    }
     @SuppressWarnings("EmptyMethod")
     private static void onStop(ReActorContext raCtx, ReActorStop stop) { /* Nothing to do */ }
 
@@ -74,18 +89,16 @@ public class RemotingRoot {
 
     private static void onPublishService(ReActorContext raCtx, ServicePublicationRequest publishService) {
         if (raCtx.getChildren().isEmpty()) {
-             raCtx.aReply(new ServiceRegistryNotAvailable())
-                  .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
-                                                                     .ifError(error -> raCtx.logError("Unable to make a service discoverable {}",
-                                                                                                      publishService.getServiceProperties(), error)));
+             ifNotDelivered(raCtx.reply(new ServiceRegistryNotAvailable()),
+                            error -> raCtx.logError("Unable to make a service discoverable {}",
+                                                    publishService.getServiceProperties(), error));
              return;
-
         }
-        raCtx.getChildren().stream()
-             .map(registryDriver -> registryDriver.aTell(raCtx.getSelf(), publishService))
-             .forEach(publicationRequest -> publicationRequest.thenAcceptAsync(pubAttempt -> pubAttempt.filter(DeliveryStatus::isDelivered)
-                                                                                                       .ifError(error -> raCtx.logError("Unable to deliver service publication request {}",
-                                                                                                                                        publishService.getServiceProperties(), error))));
+
+        raCtx.getChildren()
+             .forEach(registryDriver -> ifNotDelivered(registryDriver.tell(raCtx.getSelf(), publishService),
+                                                       error -> raCtx.logError("Unable to deliver service publication request {}",
+                                                                               publishService.getServiceProperties(), error)));
     }
 
     private static void onInitComplete(ReActorContext raCtx,
@@ -104,10 +117,9 @@ public class RemotingRoot {
                                                                                            remotingDriver.getChannelId(),
                                                                                            remotingDriver.getChannelProperties()))
                        .map(raCtx::reply)
-                       .forEach(pubRequest -> pubRequest.thenAccept(result -> result.filter(DeliveryStatus::isDelivered)
-                                                                                    .ifError(error -> raCtx.getReActorSystem()
-                                                                                                           .logError("Unable to publish channel:",
-                                                                                                                     error))));
+                       .forEach(pubRequest -> ifNotDelivered(pubRequest,
+                                                             error -> raCtx.logError("Unable to publish channel:",
+                                                                                     error)));
     }
 
     private static void onRegistryServicePublicationFailure(ReActorContext raCtx,
@@ -118,11 +130,17 @@ public class RemotingRoot {
     private void onRegistryGateUpsert(ReActorContext raCtx, RegistryGateUpserted upsert) {
         //skip self notifications
         if (!raCtx.getReActorSystem().getLocalReActorSystemId().equals(upsert.getReActorSystemId())) {
-
+            raCtx.logInfo("Gate added in {} : {} -> {}", raCtx.getReActorSystem().getLocalReActorSystemId()
+                                                            .getReActorSystemName(),
+                          upsert.getChannelId().toString(), upsert.getReActorSystemId().getReActorSystemName());
             raCtx.getReActorSystem().unregisterRoute(upsert.getReActorSystemId(), upsert.getChannelId());
             raCtx.getReActorSystem().registerNewRoute(upsert.getReActorSystemId(), upsert.getChannelId(),
-                                                      upsert.getChannelData());
+                                                      upsert.getChannelData(), raCtx.getSender());
         }
+    }
+
+    private void onRegistryConnectionLost(ReActorContext raCtx, RegistryConnectionLost connectionLost) {
+        raCtx.getReActorSystem().flushRemoteGatesForDriver(raCtx.getSender());
     }
 
     private void onRegistryGateRemoval(ReActorContext raCtx, RegistryGateRemoved removed) {
@@ -131,6 +149,9 @@ public class RemotingRoot {
             raCtx.getSelf().tell(raCtx.getSender(), new SynchronizationWithServiceRegistryComplete());
             return;
         }
+        raCtx.logInfo("Gate removed in {} : {} -> {}",
+                      raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
+                      removed.getChannelId().toString(), removed.getReActorSystem().getReActorSystemName());
         raCtx.getReActorSystem().unregisterRoute(removed.getReActorSystem(), removed.getChannelId());
     }
 
@@ -145,10 +166,8 @@ public class RemotingRoot {
                                                                                      filterItem.getServiceGate()))
                   .map(FilterItem::getServiceGate)
                   .collect(Collectors.toUnmodifiableSet());
-        raCtx.aReply(new ServiceDiscoveryReply(foundServices))
-             .thenAcceptAsync(deliveryAttempt -> deliveryAttempt.filter(DeliveryStatus::isDelivered)
-                                                                .ifError(error -> raCtx.logError("Unable to answer with a {}",
-                                                                                                 ServiceDiscoveryReply.class.getSimpleName(),
-                                                                                                 error)));
+        ifNotDelivered(raCtx.reply(new ServiceDiscoveryReply(foundServices)),
+                       error -> raCtx.logError("Unable to answer with a {}",
+                                               ServiceDiscoveryReply.class.getSimpleName(), error));
     }
 }
