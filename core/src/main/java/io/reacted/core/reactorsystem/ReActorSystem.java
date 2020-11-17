@@ -339,6 +339,11 @@ public class ReActorSystem {
                                                                                      error)),
                             joinError -> LOGGER.error("Error waiting for remoting drivers to stop", joinError));
 
+        Try.ofRunnable(() -> stop(getSystemRemotingRoot().getReActorId())
+                                .map(CompletionStage::toCompletableFuture)
+                                .ifPresent(CompletableFuture::join))
+           .ifError(error -> LOGGER.error("Error stopping service registy drivers"));
+
         Try.of(() -> stopSystemReActors().toCompletableFuture().join())
            .ifError(error -> LOGGER.error("Error stopping system reactors", error));
 

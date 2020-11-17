@@ -68,7 +68,6 @@ public class ServicePublicationApp {
                                       .setMailBoxProvider(ctx -> new BasicMbox())
                                       //We do not need to listen for ServiceDiscoveryRequests, we have the
                                       //Service Registry now
-                                      .setTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class))
                                       .setRouteeProvider(() -> new ClockReActor(serviceName))
                                       .setIsRemoteService(true)
                                       .build();
@@ -79,14 +78,8 @@ public class ServicePublicationApp {
         TimeUnit.SECONDS.sleep(10);
         //Create a reactor in CLIENT reactor system that will query the service exported in SERVER
         //All the communication between the two reactor systems will be done using a GRPC channel
-        var timeReactor = client.spawn(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
+        client.spawn(new TimeReActor(serviceName)).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(10);
-        client.stop(timeReactor.getReActorId())
-              .map(onStop -> onStop.thenAccept(noVal -> client.spawn(new TimeReActor(serviceName, "1"))
-                                                              .orElseSneakyThrow()))
-              .orElse(CompletableFuture.completedFuture(null))
-              .toCompletableFuture()
-              .join();
         System.out.println("Shutting down...");
         server.shutDown();
         client.shutDown();
