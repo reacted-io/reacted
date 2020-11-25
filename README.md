@@ -1,4 +1,4 @@
-![ReActed Logo](https://github.com/reacted-io/reacted-io-doc/blob/master/_media/logo.svg)
+![ReActed Logo](https://github.com/reacted-io/reacted/blob/master/doc/artwork/logo.png)
 
 <p align="center">
 <a href="https://www.reacted.io">Reactive Actor framework for flexible/distributed/scalable and monitorable applications</a>
