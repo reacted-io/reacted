@@ -465,11 +465,51 @@ public class ReActorSystem {
      * @param msgSender A {@link ReActorRef} defining the sender of this message
      * @param payload The payload that should be broadcasted
      * @param <PayLoadT> Any {@link Serializable} object
-     * @return this builder
+     * @return A {@link CompletionStage} that is going to be completed when the message is sent
      */
     public <PayLoadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     broadcastToLocalSubscribers(ReActorRef msgSender, PayLoadT payload) {
         return getSystemSink().tell(Objects.requireNonNull(msgSender), Objects.requireNonNull(payload));
+    }
+
+    /**
+     * Sends a message to all the remote subscribers for the message type
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToRemoteSubscribers(PayLoadT payload) {
+        gatesCentralizedManager.findAllGates().stream()
+                               .filter(Predicate.not(getLoopback()::equals))
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(ReActorRef.NO_REACTOR_REF),
+                                                                      Objects.requireNonNull(payload)));
+    }
+
+    /**
+     * Sends a message to all the remote subscribers for the message type
+     * @param msgSender A {@link ReActorRef} defining the sender of this message
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToRemoteSubscribers(ReActorRef msgSender, PayLoadT payload) {
+        gatesCentralizedManager.findAllGates().stream()
+                               .filter(Predicate.not(getLoopback()::equals))
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
+                                                                      Objects.requireNonNull(payload)));
+    }
+
+    /**
+     * Sends a message to all the subscribers for the message type
+     * @param msgSender A {@link ReActorRef} defining the sender of this message
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToAllSubscribers(ReActorRef msgSender, PayLoadT payload) {
+        gatesCentralizedManager.findAllGates().stream()
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
+                                                                      Objects.requireNonNull(payload)));
     }
 
     //XXX Reactor Id -> ReActor Context mapper
