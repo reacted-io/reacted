@@ -74,13 +74,13 @@ class RegistryGatesCentralizedManager {
     Collection<ReActorSystemRef> findAllGates() {
         return reActorSystemsGates.values().stream()
                 .flatMap(gatesMap -> gatesMap.values().stream())
-                .collect(Collectors.toUnmodifiableList());
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     Collection<ReActorSystemRef> findAllGates(ChannelId channelId) {
         return reActorSystemsGates.values().stream()
                                   .map(gatesMap -> gatesMap.get(channelId))
-                                  .collect(Collectors.toUnmodifiableList());
+                                  .collect(Collectors.toUnmodifiableSet());
     }
     synchronized void unregisterRoute(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> anyDriver) {
         reActorSystemsGates.entrySet().stream()
