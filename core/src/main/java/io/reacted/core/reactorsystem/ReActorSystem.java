@@ -500,6 +500,34 @@ public class ReActorSystem {
     }
 
     /**
+     * Sends a message to all the remote subscribers for the message type
+     * @param channelId {@link ChannelId} towards the message should be broadcasted to
+     * @param msgSender A {@link ReActorRef} defining the sender of this message
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToChannelId(ChannelId channelId, ReActorRef msgSender,
+                                                                     PayLoadT payload) {
+        gatesCentralizedManager.findAllGates(channelId).stream()
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
+                                                                      Objects.requireNonNull(payload)));
+    }
+
+    /**
+     * Sends a message to all the remote subscribers for the message type
+     * @param channelId {@link ChannelId} towards the message should be broadcasted to
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToChannelId(ChannelId channelId, PayLoadT payload) {
+        gatesCentralizedManager.findAllGates(channelId).stream()
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(getSystemSink()),
+                                                                      Objects.requireNonNull(payload)));
+    }
+
+    /**
      * Sends a message to all the subscribers for the message type
      * @param msgSender A {@link ReActorRef} defining the sender of this message
      * @param payload The payload that should be broadcasted
