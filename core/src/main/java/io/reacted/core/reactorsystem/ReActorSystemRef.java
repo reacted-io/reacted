@@ -98,8 +98,9 @@ public class ReActorSystemRef implements Externalizable {
     public boolean equals(@Nullable Object o) {
         if (this == o) return true;
         if (!(o instanceof ReActorSystemRef)) return false;
-        return getReActorSystemId().equals(((ReActorSystemRef) o).getReActorSystemId()) &&
-               getGateProperties().equals(((ReActorSystemRef) o).getGateProperties());
+        return reActorSystemId.equals(((ReActorSystemRef) o).getReActorSystemId()) &&
+               backingDriver == ((ReActorSystemRef) o).backingDriver &&
+               gateProperties.equals(((ReActorSystemRef) o).getGateProperties());
     }
 
     @Override
