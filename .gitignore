@@ -3,9 +3,12 @@ target
 .idea/
 .m2/
 /release.properties
-*.settings/
+.DS_Store
+
+# VS CODE
+.vscode/
+.settings/
 .classpath
 .project
-*bin/
-*.devcontainer/
-.DS_Store
+bin/
+.devcontainer/
