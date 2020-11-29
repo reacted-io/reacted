@@ -41,7 +41,7 @@ public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCo
     }
 
     @Override
-    public void initDriverLoop(ReActorSystem localReActorSystem) { }
+    public void initDriverLoop(ReActorSystem localReActorSystem) { /* Direct driver does not need an inited context */ }
 
     @Override
     public CompletionStage<Try<Void>> cleanDriverLoop() { return CompletableFuture.completedFuture(Try.VOID); }

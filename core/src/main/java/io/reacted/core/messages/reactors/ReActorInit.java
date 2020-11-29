@@ -22,8 +22,8 @@ public final class ReActorInit implements Externalizable {
     private static final long serialVersionUID = 1;
 
     @Override
-    public void writeExternal(ObjectOutput out) { }
+    public void writeExternal(ObjectOutput out) { /* No fields */ }
 
     @Override
-    public void readExternal(ObjectInput in) { }
+    public void readExternal(ObjectInput in) { /* No fields */ }
 }

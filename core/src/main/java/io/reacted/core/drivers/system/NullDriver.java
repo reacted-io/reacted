@@ -57,7 +57,7 @@ public final class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     public CompletionStage<Try<Void>> stopDriverCtx(ReActorSystem reActorSystem) { return cleanDriverLoop(); }
 
     @Override
-    public void initDriverLoop(ReActorSystem localReActorSystem) throws UnsupportedOperationException{
+    public void initDriverLoop(ReActorSystem localReActorSystem) {
         throw new UnsupportedOperationException();
     }
 

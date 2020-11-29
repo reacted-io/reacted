@@ -43,7 +43,6 @@ import static io.reacted.core.utils.ReActedUtils.*;
 
 @Immutable
 public class RemotingRoot {
-    private static final Logger LOGGER = LoggerFactory.getLogger(RemotingRoot.class);
     private final Collection<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> remotingDrivers;
     private final ReActorSystemId localReActorSystem;
 
