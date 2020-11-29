@@ -20,22 +20,37 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+import io.reacted.patterns.UnChecked.TriConsumer;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public final class NullDriver extends ReActorSystemDriver {
-    public static final NullDriver NULL_DRIVER = new NullDriver();
+public final class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
+    public static final NullDriver NULL_DRIVER = new NullDriver(NullDriverConfig.newBuilder()
+                                                                                .build());
     public static final Properties NULL_DRIVER_PROPERTIES = new Properties();
-
-    private NullDriver() {}
-
+    private final ChannelId channelId;
+    @SuppressWarnings("NotNullFieldNotInitialized")
+    private volatile ReActorSystem localReActorSystem;
+    private NullDriver(NullDriverConfig config) {
+        super(config);
+        this.channelId = ChannelId.NO_CHANNEL_ID;
+    }
     @Override
     public Try<Void> initDriverCtx(ReActorSystem localReActorSystem) {
+        this.localReActorSystem = localReActorSystem;
         return Try.VOID;
+    }
+
+    @Override
+    public ReActorSystem getLocalReActorSystem() {
+        //If this is null it means that someone is trying to use the driver
+        //before its initialization
+        return Objects.requireNonNull(localReActorSystem);
     }
 
     @Override
@@ -62,6 +77,18 @@ public final class NullDriver extends ReActorSystemDriver {
     }
 
     @Override
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+         TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+        return CompletableFuture.completedFuture(Try.ofFailure(new NoRouteToReActorSystem()));
+    }
+
+    @Override
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+        return CompletableFuture.completedFuture(Try.ofFailure(new NoRouteToReActorSystem()));
+    }
+    @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
         return Try.ofFailure(new NoRouteToReActorSystem());
     }
@@ -75,12 +102,7 @@ public final class NullDriver extends ReActorSystemDriver {
     public boolean channelRequiresDeliveryAck() { return false; }
 
     @Override
-    public void stop(ReActorId dst) { }
-
-    @Override
-    public ChannelId getChannelId() {
-        return ChannelId.NO_CHANNEL_ID;
-    }
+    public ChannelId getChannelId() { return channelId; }
 
     @Override
     public Properties getChannelProperties() { return NULL_DRIVER_PROPERTIES; }

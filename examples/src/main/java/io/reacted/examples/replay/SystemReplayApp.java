@@ -10,7 +10,7 @@ package io.reacted.examples.replay;
 
 import com.google.common.base.Strings;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
@@ -45,25 +45,25 @@ public class SystemReplayApp {
                         .initReActorSystem();
         //Every message sent within the reactor system is going to be saved now
         var echoReActions = ReActions.newBuilder()
-                                     .reAct((ctx, paylod) -> System.out.printf("Received %s from %s @ %s%n",
-                                                                               paylod.toString(),
-                                                                               ctx.getSender().getReActorId().getReActorName(),
-                                                                               ctx.getReActorSystem().getSystemConfig()
-                                                                                  .getReActorSystemName()))
+                                     .reAct((ctx, payload) -> System.out.printf("Received %s from %s @ %s%n",
+                                                                                payload.toString(),
+                                                                                ctx.getSender().getReActorId().getReActorName(),
+                                                                                ctx.getReActorSystem().getSystemConfig()
+                                                                                   .getReActorSystemName()))
                                      .build();
         var echoReActorConfig = ReActorConfig.newBuilder()
                                              .setReActorName("EchoReActor")
                                              .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                             .setMailBoxProvider(BasicMbox::new)
-                                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                             .setMailBoxProvider(ctx -> new BasicMbox())
+                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                              .build();
 
-        var echoReference = recordedReactorSystem.spawnReActor(echoReActions, echoReActorConfig)
+        var echoReference = recordedReactorSystem.spawn(echoReActions, echoReActorConfig)
                                                  .orElseSneakyThrow();
 
         IntStream.range(0, 5)
                  .mapToObj(cycle -> "Message number " + cycle)
-                 .forEachOrdered(echoReference::aTell);
+                 .forEachOrdered(echoReference::atell);
         TimeUnit.SECONDS.sleep(1);
         recordedReactorSystem.shutDown();
         TimeUnit.SECONDS.sleep(1);
@@ -78,7 +78,7 @@ public class SystemReplayApp {
                         .initReActorSystem();
         System.out.println("Replay Start!");
         //Once the reactor will be created, the system will notify that and will begin its replay
-        replayedReActorSystem.spawnReActor(echoReActions, echoReActorConfig).orElseSneakyThrow();
+        replayedReActorSystem.spawn(echoReActions, echoReActorConfig).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(1);
         replayedReActorSystem.shutDown();
     }

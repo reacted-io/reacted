@@ -33,6 +33,10 @@ public final class UnChecked {
         });
     }
 
+    public static <T, U, D> TriConsumer<T, U, D> triConsumer(CheckedTriConsumer<T, U, D> checkedTriConsumer) {
+        return (arg1, arg2, arg3) -> unchecker(() -> { checkedTriConsumer.accept(arg1, arg2, arg3);
+                                                       return Try.VOID; }).get();
+    }
     @SuppressWarnings("ReturnValueIgnored")
     public static <T, U> BiConsumer<T, U> biConsumer(CheckedBiConsumer<T, U> checkedBiConsumer) {
         return (arg1, arg2) -> unchecker(() -> { checkedBiConsumer.accept(arg1, arg2); return Try.VOID; }).get();
@@ -58,12 +62,17 @@ public final class UnChecked {
         return arg -> unchecker(() -> checkedPredicate.test(arg)).get();
     }
 
+    @FunctionalInterface
+    public interface TriConsumer<T, U, D> {
+        void accept(T arg1, U arg2, D arg3);
+    }
     @SuppressWarnings("EmptyMethod")
     @FunctionalInterface
     public interface CheckedSupplier<T> {
         T get() throws Throwable;
     }
 
+    @SuppressWarnings("EmptyMethod")
     @FunctionalInterface
     public interface CheckedConsumer<T> {
         void accept(T arg1) throws Throwable;
@@ -74,6 +83,12 @@ public final class UnChecked {
         void accept(T arg1, U arg2) throws Throwable;
     }
 
+    @FunctionalInterface
+    public interface CheckedTriConsumer<T, U, D> {
+        void accept(T arg1, U arg2, D arg3) throws Throwable;
+    }
+
+    @SuppressWarnings("EmptyMethod")
     @FunctionalInterface
     public interface CheckedFunction<T, U> {
         U apply(T arg1) throws Throwable;

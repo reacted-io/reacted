@@ -9,7 +9,7 @@
 package io.reacted.core.config.dispatchers;
 
 import com.google.common.base.Strings;
-import io.reacted.core.config.ConfigUtils;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
@@ -24,9 +24,9 @@ public class DispatcherConfig {
     private final String dispatcherName;
 
     private DispatcherConfig(Builder builder) {
-        this.batchSize = ConfigUtils.requiredInRange(builder.batchSize, 1, Integer.MAX_VALUE,
+        this.batchSize = ObjectUtils.requiredInRange(builder.batchSize, 1, Integer.MAX_VALUE,
                                                      IllegalArgumentException::new);
-        this.dispatcherThreadsNum = ConfigUtils.requiredInRange(builder.dispatcherThreadsNum, 1, Integer.MAX_VALUE,
+        this.dispatcherThreadsNum = ObjectUtils.requiredInRange(builder.dispatcherThreadsNum, 1, Integer.MAX_VALUE,
                                                                 IllegalArgumentException::new);
         this.dispatcherName = Objects.requireNonNull(Strings.isNullOrEmpty(builder.dispatcherName)
                                                      ? null
@@ -56,6 +56,7 @@ public class DispatcherConfig {
          *
          * @param batchSize Number of messages that should be processed at maximum for a single reactor for a single
          *                  scheduling request
+         * @return this builder
          */
         public Builder setBatchSize(int batchSize) {
             this.batchSize = batchSize;
@@ -66,6 +67,7 @@ public class DispatcherConfig {
          * A dispatcher can process as many reactors in parallel as many thread it has
          *
          * @param dispatcherThreadsNum How many thread should be allocated to this dispatcher
+         * @return this builder
          */
         public Builder setDispatcherThreadsNum(int dispatcherThreadsNum) {
             this.dispatcherThreadsNum = dispatcherThreadsNum;
@@ -75,8 +77,9 @@ public class DispatcherConfig {
         /**
          * Dispatcher name must be unique in a reactor system
          *
-         * @param dispatcherName Unique name of a dispatcher. Reactors can request to be scheduled on thid
-         *                       dispacher specifying this name
+         * @param dispatcherName Unique name of a dispatcher. Reactors can request to be scheduled on this
+         *                       dispatcher specifying this name
+         * @return this builder
          */
         public Builder setDispatcherName(String dispatcherName) {
             this.dispatcherName = dispatcherName;

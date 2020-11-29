@@ -24,10 +24,10 @@ public class ReActorSystemId implements Externalizable  {
     public static final String NO_REACTORSYSTEM_ID_NAME = "NO_REACTORSYSTEM_ID";
     private static final long serialVersionUID = 1;
     private static final long REACTORSYSTEM_UUID_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemId.class,
-                                                                                       "reActorSysUUID")
+                                                                                            "reActorSystemUUID")
                                                                             .orElseSneakyThrow();
     private static final long REACTORSYSTEM_NAME_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemId.class,
-                                                                                  "reActorSystemName")
+                                                                                            "reActorSystemName")
                                                                             .orElseSneakyThrow();
     private static final long HASHCODE_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemId.class, "hashCode")
                                                                   .orElseSneakyThrow();
@@ -35,28 +35,32 @@ public class ReActorSystemId implements Externalizable  {
             .setReActorSystemUUID(new UUID(0, 0))
             .setReActorSystemName(NO_REACTORSYSTEM_ID_NAME)
             .setHashCode(Objects.hash(new UUID(0, 0), NO_REACTORSYSTEM_ID_NAME));
-    private final UUID reActorSysUUID;
+    private final UUID reActorSystemUUID;
     private final String reActorSystemName;
     private final int hashCode;
 
     public ReActorSystemId() { /* Required by externalizable */
-        this.reActorSysUUID = null;
+        this.reActorSystemUUID = null;
         this.reActorSystemName = null;
         this.hashCode = Integer.MIN_VALUE;
     }
 
     public ReActorSystemId(String reActorSystemName) {
         this.reActorSystemName = reActorSystemName;
-        this.reActorSysUUID = UUID.nameUUIDFromBytes(reActorSystemName.getBytes(StandardCharsets.UTF_8));
-        this.hashCode = Objects.hash(this.reActorSysUUID, reActorSystemName);
+        this.reActorSystemUUID = UUID.nameUUIDFromBytes(reActorSystemName.getBytes(StandardCharsets.UTF_8));
+        this.hashCode = Objects.hash(this.reActorSystemUUID, reActorSystemName);
     }
 
     public String getReActorSystemName() { return reActorSystemName; }
 
+    public UUID getReActorSystemUUID() { return reActorSystemUUID; }
+
+    public int getHashCode() { return hashCode(); }
+
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeLong(reActorSysUUID.getMostSignificantBits());
-        out.writeLong(reActorSysUUID.getLeastSignificantBits());
+        out.writeLong(reActorSystemUUID.getMostSignificantBits());
+        out.writeLong(reActorSystemUUID.getLeastSignificantBits());
         out.writeObject(reActorSystemName);
         out.writeInt(hashCode);
     }
@@ -66,7 +70,7 @@ public class ReActorSystemId implements Externalizable  {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ReActorSystemId that = (ReActorSystemId) o;
-        return Objects.equals(reActorSysUUID, that.reActorSysUUID) &&
+        return Objects.equals(reActorSystemUUID, that.reActorSystemUUID) &&
                Objects.equals(reActorSystemName, that.reActorSystemName);
     }
 
@@ -78,16 +82,16 @@ public class ReActorSystemId implements Externalizable  {
     @Override
     public String toString() {
         return "ReActorSystemId{" +
-                "reActorSysUUID=" + reActorSysUUID +
-                ", reActorSystemName='" + reActorSystemName + '\'' +
-                ", hashCode=" + hashCode +
-                '}';
+               "reActorSysUUID=" + reActorSystemUUID +
+               ", reActorSystemName='" + reActorSystemName + '\'' +
+               ", hashCode=" + hashCode +
+               '}';
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         setReActorSystemUUID(new UUID(in.readLong(), in.readLong()))
-                .setReActorSystemName((String)in.readObject())
+                .setReActorSystemName((String)(in.readObject()))
                 .setHashCode(in.readInt());
     }
 

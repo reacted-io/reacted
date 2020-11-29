@@ -8,9 +8,9 @@
 
 package io.reacted.core.mailboxes;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -25,32 +25,30 @@ public class BoundedBasicMbox implements MailBox {
     private final int mailboxCapacity;
 
     public BoundedBasicMbox(int maxMsgs) {
-        this.mailboxCapacity = ConfigUtils.requiredInRange(maxMsgs, 1, Integer.MAX_VALUE,
+        this.mailboxCapacity = ObjectUtils.requiredInRange(maxMsgs, 1, Integer.MAX_VALUE,
                                                            IllegalArgumentException::new);
-        this.inbox = new LinkedBlockingDeque<>(this.mailboxCapacity);
+        this.inbox = new LinkedBlockingDeque<>(mailboxCapacity);
     }
 
     @Override
-    public boolean isEmpty() { return this.inbox.isEmpty(); }
+    public boolean isEmpty() { return inbox.isEmpty(); }
 
     @Override
-    public long getMsgNum() { return this.inbox.size(); }
+    public long getMsgNum() { return inbox.size(); }
 
     @Override
-    public long getMaxSize() { return this.mailboxCapacity; }
+    public long getMaxSize() { return mailboxCapacity; }
 
     @Nonnull
     @Override
-    public Message getNextMessage() { return this.inbox.removeFirst(); }
+    public Message getNextMessage() { return inbox.removeFirst(); }
 
     @Override
-    public boolean isFull() {
-        return this.inbox.remainingCapacity() == this.mailboxCapacity;
-    }
+    public boolean isFull() { return inbox.remainingCapacity() == mailboxCapacity; }
 
     @Override
     public DeliveryStatus deliver(Message message) {
-        return this.inbox.offerLast(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.BACKPRESSURED;
+        return inbox.offerLast(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.BACKPRESSURED;
     }
 
     @Override

@@ -55,10 +55,10 @@ class BestEffortConsumersApp {
     private static class TestSubscriber<PayloadT> implements Flow.Subscriber<PayloadT> {
         private final Comparator<PayloadT> payloadTComparator;
         private final LongAdder updatesReceived;
-        private volatile boolean isTerminated = false;
+        private boolean isTerminated = false;
         @SuppressWarnings("NotNullFieldNotInitialized")
-        private volatile Flow.Subscription subscription;
-        private volatile PayloadT lastItem;
+        private Flow.Subscription subscription;
+        private PayloadT lastItem;
 
         private TestSubscriber(PayloadT baseItem, Comparator<PayloadT> payloadComparator) {
             this.payloadTComparator = Objects.requireNonNull(payloadComparator);
@@ -74,21 +74,21 @@ class BestEffortConsumersApp {
 
         @Override
         public void onNext(PayloadT item) {
-            if (!this.isTerminated) {
-                if (this.payloadTComparator.compare(this.lastItem, item) >= 0) {
+            if (!isTerminated) {
+                if (payloadTComparator.compare(lastItem, item) >= 0) {
                     Try.ofRunnable(() -> { throw new IllegalStateException("Unordered sequence detected"); })
                        .peekFailure(Throwable::printStackTrace)
                        .orElseSneakyThrow();
                 }
                 this.lastItem = item;
-                this.updatesReceived.increment();
+                updatesReceived.increment();
                 subscription.request(1);
             }
         }
 
         @Override
         public void onError(Throwable throwable) {
-            if (!this.isTerminated) {
+            if (!isTerminated) {
                 this.isTerminated = true;
                 throwable.printStackTrace();
             }
@@ -96,7 +96,7 @@ class BestEffortConsumersApp {
 
         @Override
         public void onComplete() {
-            if (!this.isTerminated) {
+            if (!isTerminated) {
                 this.isTerminated = true;
                 System.out.println("Feed is complete");
             }

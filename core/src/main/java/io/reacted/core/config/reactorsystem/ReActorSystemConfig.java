@@ -8,14 +8,18 @@
 
 package io.reacted.core.config.reactorsystem;
 
-import io.reacted.core.config.ConfigUtils;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.reactors.systemreactors.SystemMonitor;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -24,42 +28,51 @@ import java.util.Set;
 public class ReActorSystemConfig {
     public static final int MAX_DISPATCHER_CONFIGS = 100;
     public static final int DEFAULT_FANOUT_POOL_SIZE = 1;
-    public static final LocalDriver DEFAULT_LOCAL_DRIVER = SystemLocalDrivers.DIRECT_COMMUNICATION;
+    public static final LocalDriver<? extends ChannelDriverConfig<?, ?>> DEFAULT_LOCAL_DRIVER = SystemLocalDrivers.DIRECT_COMMUNICATION;
+    public static final Duration SYSTEM_MONITOR_DEFAULT_REFRESH_RATE = Duration.ofSeconds(20);
     private final String reactorSystemName;
     private final boolean recordedExecution;
     private final int msgFanOutPoolSize;
-    private final LocalDriver localDriver;
+    private final Duration systemMonitorRefreshInterval;
+    private final LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver;
     private final Set<DispatcherConfig> dispatchersConfigs;
-    private final Set<RemotingDriver> remotingDrivers;
-    private final Set<ServiceRegistryDriver> serviceRegistryDrivers;
+    private final Set<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> remotingDrivers;
+    private final Set<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
+                                            ? extends ServiceRegistryConfig<?, ?>>> serviceRegistryDrivers;
 
     private ReActorSystemConfig(Builder reactorSystemConfig) {
         this.reactorSystemName = Objects.requireNonNull(reactorSystemConfig.reactorSystemName);
-        this.msgFanOutPoolSize = ConfigUtils.requiredInRange(reactorSystemConfig.msgFanOutPoolSize,
+        this.msgFanOutPoolSize = ObjectUtils.requiredInRange(reactorSystemConfig.msgFanOutPoolSize,
                                                              DEFAULT_FANOUT_POOL_SIZE, 10,
                                                              IllegalArgumentException::new);
         this.localDriver = Objects.requireNonNull(reactorSystemConfig.localDriver);
         this.recordedExecution = reactorSystemConfig.shallRecordExecution;
-        ConfigUtils.requiredInRange(reactorSystemConfig.dispatcherConfigs.size(), 0, MAX_DISPATCHER_CONFIGS,
+        ObjectUtils.requiredInRange(reactorSystemConfig.dispatcherConfigs.size(), 0, MAX_DISPATCHER_CONFIGS,
                                     IllegalArgumentException::new);
         this.dispatchersConfigs = Set.copyOf(reactorSystemConfig.dispatcherConfigs);
         this.remotingDrivers = Set.copyOf(reactorSystemConfig.remotingDrivers);
         this.serviceRegistryDrivers = Set.copyOf(reactorSystemConfig.serviceRegistryDrivers);
+        this.systemMonitorRefreshInterval = ObjectUtils.checkNonNullPositiveTimeInterval(reactorSystemConfig.systemMonitorRefreshInterval);
     }
 
     public String getReActorSystemName() { return reactorSystemName; }
 
     public int getMsgFanOutPoolSize() { return msgFanOutPoolSize; }
 
-    public LocalDriver getLocalDriver() { return localDriver; }
+    public LocalDriver<? extends ChannelDriverConfig<?, ?>> getLocalDriver() { return localDriver; }
 
     public boolean isRecordedExecution() { return recordedExecution; }
 
     public Set<DispatcherConfig> getDispatchersConfigs() { return dispatchersConfigs; }
 
-    public Set<RemotingDriver> getRemotingDrivers() { return remotingDrivers; }
+    public Set<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> getRemotingDrivers() { return remotingDrivers; }
 
-    public Set<ServiceRegistryDriver> getServiceRegistryDrivers() { return serviceRegistryDrivers; }
+    public Set<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
+                                     ? extends ServiceRegistryConfig<?, ?>>> getServiceRegistryDrivers() {
+        return serviceRegistryDrivers;
+    }
+
+    public Duration getSystemMonitorRefreshInterval() { return systemMonitorRefreshInterval; }
 
     public static Builder newBuilder() { return new Builder(); }
 
@@ -67,16 +80,19 @@ public class ReActorSystemConfig {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reactorSystemName;
         private int msgFanOutPoolSize = DEFAULT_FANOUT_POOL_SIZE;
-        private LocalDriver localDriver = DEFAULT_LOCAL_DRIVER;
+        private LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver = DEFAULT_LOCAL_DRIVER;
+        private Duration systemMonitorRefreshInterval = SYSTEM_MONITOR_DEFAULT_REFRESH_RATE;
         private boolean shallRecordExecution;
         private final Set<DispatcherConfig> dispatcherConfigs = new HashSet<>();
-        private final Set<RemotingDriver> remotingDrivers = new HashSet<>();
-        private final Set<ServiceRegistryDriver> serviceRegistryDrivers = new HashSet<>();
+        private final Set<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> remotingDrivers = new HashSet<>();
+        private final Set<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
+                                                ? extends ServiceRegistryConfig<?, ?>>> serviceRegistryDrivers = new HashSet<>();
 
         private Builder() { /* No implementation required */ }
 
         /**
          * @param reactorSystemName Must be unique in the cluster
+         * @return this builder
          */
         public Builder setReactorSystemName(String reactorSystemName) {
             this.reactorSystemName = reactorSystemName;
@@ -88,7 +104,8 @@ public class ReActorSystemConfig {
          * This specifies how bit it is
          *
          * @param msgFanOutPoolSize numbers of threads that should be used.
-         *                          Range 1 - 200
+         *                          Range {@link ReActorSystemConfig#DEFAULT_FANOUT_POOL_SIZE} to {@link ReActorSystemConfig#MAX_DISPATCHER_CONFIGS}
+         * @return this builder
          */
         public Builder setMsgFanOutPoolSize(int msgFanOutPoolSize) {
             this.msgFanOutPoolSize = msgFanOutPoolSize;
@@ -101,6 +118,7 @@ public class ReActorSystemConfig {
          *
          * @param shallRecordExecution true if data for cold replay should be generated
          *                             during execution.
+         * @return this builder
          */
         public Builder setRecordExecution(boolean shallRecordExecution) {
             this.shallRecordExecution = shallRecordExecution;
@@ -115,14 +133,28 @@ public class ReActorSystemConfig {
          *
          * @param localDriver driver that should be used for communication within this
          *                    reactor system
+         * @return this builder
          */
-        public Builder setLocalDriver(LocalDriver localDriver) {
+        public Builder setLocalDriver(LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver) {
             this.localDriver = localDriver;
             return this;
         }
 
         /**
+         * {@link SystemMonitor} is a system reactor that collects statistics about the state of the system and
+         * propagates them among subscribers
+         *
+         * @param refreshInterval Period after which a refresh of the system statistics should be done
+         * @return this builder
+         */
+        public Builder setSystemMonitorRefreshInterval(Duration refreshInterval) {
+            this.systemMonitorRefreshInterval = refreshInterval;
+            return this;
+        }
+
+        /**
          * @param dispatcherConfig new dispatcher config
+         * @return this builder
          */
         public Builder addDispatcherConfig(DispatcherConfig dispatcherConfig) {
             this.dispatcherConfigs.add(dispatcherConfig);
@@ -134,8 +166,9 @@ public class ReActorSystemConfig {
          * It's like the local driver, but for communications with other reactor systems
          *
          * @param remotingDriver remoting driver
+         * @return this builder
          */
-        public Builder addRemotingDriver(RemotingDriver remotingDriver) {
+        public Builder addRemotingDriver(RemotingDriver<? extends ChannelDriverConfig<?, ?>> remotingDriver) {
             this.remotingDrivers.add(remotingDriver);
             return this;
         }
@@ -144,12 +177,18 @@ public class ReActorSystemConfig {
          * Connect the reactor system to the service registries instance specified by these drivers
          *
          * @param serviceRegistryDriver service registry driver
+         * @return this builder
          */
-        public Builder addServiceRegistryDriver(ServiceRegistryDriver serviceRegistryDriver) {
+        public Builder addServiceRegistryDriver(ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
+                ? extends ServiceRegistryConfig<?, ?>> serviceRegistryDriver) {
             this.serviceRegistryDrivers.add(serviceRegistryDriver);
             return this;
         }
 
+        /**
+         * @throws IllegalArgumentException if any of the supplied arguments do not comply with the provided boundaries
+         * @return a valid {@link ReActorSystemConfig}
+         */
         public ReActorSystemConfig build() {
             return new ReActorSystemConfig(this);
         }

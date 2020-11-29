@@ -10,11 +10,11 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 class LoopbackDriverTest {
     static String testDispatcher = "TestDispatcher";
     static ReActorSystem reActorSystem;
-    static LoopbackDriver loopbackDriver;
+    static LoopbackDriver<? extends ChannelDriverConfig<?, ?>> loopbackDriver;
     static ReActorRef destReActorRef;
     static Message message;
 
@@ -39,7 +39,7 @@ class LoopbackDriverTest {
     void prepareEnvironment() throws Exception {
         // Prepare & init ReActorSystem
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(1)
                                                                      .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                                      .addDispatcherConfig(DispatcherConfig.newBuilder()
@@ -57,11 +57,10 @@ class LoopbackDriverTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("ReActorName")
                                                    .setDispatcherName(testDispatcher)
-                                                   .setMailBoxProvider(BasicMbox::new)
-                                                   .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(Message.class))
                                                    .build();
 
-        destReActorRef = reActorSystem.spawnReActor(new MagicTestReActor(1, true, reActorConfig))
+        destReActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))
                                       .orElseSneakyThrow();
         message = new Message(ReActorRef.NO_REACTOR_REF, destReActorRef, 0, reActorSystem.getLocalReActorSystemId(),
                               AckingPolicy.NONE, "payload");

@@ -24,7 +24,8 @@ public class ReactorHelper {
         return generateReactor(reActorName, TEST_REACTOR_SYSTEM_ID, SystemLocalDrivers.DIRECT_COMMUNICATION);
     }
 
-    public static ReActorRef generateReactor(String reActorName, ReActorSystemId reActorSystemId, LocalDriver localDriver) {
+    public static ReActorRef generateReactor(String reActorName, ReActorSystemId reActorSystemId,
+                                             LocalDriver<?> localDriver) {
         ReActorSystemRef testReActorSystemRef = new ReActorSystemRef(localDriver, new Properties(), reActorSystemId);
         return new ReActorRef(new ReActorId(ReActorId.NO_REACTOR_ID, reActorName), testReActorSystemRef);
     }

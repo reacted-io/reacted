@@ -19,8 +19,6 @@ import java.util.stream.Stream;
 public abstract class Try<T> {
 
     public static final Try<Void> VOID = Try.of(Try::noOp);
-    private static final Try.Failure<NoSuchElementException> FILTER_FAILED = Try.ofFailure(new NoSuchElementException());
-
     private static final UnsupportedOperationException FAILURE_UNSUPPORTED_OPERATION_EXCEPTION =
             new UnsupportedOperationException("Failure has not result value");
     private static final UnsupportedOperationException SUCCESS_UNSUPPORTED_OPERATION_EXCEPTION =
@@ -42,6 +40,7 @@ public abstract class Try<T> {
     /**
      * Identity Try function. May be used as placeholder as mapper
      * @param value a Try
+     * @param <U> any type
      * @return the same try passed as argument
      */
     public static <U> Try<U> identity(Try<U> value) {
@@ -51,7 +50,8 @@ public abstract class Try<T> {
     /**
      * Identity function. May be used as placeholder as mapper
      * @param <U> any type
-     * @return the same value passed as input
+     * @param value any value
+     * @return U the same value passed as input
      */
     public static <U> U identity(U value) {
         return value;
@@ -280,8 +280,9 @@ public abstract class Try<T> {
      * <pre>{@code
      * var result = Try.of(() -> performComputation())).orElseSneakyThrow();
      * }</pre>
-     *
+     * @param <X> any {@link Throwable}
      * @return the value contained in the Try if it is successful
+     * @throws X Any Throwable of any type that might have been generated during the processing of the previous steps
      */
     public <X extends Throwable> T orElseSneakyThrow() throws X {
         if(isFailure()) {
@@ -517,14 +518,13 @@ public abstract class Try<T> {
      *                  does not pass the filter, a failed Try will be returned
      * @return a Try for which the predicate is true or failure
      */
-    @SuppressWarnings("unchecked")
     public Try<T> filter(UnChecked.CheckedPredicate<? super T> predicate) {
         try {
             if (isFailure() ||
                 isSuccess() && predicate.test(get())) {
                 return this;
             }
-            return (Try<T>)FILTER_FAILED;
+            return Try.ofFailure(new NoSuchElementException());
         } catch (Throwable error) {
             return Try.ofFailure(error);
         }
@@ -759,6 +759,8 @@ public abstract class Try<T> {
      * }</pre>
      *
      * @param ifError if Try is a failure, consumer will be applied to the contained exception
+     * @param throwableClass inspect if the failure belongs to the specified class
+     * @param <ExceptionT> The type of error that should be peeked
      * @return the untouched Try
      */
     @SuppressWarnings("UnusedReturnValue")
@@ -799,6 +801,7 @@ public abstract class Try<T> {
      * @param ifSuccess      consumer for the Try value in case the Try is a
      *                       success
      * @param ifError        consumer for the Throwable in case Try is a failure
+     * @param <ExceptionT> Any exception or error type that we want to peek
      * @return the untouched Try
      */
     @SuppressWarnings("unchecked")
@@ -896,7 +899,7 @@ public abstract class Try<T> {
 
         private Success() {
             /* Never Here */
-            throw new IllegalStateException("Illegal " + this.getClass().getSimpleName() + " Object State");
+            throw new IllegalStateException("Illegal " + getClass().getSimpleName() + " Object State");
         }
 
         private Success(T successValue) {
@@ -944,7 +947,7 @@ public abstract class Try<T> {
 
         private Failure() {
             /* Never Here */
-            throw new IllegalStateException("Illegal " + this.getClass().getSimpleName() + " Object State");
+            throw new IllegalStateException("Illegal " + getClass().getSimpleName() + " Object State");
         }
 
         private Failure(Throwable failureValue) {

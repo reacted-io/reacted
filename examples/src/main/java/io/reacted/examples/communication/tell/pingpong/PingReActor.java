@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.tell.pingpong;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
@@ -48,21 +48,21 @@ class PingReActor implements ReActor {
         return ReActorConfig.newBuilder()
                             .setReActorName(PingReActor.class.getSimpleName())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                            .setMailBoxProvider(BasicMbox::new)
-                            .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                            .setMailBoxProvider(ctx -> new BasicMbox())
+                            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
-        sendPing(raCtx.getSelf(), this.pingSent++);
+        sendPing(raCtx.getSelf(), pingSent++);
     }
 
     private void onPong(ReActorContext raCtx, Pong pong) {
-        System.out.printf("Ping sent %d Pong received %d%n", this.pingSent, this.pongReceived++);
-        sendPing(raCtx.getSelf(), this.pingSent++);
+        System.out.printf("Ping sent %d Pong received %d%n", pingSent, pongReceived++);
+        sendPing(raCtx.getSelf(), pingSent++);
     }
 
     private void sendPing(ReActorRef sender, int pingSeq) {
-        this.ponger.tell(sender, new Ping(pingSeq));
+        ponger.tell(sender, new Ping(pingSeq));
     }
 }

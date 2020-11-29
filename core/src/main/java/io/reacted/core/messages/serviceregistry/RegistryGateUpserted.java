@@ -34,4 +34,10 @@ public class RegistryGateUpserted implements Serializable {
     public ChannelId getChannelId() { return channelId; }
 
     public Properties getChannelData() { return channelData; }
+
+    @Override
+    public String toString() {
+        return "RegistryGateUpserted{" + "reActorSystemId=" + reActorSystemId + ", channelId=" + channelId + ", " +
+               "channelData=" + channelData + '}';
+    }
 }

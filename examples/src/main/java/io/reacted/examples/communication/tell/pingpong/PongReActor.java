@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.tell.pingpong;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
@@ -30,8 +30,7 @@ public class PongReActor implements ReActor {
         return ReActions.newBuilder()
                         .reAct(Ping.class, this::onPing)
                         .reAct(ReActorStop.class, this::onStop)
-                        .reAct(((raCtx, payload) -> {
-                        }))
+                        .reAct(ReActions::noReAction)
                         .build();
     }
 
@@ -41,24 +40,22 @@ public class PongReActor implements ReActor {
         return ReActorConfig.newBuilder()
                             .setReActorName(PongReActor.class.getSimpleName())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                            .setMailBoxProvider(BasicMbox::new)
-                            .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                            .setMailBoxProvider(ctx -> new BasicMbox())
+                            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }
 
     public void onPing(ReActorContext raCtx, Ping ping) {
         System.out.printf("Pong received a ping for seq %d%n", ping.getPingValue());
         //Schedule a reply after 1 second
-        this.pongTimer.schedule(new TimerTask() {
+        pongTimer.schedule(new TimerTask() {
             @Override
-            public void run() {
-                raCtx.getSender().tell(raCtx.getSelf(), new Pong(ping.getPingValue()));
-            }
+            public void run() { raCtx.reply(new Pong(ping.getPingValue())); }
         }, 1000);
     }
 
     public void onStop(ReActorContext raCtx, ReActorStop stop) {
-        this.pongTimer.cancel();
-        this.pongTimer.purge();
+        pongTimer.cancel();
+        pongTimer.purge();
     }
 }

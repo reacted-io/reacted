@@ -8,3 +8,4 @@ target
 .project
 *bin/
 *.devcontainer/
+.DS_Store

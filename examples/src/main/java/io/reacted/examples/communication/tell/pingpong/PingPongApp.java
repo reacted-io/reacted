@@ -16,9 +16,9 @@ class PingPongApp {
     public static void main(String[] args) throws InterruptedException {
         var reactorSystem = ExampleUtils.getDefaultInitedReActorSystem(PingPongApp.class.getSimpleName());
 
-        var pongReActor = reactorSystem.spawnReActor(new PongReActor());
+        var pongReActor = reactorSystem.spawn(new PongReActor());
         pongReActor.map(PingReActor::new)
-                   .ifSuccess(reactorSystem::spawnReActor);
+                   .ifSuccess(reactorSystem::spawn);
         //The reactors are executing now
         TimeUnit.SECONDS.sleep(10);
         //The game is finished, shut down

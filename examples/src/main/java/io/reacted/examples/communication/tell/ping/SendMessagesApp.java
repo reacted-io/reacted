@@ -25,8 +25,8 @@ class SendMessagesApp {
         //Body/state of the reactor
         var newReActorInstance = new SimpleTestReActor(pingDelim, messagesToSend);
         //Reference of the reactor within the ReActorSystem (cluster)
-        var newReActorReference = simpleReActorSystem.spawnReActor(newReActorInstance.getReActions(),
-                                                                   newReActorInstance.getConfig())
+        var newReActorReference = simpleReActorSystem.spawn(newReActorInstance.getReActions(),
+                                                            newReActorInstance.getConfig())
                                                      .orElse(ReActorRef.NO_REACTOR_REF, error -> {
                                                          error.printStackTrace();
                                                          simpleReActorSystem.shutDown();
@@ -41,9 +41,9 @@ class SendMessagesApp {
 
         IntStream.range(0, messagesToSend)
                  .parallel()
-                 //Tell and aTell are functionally the same if we do not care about the return value
-                 //aTell brings more overhead because of the acking system
-                 .forEach(msgNum -> newReActorReference.aTell("Ping Request" + pingDelim + msgNum));
+                 //Tell and atell are functionally the same if we do not care about the return value
+                 //atell brings more overhead because of the acking system
+                 .forEach(msgNum -> newReActorReference.atell("Ping Request" + pingDelim + msgNum));
         TimeUnit.SECONDS.sleep(1);
         simpleReActorSystem.shutDown();
     }

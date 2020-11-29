@@ -9,7 +9,7 @@
 package io.reacted.examples.typedsubscription;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
@@ -26,16 +26,15 @@ public class UpdateGeneratorApp {
         var reActorSystem = ExampleUtils.getDefaultInitedReActorSystem(UpdateGeneratorApp.class.getSimpleName());
         //Create a reactor that subscribes for Updates. Whenever a new Update is received by a reactor within
         //the reactorsystem, the TypeSubscriber reactor will receive a copy of it
-        reActorSystem.spawnReActor(new ReActor() {
+        reActorSystem.spawn(new ReActor() {
             @Nonnull
             @Override
             public ReActions getReActions() {
                 return ReActions.newBuilder()
                                 .reAct(Update.class,
-                                       (ctx, update) -> System.out.printf("Unpdates received %d%n",
+                                       (ctx, update) -> System.out.printf("Updates received %d%n",
                                                                           update.getUpdateId()))
-                                .reAct((ctx, any) -> {
-                                })
+                                .reAct(ReActions::noReAction)
                                 .build();
             }
 
@@ -45,8 +44,8 @@ public class UpdateGeneratorApp {
                 return ReActorConfig.newBuilder()
                                     .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
                                     .setReActorName("PassiveUpdatesListener")
-                                    .setMailBoxProvider(BasicMbox::new)
-                                    .setTypedSniffSubscriptions(SubscriptionPolicy.LOCAL.forType(Update.class))
+                                    .setMailBoxProvider(ctx -> new BasicMbox())
+                                    .setTypedSubscriptions(TypedSubscription.LOCAL.forType(Update.class))
                                     .build();
             }
         }).orElseSneakyThrow();

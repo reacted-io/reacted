@@ -9,29 +9,36 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.Message;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 @NonNullByDefault
 public final class ReActorContext {
@@ -40,7 +47,7 @@ public final class ReActorContext {
     private final MailBox actorMbox;
     private final ReActorRef reactorRef;
     private final ReActorSystem reActorSystem;
-    private final List<ReActorRef> children;
+    private final Set<ReActorRef> children;
     private final ReActorRef parent;
     private final Dispatcher dispatcher;
     private final AtomicBoolean isScheduled;
@@ -49,7 +56,7 @@ public final class ReActorContext {
     private final AtomicLong msgExecutionId;
     private final ReActions reActions;
 
-    private SubscriptionPolicy.SniffSubscription[] interceptRules;
+    private TypedSubscription[] typedSubscriptions;
 
     private volatile boolean stop = false;
     private volatile boolean isAcquired = false;
@@ -57,18 +64,17 @@ public final class ReActorContext {
     private ReActorRef lastMsgSender = ReActorRef.NO_REACTOR_REF;
 
     private ReActorContext(Builder reActorCtxBuilder) {
-        this.actorMbox = Objects.requireNonNull(reActorCtxBuilder.mbox);
+        this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider).apply(this));
         this.reactorRef = Objects.requireNonNull(reActorCtxBuilder.reactorRef);
         this.reActorSystem = Objects.requireNonNull(reActorCtxBuilder.reActorSystem);
-        this.children = new CopyOnWriteArrayList<>();
+        this.children = ConcurrentHashMap.newKeySet();
         this.parent = Objects.requireNonNull(reActorCtxBuilder.parent);
         this.dispatcher = Objects.requireNonNull(reActorCtxBuilder.dispatcher);
         this.isScheduled = new AtomicBoolean(false);
         this.structuralLock = new ReentrantReadWriteLock();
-        this.interceptRules = Objects.requireNonNull(reActorCtxBuilder.interceptRules).length == 0
-                              ? SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS
-                              : Arrays.copyOf(reActorCtxBuilder.interceptRules,
-                                              reActorCtxBuilder.interceptRules.length);
+        this.typedSubscriptions = Objects.requireNonNull(reActorCtxBuilder.typedSubscriptions).length == 0
+                                  ? TypedSubscription.NO_SUBSCRIPTIONS
+                                  : TypedSubscriptionsManager.getNormalizedSubscriptions(reActorCtxBuilder.typedSubscriptions);
         this.hierarchyTermination = new CompletableFuture<>();
         this.msgExecutionId = new AtomicLong();
         this.reActions = Objects.requireNonNull(reActorCtxBuilder.reActions);
@@ -80,16 +86,12 @@ public final class ReActorContext {
 
     public ReActorSystem getReActorSystem() { return reActorSystem; }
 
-    public List<ReActorRef> getChildren() { return children; }
+    public Set<ReActorRef> getChildren() { return children; }
 
     public ReActorRef getParent() { return parent; }
 
     public Dispatcher getDispatcher() { return dispatcher; }
-
-    public ReadWriteLock getStructuralLock() { return structuralLock; }
-
     public MailBox getMbox() { return actorMbox; }
-
     public CompletionStage<Void> getHierarchyTermination() { return hierarchyTermination; }
 
     public long getNextMsgExecutionId() { return msgExecutionId.getAndIncrement(); }
@@ -103,77 +105,171 @@ public final class ReActorContext {
     @SuppressWarnings("UnusedReturnValue")
     public boolean acquireCoherence() { return !isAcquired; }
 
-    public void releaseCoherence() { isAcquired = false; }
+    public void releaseCoherence() { this.isAcquired = false; }
 
-    @SuppressWarnings("UnusedReturnValue")
-    public boolean registerChild(ReActorRef childActor) {
-        return children.add(childActor);
-    }
-
-    @SuppressWarnings("UnusedReturnValue")
-    public boolean unregisterChild(ReActorRef childActor) {
-        return children.remove(childActor);
-    }
-
-    public void refreshInterceptors(SubscriptionPolicy.SniffSubscription... newInterceptedClasses) {
+    public void refreshInterceptors(TypedSubscription... newInterceptedClasses) {
 
         getStructuralLock().writeLock().lock();
         try {
-            getReActorSystem().updateMessageInterceptors(this, interceptRules, newInterceptedClasses);
-            interceptRules = newInterceptedClasses;
+            getReActorSystem().updateMessageInterceptors(this, typedSubscriptions, newInterceptedClasses);
+            this.typedSubscriptions = newInterceptedClasses;
         } finally {
             getStructuralLock().writeLock().unlock();
         }
     }
 
-    public SubscriptionPolicy.SniffSubscription[] getInterceptRules() {
-        SubscriptionPolicy.SniffSubscription[] interceptedMsgTypes;
+    public TypedSubscription[] getTypedSubscriptions() {
+        TypedSubscription[] interceptedMsgTypes;
 
         getStructuralLock().readLock().lock();
-        interceptedMsgTypes = Arrays.copyOf(this.interceptRules, this.interceptRules.length);
+        interceptedMsgTypes = Arrays.copyOf(typedSubscriptions, typedSubscriptions.length);
         getStructuralLock().readLock().unlock();
 
         return interceptedMsgTypes;
     }
 
-    public final void reschedule() {
-        getDispatcher().dispatch(this);
+    public final void reschedule() { getDispatcher().dispatch(this); }
+
+    public CompletionStage<Try<DeliveryStatus>> reply(Serializable anyPayload) { return reply(getSelf(), anyPayload); }
+
+    public CompletionStage<Try<DeliveryStatus>> areply(Serializable anyPayload) {
+        return areply(getSelf(), anyPayload);
     }
 
+    public CompletionStage<Try<DeliveryStatus>> reply(ReActorRef sender, Serializable anyPayload) {
+        return getSender().tell(sender, anyPayload);
+    }
+
+    public Try<ScheduledFuture<CompletionStage<Try<DeliveryStatus>>>>
+    rescheduleMessage(Serializable messageToBeRescheduled, Duration inHowLong) {
+        ReActorRef sender = getSender();
+        return Try.of(() -> getReActorSystem().getSystemSchedulingService()
+                                              .schedule(() -> getSelf().tell(sender, messageToBeRescheduled),
+                                                              inHowLong.toMillis(), TimeUnit.MILLISECONDS));
+    }
+
+    /**
+     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#atell(Serializable)}
+     * @param sender {@link ReActorRef} identifying the sender of this reply
+     * @param anyPayload payload to be sent
+     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#atell(ReActorRef, Serializable)}
+     */
+    public CompletionStage<Try<DeliveryStatus>> areply(ReActorRef sender, Serializable anyPayload) {
+        return getSender().atell(sender, anyPayload);
+    }
+
+    /**
+     * {@link ReActorRef#tell(Serializable)} to the current reactor the specified message setting itself as sender for the message
+     * @param anyPayload message that should be self-sent
+     * @return A {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#tell(Serializable)}
+     * complete
+     */
+    public CompletionStage<Try<DeliveryStatus>> selfTell(Serializable anyPayload) {
+        return getSelf().tell(getSelf(), anyPayload);
+    }
+
+    /**
+     * Spawn a new {@link ReActor} child of the spawning one
+     * @param reActor the new {@link ReActor} definition
+     * @return a {@link Try}&lt;{@link ReActorRef}&gt; pointing to the new {@link ReActor}
+     */
     public Try<ReActorRef> spawnChild(ReActor reActor) {
         return getReActorSystem().spawnChild(reActor.getReActions(), getSelf(), reActor.getConfig());
     }
 
+    /**
+     * Spawn a new {@link ReActor} child of the spawning one
+     * @param reActiveEntity the {@link ReActiveEntity} definition for the new {@link ReActor}
+     * @param reActorConfig the {@link ReActorConfig} for the new {@link ReActor}
+     * @return a {@link Try}&lt;{@link ReActorRef}&gt; containing a {@link ReActorRef} pointing to the new {@link ReActor}
+     */
     public Try<ReActorRef> spawnChild(ReActiveEntity reActiveEntity, ReActorConfig reActorConfig) {
         return getReActorSystem().spawnChild(reActiveEntity.getReActions(), getSelf(), reActorConfig);
     }
 
+    /**
+     * Spawn a new {@link ReActor} child of the spawning one
+     * @param reActions the {@link ReActions} for the new {@link ReActor}
+     * @param reActorConfig the {@link ReActorConfig} for the new {@link ReActor}
+     * @return a {@link Try}&lt;{@link ReActorRef}&gt; containing a {@link ReActorRef} pointing to the new {@link ReActor}
+     */
     public Try<ReActorRef> spawnChild(ReActions reActions, ReActorConfig reActorConfig) {
         return getReActorSystem().spawnChild(reActions, getSelf(), reActorConfig);
     }
 
-    public final void setInterceptRules(SubscriptionPolicy.SniffSubscription... interceptRules) {
-        refreshInterceptors(Objects.requireNonNull(interceptRules).length == 0
-                            ? SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS
-                            : Arrays.copyOf(interceptRules, interceptRules.length));
+    /**
+     * Set the message subscriptions rules for this reactor to enable passive message sniffing
+     * @param newTypedSubscriptions {@link TypedSubscription} array
+     */
+    public final void setTypedSubscriptions(TypedSubscription ...newTypedSubscriptions) {
+        refreshInterceptors(Objects.requireNonNull(newTypedSubscriptions).length == 0
+                            ? TypedSubscription.NO_SUBSCRIPTIONS
+                            : TypedSubscriptionsManager.getNormalizedSubscriptions(newTypedSubscriptions));
     }
 
+    /**
+     * Add the specified {@link TypedSubscription}s to the current set
+     * @param typedSubscriptionsToAdd {@link TypedSubscription}s to add
+     *
+     */
+    public final void addTypedSubscriptions(TypedSubscription ...typedSubscriptionsToAdd) {
+        setTypedSubscriptions(TypedSubscriptionsManager.getNormalizedSubscriptions(Stream.concat(Arrays.stream(typedSubscriptionsToAdd),
+                                                                                                 Arrays.stream(getTypedSubscriptions()))
+                                                                                         .toArray(TypedSubscription[]::new)));
+    }
+    /**
+     * Request termination for this reactor and the underlying hierarchy
+     * @return a {@link CompletionStage} that is going to be completed when the last reactor in the hierarchy
+     * is terminated
+     */
     public CompletionStage<Void> stop() {
         this.stop = true;
         reschedule();
         return getHierarchyTermination();
     }
 
-    public boolean isStop() {
-        return stop;
+    public boolean isStop() { return stop; }
+
+    /**
+     * Send a logging request for info level to the centralized logger reactor
+     *
+     * @param descriptionFormat description in sl4j format
+     * @param args arguments list
+     */
+    public void logInfo(String descriptionFormat, Serializable ...args) {
+        getReActorSystem().logInfo(descriptionFormat, args);
+    }
+
+    /**
+     * Send a logging request for error level to the centralized logger reactor
+     *
+     * @param descriptionFormat description in sl4j format
+     * @param args arguments list
+     */
+    public void logError(String descriptionFormat, Serializable ...args) {
+        getReActorSystem().logError(descriptionFormat, args);
+    }
+
+    /**
+     * Send a logging request for debug level to the centralized logger reactor
+     *
+     * @param descriptionFormat description in sl4j format
+     * @param args arguments list
+     */
+    public void logDebug(String descriptionFormat, Serializable ...args) {
+        getReActorSystem().logDebug(descriptionFormat, args);
     }
 
     public void reAct(Message msg) {
-        lastMsgSender = msg.getSender();
+        this.lastMsgSender = msg.getSender();
         BiConsumer<ReActorContext, Serializable> reAction = reActions.getReAction(msg.getPayload());
         reAction.accept(this, msg.getPayload());
     }
 
+    /**
+     * Get the sender of the last message processed by this reactor
+     * @return {@link ReActorRef} to the sender
+     */
     public ReActorRef getSender() {
         return lastMsgSender;
     }
@@ -191,18 +287,30 @@ public final class ReActorContext {
         return Objects.hash(getSelf());
     }
 
+    ReadWriteLock getStructuralLock() { return structuralLock; }
+
+    @SuppressWarnings("UnusedReturnValue")
+    boolean registerChild(ReActorRef childActor) {
+        return children.add(childActor);
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
+    boolean unregisterChild(ReActorRef childActor) {
+        return children.remove(childActor);
+    }
+
     @SuppressWarnings("NotNullFieldNotInitialized")
     public static class Builder {
-        private MailBox mbox;
+        private Function<ReActorContext, MailBox> mboxProvider;
         private ReActorRef reactorRef;
         private ReActorSystem reActorSystem;
         private ReActorRef parent;
-        private SubscriptionPolicy.SniffSubscription[] interceptRules;
+        private TypedSubscription[] typedSubscriptions;
         private Dispatcher dispatcher;
         private ReActions reActions;
 
-        public Builder setMbox(MailBox actorMbox) {
-            this.mbox = actorMbox;
+        public Builder setMbox(Function<ReActorContext, MailBox> actorMboxProvider) {
+            this.mboxProvider = actorMboxProvider;
             return this;
         }
 
@@ -221,8 +329,8 @@ public final class ReActorContext {
             return this;
         }
 
-        public Builder setInterceptRules(SubscriptionPolicy.SniffSubscription... interceptRules) {
-            this.interceptRules = interceptRules;
+        public Builder setSubscriptions(TypedSubscription... typedSubscriptions) {
+            this.typedSubscriptions = typedSubscriptions;
             return this;
         }
 

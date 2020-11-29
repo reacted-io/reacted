@@ -12,7 +12,7 @@ import io.reacted.core.CoreConstants;
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.AckingPolicy;
@@ -39,7 +39,7 @@ class LocalDriverTest {
     @BeforeAll
     static void prepareLocalDriver() throws Exception {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                                                                     .setReactorSystemName(CoreConstants.RE_ACTED_ACTOR_SYSTEM)
+                                                                     .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(1)
                                                                      .setRecordExecution(false)
                                                                      .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
@@ -56,26 +56,26 @@ class LocalDriverTest {
         localDriver = SystemLocalDrivers.DIRECT_COMMUNICATION;
         localDriver.initDriverLoop(reActorSystem);
 
-        SubscriptionPolicy.SniffSubscription subscribedTypes = SubscriptionPolicy.LOCAL.forType(Message.class);
+        TypedSubscription subscribedTypes = TypedSubscription.LOCAL.forType(Message.class);
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName(CoreConstants.REACTOR_NAME)
                                                    .setDispatcherName("Dispatcher")
-                                                   .setMailBoxProvider(BasicMbox::new)
-                                                   .setTypedSniffSubscriptions(subscribedTypes)
+                                                   .setMailBoxProvider(ctx -> new BasicMbox())
+                                                   .setTypedSubscriptions(subscribedTypes)
                                                    .build();
 
-        ReActorRef reActorRef = reActorSystem.spawnReActor(new MagicTestReActor(1, true, reActorConfig))
+        ReActorRef reActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))
                                              .orElseSneakyThrow();
 
         reActorSystem.registerReActorSystemDriver(localDriver);
 
 
         reActorContext = ReActorContext.newBuilder()
-                                       .setMbox(basicMbox)
+                                       .setMbox(ctx -> basicMbox)
                                        .setReactorRef(reActorRef)
                                        .setReActorSystem(reActorSystem)
                                        .setParentActor(ReActorRef.NO_REACTOR_REF)
-                                       .setInterceptRules(subscribedTypes)
+                                       .setSubscriptions(subscribedTypes)
                 .setDispatcher(mock(Dispatcher.class))
                 .setReActions(mock(ReActions.class))
                 .build();

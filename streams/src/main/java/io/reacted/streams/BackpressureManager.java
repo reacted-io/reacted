@@ -11,7 +11,6 @@ package io.reacted.streams;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.mailboxes.MailBox;
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
@@ -19,7 +18,8 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import io.reacted.streams.messages.SubscriberComplete;
+import io.reacted.streams.messages.PublisherComplete;
+import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.SubscriberError;
 import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
@@ -27,18 +27,22 @@ import io.reacted.streams.messages.UnsubscriptionRequest;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.Executor;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
-import java.util.function.Supplier;
+import java.util.function.Function;
+
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription, AutoCloseable {
     private final Flow.Subscriber<? super PayloadT> subscriber;
     private final ReActorRef feedGate;
-    private final BackpressuringMbox backpressuredMailbox;
+    private final BackpressuringMbox.Builder bpMailboxBuilder;
+    private final CompletionStage<Void> onSubscriptionCompleteTrigger;
+    @Nullable
+    private MailBox backpressuringMbox;
     @Nullable
     private volatile ReActorContext backpressurerCtx;
 
@@ -46,32 +50,38 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
      * It manages a backpressured reactive streams. A reactive stream can accept local (to the reactor system) or
      * remote subscribers
      *
-     * @param subscriber subscriber body
+     * @param subscription A {@link io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscription} containing the details of the subscriber
      * @param feedGate source of data for the managed stream
-     * @param bufferSize subscriber data buffer
-     * @param backpressureTimeout give up timeout on publication attempt
      */
-    BackpressureManager(Flow.Subscriber<? super PayloadT> subscriber, ReActorRef feedGate, int bufferSize,
-                        Executor asyncBackpressurer, Duration backpressureTimeout) {
-        this.subscriber = Objects.requireNonNull(subscriber);
+    BackpressureManager(ReactedSubmissionPublisher.ReActedSubscription<PayloadT> subscription,
+                        ReActorRef feedGate, CompletionStage<Void> onSubscriptionCompleteTrigger) {
+        this.onSubscriptionCompleteTrigger = onSubscriptionCompleteTrigger;
+        this.subscriber = subscription.getSubscriber();
         this.feedGate = Objects.requireNonNull(feedGate);
-        this.backpressuredMailbox = new BackpressuringMbox(new BoundedBasicMbox(bufferSize),
-                                                           Objects.requireNonNull(backpressureTimeout),
-                                                           bufferSize, 0, Objects.requireNonNull(asyncBackpressurer),
-                                                           Set.of(ReActorInit.class, ReActorStop.class,
-                                                                  SubscriptionRequest.class, SubscriptionReply.class,
-                                                                  UnsubscriptionRequest.class, SubscriberError.class),
-                                                           Set.of(SubscriberComplete.class));
+        this.bpMailboxBuilder = BackpressuringMbox.newBuilder()
+                                                  .setRealMbox(new BoundedBasicMbox(subscription.getBufferSize()))
+                                                  .setBackpressureTimeout(subscription.getBackpressureTimeout())
+                                                  .setBufferSize(subscription.getBufferSize())
+                                                  .setRequestOnStartup(0)
+                                                  .setAsyncBackpressurer(subscription.getAsyncBackpressurer())
+                                                  .setNonDelayable(Set.of(ReActorInit.class, ReActorStop.class,
+                                                                          SubscriptionRequest.class,
+                                                                          SubscriptionReply.class,
+                                                                          UnsubscriptionRequest.class,
+                                                                          SubscriberError.class,
+                                                                          PublisherInterrupt.class))
+                                                  .setNonBackpressurable(Set.of(PublisherComplete.class))
+                                                  .setSequencer(subscription.getSequencer());
     }
 
     @Override
     public void request(long elements) {
         if (elements <= 0) {
-            errorTermination(Objects.requireNonNull(this.backpressurerCtx),
-                             new IllegalArgumentException("non-positive subscription request"), this.subscriber);
+            errorTermination(Objects.requireNonNull(backpressurerCtx),
+                             new IllegalArgumentException("non-positive subscription request"), subscriber);
         } else {
-            if (this.backpressurerCtx != null) {
-                this.backpressuredMailbox.request(elements);
+            if (backpressurerCtx != null && backpressuringMbox != null) {
+                backpressuringMbox.request(elements);
             }
         }
     }
@@ -81,15 +91,13 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
 
     @Override
     public void close() {
-        if (this.backpressurerCtx != null) {
-            var ctx = Objects.requireNonNull(this.backpressurerCtx);
-            ctx.stop();
-            this.feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(ctx.getSelf()));
+        if (backpressurerCtx != null) {
+            Objects.requireNonNull(backpressurerCtx).stop();
         }
     }
 
-    Supplier<MailBox> getManagerMailbox() {
-        return () -> this.backpressuredMailbox;
+    Function<ReActorContext, MailBox> getManagerMailbox() {
+        return mboxOwner -> bpMailboxBuilder.setRealMailboxOwner(mboxOwner).build();
     }
 
     ReActions getReActions() {
@@ -98,59 +106,68 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                         .reAct(ReActorStop.class, this::onStop)
                         .reAct(SubscriptionReply.class, this::onSubscriptionReply)
                         .reAct(SubscriberError.class, this::onSubscriberError)
-                        .reAct(SubscriberComplete.class, this::onSubscriberComplete)
+                        .reAct(PublisherComplete.class, this::onPublisherComplete)
+                        .reAct(PublisherInterrupt.class, this::onPublisherInterrupt)
                         .reAct(this::forwarder)
                         .build();
     }
 
+    private void onStop(ReActorContext raCtx, ReActorStop stop) {
+        feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(raCtx.getSelf()));
+    }
+
     private void forwarder(ReActorContext raCtx, Object anyPayload) {
-        //noinspection unchecked
-        Try.ofRunnable(() -> this.subscriber.onNext((PayloadT) anyPayload))
-           .ifError(error -> errorTermination(raCtx, error, this.subscriber));
+        try {
+            //noinspection unchecked
+            subscriber.onNext((PayloadT) anyPayload);
+        } catch (Exception anyException) {
+           errorTermination(raCtx, anyException, subscriber);
+        }
     }
 
     private void onSubscriptionReply(ReActorContext raCtx, SubscriptionReply payload) {
+        onSubscriptionCompleteTrigger.toCompletableFuture().complete(null);
         if (payload.isSuccess()) {
-            Try.ofRunnable(() -> this.subscriber.onSubscribe(this))
-               .ifError(error -> errorTermination(raCtx, error, this.subscriber));
+            Try.ofRunnable(() -> subscriber.onSubscribe(this))
+               .ifError(error -> errorTermination(raCtx, error, subscriber));
         } else {
-            errorTermination(raCtx, new RuntimeException("RemoteRegistrationException"), this.subscriber);
+            errorTermination(raCtx, new RuntimeException("RemoteRegistrationException"), subscriber);
         }
     }
 
     private void onSubscriberError(ReActorContext raCtx, SubscriberError error) {
-        errorTermination(raCtx, error.getError(), this.subscriber);
+        errorTermination(raCtx, error.getError(), subscriber);
     }
 
-    private void onSubscriberComplete(ReActorContext raCtx, SubscriberComplete subscriberComplete) {
-        completeTermination(raCtx, this.subscriber);
+    private void onPublisherComplete(ReActorContext raCtx, PublisherComplete publisherComplete) {
+        completeTermination(raCtx, subscriber);
+    }
+
+    private void onPublisherInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
+        completeTermination(raCtx, subscriber);
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
         this.backpressurerCtx = raCtx;
-        var requestDelivery = this.feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf()));
-        Try.TryConsumer<Throwable> onSubscriptionError = error -> { this.subscriber.onSubscribe(this);
-                                                                    errorTermination(raCtx, error, this.subscriber); };
-        requestDelivery.thenAccept(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered)
-                                                                         .ifError(onSubscriptionError));
-    }
+        this.backpressuringMbox = raCtx.getMbox();
 
-    private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        this.backpressuredMailbox.close();
+        Try.TryConsumer<Throwable> onSubscriptionError = error -> { subscriber.onSubscribe(this);
+                                                                    errorTermination(raCtx, error, subscriber); };
+        ifNotDelivered(feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())),
+                       onSubscriptionError);
     }
 
     private void completeTermination(ReActorContext raCtx, Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(localSubscriber::onComplete)
-           .ifError(error -> raCtx.getReActorSystem().logError("Error in {} onComplete: ",
-                                                               localSubscriber.getClass().getSimpleName(), error));
+           .ifError(error -> raCtx.logError("Error in {} onComplete: ",
+                                            localSubscriber.getClass().getSimpleName(), error));
     }
 
     private void errorTermination(ReActorContext raCtx, Throwable handlingError,
                                   Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(() -> localSubscriber.onError(handlingError))
-           .ifError(error -> raCtx.getReActorSystem().logError("Error in {} onError: ",
-                                                               localSubscriber.getClass().getSimpleName(), error));
+           .ifError(error -> raCtx.logError("Error in {} onError: ", localSubscriber.getClass().getSimpleName(), error));
     }
 }

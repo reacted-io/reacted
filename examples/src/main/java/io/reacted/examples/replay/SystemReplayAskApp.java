@@ -10,7 +10,7 @@ package io.reacted.examples.replay;
 
 import com.google.common.base.Strings;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.SubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorRef;
@@ -45,11 +45,11 @@ public class SystemReplayAskApp {
                         .initReActorSystem();
         //Every message sent within the reactor system is going to be saved now
         var echoReActions = ReActions.newBuilder()
-                                     .reAct((ctx, paylod) -> ctx.getSender()
+                                     .reAct((ctx, payload) -> ctx.getSender()
                                                                 .tell(ReActorRef.NO_REACTOR_REF,
                                                                       String.format("%s - Received %s from %s @ %s%n",
                                                                                     Instant.now().toString(),
-                                                                                    paylod.toString(),
+                                                                                    payload.toString(),
                                                                                     ctx.getSender().getReActorId()
                                                                                        .getReActorName(),
                                                                                     ctx.getReActorSystem()
@@ -59,11 +59,11 @@ public class SystemReplayAskApp {
         var echoReActorConfig = ReActorConfig.newBuilder()
                                              .setReActorName("EchoReActor")
                                              .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
-                                             .setMailBoxProvider(BasicMbox::new)
-                                             .setTypedSniffSubscriptions(SubscriptionPolicy.SniffSubscription.NO_SUBSCRIPTIONS)
+                                             .setMailBoxProvider(ctx -> new BasicMbox())
+                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                              .build();
 
-        var echoReference = recordedReactorSystem.spawnReActor(echoReActions, echoReActorConfig)
+        var echoReference = recordedReactorSystem.spawn(echoReActions, echoReActorConfig)
                                                  .orElseSneakyThrow();
 
         echoReference.ask("I am an ask", String.class, "AskRequest")
@@ -82,7 +82,7 @@ public class SystemReplayAskApp {
                                                                           ExampleUtils.NO_REMOTING_DRIVERS))
                 .initReActorSystem();
         //Once the reactor will be created, the system will notify that and will begin its replay
-        echoReference = replayedReActorSystem.spawnReActor(echoReActions, echoReActorConfig).orElseSneakyThrow();
+        echoReference = replayedReActorSystem.spawn(echoReActions, echoReActorConfig).orElseSneakyThrow();
         echoReference.ask("I am an ask", String.class, "AskRequest")
                      .thenAccept(reply -> reply.ifSuccessOrElse(System.out::println,
                                                                 Throwable::printStackTrace))
