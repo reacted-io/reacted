@@ -181,7 +181,7 @@ public class Service implements ReActiveEntity {
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
         this.routeesMap.remove(reSpawnRequest.deadRoutee);
         Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider().get()))
-           .map(routee -> spawnRoutee(raCtx, routee.getReActions(), reSpawnRequest.routeeConfig))
+           .map(routee -> spawnRoutee(raCtx, routee.getReActions(), routee.getConfig()))
            .ifSuccessOrElse(this.routeesMap::add, spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR, spawnError));
     }
 
@@ -194,8 +194,10 @@ public class Service implements ReActiveEntity {
         routeeCtx.getHierarchyTermination()
                  .thenAccept(terminated -> { if (routeeCtx.isStop()) {
                                                 this.routeesMap.remove(routee);
-                                             } else { routerCtx.selfTell(new RouteeReSpawnRequest(routeeConfig,
-                                                                                                  routee)); }});
+                                             } else {
+                                                routerCtx.selfTell(new RouteeReSpawnRequest(routee));
+                                             }
+                                           });
         return routee;
     }
 
@@ -234,10 +236,8 @@ public class Service implements ReActiveEntity {
     }
 
     public static class RouteeReSpawnRequest implements Serializable {
-        private final ReActorConfig routeeConfig;
         private final ReActorRef deadRoutee;
-        public RouteeReSpawnRequest(ReActorConfig routeeConfig, ReActorRef deadRoutee) {
-            this.routeeConfig = routeeConfig;
+        public RouteeReSpawnRequest(ReActorRef deadRoutee) {
             this.deadRoutee = deadRoutee;
         }
     }
