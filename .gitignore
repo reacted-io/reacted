@@ -4,3 +4,11 @@ target
 .m2/
 /release.properties
 .DS_Store
+
+# VS CODE
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+.devcontainer/
