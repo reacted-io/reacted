@@ -3,3 +3,8 @@ target
 .idea/
 .m2/
 /release.properties
+*.settings/
+.classpath
+.project
+*bin/
+*.devcontainer/
