@@ -636,22 +636,33 @@ public class ReActorSystem {
     }
 
     /* SneakyThrows */
-    @SuppressWarnings("RedundantThrows")
+
+    /**
+     * @throws Exception a SneakyThrown exception
+     */
     private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
-                                                                             ? extends ServiceRegistryConfig<?, ?>>> drivers)
-            throws Exception {
+                                                                             ? extends ServiceRegistryConfig<?, ?>>> drivers) {
         drivers.forEach(driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())
                 .orElseSneakyThrow());
     }
 
-    private void initReActorSystemReActors() throws ReActorSystemInitException {
+    /**
+     * @throws ReActorSystemInitException
+     */
+    private void initReActorSystemReActors() {
         reActors.values().stream()
                 .map(ReActorContext::getSelf)
                 .forEach(reactor -> throwOnFailedDelivery(reactor.tell(getSystemSink(), REACTOR_INIT),
                                                           ReActorSystemInitException::new));
     }
 
-    private void spawnReActorSystemReActors() throws RuntimeException {
+    /**
+     * @throws NullPointerException
+     * @throws ReActorSystemInitException
+     * @throws ReActorSystemStructuralInconsistencyError
+     * @throws ReActorRegistrationException
+     */
+    private void spawnReActorSystemReActors() {
         this.init = spawnInit();
         this.reActorSystemRoot = spawnReActorsRoot(init);
         this.systemRemotingRoot = spawnRemotingRoot(reActorSystemRoot);

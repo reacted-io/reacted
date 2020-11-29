@@ -137,7 +137,7 @@ public class ReActorSystemRef implements Externalizable {
          */
         ChannelId sourceChannelId = new ChannelId();
         sourceChannelId.readExternal(in);
-        RemotingDriver.getDriverCtx()
+        ReActorSystemDriver.getDriverCtx()
                       .flatMap(driverCtx -> driverCtx.getLocalReActorSystem()
                                                      .findGate(reActorSystemId,
                                                                sourceChannelId.equals(ChannelId.INVALID_CHANNEL_ID)

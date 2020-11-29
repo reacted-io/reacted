@@ -52,7 +52,7 @@ import java.util.concurrent.TimeoutException;
 @NonNullByDefault
 public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> {
     public static final ThreadLocal<DriverCtx> REACTOR_SYSTEM_CTX = new InheritableThreadLocal<>();
-    protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystemDriver.class);
     private final ConfigT driverConfig;
     private final Cache<Long, CompletableFuture<Try<DeliveryStatus>>> pendingAcksTriggers;
     @Nullable
@@ -74,14 +74,14 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                                .build();
     }
 
-    abstract public void initDriverLoop(ReActorSystem localReActorSystem) throws Exception;
-    abstract public CompletionStage<Try<Void>> cleanDriverLoop();
-    abstract public UnChecked.CheckedRunnable getDriverLoop();
-    abstract public ChannelId getChannelId();
-    abstract public Properties getChannelProperties();
-    abstract public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message);
-    abstract public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message);
-    abstract public boolean channelRequiresDeliveryAck();
+    public abstract void initDriverLoop(ReActorSystem localReActorSystem) throws Exception;
+    public abstract CompletionStage<Try<Void>> cleanDriverLoop();
+    public abstract UnChecked.CheckedRunnable getDriverLoop();
+    public abstract ChannelId getChannelId();
+    public abstract Properties getChannelProperties();
+    public abstract Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message);
+    public abstract CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message);
+    public abstract boolean channelRequiresDeliveryAck();
 
     public ConfigT getDriverConfig() { return driverConfig; }
 
@@ -94,12 +94,12 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      * @return a completion stage that is going to be completed on error or when the message is successfully delivered
      *         to the target mailbox
      */
-    abstract public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    public abstract <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
-    abstract public  <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    public abstract  <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message);
-    abstract public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    public abstract <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
 
     @Nullable

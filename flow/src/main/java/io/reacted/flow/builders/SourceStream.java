@@ -8,10 +8,7 @@
 
 package io.reacted.flow.builders;
 
-import io.reacted.flow.operators.PipelineStage;
-
-public interface StepLevel<BuiltT> {
-    StepLevel<BuiltT> setLevelName(String levelName);
-    StepLevel<BuiltT> setOperator(PipelineStage operator);
-    BuiltT build();
+public class SourceStream {
+    private SourceStream() { }
+    public static SourceStream of() { return new SourceStream(); }
 }

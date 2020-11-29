@@ -111,7 +111,7 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
                ", hostName=" + hostNameExpr + '}';
     }
 
-    public static abstract class Builder<BuilderT, BuiltT> extends InheritableBuilder.Builder<BuilderT, BuiltT> {
+    public abstract static class Builder<BuilderT, BuiltT> extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String serviceName;
         private SelectionType selectionType = SelectionType.ROUTED;

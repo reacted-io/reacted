@@ -18,6 +18,7 @@ import java.io.Serializable;
 import java.time.Duration;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 @NonNullByDefault
@@ -32,10 +33,10 @@ public final class ReActedUtils {
     }
 
     public static  <PayloadT extends Serializable> void rescheduleIf(BiConsumer<ReActorContext, PayloadT> realCall,
-                                                                     Supplier<Boolean> shouldReschedule,
+                                                                     BooleanSupplier shouldReschedule,
                                                                      Duration rescheduleInterval,
                                                                      ReActorContext raCtx, PayloadT message) {
-        if (shouldReschedule.get()) {
+        if (shouldReschedule.getAsBoolean()) {
             raCtx.rescheduleMessage(message, rescheduleInterval)
                  .ifError(error -> raCtx.logError("WARNING {} misbehaves. Error attempting a {} reschedulation. " +
                                                   "System remoting may become unreliable ",

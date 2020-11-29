@@ -5,11 +5,17 @@
     <parent>
         <artifactId>reacted-all</artifactId>
         <groupId>io.reacted</groupId>
-        <version>1.4.3-SNAPSHOT</version>
+        <version>1.4.6-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>reacted-flow</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-core</artifactId>
+        </dependency>
+    </dependencies>
 
 </project>

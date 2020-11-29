@@ -45,14 +45,4 @@ public final class NullReActorSystemRef extends ReActorSystemRef {
 
     @Override
     public ReActorSystemId getReActorSystemId() { return ReActorSystemId.NO_REACTORSYSTEM_ID; }
-
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        super.writeExternal(out);
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        super.readExternal(in);
-    }
 }
