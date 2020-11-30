@@ -10,23 +10,21 @@ package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.config.reactors.TypedSubscription;
-import io.reacted.core.datastructure.MultiMaps;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.LoopbackDriver;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
-import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.exceptions.ReActorRegistrationException;
 import io.reacted.core.exceptions.ReActorSystemInitException;
 import io.reacted.core.exceptions.ReActorSystemStructuralInconsistencyError;
@@ -52,6 +50,7 @@ import io.reacted.core.reactors.systemreactors.SystemMonitor;
 import io.reacted.core.reactors.systemreactors.SystemLogger;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.services.Service;
+import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.slf4j.Logger;
@@ -59,6 +58,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -73,7 +73,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
@@ -88,7 +87,9 @@ public class ReActorSystem {
     /* Default dispatcher. Used by system internals */
     public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
     private static final int SYSTEM_TASK_SCHEDULER_POOL_SIZE = 2;
-
+    // Service discovery always hits the LOCAL services of the LOCAL service registry driver. There is no reason
+    // to wait indefinitely for an answer from local resources
+    private static final Duration SERVICE_DISCOVERY_TIMEOUT = Duration.ofSeconds(10);
     private static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
     private static final Serializable REACTOR_INIT = new ReActorInit();
     private static final DispatcherConfig SYSTEM_DISPATCHER_CONFIG = DispatcherConfig.newBuilder()
@@ -96,16 +97,13 @@ public class ReActorSystem {
                                                                                      .setBatchSize(10)
                                                                                      .setDispatcherThreadsNum(4)
                                                                                      .build();
-    /* Maps a reactor system to a route for reaching it. Multiple reactor systems may be reached from the
-     *  same driver. A driver allows you to communicate with through a given middleware, so what it offers
-     *  is a gate to reach other reactor systems */
-    private final Map<ReActorSystemId, Map<ChannelId, ReActorSystemRef>> reActorSystemsGates;
+
     private final Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> reActorSystemDrivers;
     /* All the reactors spawned by a specific reactor system instance */
     private final Map<ReActorId, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
-    private final MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, TypedSubscriptionPolicy,
-                                                         ReActorContext> typedSubscribers;
+    private final TypedSubscriptionsManager typedSubscriptionsManager;
+    private final RegistryGatesCentralizedManager gatesCentralizedManager;
     private final Map<String, Dispatcher> dispatchers;
     private final ReActorSystemConfig systemConfig;
     private final AtomicLong newSeqNum;
@@ -135,25 +133,20 @@ public class ReActorSystem {
     private ReActorRef systemLoggingReActor;
     @Nullable
     private ReActorRef systemMonitor;
-    @Nullable
-    private ReActorSystemRef loopback;
 
-    /**
-     * Creates a new ReActorSystem that still requires initialization
-     **/
     public ReActorSystem(ReActorSystemConfig config) {
-        this.reActorSystemsGates = new ConcurrentHashMap<>();
-        this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
-        this.reActors = new ConcurrentHashMap<>(10_000_000, 0.5f);
-        this.typedSubscribers = new MultiMaps.CopyOnWriteHashMapOfEnumMaps<>(1000, 0.5f, TypedSubscriptionPolicy.class);
-        this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.systemConfig = Objects.requireNonNull(config);
         this.localReActorSystemId = new ReActorSystemId(config.getReActorSystemName());
+        this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
+                                                                           new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
+        this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
+        this.reActors = new ConcurrentHashMap<>(10_000_000, 0.5f);
+        this.typedSubscriptionsManager = new TypedSubscriptionsManager();
+        this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.newSeqNum = new AtomicLong(0);
         this.reActorStop = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, Long.MIN_VALUE,
                                        localReActorSystemId, AckingPolicy.NONE, new ReActorStop());
     }
-
     /**
      * @return The configuration for the reactor system
      */
@@ -251,50 +244,30 @@ public class ReActorSystem {
     }
 
     //XXX Generate a new unique sequence number for messages generated from this reactor system
-    public long getNewSeqNum() {
-        return newSeqNum.getAndIncrement();
-    }
+    public long getNewSeqNum() { return newSeqNum.getAndIncrement(); }
 
     //XXX Get the identifier for this reactor system
-    public ReActorSystemId getLocalReActorSystemId() {
-        return localReActorSystemId;
-    }
+    public ReActorSystemId getLocalReActorSystemId() { return localReActorSystemId; }
 
-    //XXX Get all the typed (sniff) subscribers. Used as a cache for the propagations
-    public MultiMaps.CopyOnWriteHashMapOfEnumMaps<Class<? extends Serializable>, TypedSubscriptionPolicy,
-            ReActorContext> getTypedSubscribers() {
-        return typedSubscribers;
-    }
-
-    //XXX Define how a given reactor system / channel is reached from the current reactor system
-    //A reactorsystem can be reached through different channels (i.e. kafka, grpc, chronicle queue...)
-    //and channelproperties define how to setup the channel driver to reach the reactor system.
-    //i.e. for a reactor system reachable through grpc, channelProperties will contain ip/address of the other
-    //reactor system
-    @SuppressWarnings("UnusedReturnValue")
-    public ReActorSystemRef registerNewRoute(ReActorSystemId reActorSystemId,
-                                             ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driver,
-                                             Properties channelProperties) {
-        var channelMap = reActorSystemsGates.computeIfAbsent(reActorSystemId,
-                                                             newReActorSystem -> new ConcurrentHashMap<>());
-        return channelMap.computeIfAbsent(driver.getChannelId(),
-                                          channelId -> new ReActorSystemRef(driver, channelProperties,
-                                                                            reActorSystemId));
-    }
-
-    //XXX Same as above
-    public void registerNewRoute(ReActorSystemId reActorSystemId, ChannelId channelId, Properties channelProperties) {
-        getReActorSystemDrivers().stream()
-                                 .filter(driver -> driver.getChannelId().equals(channelId))
-                                 .findFirst()
-                                 .ifPresent(driver -> registerNewRoute(reActorSystemId, driver, channelProperties));
+    //XXX Get all the typed subscribers. Used as a cache for the propagations
+    public TypedSubscriptionsManager getTypedSubscriptionsManager() { return typedSubscriptionsManager; }
+    public void registerNewRoute(ReActorSystemId reActorSystemId, ChannelId channelId, Properties channelProperties,
+                                 ReActorRef registryDriver) {
+        ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driverForChannelId;
+        driverForChannelId = getReActorSystemDrivers().stream()
+                                                      .filter(driver -> driver.getChannelId().equals(channelId))
+                                                      .findAny()
+                                                      .orElse(null);
+        gatesCentralizedManager.registerNewRoute(reActorSystemId,
+                                                 driverForChannelId == null
+                                                 ? NullDriver.NULL_DRIVER
+                                                 : driverForChannelId, channelId, channelProperties, registryDriver);
     }
 
     //XXX Forget how to reach a given reactor system through a specific channel. i.e. the remote reactor system
     //driver is crashed or has been deactivated
     public void unregisterRoute(ReActorSystemId reActorSystemId, ChannelId channelId) {
-        Optional.ofNullable(reActorSystemsGates.get(reActorSystemId))
-                .ifPresent(elem -> elem.remove(channelId));
+        gatesCentralizedManager.unregisterRoute(reActorSystemId, channelId);
     }
 
     /**
@@ -318,10 +291,8 @@ public class ReActorSystem {
      */
     public CompletionStage<Try<Void>>
     unregisterReActorSystemDriver(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> anyDriver) {
-        for (Map.Entry<ReActorSystemId, Map<ChannelId, ReActorSystemRef>> gate : reActorSystemsGates.entrySet()) {
-            unregisterRoute(gate.getKey(), anyDriver.getChannelId());
-        }
         reActorSystemDrivers.remove(anyDriver);
+        gatesCentralizedManager.unregisterRoute(anyDriver);
         var stopProcess = anyDriver.stopDriverCtx(this);
         stopProcess.thenAccept(stopAttempt -> stopAttempt.ifError(error -> LOGGER.error("Error stopping driver {}",
                                                                                         anyDriver.getChannelId(),
@@ -329,12 +300,16 @@ public class ReActorSystem {
         return stopProcess;
     }
 
-    //XXX Returns the ReActorSystemReference for a given ReActorSystem/Channel Id.
-    public Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId, ChannelId decodingDriverChannelId) {
-        return Optional.ofNullable(RemotingDriver.isLocalReActorSystem(getLocalReActorSystemId(), reActorSystemId)
-                                   ? getLoopback()
-                                   : reActorSystemsGates.getOrDefault(reActorSystemId, Map.of())
-                                                        .get(decodingDriverChannelId));
+    /**
+     * Tries to find a route for the specified pair reactor system / channel id.
+     * It if it is not possible, an alternate route is attempted.
+     *
+     * @param reActorSystemId Target reactor system
+     * @param preferredChannelId Preferred {@link ChannelId} to use
+     * @return A route/reference towards the requested reactor system
+     */
+    public Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId, ChannelId preferredChannelId) {
+        return gatesCentralizedManager.findGate(reActorSystemId, preferredChannelId);
     }
 
     /**
@@ -355,6 +330,7 @@ public class ReActorSystem {
      * semantic
      */
     public void shutDown() {
+
         Try.of(() -> stopUserReActors().toCompletableFuture().join())
            .ifError(error -> LOGGER.error("Error stopping user reactors", error));
 
@@ -362,6 +338,11 @@ public class ReActorSystem {
            .ifSuccessOrElse(stopAttempt -> stopAttempt.ifError(error -> LOGGER.error("Error stopping remote drivers",
                                                                                      error)),
                             joinError -> LOGGER.error("Error waiting for remoting drivers to stop", joinError));
+
+        Try.ofRunnable(() -> stop(getSystemRemotingRoot().getReActorId())
+                                .map(CompletionStage::toCompletableFuture)
+                                .ifPresent(CompletableFuture::join))
+           .ifError(error -> LOGGER.error("Error stopping service registy drivers"));
 
         Try.of(() -> stopSystemReActors().toCompletableFuture().join())
            .ifError(error -> LOGGER.error("Error stopping system reactors", error));
@@ -393,8 +374,8 @@ public class ReActorSystem {
     public CompletionStage<Try<ServiceDiscoveryReply>>
     serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
-                                   ServiceDiscoveryReply.class, searchFilter.getServiceName() + "|" +
-                                                                searchFilter.getSelectionType().name());
+                                   ServiceDiscoveryReply.class, SERVICE_DISCOVERY_TIMEOUT,
+                                   searchFilter.getServiceName() + "|" + searchFilter.getSelectionType().name());
     }
 
     /**
@@ -432,8 +413,9 @@ public class ReActorSystem {
      * a failed Try on failure
      */
     public Try<ReActorRef> spawn(ReActions reActions, ReActiveEntityConfig<?, ?> reActorConfig) {
-        return spawnChild(Objects.requireNonNull(reActions), Objects.requireNonNull(userReActorsRoot),
-                          Objects.requireNonNull(reActorConfig));
+        return spawnChild(Objects.requireNonNull(reActions, "ReActions cannot be null"),
+                          Objects.requireNonNull(userReActorsRoot, "System not inited correctly"),
+                          Objects.requireNonNull(reActorConfig, "ReActorConfig cannot be null"));
     }
 
     /**
@@ -476,20 +458,86 @@ public class ReActorSystem {
     public Try<ReActorRef> spawnService(ServiceConfig serviceConfig) {
         return spawn(new Service(Objects.requireNonNull(serviceConfig)).getReActions(), serviceConfig);
     }
-
-    //XXX Get the ReActorSystemRef for the current reactor system
-    public ReActorSystemRef getLoopback() {
-        return Objects.requireNonNullElse(loopback, NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF);
-    }
+    public ReActorSystemRef getLoopback() { return gatesCentralizedManager.getLoopBack(); }
 
     /**
      * Sends a message to all the local subscribers for the message type
      * @param msgSender A {@link ReActorRef} defining the sender of this message
      * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     * @return A {@link CompletionStage} that is going to be completed when the message is sent
      */
     public <PayLoadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     broadcastToLocalSubscribers(ReActorRef msgSender, PayLoadT payload) {
         return getSystemSink().tell(Objects.requireNonNull(msgSender), Objects.requireNonNull(payload));
+    }
+
+    /**
+     * Sends a message to all the remote subscribers for the message type
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToRemoteSubscribers(PayLoadT payload) {
+        gatesCentralizedManager.findAllGates().stream()
+                               .filter(Predicate.not(getLoopback()::equals))
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(ReActorRef.NO_REACTOR_REF),
+                                                                      Objects.requireNonNull(payload)));
+    }
+
+    /**
+     * Sends a message to all the remote subscribers for the message type
+     * @param msgSender A {@link ReActorRef} defining the sender of this message
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToRemoteSubscribers(ReActorRef msgSender, PayLoadT payload) {
+        gatesCentralizedManager.findAllGates().stream()
+                               .filter(Predicate.not(getLoopback()::equals))
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
+                                                                      Objects.requireNonNull(payload)));
+    }
+
+    /**
+     * Sends a message to all the remote subscribers for the message type
+     * @param channelId {@link ChannelId} towards the message should be broadcasted to
+     * @param msgSender A {@link ReActorRef} defining the sender of this message
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToChannelId(ChannelId channelId, ReActorRef msgSender,
+                                                                     PayLoadT payload) {
+        gatesCentralizedManager.findAllGates(channelId).stream()
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
+                                                                      Objects.requireNonNull(payload)));
+    }
+
+    /**
+     * Sends a message to all the remote subscribers for the message type
+     * @param channelId {@link ChannelId} towards the message should be broadcasted to
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToChannelId(ChannelId channelId, PayLoadT payload) {
+        gatesCentralizedManager.findAllGates(channelId).stream()
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(getSystemSink()),
+                                                                      Objects.requireNonNull(payload)));
+    }
+
+    /**
+     * Sends a message to all the subscribers for the message type
+     * @param msgSender A {@link ReActorRef} defining the sender of this message
+     * @param payload The payload that should be broadcasted
+     * @param <PayLoadT> Any {@link Serializable} object
+     */
+    public <PayLoadT extends Serializable> void broadcastToAllSubscribers(ReActorRef msgSender, PayLoadT payload) {
+        gatesCentralizedManager.findAllGates().stream()
+                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
+                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
+                                                                      Objects.requireNonNull(payload)));
     }
 
     //XXX Reactor Id -> ReActor Context mapper
@@ -526,10 +574,8 @@ public class ReActorSystem {
         return Objects.requireNonNull(systemSchedulingService);
     }
 
-    public void flushAllRemoteGates() {
-        reActorSystemsGates.keySet().stream()
-                           .filter(channelIdReActorSystemRefMap -> !channelIdReActorSystemRefMap.equals(getLocalReActorSystemId()))
-                           .forEach(reActorSystemsGates::remove);
+    public void flushRemoteGatesForDriver(ReActorRef registryDriver) {
+        gatesCentralizedManager.unregisterSource(registryDriver);
     }
 
     Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> getReActorSystemDrivers() {
@@ -542,20 +588,18 @@ public class ReActorSystem {
                                    TypedSubscription[] newIntercepted) {
 
         Arrays.stream(oldIntercepted)
-              .forEach(sniffSubscription -> typedSubscribers.remove(sniffSubscription.getPayloadType(),
-                                                                    sniffSubscription.getSubscriptionPolicy(),
-                                                                    targetActor));
+              .forEach(typedSubscription -> typedSubscriptionsManager.removeSubscription(typedSubscription.getPayloadType(),
+                                                                                         typedSubscription.getSubscriptionPolicy(),
+                                                                                         targetActor));
 
         Arrays.stream(newIntercepted)
-              .forEach(sniffSubscription -> typedSubscribers.add(sniffSubscription.getPayloadType(),
-                                                                 sniffSubscription.getSubscriptionPolicy(),
-                                                                 targetActor));
+              .forEach(typedSubscription -> typedSubscriptionsManager.addSubscription(typedSubscription.getPayloadType(),
+                                                                                      typedSubscription.getSubscriptionPolicy(),
+                                                                                      targetActor));
     }
 
     private Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {
-        return RemotingDriver.isLocalReActorSystem(getLocalReActorSystemId(), reActorSystemId)
-               ? List.of(getLoopback())
-               : List.copyOf(reActorSystemsGates.getOrDefault(reActorSystemId, Map.of()).values());
+        return gatesCentralizedManager.findGates(reActorSystemId);
     }
 
     private void initSystem() throws Exception {
@@ -567,21 +611,27 @@ public class ReActorSystem {
 
         this.systemSchedulingService = createSystemScheduleService(getSystemConfig().getReActorSystemName(),
                                                                    SYSTEM_TASK_SCHEDULER_POOL_SIZE);
+
         this.msgFanOutPool = createFanOutPool(getLocalReActorSystemId().getReActorSystemName(),
                                               getSystemConfig().getMsgFanOutPoolSize());
 
-        LoopbackDriver<? extends ChannelDriverConfig<?, ?>> loopbackDriver =
-                new LoopbackDriver<>(this, getSystemConfig().getLocalDriver());
-        registerReActorSystemDriver(loopbackDriver).orElseSneakyThrow();
-        this.loopback = registerNewRoute(localReActorSystemId, loopbackDriver, new Properties());
+        registerReActorSystemDriver(gatesCentralizedManager.getLoopbackDriver()).orElseSneakyThrow();
+
         registerReActorSystemDriver(NullDriver.NULL_DRIVER).orElseSneakyThrow();
-        registerNewRoute(ReActorSystemId.NO_REACTORSYSTEM_ID, NullDriver.NULL_DRIVER, new Properties());
+
+        gatesCentralizedManager.registerNewRoute(ReActorSystemId.NO_REACTORSYSTEM_ID, NullDriver.NULL_DRIVER,
+                                                 NullDriver.NULL_DRIVER.getChannelId(), new Properties(),
+                                                 ReActorRef.NO_REACTOR_REF);
+
         spawnReActorSystemReActors();
         initAllDispatchers(dispatchers.values(), getSystemSink(), systemConfig.isRecordedExecution(),
                            this::unRegisterReActor);
+
         initReActorSystemReActors();
+
         getSystemConfig().getRemotingDrivers().forEach(remotingDriver -> this.registerReActorSystemDriver(remotingDriver)
                                                                              .orElseSneakyThrow());
+
         initServiceRegistryDrivers(getSystemConfig().getServiceRegistryDrivers());
     }
 
@@ -631,14 +681,9 @@ public class ReActorSystem {
 
     private List<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> getNonRemoteDrivers() {
         return Stream.concat(Stream.of(NullDriver.NULL_DRIVER),
-                             getAllGates(localReActorSystemId).stream()
-                                                              .map(ReActorSystemRef::getBackingDriver))
+                             gatesCentralizedManager.findGates(localReActorSystemId).stream()
+                                                    .map(ReActorSystemRef::getBackingDriver))
                      .collect(Collectors.toUnmodifiableList());
-    }
-
-    private Collection<ReActorSystemRef> getAllGates(ReActorSystemId reActorSystemId) {
-        return List.copyOf(reActorSystemsGates.getOrDefault(reActorSystemId, Map.of())
-                                              .values());
     }
 
     private CompletionStage<Void> stopUserReActors() {
@@ -806,7 +851,10 @@ public class ReActorSystem {
         //Avoid spawning a child while it's being stopped
         stopMe.getStructuralLock().writeLock().lock();
         try {
-            if (reActors.remove(stopMe.getSelf().getReActorId()) != null) {
+            //If it is already stopped don't process further, otherwise the remove could remove the name
+            //of a new reactor with the same name that has just been spawned
+            if (!stopMe.getHierarchyTermination().toCompletableFuture().isDone() &&
+                reActors.remove(stopMe.getSelf().getReActorId()) != null) {
                 updateMessageInterceptors(stopMe, stopMe.getTypedSubscriptions(),
                                           TypedSubscription.NO_SUBSCRIPTIONS);
                 Try.ofRunnable(() -> stopMe.reAct(reActorStop))
@@ -816,7 +864,7 @@ public class ReActorSystem {
                 var allChildrenTerminated = allChildrenTerminationFuture(stopMe.getChildren(), this);
                 CompletableFuture<Void> myTerminationHook = stopMe.getHierarchyTermination()
                                                                   .toCompletableFuture();
-                allChildrenTerminated.thenAccept(lastChild -> myTerminationHook.complete(null));
+                allChildrenTerminated.thenAcceptAsync(lastChild -> myTerminationHook.complete(null));
                 stopHook = Optional.of(myTerminationHook);
             }
         } finally {
@@ -825,7 +873,7 @@ public class ReActorSystem {
         return stopHook;
     }
 
-    private static CompletionStage<Void> allChildrenTerminationFuture(List<ReActorRef> children,
+    private static CompletionStage<Void> allChildrenTerminationFuture(Collection<ReActorRef> children,
                                                                       ReActorSystem reActorSystem) {
         return children.stream()
                        .map(ReActorRef::getReActorId)
@@ -833,8 +881,7 @@ public class ReActorSystem {
                        .flatMap(Optional::stream)
                        //exploit the dispatcher for stopping the actor
                        .map(ReActorContext::stop)
-                       .reduce((firstChild, secondChild) -> firstChild.thenComposeAsync(res -> secondChild,
-                                                                                        ForkJoinPool.commonPool()))
+                       .reduce((firstChild, secondChild) -> firstChild.thenComposeAsync(res -> secondChild))
                        //no children no party
                        .orElse(CompletableFuture.completedFuture(null));
     }

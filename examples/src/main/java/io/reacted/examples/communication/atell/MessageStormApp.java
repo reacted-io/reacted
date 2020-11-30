@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.atell;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -19,7 +19,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ServiceConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
@@ -41,11 +41,11 @@ import java.util.concurrent.TimeUnit;
 class MessageStormApp {
     public static void main(String[] args) throws InterruptedException {
         Properties zooKeeperProps = new Properties();
-        zooKeeperProps.put(ZooKeeperDriver.ZK_CONNECTION_STRING, "localhost:2181");
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Client",
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
-                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setSessionTimeout(Duration.ofSeconds(10))
                                                                                                                     .setReActorName("ZooKeeperDriver")
                                                                                                                     .setAsyncExecutor(new ForkJoinPool())
                                                                                                                     .setServiceRegistryProperties(zooKeeperProps)
@@ -60,7 +60,8 @@ class MessageStormApp {
                                                                    //SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
-                                                                                                                    .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                                                                                                    .setSessionTimeout(Duration.ofSeconds(10))
                                                                                                                     .setAsyncExecutor(new ForkJoinPool(2))
                                                                                                                     .setReActorName("ZooKeeperDriver")
                                                                                                                     .setServiceRegistryProperties(zooKeeperProps)
@@ -140,7 +141,7 @@ class MessageStormApp {
             long start = System.nanoTime();
             AsyncUtils.asyncLoop(noval -> serverReference.atell("Not received"),
                                  Try.of(() -> DeliveryStatus.DELIVERED),
-                                 (Try<DeliveryStatus>) null, 1_000_000L)
+                                 (Try<DeliveryStatus>) null, 10_000_000L)
                       .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
                                                               Duration.ofNanos(System.nanoTime() - start)
                                                                       .toString(),

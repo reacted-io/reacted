@@ -8,17 +8,19 @@
 
 package io.reacted.core.drivers.system;
 
-import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
+import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.patterns.UnChecked.TriConsumer;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -71,6 +73,22 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     }
 
     @Override
+    public final <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+         TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+        //While sending towards a remote peer, propagation towards subscribers never takes place
+        return tell(src, dst, ackingPolicy, message);
+    }
+
+    @Override
+    public final <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+        //While sending towards a remote peer, propagation towards subscribers never takes place,
+        //so tell and route behave in the same way
+        return tell(src, dst, ackingPolicy, message);
+    }
+
+    @Override
     public int hashCode() {
         return Objects.hash(getChannelId(), getChannelProperties());
     }
@@ -110,9 +128,11 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             //If so, this is an ACK confirmation for a message sent with atell
             if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
-                removePendingAckTrigger(deliveryStatusUpdate.getMsgSeqNum())
-                        .ifPresent(pendingAckTrigger -> pendingAckTrigger.toCompletableFuture()
-                                                                         .complete(Try.ofSuccess(deliveryStatusUpdate.getDeliveryStatus())));
+                var pendingAckTrigger = removePendingAckTrigger(deliveryStatusUpdate.getMsgSeqNum());
+                if (pendingAckTrigger != null) {
+                    pendingAckTrigger.toCompletableFuture()
+                                     .complete(Try.ofSuccess(deliveryStatusUpdate.getDeliveryStatus()));
+                }
                 //This is functionally useless because systemSink by design swallows received messages, it is required
                 //only for consistent logging if a logging direct communication local driver is used because in this way
                 //also the ACK will appear in logs
@@ -123,7 +143,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         } else {
             //If it was not meant for a ReActor within this reactor system it might still be of some interest for typed
             //subscribers
-            if (!isTypeSniffed(getLocalReActorSystem(), payloadType)) {
+            if (!isTypeSubscribed(getLocalReActorSystem(), payloadType)) {
                 return;
             }
             //Mark the sink as destination. Once the message has been sent within the main flow, it will be
@@ -133,13 +153,17 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         }
         boolean isAckRequired = !hasBeenSniffed &&
                                 message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
-        var deliverAttempt = (isAckRequired ? destination.tell(sender, payload) : destination.atell(sender, payload));
+        var deliverAttempt = (isAckRequired ? destination.atell(sender, payload) : destination.tell(sender, payload));
         if (isAckRequired) {
-            deliverAttempt.thenAccept(deliveryResult -> sendDeliveyAck(getLocalReActorSystem().getLocalReActorSystemId(),
-                                                                       getLocalReActorSystem().getNewSeqNum(), this,
-                                                                       deliveryResult, message)
+            deliverAttempt.thenAccept(deliveryResult -> sendDeliveryAck(getLocalReActorSystem().getLocalReActorSystemId(),
+                                                                        getLocalReActorSystem().getNewSeqNum(), this,
+                                                                        deliveryResult, message)
                                                         .ifError(error -> getLocalReActorSystem()
                                                                             .logError("Unable to send ack", error)));
         }
+    }
+    private static boolean isTypeSubscribed(ReActorSystem localReActorSystem,
+                                            Class<? extends Serializable> payloadType) {
+        return localReActorSystem.getTypedSubscriptionsManager().hasFullSubscribers(payloadType);
     }
 }

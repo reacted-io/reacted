@@ -39,7 +39,8 @@ public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<Direc
      */
     public DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerConfig config) {
         super(config);
-        this.channelId = new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION, getDriverConfig().getChannelName());
+        this.channelId = ChannelId.DIRECT_COMMUNICATION
+                                    .forChannelName(getDriverConfig().getChannelName());
         this.logFile = Try.of(() -> new FileWriter(config.getLogFilePath(), false))
                           .map(PrintWriter::new)
                           .orElseThrow(ioException -> new UncheckedIOException((IOException)ioException));

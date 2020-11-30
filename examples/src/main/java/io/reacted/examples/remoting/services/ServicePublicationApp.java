@@ -8,13 +8,11 @@
 
 package io.reacted.examples.remoting.services;
 
-import com.google.common.base.Strings;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.SystemMonitorReport;
-import io.reacted.core.messages.services.ServiceDiscoveryRequest;
-import io.reacted.core.reactorsystem.ServiceConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
@@ -29,11 +27,8 @@ import java.util.concurrent.TimeUnit;
 
 public class ServicePublicationApp {
     public static void main(String[] args) throws InterruptedException {
-        String zookeeperConnectionString = args.length == 0 || Strings.isNullOrEmpty(args[0])
-                                           ? "localhost:2181" : args[0];
         Properties serviceRegistryProperties = new Properties();
         //The two reactor system will discover each other automatically using this service registry
-        serviceRegistryProperties.setProperty(ZooKeeperDriver.ZK_CONNECTION_STRING, zookeeperConnectionString);
         var serverReActorSystem = "SERVER_REACTORSYSTEM";
         var serverGatePort = 12345;
         var clientReActorSystem = "CLIENT_REACTORSYSTEM";
@@ -41,7 +36,6 @@ public class ServicePublicationApp {
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(serverReActorSystem,
                                                                       SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
                                                                       List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
-                                                                                                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                        .setServiceRegistryProperties(serviceRegistryProperties)
                                                                                                                        .setReActorName("ZooKeeperDriver")
                                                                                                                        .build())),
@@ -50,7 +44,6 @@ public class ServicePublicationApp {
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg(clientReActorSystem,
                                                                       SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/client"),
                                                                       List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
-                                                                                                                       .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                        .setServiceRegistryProperties(serviceRegistryProperties)
                                                                                                                        .setReActorName("ZooKeeperDriver")
                                                                                                                        .build())),
@@ -75,7 +68,6 @@ public class ServicePublicationApp {
                                       .setMailBoxProvider(ctx -> new BasicMbox())
                                       //We do not need to listen for ServiceDiscoveryRequests, we have the
                                       //Service Registry now
-                                      .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(SystemMonitorReport.class))
                                       .setRouteeProvider(() -> new ClockReActor(serviceName))
                                       .setIsRemoteService(true)
                                       .build();
@@ -86,14 +78,8 @@ public class ServicePublicationApp {
         TimeUnit.SECONDS.sleep(10);
         //Create a reactor in CLIENT reactor system that will query the service exported in SERVER
         //All the communication between the two reactor systems will be done using a GRPC channel
-        var timeReactor = client.spawn(new TimeReActor(serviceName, "1")).orElseSneakyThrow();
+        client.spawn(new TimeReActor(serviceName)).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(10);
-        client.stop(timeReactor.getReActorId())
-              .map(onStop -> onStop.thenAccept(noVal -> client.spawn(new TimeReActor(serviceName, "1"))
-                                                              .orElseSneakyThrow()))
-              .orElse(CompletableFuture.completedFuture(null))
-              .toCompletableFuture()
-              .join();
         System.out.println("Shutting down...");
         server.shutDown();
         client.shutDown();

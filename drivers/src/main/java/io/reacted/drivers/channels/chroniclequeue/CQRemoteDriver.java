@@ -21,23 +21,21 @@ import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
+import net.openhft.chronicle.wire.WireKey;
+import org.apache.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 
 @NonNullByDefault
 public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
+    private static final Logger LOGGER = Logger.getLogger(CQRemoteDriver.class);
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
-    private ExcerptAppender cqAppender;
-    @Nullable
     private ExcerptTailer cqTailer;
-    @Nullable
-    private ReActorSystem localReActorSystem;
 
     public CQRemoteDriver(CQDriverConfig driverConfig) {
         super(driverConfig);
@@ -46,9 +44,7 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     @Override
     public void initDriverLoop(ReActorSystem reActorSystem) {
         this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir()).build();
-        this.cqAppender = chronicle.acquireAppender();
         this.cqTailer = chronicle.createTailer().toEnd();
-        this.localReActorSystem = reActorSystem;
     }
 
     @Override
@@ -77,7 +73,7 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return new ChannelId(ChannelId.ChannelType.REMOTING_CHRONICLE_QUEUE, getDriverConfig().getChannelName());
+        return ChannelId.REMOTING_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override
@@ -88,22 +84,22 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
 
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return sendMessage(Objects.requireNonNull(cqAppender), message);
+        return sendMessage(Objects.requireNonNull(chronicle)
+                                  .acquireAppender(), getDriverConfig().getTopic(), message);
     }
 
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {
-        Pauser readPauser = Pauser.sleepy();
+        Pauser readPauser = Pauser.millis(100, 500);
 
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
 
             @SuppressWarnings("ConstantConditions")
             var newMessage = Try.withResources(cqTailer::readingDocument,
                                                documentCtx -> documentCtx.isPresent()
-                                                              ? documentCtx.wire().read().object(Message.class)
+                                                              ? documentCtx.wire().read(getDriverConfig().getTopic())
+                                                                                  .object(Message.class)
                                                               : null)
-                                .peekFailure(error -> logErrorDecodingMessage(localReActorSystem::logError, error))
-                                .toOptional()
-                                .orElse(null);
+                                .orElse(null, error -> LOGGER.error("Unable to properly decode message", error));
             if (newMessage == null) {
                 readPauser.pause();
                 readPauser.reset();
@@ -113,14 +109,8 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
             offerMessage(newMessage);
         }
     }
-
-    private static Try<DeliveryStatus> sendMessage(ExcerptAppender cqAppender, Message message) {
-        return Try.ofRunnable(() -> cqAppender.writeDocument(message,
-                                                            (vOut, payload) -> vOut.object(Message.class, payload)))
+    private static Try<DeliveryStatus> sendMessage(ExcerptAppender cqAppender, WireKey topic,  Message message) {
+        return Try.ofRunnable(() -> cqAppender.writeMessage(topic, message))
                   .map(success -> DeliveryStatus.DELIVERED);
-    }
-
-    private static void logErrorDecodingMessage(BiConsumer<String, Throwable> logger, Throwable error) {
-        logger.accept("Unable to properly decode message", error);
     }
 }

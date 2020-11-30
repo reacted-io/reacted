@@ -11,15 +11,35 @@ package io.reacted.core.utils;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nullable;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 @NonNullByDefault
 public final class ObjectUtils {
     private ObjectUtils() { /* No instances allowed */ }
+
+    @Nullable
+    public static <InputT, OutputT> OutputT ifNotNull(@Nullable InputT input, Function<InputT, OutputT> ifNotNull) {
+        if (input == null) {
+            return null;
+        }
+        return Objects.requireNonNull(ifNotNull).apply(input);
+    }
+
+    public static <InputT> void runIfNotNull(@Nullable InputT input, Consumer<InputT> ifNotNull) {
+        if (input != null) {
+            Objects.requireNonNull(ifNotNull).accept(input);
+        }
+    }
 
     /**
      * Checks if the provided interval is non null, bigger than {@link Duration#ZERO} and smaller than
@@ -72,5 +92,18 @@ public final class ObjectUtils {
             throw Objects.requireNonNull(onControlPredicateFailure).get();
         }
         return element;
+    }
+
+    public static byte[] toBytes(Properties properties) throws IOException {
+        var byteArrayOutputStream = new ByteArrayOutputStream();
+        properties.store(byteArrayOutputStream,"");
+        return byteArrayOutputStream.toByteArray();
+    }
+
+    public static Properties fromBytes(byte[] data) throws IOException {
+        var byteArrayInputStream = new ByteArrayInputStream(data);
+        var properties = new Properties();
+        properties.load(byteArrayInputStream);
+        return properties;
     }
 }

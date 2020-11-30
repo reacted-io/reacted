@@ -15,8 +15,7 @@ import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.AckingPolicy;
@@ -58,7 +57,7 @@ class LocalDriverTest {
         localDriver = SystemLocalDrivers.DIRECT_COMMUNICATION;
         localDriver.initDriverLoop(reActorSystem);
 
-        TypedSubscription subscribedTypes = TypedSubscriptionPolicy.LOCAL.forType(Message.class);
+        TypedSubscription subscribedTypes = TypedSubscription.LOCAL.forType(Message.class);
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                 .setReActorName(CoreConstants.REACTOR_NAME)
                 .setDispatcherName("Dispatcher")

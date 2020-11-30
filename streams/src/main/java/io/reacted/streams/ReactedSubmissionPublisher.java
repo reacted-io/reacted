@@ -9,7 +9,7 @@
 package io.reacted.streams;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.mailboxes.BackpressuringMbox;
@@ -87,7 +87,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
                                                           .reAct(PublisherShutdown.class,
-                                                                 (raCtx, shutown) -> raCtx.stop())
+                                                                 (raCtx, shutdown) -> raCtx.stop())
                                                           .reAct(PublisherInterrupt.class,
                                                                  this::onInterrupt)
                                                           .reAct(ReActorStop.class, this::onStop)
@@ -137,6 +137,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * processed will be lost. This subscriber consumption speed will not affect the producer,
      * but delivery speed to the subscriber could.
      * For the non lost updates, strict message ordering is guaranteed to be the same of submission
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      *
      * @param subscriber Java Flow compliant subscriber
      * @throws NullPointerException if subscriber is null
@@ -155,6 +156,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param subscriber     Java Flow compliant subscriber
      * @param subscriberName This name must be unique and if deterministic it allows cold replay
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, String subscriberName) {
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
@@ -177,6 +179,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param bufferSize How many elements can be buffered in the best effort subscriber. <b>Positive</b> values only
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize) {
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
@@ -202,6 +206,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                       it allows cold replay
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            String subscriberName) {
@@ -227,6 +232,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                           thread
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, Executor asyncBackpressurer,
                                            Duration backpressureErrorTimeout) {
@@ -252,6 +259,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                                 before signaling an error
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout) {
@@ -278,6 +287,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param subscriberName This name must be unique and if deterministic it allows cold replay
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout, String subscriberName) {
@@ -306,6 +316,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param subscriberName This name must be unique and if deterministic it allows cold replay
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout, Executor asyncBackpressurer,
@@ -335,6 +346,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            Duration backpressureErrorTimeout) {
@@ -364,6 +377,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @throws IllegalArgumentException if duration is not bigger than zero
      * @throws IllegalArgumentException if {@code bufferSize} is not positive
      * @throws NullPointerException if any of the arguments is null
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
+     * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            Executor asyncBackpressurer, Duration backpressureErrorTimeout) {
@@ -384,8 +399,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * Strict message ordering is guaranteed to be the same of submission
      *
      * @param subscription A {@link ReActedSubscription}
-     * @throws Exception SneakyThrows any exception raised
-     *
+     * SneakyThrows any exception raised
+     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(ReActedSubscription<PayloadT> subscription) {
         CompletionStage<Void> subscriptionComplete = new CompletableFuture<>();
@@ -428,7 +443,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     public void submit(PayloadT message) {
-        subscribers.forEach(subscribed -> subscribed.atell(subscribed, message));
+        subscribers.forEach(subscribed -> subscribed.tell(subscribed, message));
     }
 
     private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
@@ -485,11 +500,11 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                                      IllegalArgumentException::new);
             this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer);
             this.subscriberName = Objects.requireNonNull(builder.subscriberName);
-            this.sequencer = builder.sequencer == null
-                             ? builder.sequencer
-                             : ObjectUtils.requiredCondition(builder.sequencer,
+            this.sequencer = builder.sequencer != null
+                             ? ObjectUtils.requiredCondition(builder.sequencer,
                                                              sequencer -> sequencer.getMaximumPoolSize() == 1,
-                                                             IllegalArgumentException::new);
+                                                             IllegalArgumentException::new)
+                             : null;
         }
 
         public Flow.Subscriber<? super PayloadT> getSubscriber() { return subscriber; }
@@ -579,7 +594,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
             /**
              *
-             * @param sequencer An optional thread for asynchronously attempting the submission tasks. If not specified
+             * @param sequencer An optional *single* thread for asynchronously attempting the submission tasks. If not specified
              *                  a new thread will be automatically created for this
              * @return this builder
              */

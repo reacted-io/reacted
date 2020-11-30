@@ -27,7 +27,7 @@ public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCo
     private final ChannelId channelId;
     public DirectCommunicationDriver(DirectCommunicationConfig config) {
         super(config);
-        this.channelId = new ChannelId(ChannelId.ChannelType.DIRECT_COMMUNICATION, config.getChannelName());
+        this.channelId = ChannelId.DIRECT_COMMUNICATION.forChannelName(config.getChannelName());
     }
 
     @Override
@@ -41,7 +41,7 @@ public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCo
     }
 
     @Override
-    public void initDriverLoop(ReActorSystem localReActorSystem) { }
+    public void initDriverLoop(ReActorSystem localReActorSystem) { /* Direct driver does not need an inited context */ }
 
     @Override
     public CompletionStage<Try<Void>> cleanDriverLoop() { return CompletableFuture.completedFuture(Try.VOID); }

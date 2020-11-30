@@ -9,24 +9,24 @@
 package io.reacted.core.messages.reactors;
 
 import io.reacted.patterns.NonNullByDefault;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.slf4j.helpers.MessageFormatter;
 
 import java.io.Serializable;
-import java.util.Objects;
-
 @NonNullByDefault
 public abstract class LogMessage implements Serializable {
-    private final String format;
-    private final Serializable[] arguments;
+    private final String message;
     public LogMessage(String format, Serializable ...arguments) {
-        this.format = Objects.requireNonNull(format);
-        this.arguments = Objects.requireNonNull(arguments);
+        var formattingTuple = MessageFormatter.arrayFormat(format, arguments);
+        this.message = formattingTuple.getMessage() + (formattingTuple.getThrowable() != null
+                                                       ? ExceptionUtils.getStackTrace(formattingTuple.getThrowable())
+                                                       : "");
     }
 
-    public String getFormat() {
-        return format;
-    }
+    public String getMessage() { return message; }
 
-    public Serializable[] getArguments() {
-        return arguments;
+    @Override
+    public String toString() {
+        return "LogMessage{" + "message='" + message + '\'' + '}';
     }
 }

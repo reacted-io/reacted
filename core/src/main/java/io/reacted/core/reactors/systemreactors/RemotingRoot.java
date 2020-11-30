@@ -12,6 +12,7 @@ import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.serviceregistry.DuplicatedPublicationError;
 import io.reacted.core.messages.serviceregistry.FilterServiceDiscoveryRequest;
 import io.reacted.core.messages.serviceregistry.RegistryConnectionLost;
 import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
@@ -30,6 +31,8 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
@@ -61,11 +64,19 @@ public class RemotingRoot {
                         .reAct(ServiceCancellationRequest.class, RemotingRoot::onCancelService)
                         .reAct(FilterServiceDiscoveryRequest.class, RemotingRoot::onFilterServiceDiscoveryRequest)
                         .reAct(RegistryConnectionLost.class, this::onRegistryConnectionLost)
+                        .reAct(DuplicatedPublicationError.class, RemotingRoot::onDuplicatedPublicationError)
                         .reAct(ReActorStop.class, RemotingRoot::onStop)
                         .reAct(RemotingRoot::onSpuriousMessage)
                         .build();
     }
 
+    private static void onDuplicatedPublicationError(ReActorContext raCtx,
+                                                     DuplicatedPublicationError duplicatedPublicationError) {
+        raCtx.logError("CRITIC! Duplicated ReActor System detected. ReActorSystem names must be unique within" +
+                       "a cluster. Shutting down reporting driver: {}",
+                       raCtx.getSender().getReActorId().getReActorName());
+        raCtx.getReActorSystem().stop(raCtx.getSender().getReActorId());
+    }
     @SuppressWarnings("EmptyMethod")
     private static void onStop(ReActorContext raCtx, ReActorStop stop) { /* Nothing to do */ }
 
@@ -118,17 +129,17 @@ public class RemotingRoot {
     private void onRegistryGateUpsert(ReActorContext raCtx, RegistryGateUpserted upsert) {
         //skip self notifications
         if (!raCtx.getReActorSystem().getLocalReActorSystemId().equals(upsert.getReActorSystemId())) {
-            raCtx.logInfo("Gate added for {} : {}@{}", raCtx.getReActorSystem().getLocalReActorSystemId()
+            raCtx.logInfo("Gate added in {} : {} -> {}", raCtx.getReActorSystem().getLocalReActorSystemId()
                                                             .getReActorSystemName(),
                           upsert.getChannelId().toString(), upsert.getReActorSystemId().getReActorSystemName());
             raCtx.getReActorSystem().unregisterRoute(upsert.getReActorSystemId(), upsert.getChannelId());
             raCtx.getReActorSystem().registerNewRoute(upsert.getReActorSystemId(), upsert.getChannelId(),
-                                                      upsert.getChannelData());
+                                                      upsert.getChannelData(), raCtx.getSender());
         }
     }
 
     private void onRegistryConnectionLost(ReActorContext raCtx, RegistryConnectionLost connectionLost) {
-        raCtx.getReActorSystem().flushAllRemoteGates();
+        raCtx.getReActorSystem().flushRemoteGatesForDriver(raCtx.getSender());
     }
 
     private void onRegistryGateRemoval(ReActorContext raCtx, RegistryGateRemoved removed) {
@@ -137,6 +148,9 @@ public class RemotingRoot {
             raCtx.getSelf().tell(raCtx.getSender(), new SynchronizationWithServiceRegistryComplete());
             return;
         }
+        raCtx.logInfo("Gate removed in {} : {} -> {}",
+                      raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
+                      removed.getChannelId().toString(), removed.getReActorSystem().getReActorSystemName());
         raCtx.getReActorSystem().unregisterRoute(removed.getReActorSystem(), removed.getChannelId());
     }
 

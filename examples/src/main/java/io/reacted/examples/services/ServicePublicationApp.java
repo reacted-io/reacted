@@ -11,8 +11,7 @@ package io.reacted.examples.services;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.config.reactors.TypedSubscription;
-import io.reacted.core.config.reactors.TypedSubscriptionPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
@@ -22,11 +21,10 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ServiceConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.core.services.SelectionType;
-import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
 import javax.annotation.Nonnull;
@@ -43,7 +41,7 @@ public class ServicePublicationApp {
         DispatcherConfig serviceDispatcherCfg = DispatcherConfig.newBuilder()
                                                                 //High overhead, but very reactive
                                                                 .setBatchSize(1)
-                                                                //This dispatcher will have this label in the thead list
+                                                                //This dispatcher will have this label in the thread list
                                                                 .setDispatcherName(serviceDispatcherName)
                                                                 .setDispatcherThreadsNum(1)
                                                                 .build();
@@ -57,6 +55,7 @@ public class ServicePublicationApp {
                                                               //We can add as many dispatchers as we want
                                                               .addDispatcherConfig(serviceDispatcherCfg)
                                                               .build();
+
         var reActorSystem = new ReActorSystem(systemConfig).initReActorSystem();
 
         ReActorConfig routeeConfig = ReActorConfig.newBuilder()
@@ -68,9 +67,8 @@ public class ServicePublicationApp {
                                                   .build();
         var routeeReActions = ReActions.newBuilder()
                                        .reAct(TimeRequest.class, ServicePublicationApp::onTimeRequest)
-                                       .reAct((raCtx, any) -> {})
                                        .build();
-        //Here we define how a routee behaves. This is going to be the actual body of our servuce
+        //Here we define how a routee behaves. This is going to be the actual body of our service
         UnChecked.CheckedSupplier<ReActor> routeeProvider = () -> new ReActor() {
             @Nonnull
             @Override
@@ -96,7 +94,7 @@ public class ServicePublicationApp {
                                               .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
                                               //The service will intercept all the Service Discovery Requests
                                               //generated locally to this reactor system
-                                              .setTypedSubscriptions(TypedSubscriptionPolicy.LOCAL.forType(ServiceDiscoveryRequest.class))
+                                              .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
                                               .build();
         reActorSystem.spawnService(clockServiceConfig).orElseSneakyThrow();
         //Ask for a reference to a service called Clock Service. A reference to the service itself will be returned
@@ -109,7 +107,7 @@ public class ServicePublicationApp {
                      .thenApply(services -> services.filter(list -> !list.isEmpty()))
                      //get the first gate available
                      .thenApply(services -> services.map(list -> list.iterator().next()))
-                     .thenApply(Try::orElseSneakyThrow)
+                     .thenApply(serviceGate -> serviceGate.orElse(ReActorRef.NO_REACTOR_REF))
                      //Ask the service for the time
                      .thenCompose(gate -> gate.ask(new TimeRequest(), ZonedDateTime.class, "Request the time"))
                      //print the answer

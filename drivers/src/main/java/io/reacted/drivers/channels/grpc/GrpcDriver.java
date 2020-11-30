@@ -11,9 +11,18 @@ package io.reacted.drivers.channels.grpc;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
+import io.grpc.CallOptions;
+import io.grpc.Channel;
+import io.grpc.ClientCall;
+import io.grpc.ClientInterceptor;
+import io.grpc.ForwardingClientCall;
+import io.grpc.ForwardingClientCallListener;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
 import io.grpc.Server;
+import io.grpc.Status;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
@@ -27,9 +36,9 @@ import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.exceptions.ChannelUnavailableException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.reactorsystem.NullReActorSystemRef;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -58,7 +67,9 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     @Nullable
     private Server grpcServer;
     @Nullable
-    private ExecutorService grpcExecutor;
+    private ExecutorService grpcServerExecutor;
+    @Nullable
+    private ExecutorService grpcClientExecutor;
     @Nullable
     private EventLoopGroup workerEventLoopGroup;
     @Nullable
@@ -68,27 +79,35 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public GrpcDriver(GrpcDriverConfig grpcDriverConfig) {
         super(grpcDriverConfig);
         this.gatesStubs = new ConcurrentHashMap<>(1000, 0.5f);
-        this.channelId = new ChannelId(ChannelId.ChannelType.GRPC, grpcDriverConfig.getChannelName());
+        this.channelId = ChannelId.GRPC.forChannelName(grpcDriverConfig.getChannelName());
     }
 
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
         DriverCtx grpcDriverCtx = RemotingDriver.REACTOR_SYSTEM_CTX.get();
-        this.grpcExecutor = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder()
+        this.grpcServerExecutor = Executors.newFixedThreadPool(3, new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> localReActorSystem.logError("Uncaught exception in {}",
                                                                                                 thread.getName(), throwable))
-                .setNameFormat("Grpc-Executor-" + grpcDriverCtx.getLocalReActorSystem().getLocalReActorSystemId()
-                                                               .getReActorSystemName() + "-%d")
+                .setNameFormat("Grpc-Server-Executor-" + grpcDriverCtx.getLocalReActorSystem().getLocalReActorSystemId()
+                                                                      .getReActorSystemName() + "-%d")
                 .build());
-        this.grpcExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
-        this.workerEventLoopGroup = new NioEventLoopGroup(5);
+        this.grpcClientExecutor = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder()
+                .setUncaughtExceptionHandler((thread, throwable) -> localReActorSystem.logError("Uncaught exception in {}",
+                                                                                                thread.getName(), throwable))
+                .setNameFormat("Grpc-Client-Executor-" + grpcDriverCtx.getLocalReActorSystem().getLocalReActorSystemId()
+                                                                      .getReActorSystemName() + "-%d")
+                .build());
+        this.grpcClientExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
+        this.workerEventLoopGroup = new NioEventLoopGroup(2);
         this.bossEventLoopGroup = new NioEventLoopGroup(1);
         this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(getDriverConfig().getHostName(),
                                                                               getDriverConfig().getPort()))
                                             .channelType(NioServerSocketChannel.class)
-                                            .executor(grpcExecutor)
+                                            .executor(grpcServerExecutor)
                                             .bossEventLoopGroup(bossEventLoopGroup)
                                             .workerEventLoopGroup(workerEventLoopGroup)
+                                            .permitKeepAliveWithoutCalls(true)
+                                            .permitKeepAliveTime(6, TimeUnit.MINUTES)
                                             .addService(new HealthStatusManager().getHealthService())
                                             .addService(new GrpcServer(this))
                                             .build();
@@ -109,8 +128,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
         if (workerEventLoopGroup != null) {
             workerEventLoopGroup.shutdownGracefully();
         }
-        if (grpcExecutor != null) {
-            grpcExecutor.shutdown();
+        if (grpcServerExecutor != null) {
+            grpcServerExecutor.shutdown();
+        }
+        if (grpcClientExecutor != null) {
+            grpcClientExecutor.shutdown();
         }
         gatesStubs.clear();
         return CompletableFuture.completedFuture(Try.ofSuccess(null));
@@ -174,11 +196,15 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             return Try.ofFailure(new ChannelUnavailableException());
         }
         SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram> grpcLink;
-        grpcLink = gatesStubs.computeIfAbsent(dstChannelIdName,
-                                              channelName -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties,
-                                                                                                         Objects.requireNonNull(grpcExecutor)),
-                                                                                                ReActedLinkGrpc::newStub,
-                                                                                                stub -> stub.link(getEmptyMessageHandler(getLocalReActorSystem()))));
+        var peerChannelKey = getChannelPeerKey(dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST),
+                                               dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_PORT));
+        grpcLink = gatesStubs.computeIfAbsent(peerChannelKey,
+                                              newPeerChannelKey -> SystemLinkContainer.ofChannel(getNewChannel(dstChannelIdProperties,
+                                                                                                               Objects.requireNonNull(grpcClientExecutor),
+                                                                                                               () -> removeStaleChannel(newPeerChannelKey)),
+                                                                                                 ReActedLinkGrpc::newStub,
+                                                                                                 stub -> stub.link(getEmptyMessageHandler(getLocalReActorSystem()))));
+
         var byteArray = new ByteArrayOutputStream();
 
         try(ObjectOutputStream oos = new ObjectOutputStream(byteArray)) {
@@ -193,8 +219,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             return Try.ofSuccess(DeliveryStatus.DELIVERED);
 
         } catch (Exception error) {
-            gatesStubs.remove(dstChannelIdName, grpcLink);
-            grpcLink.channel.shutdownNow();
+            removeStaleChannel(peerChannelKey);
             getLocalReActorSystem().logError("Error sending message {}", message.toString(), error);
             return Try.ofFailure(error);
         }
@@ -206,7 +231,12 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     @Override
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
-    private static ManagedChannel getNewChannel(Properties channelIdProperties, Executor grpcExecutor) {
+    private void removeStaleChannel(String peerChannelKey) {
+        ObjectUtils.ifNotNull(this.gatesStubs.remove(peerChannelKey),
+                              linkContainer -> linkContainer.channel.shutdownNow());
+    }
+    private static ManagedChannel getNewChannel(Properties channelIdProperties, Executor grpcExecutor,
+                                                Runnable onCloseCleanup) {
         int port = Integer.parseInt(channelIdProperties.getProperty(GrpcDriverConfig.GRPC_PORT));
         String host = channelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST);
         return ManagedChannelBuilder.forAddress(host, port)
@@ -215,23 +245,25 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                     .enableRetry()
                                     .usePlaintext()
                                     .executor(grpcExecutor)
+                                    .intercept(newStreamClosureDetector(onCloseCleanup))
                                     .build();
     }
-
+    private static String getChannelPeerKey(String peerHostname, String peerPort) {
+        return peerHostname + "|" + peerPort;
+    }
     private static class GrpcServer extends ReActedLinkGrpc.ReActedLinkImplBase {
         private final GrpcDriver thisDriver;
 
         public GrpcServer(GrpcDriver thisDriver) {
             this.thisDriver = thisDriver;
         }
-
         @Override
         public StreamObserver<ReActedLinkProtocol.ReActedDatagram> link(StreamObserver<Empty> responseObserver) {
             return new StreamObserver<>() {
                 @Override
                 public void onNext(ReActedLinkProtocol.ReActedDatagram reActedDatagram) {
                     try (ObjectInputStream msgSource = new ObjectInputStream(new ByteArrayInputStream(reActedDatagram.getBinaryPayload()
-                                                                                                          .toByteArray()))) {
+                                                                                                                     .toByteArray()))) {
                         thisDriver.offerMessage((Message)msgSource.readObject());
                     } catch (Exception deserializationError) {
                         throw new RuntimeException(deserializationError);
@@ -249,7 +281,27 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             };
         }
     }
-
+    private static ClientInterceptor newStreamClosureDetector(Runnable onStreamClosed) {
+        return new ClientInterceptor() {
+            @Override
+            public <ReqT, RespT> ClientCall<ReqT, RespT>
+            interceptCall(MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions, Channel channel) {
+                return new ForwardingClientCall.SimpleForwardingClientCall<>(channel.newCall(methodDescriptor,
+                                                                                             callOptions)) {
+                    @Override
+                    public void start(Listener<RespT> responseListener, Metadata headers) {
+                        delegate().start(new ForwardingClientCallListener.SimpleForwardingClientCallListener<>(responseListener) {
+                            @Override
+                            public void onClose(Status status, Metadata trailers) {
+                                super.onClose(status, trailers);
+                                onStreamClosed.run();
+                            }
+                        }, headers);
+                    }
+                };
+            }
+        };
+    }
     private static StreamObserver<Empty> getEmptyMessageHandler(ReActorSystem localReActorSystem) {
         return new StreamObserver<>() {
             @Override
@@ -268,13 +320,10 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     private static final class SystemLinkContainer<InputTypeT> {
         private final ManagedChannel channel;
         private final StreamObserver<InputTypeT> link;
-
-        private SystemLinkContainer(ManagedChannel channel,
-                                    StreamObserver<InputTypeT> link) {
+        private SystemLinkContainer(ManagedChannel channel, StreamObserver<InputTypeT> link) {
             this.channel = channel;
             this.link = link;
         }
-
         private static <StubT, InputTypeT>
         SystemLinkContainer<InputTypeT> ofChannel(ManagedChannel channel, Function<ManagedChannel, StubT> toStub,
                                                   Function<StubT, StreamObserver<InputTypeT>> toLink) {

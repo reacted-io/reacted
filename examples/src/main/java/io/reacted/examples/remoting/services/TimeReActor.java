@@ -10,7 +10,7 @@ package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -28,11 +28,9 @@ import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 public class TimeReActor implements ReActor {
     private final String serviceToQuery;
-    private final String reactorName;
     private int received = 0;
-    public TimeReActor(String serviceToQuery, String reactorName) {
+    public TimeReActor(String serviceToQuery) {
         this.serviceToQuery = serviceToQuery;
-        this.reactorName = reactorName;
     }
 
     @Nonnull
@@ -74,7 +72,7 @@ public class TimeReActor implements ReActor {
     @Override
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
-                            .setReActorName(TimeReActor.class.getSimpleName() + "-" + reactorName)
+                            .setReActorName(TimeReActor.class.getSimpleName())
                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .setMailBoxProvider(ctx -> new BasicMbox())
                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)

@@ -72,10 +72,16 @@ public final class ReActorRef implements Externalizable {
         return hashCode;
     }
 
+    @Override
+    public String toString() {
+        return "ReActorRef{" + "reActorId=" + reActorId + ", hashCode=" + hashCode + ", reActorSystemRef=" + reActorSystemRef + '}';
+    }
+
     /**
      * Sends a message to this ReActor using system sync as source
      *
      * @param messagePayload payload
+     * @param <PayloadT> Any {@link Serializable} object
      * @return A completable future that is going to be completed once the message has been delivered into the
      * local driver bus, containing the outcome of the operation
      */
@@ -91,6 +97,7 @@ public final class ReActorRef implements Externalizable {
      *
      * @param msgSender      source of the message
      * @param messagePayload payload
+     * @param <PayloadT> Any {@link Serializable} object
      * @return A completable future that is going to be completed once the message has been delivered into the
      * local driver bus, containing the outcome of the operation
      */
@@ -101,10 +108,27 @@ public final class ReActorRef implements Externalizable {
     }
 
     /**
+     * Sends a message to this ReActor. All the subscribers for this message type will not be notified.
+     * @see io.reacted.core.typedsubscriptions.TypedSubscription
+     *
+     * @param msgSender      source of the message
+     * @param messagePayload payload
+     * @param <PayloadT> Any {@link Serializable} object
+     * @return A completable future that is going to be completed once the message has been delivered into the
+     * local driver bus, containing the outcome of the operation
+     */
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    route(ReActorRef msgSender, PayloadT messagePayload) {
+        return reActorSystemRef.route(Objects.requireNonNull(msgSender), this, AckingPolicy.NONE,
+                                        Objects.requireNonNull(messagePayload));
+    }
+
+    /**
      * Sends a message to a this ReActor requiring an ack as a confirmation of the delivery into the target reactor's
      * mailbox. The sender of the message is going to be the system sink
      *
      * @param messagePayload message payload
+     * @param <PayloadT> Any {@link Serializable} object
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
@@ -121,6 +145,7 @@ public final class ReActorRef implements Externalizable {
      *
      * @param msgSender      message source
      * @param messagePayload message payload
+     * @param <PayloadT> Any {@link Serializable} object
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
@@ -131,12 +156,30 @@ public final class ReActorRef implements Externalizable {
     }
 
     /**
+     * Sends a message to a this ReActor requiring an ack as a confirmation of the delivery into the target reactor's
+     * mailbox. All the subscribers for {@code PayloadT} type will not be notified
+     *
+     * @param msgSender      message source
+     * @param messagePayload message payload
+     * @param <PayloadT> Any {@link Serializable} object
+     * @return A completable future that is going to be completed when an ack from the destination reactor system
+     * is received containing the outcome of the delivery of the message into the target actor mailbox
+     */
+    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    aroute(ReActorRef msgSender, PayloadT messagePayload) {
+        return reActorSystemRef.route(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
+                                      Objects.requireNonNull(messagePayload));
+    }
+
+    /**
      * Send a message to this reactor and return its reply.
      *
      * @param request       payload that is being sent to this reactor
      * @param expectedReply expected message type as reply to this request
      * @param requestName   name of the request. It must be unique reactor name in the reactor system as long as this
      *                      ask is alive
+     * @param <ReplyT> Any {@link Serializable} object
+     * @param <RequestT> Any {@link Serializable} object
      * @return A completable future that is going to be completed once an answer for the request has been received.
      * On failure, the received Try will contain the cause of the failure, otherwise the requested answer
      */
@@ -155,9 +198,11 @@ public final class ReActorRef implements Externalizable {
      * @param expireTimeout mark this request as completed and failed after this timeout
      * @param requestName   name of the request. It must be unique reactor name in the reactor system as long as this
      *                      ask is alive
-     * @return A completable future that is going to be completed once an answer for the request has been received or
-     * the specified timeout is expired. On failure, the received Try will contain the cause of the failure,
-     * otherwise the requested answer
+     * @param <ReplyT> Any {@link Serializable} object
+     * @param <RequestT> Any {@link Serializable} object
+     * @return A {@link CompletionStage}&lt;{@link Try}&lt;{@link ReplyT}&gt;&gt; that is going to be completed once an
+     * answer for the request has been received or the specified timeout is expired. On failure, the received Try will
+     * contain the cause of the failure, otherwise the requested answer
      */
     public <ReplyT extends Serializable, RequestT extends Serializable>
     CompletionStage<Try<ReplyT>> ask(RequestT request, Class<ReplyT> expectedReply, Duration expireTimeout,
@@ -165,15 +210,6 @@ public final class ReActorRef implements Externalizable {
         return ask(Objects.requireNonNull(getReActorSystemRef().getBackingDriver().getLocalReActorSystem()), this,
                    Objects.requireNonNull(request), Objects.requireNonNull(expectedReply),
                    Objects.requireNonNull(expireTimeout), Objects.requireNonNull(requestName));
-    }
-
-    @Override
-    public String toString() {
-        return "ReActorRef{" +
-                "reActorId=" + reActorId +
-                ", hashCode=" + hashCode +
-                ", reActorSystemRef=" + reActorSystemRef +
-                '}';
     }
 
     public ReActorId getReActorId() { return reActorId; }
@@ -204,19 +240,13 @@ public final class ReActorRef implements Externalizable {
                           .ifError(spawnError -> returnValue.complete(Try.ofFailure(spawnError)));
         return returnValue;
     }
-
-    @SuppressWarnings("UnusedReturnValue")
-    private ReActorRef setReActorId(ReActorId reActorId) {
-        return SerializationUtils.setObjectField(this, REACTOR_ID_OFFSET, reActorId);
+    private void setReActorId(ReActorId reActorId) {
+        SerializationUtils.setObjectField(this, REACTOR_ID_OFFSET, reActorId);
     }
-
-    @SuppressWarnings("UnusedReturnValue")
-    private ReActorRef setReActorSystemRef(ReActorSystemRef reActorSystemRef) {
-        return SerializationUtils.setObjectField(this, REACTORSYSTEMREF_OFFSET, reActorSystemRef);
+    private void setReActorSystemRef(ReActorSystemRef reActorSystemRef) {
+        SerializationUtils.setObjectField(this, REACTORSYSTEMREF_OFFSET, reActorSystemRef);
     }
-
-    @SuppressWarnings("UnusedReturnValue")
-    private ReActorRef setHashCode(int hashCode) {
-        return SerializationUtils.setIntField(this, HASHCODE_OFFSET, hashCode);
+    private void setHashCode(int hashCode) {
+        SerializationUtils.setIntField(this, HASHCODE_OFFSET, hashCode);
     }
 }

@@ -52,19 +52,17 @@ public class DataLink implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorSystemId generatingReActorSystem = new ReActorSystemId();
-        generatingReActorSystem.readExternal(in);
-        setGeneratingReActorSystem(generatingReActorSystem);
+        ReActorSystemId receivedGeneratingReActorSystem = new ReActorSystemId();
+        receivedGeneratingReActorSystem.readExternal(in);
+        setGeneratingReActorSystem(receivedGeneratingReActorSystem);
         setAckingPolicy(AckingPolicy.values()[in.readInt()]);
     }
 
-    @SuppressWarnings("UnusedReturnValue")
-    public DataLink setGeneratingReActorSystem(ReActorSystemId generatingReActorSystem) {
-        return SerializationUtils.setObjectField(this, GENERATING_REACTORSYSTEM_OFFSET, generatingReActorSystem);
+    public void setGeneratingReActorSystem(ReActorSystemId generatingReActorSystem) {
+        SerializationUtils.setObjectField(this, GENERATING_REACTORSYSTEM_OFFSET, generatingReActorSystem);
     }
 
-    @SuppressWarnings("UnusedReturnValue")
-    public DataLink setAckingPolicy(AckingPolicy ackingPolicy) {
-        return SerializationUtils.setObjectField(this, ACKING_POLICY_OFFSET, ackingPolicy);
+    public void setAckingPolicy(AckingPolicy ackingPolicy) {
+        SerializationUtils.setObjectField(this, ACKING_POLICY_OFFSET, ackingPolicy);
     }
 }

@@ -9,6 +9,8 @@
 package io.reacted.drivers.serviceregistries.zookeeper;
 
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
+import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
@@ -20,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
 public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriverConfig.Builder, ZooKeeperDriverConfig> {
+    public static final String ZOOKEEPER_DEFAULT_CONNECTION_STRING = "localhost:2181";
     public static final Duration ZOOKEEPER_DEFAULT_PING_INTERVAL = Duration.ofSeconds(20);
     public static final Duration ZOOKEEPER_DEFAULT_SESSION_TIMEOUT = Duration.ofMinutes(2);
     public static final Duration ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT = Duration.ofMinutes(2);
@@ -31,6 +34,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
     private final Duration reconnectionDelay;
     private final Executor asyncExecutionService;
     private final int maxReconnectionAttempts;
+    private final String connectionString;
 
     private ZooKeeperDriverConfig(Builder builder) {
         super(builder);
@@ -48,11 +52,10 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
                                                                    0, Integer.MAX_VALUE,
                                                                    () -> new IllegalArgumentException("Invalid max reconnection attempts value"));
         this.asyncExecutionService = Objects.requireNonNull(builder.asyncExecutorService);
+        this.connectionString = Objects.requireNonNull(builder.connectionString);
     }
 
-    public Duration getPingInterval() {
-        return pingInterval;
-    }
+    public Duration getPingInterval() { return pingInterval; }
 
     public Executor getAsyncExecutionService() { return asyncExecutionService; }
 
@@ -64,9 +67,12 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
 
     public int getMaxReconnectionAttempts() { return maxReconnectionAttempts; }
 
+    public String getConnectionString() { return connectionString; }
+
     public static Builder newBuilder() { return new Builder(); }
 
     public static class Builder extends ServiceRegistryConfig.Builder<Builder, ZooKeeperDriverConfig> {
+        private String connectionString = ZOOKEEPER_DEFAULT_CONNECTION_STRING;
         private Duration pingInterval = ZOOKEEPER_DEFAULT_PING_INTERVAL;
         private Duration sessionTimeout = ZOOKEEPER_DEFAULT_SESSION_TIMEOUT;
         private Duration connectionTimeout = ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT;
@@ -74,12 +80,14 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         private int maxReconnectionAttempts = ZOOKEEPER_DEFAULT_MAX_RECONNECTION_ATTEMPTS;
         private Executor asyncExecutorService = ForkJoinPool.commonPool();
 
-        private Builder() { /* No implementation required */ }
+        private Builder() {
+            setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class));
+        }
 
         /**
          * Specify after how often a ping should be sent to Zookeeper
          *
-         * @param pingInterval ping delay. A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         * @param pingInterval ping delay. A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          *                     Default {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_PING_INTERVAL}
          * @return this builder
          */
@@ -91,7 +99,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         /**
          * Sets the timeout for the zookeeper session.
          *
-         * @param sessionTimeout A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         * @param sessionTimeout A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          *                       Default: {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_SESSION_TIMEOUT}
          * @return this builder
          */
@@ -102,7 +110,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
 
         /**
          * Sets the timeout for the zookeeper connection.
-         * @param connectionTimeout A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         * @param connectionTimeout A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          *                          Default: {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT}
          * @return this builder
          */
@@ -124,7 +132,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         /**
          * Defines the base for the exponential backoff reconnection system
          * @param reconnectionDelay Exponential backoff base.
-         *                          A positive amount <= {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
+         *                          A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          * @return this builder
          */
         public Builder setReconnectionDelay(Duration reconnectionDelay) {
@@ -140,6 +148,17 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          */
         public Builder setMaxReconnectionAttempts(int maxReconnectionAttempts) {
             this.maxReconnectionAttempts = maxReconnectionAttempts;
+            return this;
+        }
+
+        /**
+         * Set the connection string for connecting to ZooKeeper
+         * @param connectionString connection string for connecting to ZooKeeper.
+         *                         Default {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_CONNECTION_STRING}
+         * @return this builder
+         */
+        public Builder setConnectionString(String connectionString) {
+            this.connectionString = connectionString;
             return this;
         }
 

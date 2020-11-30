@@ -15,10 +15,12 @@ import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.patterns.UnChecked.TriConsumer;
 
 import java.io.Serializable;
 import java.util.NoSuchElementException;
@@ -29,8 +31,6 @@ import java.util.concurrent.CompletionStage;
 @NonNullByDefault
 public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>>
         extends ReActorSystemDriver<ConfigT> {
-     private static final Try<DeliveryStatus> TARGET_MISSING = Try.ofFailure(new NoSuchElementException());
-
      protected LocalDriver(ConfigT config) {
           super(config);
      }
@@ -45,6 +45,19 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
      }
 
+     @Override
+     public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+     tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+          return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
+     }
+
+     @Override
+     public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+     route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+          return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
+     }
+
      protected void offerMessage(Message message) {
           var deliveryAttempt = getLocalReActorSystem().getReActor(Objects.requireNonNull(message)
                                                                           .getDestination()
@@ -53,13 +66,15 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           var ackTrigger = removePendingAckTrigger(message.getSequenceNumber());
 
           if (deliveryAttempt.isPresent()) {
-               var attemptResult = deliveryAttempt.get();
-               attemptResult.thenAccept(status -> ackTrigger.ifPresent(trigger -> trigger.toCompletableFuture()
-                                                                                         .complete(status)));
-
+               if (ackTrigger != null) {
+                    var attemptResult = deliveryAttempt.get();
+                    attemptResult.thenAccept(status -> ackTrigger.toCompletableFuture().complete(status));
+               }
           } else {
-               ackTrigger.ifPresent(trigger -> trigger.toCompletableFuture()
-                                                      .complete(TARGET_MISSING));
+               if(ackTrigger != null) {
+                    ackTrigger.toCompletableFuture()
+                              .complete(Try.ofFailure(new NoSuchElementException()));
+               }
                propagateToDeadLetters(getLocalReActorSystem().getSystemDeadLetters(), message);
           }
      }
@@ -84,7 +99,6 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
 
      protected static void rescheduleIfSuccess(Try<DeliveryStatus> deliveryResult, ReActorContext destination) {
           deliveryResult.filter(DeliveryStatus::isDelivered, DeliveryException::new)
-                        .peekFailure(error -> LOGGER.error("Unable to deliver: ", error))
                         .ifSuccess(deliveryStatus -> destination.reschedule());
      }
 

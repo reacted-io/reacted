@@ -64,5 +64,6 @@ public class ReActions {
     }
 
     @SuppressWarnings("EmptyMethod")
-    public static <PayloadT extends Serializable> void noReAction(ReActorContext raCtx, PayloadT payload) { }
+    public static <PayloadT extends Serializable>
+    void noReAction(ReActorContext raCtx, PayloadT payload) { /* No Reactions */ }
 }

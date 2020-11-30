@@ -39,9 +39,7 @@ public class DeadLetter {
     private static <PayloadT extends Serializable>
     void onMessage(ReActorContext raCtx, PayloadT message) {
         LOGGER.debug("{} of {}: {}", DeadLetter.class.getSimpleName(),
-                    raCtx.getReActorSystem()
-                         .getLocalReActorSystemId()
-                         .getReActorSystemName(), message.toString());
+                    raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(), message);
         RECEIVED.incrementAndGet();
     }
 }

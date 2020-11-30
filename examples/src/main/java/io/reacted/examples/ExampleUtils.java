@@ -49,7 +49,7 @@ public final class ExampleUtils {
                                   .setLocalDriver(localDriver)
                                   //Fan out pool to message type subscribers
                                   .setMsgFanOutPoolSize(1)
-                                  //Generate extra informations for replaying if required
+                                  //Generate extra information for replaying if required
                                   .setRecordExecution(true)
                                   .setReactorSystemName(reActorSystemName);
        serviceRegistryDrivers.forEach(configBuilder::addServiceRegistryDriver);

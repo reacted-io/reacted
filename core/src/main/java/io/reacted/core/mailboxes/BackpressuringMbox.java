@@ -29,6 +29,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -38,19 +39,19 @@ import java.util.function.BiPredicate;
 public class BackpressuringMbox implements MailBox {
     public static final Duration BEST_EFFORT_TIMEOUT = Duration.ZERO;
     public static final Duration RELIABLE_DELIVERY_TIMEOUT = Duration.ofNanos(Long.MAX_VALUE);
+    public static final int DEFAULT_MESSAGES_REQUESTED_ON_STARTUP = 1;
     private static final Logger LOGGER = LoggerFactory.getLogger(BackpressuringMbox.class);
     private final Duration backpressureTimeout;
     private final MailBox realMbox;
     private final SubmissionPublisher<DeliveryRequest> backpressurer;
     private final BackpressuringSubscriber reliableBackpressuringSubscriber;
-    private final Set<Class<? extends Serializable>> notDelayed;
     private final Set<Class<? extends Serializable>> notBackpressurable;
     private final ExecutorService sequencer;
     private final boolean isPrivateSequencer;
+    private volatile Set<Class<? extends Serializable>> notDelayed;
 
     /*
      * BackpressuringMbox wrapper for any other mailbox type.
-     *
      */
     private BackpressuringMbox(Builder builder) {
         ReActorContext mboxOwner = Objects.requireNonNull(builder.realMailboxOwner);
@@ -79,13 +80,17 @@ public class BackpressuringMbox implements MailBox {
             this.sequencer = builder.sequencer;
             this.isPrivateSequencer = false;
         }
-        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.ayncBackpressurer), bufferSize);
+        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.asyncBackpressurer), bufferSize);
         this.reliableBackpressuringSubscriber = new BackpressuringSubscriber(requestOnStartup, mboxOwner,
                                                                              realMbox::deliver, backpressurer);
         backpressurer.subscribe(reliableBackpressuringSubscriber);
     }
 
     public static Builder newBuilder() { return new Builder(); }
+
+    public static BackpressuringMbox newDefaultMailBox(ReActorContext reActorContext) {
+        return newBuilder().setRealMailboxOwner(reActorContext).build();
+    }
 
     @Override
     public boolean isEmpty() { return realMbox.isEmpty(); }
@@ -101,6 +106,12 @@ public class BackpressuringMbox implements MailBox {
 
     @Override
     public Message getNextMessage() { return realMbox.getNextMessage(); }
+
+    public Set<Class<? extends Serializable>> getNotDelayedMessageTypes() { return notDelayed; }
+
+    public void setNotDelayedMessageTypes(Set<Class<? extends Serializable>> notDelayed) {
+        this.notDelayed = Set.copyOf(notDelayed);
+    }
 
     @Override
     public DeliveryStatus deliver(Message message) { return realMbox.deliver(message); }
@@ -128,6 +139,7 @@ public class BackpressuringMbox implements MailBox {
         return trigger;
     }
 
+    @Override
     public void request(long messagesNum) {
         Objects.requireNonNull(reliableBackpressuringSubscriber).request(messagesNum);
     }
@@ -198,14 +210,11 @@ public class BackpressuringMbox implements MailBox {
     }
 
     public static class Builder {
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private MailBox realMbox;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private Duration backpressureTimeout;
-        private int bufferSize;
-        private int requestOnStartup;
-        @SuppressWarnings("NotNullFieldNotInitialized")
-        private Executor ayncBackpressurer;
+        private MailBox realMbox = new BasicMbox();
+        private Duration backpressureTimeout = BEST_EFFORT_TIMEOUT;
+        private int bufferSize = Flow.defaultBufferSize();
+        private int requestOnStartup = DEFAULT_MESSAGES_REQUESTED_ON_STARTUP;
+        private Executor asyncBackpressurer = ForkJoinPool.commonPool();
         @Nullable
         private ThreadPoolExecutor sequencer;
         @SuppressWarnings("NotNullFieldNotInitialized")
@@ -218,6 +227,7 @@ public class BackpressuringMbox implements MailBox {
         /**
          *
          * @param realMbox Backing-up mailbox
+         *                 Default: {@link BasicMbox}
          * @return this builder
          */
         public Builder setRealMbox(MailBox realMbox) {
@@ -230,6 +240,7 @@ public class BackpressuringMbox implements MailBox {
          * @param backpressureTimeout maximum time that should be waited while attempting to deliver a new
          *                            message to a saturated mailbox. 0 means immediate fail is delivery
          *                            is not possible. Maximum value: Long.MAX_VALUE nanoseconds
+         *                            Default: {@link #BEST_EFFORT_TIMEOUT}
          * @return this builder
          */
         public Builder setBackpressureTimeout(Duration backpressureTimeout) {
@@ -239,8 +250,9 @@ public class BackpressuringMbox implements MailBox {
 
         /**
          *
-         * @param bufferSize how many updates we can cache befor beginning to backpressure new updates.
-         *                   Must be a positive integer
+         * @param bufferSize how many updates we can cache before beginning to backpressure new updates.
+         *                   Must be a positive integer.
+         *                   Default: {@link Flow#defaultBufferSize()}
          * @return this builder
          */
         public Builder setBufferSize(int bufferSize) {
@@ -251,7 +263,8 @@ public class BackpressuringMbox implements MailBox {
         /**
          *
          * @param requestOnStartup how main messages should be automatically made deliverable on startup.
-         *                         Same semantic of Java Flow Subscription.request
+         *                         Same semantic of Java Flow Subscription.request.
+         *                         Default {@link #DEFAULT_MESSAGES_REQUESTED_ON_STARTUP}
          * @return this builder
          */
         public Builder setRequestOnStartup(int requestOnStartup) {
@@ -261,11 +274,12 @@ public class BackpressuringMbox implements MailBox {
 
         /**
          *
-         * @param asyncBackpressurer   Executor used to perform the potentially blocking delivery attempt
+         * @param asyncBackpressurer Executor used to perform the potentially blocking delivery attempt
+         *                           Default: {@link ForkJoinPool#commonPool()}
          * @return this builder
          */
         public Builder setAsyncBackpressurer(Executor asyncBackpressurer) {
-            this.ayncBackpressurer = asyncBackpressurer;
+            this.asyncBackpressurer = asyncBackpressurer;
             return this;
         }
 

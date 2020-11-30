@@ -1,0 +1,1 @@
+ReActors family spawn example from the ReActor documentation page

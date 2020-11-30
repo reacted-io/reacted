@@ -29,7 +29,7 @@ public class BrokenClockApp {
         //We did not set any reaction, this clock is not going to reply to anything
         var brokenReactiveClock = reActorSystem.spawn(ReActions.NO_REACTIONS, reactiveClockConfig)
                                                            .orElseSneakyThrow();
-        //Note: we do not need anoter reactor to intercept the answer
+        //Note: we do not need another reactor to intercept the answer
         brokenReactiveClock.ask(new TimeRequest(), Instant.class, Duration.ofSeconds(2), "What's the time?")
                            .thenApply(timeReply -> timeReply.map(instant -> "Wow, unexpected")
                                                             .orElse("Clock did not reply as expected"))

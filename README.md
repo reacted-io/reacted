@@ -1,4 +1,4 @@
-![ReActed Logo](https://github.com/wireknight/reacted/blob/master/doc/artwork/logo.png)
+![ReActed Logo](https://github.com/reacted-io/reacted/blob/master/doc/artwork/logo.png)
 
 <p align="center">
 <a href="https://www.reacted.io">Reactive Actor framework for flexible/distributed/scalable and monitorable applications</a>
@@ -13,7 +13,7 @@
  ReActed can manage for you:
  
  - Parallelization: leveraging the actor paradigm, reactor can manage for you parallelization, saving the programmer the
- effort to write and mantain concurrent code. Synchronization or memory visibility issues problems are structurally removed
+ effort to write and maintain concurrent code. Synchronization or memory visibility issues problems are structurally removed
  from your code
  
  - Distribution: a ReActed instance can naturally and automatically create a cluster with other instances. Resources can
@@ -36,5 +36,6 @@ ReActed provides you a flexible and dependable environment that allows the devel
 
 ## Getting Started
 
-If you want to jump into the code, you can give a look to the [examples](https://github.com/wireknight/reacted/tree/master/examples) directory, otherwise give a look to the quickstart guide in the official documentation
+If you want to jump into the code, you can give a look to the [examples](https://github.com/reacted-io/reacted/blob/master/examples) directory, otherwise give a 
+look to the quickstart guide in the official documentation
 

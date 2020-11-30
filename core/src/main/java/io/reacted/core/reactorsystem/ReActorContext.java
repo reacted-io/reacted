@@ -9,7 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.TypedSubscription;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -17,6 +17,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -24,11 +25,11 @@ import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -46,7 +47,7 @@ public final class ReActorContext {
     private final MailBox actorMbox;
     private final ReActorRef reactorRef;
     private final ReActorSystem reActorSystem;
-    private final List<ReActorRef> children;
+    private final Set<ReActorRef> children;
     private final ReActorRef parent;
     private final Dispatcher dispatcher;
     private final AtomicBoolean isScheduled;
@@ -66,15 +67,14 @@ public final class ReActorContext {
         this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider).apply(this));
         this.reactorRef = Objects.requireNonNull(reActorCtxBuilder.reactorRef);
         this.reActorSystem = Objects.requireNonNull(reActorCtxBuilder.reActorSystem);
-        this.children = new CopyOnWriteArrayList<>();
+        this.children = ConcurrentHashMap.newKeySet();
         this.parent = Objects.requireNonNull(reActorCtxBuilder.parent);
         this.dispatcher = Objects.requireNonNull(reActorCtxBuilder.dispatcher);
         this.isScheduled = new AtomicBoolean(false);
         this.structuralLock = new ReentrantReadWriteLock();
         this.typedSubscriptions = Objects.requireNonNull(reActorCtxBuilder.typedSubscriptions).length == 0
-                                                         ? TypedSubscription.NO_SUBSCRIPTIONS
-                                                         : Arrays.copyOf(reActorCtxBuilder.typedSubscriptions,
-                                                                         reActorCtxBuilder.typedSubscriptions.length);
+                                  ? TypedSubscription.NO_SUBSCRIPTIONS
+                                  : TypedSubscriptionsManager.getNormalizedSubscriptions(reActorCtxBuilder.typedSubscriptions);
         this.hierarchyTermination = new CompletableFuture<>();
         this.msgExecutionId = new AtomicLong();
         this.reActions = Objects.requireNonNull(reActorCtxBuilder.reActions);
@@ -86,14 +86,12 @@ public final class ReActorContext {
 
     public ReActorSystem getReActorSystem() { return reActorSystem; }
 
-    public List<ReActorRef> getChildren() { return children; }
+    public Set<ReActorRef> getChildren() { return children; }
 
     public ReActorRef getParent() { return parent; }
 
     public Dispatcher getDispatcher() { return dispatcher; }
-
     public MailBox getMbox() { return actorMbox; }
-
     public CompletionStage<Void> getHierarchyTermination() { return hierarchyTermination; }
 
     public long getNextMsgExecutionId() { return msgExecutionId.getAndIncrement(); }
@@ -130,16 +128,12 @@ public final class ReActorContext {
         return interceptedMsgTypes;
     }
 
-    public final void reschedule() {
-        getDispatcher().dispatch(this);
-    }
+    public final void reschedule() { getDispatcher().dispatch(this); }
 
-    public CompletionStage<Try<DeliveryStatus>> reply(Serializable anyPayload) {
-        return reply(getSelf(), anyPayload);
-    }
+    public CompletionStage<Try<DeliveryStatus>> reply(Serializable anyPayload) { return reply(getSelf(), anyPayload); }
 
-    public CompletionStage<Try<DeliveryStatus>> aReply(Serializable anyPayload) {
-        return aReply(getSelf(), anyPayload);
+    public CompletionStage<Try<DeliveryStatus>> areply(Serializable anyPayload) {
+        return areply(getSelf(), anyPayload);
     }
 
     public CompletionStage<Try<DeliveryStatus>> reply(ReActorRef sender, Serializable anyPayload) {
@@ -160,7 +154,7 @@ public final class ReActorContext {
      * @param anyPayload payload to be sent
      * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#atell(ReActorRef, Serializable)}
      */
-    public CompletionStage<Try<DeliveryStatus>> aReply(ReActorRef sender, Serializable anyPayload) {
+    public CompletionStage<Try<DeliveryStatus>> areply(ReActorRef sender, Serializable anyPayload) {
         return getSender().atell(sender, anyPayload);
     }
 
@@ -210,7 +204,7 @@ public final class ReActorContext {
     public final void setTypedSubscriptions(TypedSubscription ...newTypedSubscriptions) {
         refreshInterceptors(Objects.requireNonNull(newTypedSubscriptions).length == 0
                             ? TypedSubscription.NO_SUBSCRIPTIONS
-                            : Arrays.copyOf(newTypedSubscriptions, newTypedSubscriptions.length));
+                            : TypedSubscriptionsManager.getNormalizedSubscriptions(newTypedSubscriptions));
     }
 
     /**
@@ -219,13 +213,12 @@ public final class ReActorContext {
      *
      */
     public final void addTypedSubscriptions(TypedSubscription ...typedSubscriptionsToAdd) {
-        setTypedSubscriptions(Stream.concat(Arrays.stream(typedSubscriptionsToAdd),
-                                            Arrays.stream(getTypedSubscriptions()))
-                                    .distinct()
-                                    .toArray(TypedSubscription[]::new));
+        setTypedSubscriptions(TypedSubscriptionsManager.getNormalizedSubscriptions(Stream.concat(Arrays.stream(typedSubscriptionsToAdd),
+                                                                                                 Arrays.stream(getTypedSubscriptions()))
+                                                                                         .toArray(TypedSubscription[]::new)));
     }
     /**
-     * Request termination for this reactor and the underlying hierachy
+     * Request termination for this reactor and the underlying hierarchy
      * @return a {@link CompletionStage} that is going to be completed when the last reactor in the hierarchy
      * is terminated
      */

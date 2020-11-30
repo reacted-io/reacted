@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>reacted-all</artifactId>
+        <groupId>io.reacted</groupId>
+        <version>1.4.7-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <developers>
+        <developer>
+            <id>wireknight</id>
+            <name>Pierre Falda</name>
+            <email>pierre@reacted.io</email>
+            <url>https://www.linkedin.com/in/pierrefalda/</url>
+            <organization>ReActed</organization>
+            <organizationUrl>http://www.reacted.io</organizationUrl>
+            <roles>
+                <role>Architect</role>
+                <role>Engineer</role>
+            </roles>
+        </developer>
+        <developer>
+            <id>nicoara.razvan</id>
+            <name>Razvan Nicoara</name>
+            <email>razvan@reacted.io</email>
+            <url>https://www.linkedin.com/in/razvan-nicoara-059a1440/</url>
+            <organization>ReActed</organization>
+            <organizationUrl>http://www.reacted.io</organizationUrl>
+            <roles>
+                <role>QA Engineer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <artifactId>reacted-framework</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-pattern</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-drivers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-streams</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

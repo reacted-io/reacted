@@ -12,7 +12,6 @@ import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
@@ -56,7 +55,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
 
     public Duration getAckCacheCleanupInterval() { return ackCacheCleanupInterval; }
 
-    public static abstract class Builder<BuilderT, BuiltT>
+    public abstract static class Builder<BuilderT, BuiltT>
             extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String channelName;

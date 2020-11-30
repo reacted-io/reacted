@@ -92,6 +92,7 @@ public class ReActorSystemConfig {
 
         /**
          * @param reactorSystemName Must be unique in the cluster
+         * @return this builder
          */
         public Builder setReactorSystemName(String reactorSystemName) {
             this.reactorSystemName = reactorSystemName;
@@ -103,7 +104,8 @@ public class ReActorSystemConfig {
          * This specifies how bit it is
          *
          * @param msgFanOutPoolSize numbers of threads that should be used.
-         *                          Range 1 - 200
+         *                          Range {@link ReActorSystemConfig#DEFAULT_FANOUT_POOL_SIZE} to {@link ReActorSystemConfig#MAX_DISPATCHER_CONFIGS}
+         * @return this builder
          */
         public Builder setMsgFanOutPoolSize(int msgFanOutPoolSize) {
             this.msgFanOutPoolSize = msgFanOutPoolSize;
@@ -116,6 +118,7 @@ public class ReActorSystemConfig {
          *
          * @param shallRecordExecution true if data for cold replay should be generated
          *                             during execution.
+         * @return this builder
          */
         public Builder setRecordExecution(boolean shallRecordExecution) {
             this.shallRecordExecution = shallRecordExecution;
@@ -130,6 +133,7 @@ public class ReActorSystemConfig {
          *
          * @param localDriver driver that should be used for communication within this
          *                    reactor system
+         * @return this builder
          */
         public Builder setLocalDriver(LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver) {
             this.localDriver = localDriver;
@@ -150,6 +154,7 @@ public class ReActorSystemConfig {
 
         /**
          * @param dispatcherConfig new dispatcher config
+         * @return this builder
          */
         public Builder addDispatcherConfig(DispatcherConfig dispatcherConfig) {
             this.dispatcherConfigs.add(dispatcherConfig);
@@ -161,6 +166,7 @@ public class ReActorSystemConfig {
          * It's like the local driver, but for communications with other reactor systems
          *
          * @param remotingDriver remoting driver
+         * @return this builder
          */
         public Builder addRemotingDriver(RemotingDriver<? extends ChannelDriverConfig<?, ?>> remotingDriver) {
             this.remotingDrivers.add(remotingDriver);
@@ -171,6 +177,7 @@ public class ReActorSystemConfig {
          * Connect the reactor system to the service registries instance specified by these drivers
          *
          * @param serviceRegistryDriver service registry driver
+         * @return this builder
          */
         public Builder addServiceRegistryDriver(ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
                 ? extends ServiceRegistryConfig<?, ?>> serviceRegistryDriver) {
@@ -180,6 +187,7 @@ public class ReActorSystemConfig {
 
         /**
          * @throws IllegalArgumentException if any of the supplied arguments do not comply with the provided boundaries
+         * @return a valid {@link ReActorSystemConfig}
          */
         public ReActorSystemConfig build() {
             return new ReActorSystemConfig(this);
