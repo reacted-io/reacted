@@ -26,13 +26,13 @@ public class DispatcherConfig {
     private DispatcherConfig(Builder builder) {
         this.batchSize = ObjectUtils.requiredInRange(builder.batchSize, 1, Integer.MAX_VALUE,
                                                      IllegalArgumentException::new);
-        this.dispatcherThreadsNum = ObjectUtils.requiredInRange(builder.dispatcherThreadsNum, 1, Integer.MAX_VALUE,
+        this.dispatcherThreadsNum = ObjectUtils.requiredInRange(builder.dispatcherThreadsNum, 1,
+                                                                Integer.MAX_VALUE,
                                                                 IllegalArgumentException::new);
         this.dispatcherName = Objects.requireNonNull(Strings.isNullOrEmpty(builder.dispatcherName)
                                                      ? null
                                                      : builder.dispatcherName);
     }
-
     public int getBatchSize() { return batchSize; }
 
     public int getDispatcherThreadsNum() { return dispatcherThreadsNum; }
