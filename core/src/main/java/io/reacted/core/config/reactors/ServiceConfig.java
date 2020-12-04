@@ -32,8 +32,10 @@ public class ServiceConfig extends ReActiveEntityConfig<ServiceConfig.Builder, S
         super(builder);
         this.routeesNum = ObjectUtils.requiredInRange(builder.routeesNum, MIN_ROUTEES_PER_SERVICE,
                                                       MAX_ROUTEES_PER_SERVICE, IllegalArgumentException::new);
-        this.routeeProvider = Objects.requireNonNull(builder.routeeProvider);
-        this.loadBalancingPolicy = Objects.requireNonNull(builder.loadBalancingPolicy);
+        this.routeeProvider = Objects.requireNonNull(builder.routeeProvider,
+                                                     "Routee provider cannot be null");
+        this.loadBalancingPolicy = Objects.requireNonNull(builder.loadBalancingPolicy,
+                                                          "Load balancing policy cannot be null");
         this.serviceRepublishReattemptDelayOnError = ObjectUtils.checkNonNullPositiveTimeInterval(builder.serviceRepublishReattemptDelayOnError);
         this.remoteService = builder.remoteService;
     }

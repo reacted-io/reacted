@@ -24,7 +24,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
+import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 
 @NonNullByDefault
 public abstract class PipelineStage implements ReActiveEntity {
@@ -56,15 +56,13 @@ public abstract class PipelineStage implements ReActiveEntity {
                                              .map(dst -> dst.atell(raCtx.getSelf(), output)))
                   .collect(Collectors.toList());
         var lastDelivery = fanOut.stream()
-              .reduce((first, second) -> ifNotDelivered(first,
-                                                        (Try.TryMapper<Throwable, DeliveryStatus>)
-                                                        error -> onFailedDelivery(error, raCtx, message))
-                                         .thenCompose(previousResult -> ifNotDelivered(second,
-                                                                                       (Try.TryMapper<Throwable, DeliveryStatus>)
-                                                                                       error -> onFailedDelivery(error, raCtx, message))))
-              .orElse(CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED)));
+              .reduce((first, second) -> composeDeliveries(first, second,
+                                                           error -> onFailedDelivery(error, raCtx,
+                                                                                     message)))
+              .orElseGet(() -> CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED)));
         lastDelivery.thenAccept(lastOutcome -> raCtx.getMbox().request(1));
     }
+
     private <InputT extends Serializable>
     DeliveryStatus onFailedDelivery(Throwable error, ReActorContext raCtx, InputT message) {
         onLinkError(error, raCtx, message);

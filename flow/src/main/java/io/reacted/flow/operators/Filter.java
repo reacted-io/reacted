@@ -27,6 +27,7 @@ public final class Filter<InputT extends Serializable> extends PipelineStage {
     }
     @Override
     protected Collection<? extends Serializable> onNext(Serializable input, ReActorContext raCtx) {
+        //noinspection unchecked
         return filter.test((InputT)input) ? List.of(input) : List.of();
     }
 }

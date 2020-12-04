@@ -31,7 +31,8 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
 
     protected ChannelDriverConfig(Builder<BuilderT, BuiltT> builder) {
         super(builder);
-        this.channelName = Objects.requireNonNull(builder.channelName);
+        this.channelName = Objects.requireNonNull(builder.channelName,
+                                                  "Channel name cannot be null");
         this.deliveryAckRequiredByChannel = builder.deliveryAckRequiredByChannel;
         this.atellAutomaticFailureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.atellFailureTimeout,
                                                                                                   Long.MAX_VALUE,

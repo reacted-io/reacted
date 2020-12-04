@@ -19,28 +19,41 @@ import java.time.Duration;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
+import java.util.function.Consumer;
 
 @NonNullByDefault
 public final class ReActedUtils {
     private ReActedUtils() { /* No Implementation required */ }
 
-    public static void ifNotDelivered(CompletionStage<Try<DeliveryStatus>> deliveryAttempt,
-                                      Try.TryConsumer<Throwable> onFailedDelivery) {
-        deliveryAttempt.thenAcceptAsync(deliveryStatusTry -> deliveryStatusTry.filter(DeliveryStatus::isDelivered,
-                                                                                      DeliveryException::new)
-                                                                              .ifError(onFailedDelivery));
+    public static CompletionStage<Try<DeliveryStatus>>
+    composeDeliveries(CompletionStage<Try<DeliveryStatus>> first,
+                      CompletionStage<Try<DeliveryStatus>> second,
+                      Consumer<Throwable> onFailedDelivery) {
+        return ifNotDelivered(first, onFailedDelivery)
+            .thenCompose(prevStep -> ifNotDelivered(second, onFailedDelivery));
+    }
+    public static CompletionStage<Try<DeliveryStatus>>
+    ifNotDelivered(CompletionStage<Try<DeliveryStatus>> deliveryAttempt,
+                   Consumer<Throwable> onFailedDelivery) {
+        return deliveryAttempt.thenApplyAsync(deliveryStatusTry ->
+                                              deliveryStatusTry.filter(DeliveryStatus::isDelivered,
+                                                                       DeliveryException::new)
+                                                               .peekFailure(onFailedDelivery));
     }
 
-    public static  <PayloadT extends Serializable> void rescheduleIf(BiConsumer<ReActorContext, PayloadT> realCall,
-                                                                     BooleanSupplier shouldReschedule,
-                                                                     Duration rescheduleInterval,
-                                                                     ReActorContext raCtx, PayloadT message) {
+    public static  <PayloadT extends Serializable>
+    void rescheduleIf(BiConsumer<ReActorContext, PayloadT> realCall,
+                      BooleanSupplier shouldReschedule, Duration rescheduleInterval,
+                      ReActorContext raCtx, PayloadT message) {
+
         if (shouldReschedule.getAsBoolean()) {
             raCtx.rescheduleMessage(message, rescheduleInterval)
-                 .ifError(error -> raCtx.logError("WARNING {} misbehaves. Error attempting a {} reschedulation. " +
+                 .ifError(error -> raCtx.logError("WARNING {} misbehaves. Error attempting a {} " +
+                                                  "reschedulation. " +
                                                   "System remoting may become unreliable ",
-                                                  realCall.toString(), message.getClass().getSimpleName(), error));
+                                                  realCall.toString(),
+                                                  message.getClass().getSimpleName(),
+                                                  error));
         } else {
             realCall.accept(raCtx, message);
         }

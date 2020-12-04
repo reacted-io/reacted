@@ -6,8 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.exceptions;
+package io.reacted.streams;
 
-import javax.annotation.concurrent.Immutable;
-@Immutable
-public class ReActorRegistrationException extends RuntimeException { }
+public class RemoteRegistrationException extends RuntimeException { }

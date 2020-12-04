@@ -14,7 +14,6 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.LoopbackDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
-import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.ArrayList;

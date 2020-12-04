@@ -25,6 +25,7 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Objects;
@@ -131,7 +132,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
             Try.ofRunnable(() -> subscriber.onSubscribe(this))
                .ifError(error -> errorTermination(raCtx, error, subscriber));
         } else {
-            errorTermination(raCtx, new RuntimeException("RemoteRegistrationException"), subscriber);
+            errorTermination(raCtx, new RemoteRegistrationException(), subscriber);
         }
     }
 
@@ -151,13 +152,15 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         this.backpressurerCtx = raCtx;
         this.backpressuringMbox = raCtx.getMbox();
 
-        Try.TryConsumer<Throwable> onSubscriptionError = error -> { subscriber.onSubscribe(this);
-                                                                    errorTermination(raCtx, error, subscriber); };
+        Consumer<Throwable> onSubscriptionError;
+        onSubscriptionError = error -> { subscriber.onSubscribe(this);
+                                         errorTermination(raCtx, error, subscriber); };
         ifNotDelivered(feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())),
                        onSubscriptionError);
     }
 
-    private void completeTermination(ReActorContext raCtx, Flow.Subscriber<? super PayloadT> localSubscriber) {
+    private void completeTermination(ReActorContext raCtx,
+                                     Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(localSubscriber::onComplete)
            .ifError(error -> raCtx.logError("Error in {} onComplete: ",
@@ -168,6 +171,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                                   Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(() -> localSubscriber.onError(handlingError))
-           .ifError(error -> raCtx.logError("Error in {} onError: ", localSubscriber.getClass().getSimpleName(), error));
+           .ifError(error -> raCtx.logError("Error in {} onError: ",
+                                            localSubscriber.getClass().getSimpleName(), error));
     }
 }

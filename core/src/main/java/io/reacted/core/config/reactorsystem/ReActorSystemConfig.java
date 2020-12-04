@@ -41,11 +41,13 @@ public class ReActorSystemConfig {
                                             ? extends ServiceRegistryConfig<?, ?>>> serviceRegistryDrivers;
 
     private ReActorSystemConfig(Builder reactorSystemConfig) {
-        this.reactorSystemName = Objects.requireNonNull(reactorSystemConfig.reactorSystemName);
+        this.reactorSystemName = Objects.requireNonNull(reactorSystemConfig.reactorSystemName,
+                                                        "Reactor system name cannot be null");
         this.msgFanOutPoolSize = ObjectUtils.requiredInRange(reactorSystemConfig.msgFanOutPoolSize,
                                                              DEFAULT_FANOUT_POOL_SIZE, 10,
                                                              IllegalArgumentException::new);
-        this.localDriver = Objects.requireNonNull(reactorSystemConfig.localDriver);
+        this.localDriver = Objects.requireNonNull(reactorSystemConfig.localDriver,
+                                                  "Local delivery driver cannot be null");
         this.recordedExecution = reactorSystemConfig.shallRecordExecution;
         ObjectUtils.requiredInRange(reactorSystemConfig.dispatcherConfigs.size(), 0, MAX_DISPATCHER_CONFIGS,
                                     IllegalArgumentException::new);

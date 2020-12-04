@@ -31,7 +31,8 @@ public class DispatcherConfig {
                                                                 IllegalArgumentException::new);
         this.dispatcherName = Objects.requireNonNull(Strings.isNullOrEmpty(builder.dispatcherName)
                                                      ? null
-                                                     : builder.dispatcherName);
+                                                     : builder.dispatcherName,
+                                                     "Dispatcher name cannot be null or empty");
     }
     public int getBatchSize() { return batchSize; }
 

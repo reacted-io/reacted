@@ -18,7 +18,8 @@ public class DirectCommunicationLoggerConfig extends ChannelDriverConfig<DirectC
     private final String logFilePath;
     private DirectCommunicationLoggerConfig(Builder builder) {
         super(builder);
-        this.logFilePath = Objects.requireNonNull(builder.logFilePath);
+        this.logFilePath = Objects.requireNonNull(builder.logFilePath,
+                                                  "Log filepath cannot be null");
     }
 
     public String getLogFilePath() { return logFilePath; }
