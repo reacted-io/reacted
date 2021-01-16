@@ -3,7 +3,7 @@
     <parent>
         <artifactId>reacted-all</artifactId>
         <groupId>io.reacted</groupId>
-        <version>1.4.7-SNAPSHOT</version>
+        <version>1.4.8-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -24,7 +24,7 @@
             <id>nicoara.razvan</id>
             <name>Razvan Nicoara</name>
             <email>razvan@reacted.io</email>
-            <url>https://www.linkedin.com/in/razvan-nicoara-059a1440/</url>
+            <url>https://www.linkedin.com/in/razvan-nicoara/</url>
             <organization>ReActed</organization>
             <organizationUrl>http://www.reacted.io</organizationUrl>
             <roles>
