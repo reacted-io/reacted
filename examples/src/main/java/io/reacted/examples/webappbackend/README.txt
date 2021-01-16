@@ -1,0 +1,2 @@
+Simple application server that stores on mongodb the data received within a POST and then through a GET allows you to
+retrieve it. The whole flow can be recorded and successfully replayed. Requires a running mongodb instance

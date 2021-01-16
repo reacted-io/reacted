@@ -55,7 +55,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
 
     public Duration getAckCacheCleanupInterval() { return ackCacheCleanupInterval; }
 
-    public static abstract class Builder<BuilderT, BuiltT>
+    public abstract static class Builder<BuilderT, BuiltT>
             extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String channelName;

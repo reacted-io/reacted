@@ -69,28 +69,36 @@ public class Service implements ReActiveEntity {
     @Nonnull
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct((raCtx, message) -> requestNextMessage(raCtx, message, this::routeMessage))
+                        .reAct((raCtx, message) -> requestNextMessage(raCtx, message,
+                                                                      this::routeMessage))
                         .reAct(ServiceRegistryNotAvailable.class,
                                (raCtx, message) -> requestNextMessage(raCtx, message,
                                                                       this::onServiceRegistryNotAvailable))
                         .reAct(ServiceDiscoveryRequest.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message, this::serviceDiscovery))
+                               (raCtx, message) -> requestNextMessage(raCtx, message,
+                                                                      this::serviceDiscovery))
                         .reAct(RouteeReSpawnRequest.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message, this::respawnRoutee))
+                               (raCtx, message) -> requestNextMessage(raCtx, message,
+                                                                      this::respawnRoutee))
                         .reAct(ReActorInit.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message, this::initService))
+                               (raCtx, message) -> requestNextMessage(raCtx, message,
+                                                                      this::initService))
                         .reAct(ReActorStop.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message, this::stopService))
+                               (raCtx, message) -> requestNextMessage(raCtx, message,
+                                                                      this::stopService))
                         .reAct(ServicePublicationRequestError.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message, this::onServicePublicationError))
+                               (raCtx, message) -> requestNextMessage(raCtx, message,
+                                                                      this::onServicePublicationError))
                         .reAct(SystemMonitorReport.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message, this::onSystemInfoReport))
+                              (raCtx, message) -> requestNextMessage(raCtx, message,
+                                                                     this::onSystemInfoReport))
                         .build();
     }
 
-    private void onServiceRegistryNotAvailable(ReActorContext raCtx, ServiceRegistryNotAvailable notAvailable) {
+    private void onServiceRegistryNotAvailable(ReActorContext raCtx,
+                                               ServiceRegistryNotAvailable notAvailable) {
         raCtx.logInfo("{} makes itself discoverable",
-                      this.serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME));
+                      serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME));
         raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class));
     }
 
@@ -181,7 +189,10 @@ public class Service implements ReActiveEntity {
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
         this.routeesMap.remove(reSpawnRequest.deadRoutee);
         Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider().get()))
-           .map(routee -> spawnRoutee(raCtx, routee.getReActions(), reSpawnRequest.routeeConfig))
+           .map(routee -> spawnRoutee(raCtx, routee.getReActions(),
+                                      ReActorConfig.fromConfig(routee.getConfig())
+                                                   .setReActorName(reSpawnRequest.routeeName)
+                                                   .build()))
            .ifSuccessOrElse(this.routeesMap::add, spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR, spawnError));
     }
 
@@ -194,8 +205,10 @@ public class Service implements ReActiveEntity {
         routeeCtx.getHierarchyTermination()
                  .thenAccept(terminated -> { if (routeeCtx.isStop()) {
                                                 this.routeesMap.remove(routee);
-                                             } else { routerCtx.selfTell(new RouteeReSpawnRequest(routeeConfig,
-                                                                                                  routee)); }});
+                                             } else {
+                                                routerCtx.selfTell(new RouteeReSpawnRequest(routee, routeeConfig.getReActorName()));
+                                             }
+                                           });
         return routee;
     }
 
@@ -234,11 +247,11 @@ public class Service implements ReActiveEntity {
     }
 
     public static class RouteeReSpawnRequest implements Serializable {
-        private final ReActorConfig routeeConfig;
         private final ReActorRef deadRoutee;
-        public RouteeReSpawnRequest(ReActorConfig routeeConfig, ReActorRef deadRoutee) {
-            this.routeeConfig = routeeConfig;
+        private final String routeeName;
+        public RouteeReSpawnRequest(ReActorRef deadRoutee, String routeeName) {
             this.deadRoutee = deadRoutee;
+            this.routeeName = routeeName;
         }
     }
 

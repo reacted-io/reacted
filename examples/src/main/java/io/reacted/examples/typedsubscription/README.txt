@@ -1,0 +1,1 @@
+Typed Subscriptions usage example. Some messages are broadcasted and the subscribers for that type receive it

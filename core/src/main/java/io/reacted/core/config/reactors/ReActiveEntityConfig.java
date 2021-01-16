@@ -27,7 +27,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         extends InheritableBuilder<BuilderT, BuiltT> {
 
     public static final Function<ReActorContext, MailBox> DEFAULT_MAILBOX_SUPPLIER = ctx -> new BasicMbox();
-    public static final TypedSubscription[] DEFAULT_SNIFF_SUBSCRIPTIONS = TypedSubscription.NO_SUBSCRIPTIONS;
+    public static final TypedSubscription[] DEFAULT_TYPED_SUBSCRIPTIONS = TypedSubscription.NO_SUBSCRIPTIONS;
     private final String dispatcherName;
     private final String reActorName;
     private final TypedSubscription[] typedSubscriptions;
@@ -69,7 +69,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String reActorName;
-        private TypedSubscription[] typedSubscriptions = DEFAULT_SNIFF_SUBSCRIPTIONS;
+        private TypedSubscription[] typedSubscriptions = DEFAULT_TYPED_SUBSCRIPTIONS;
         private Function<ReActorContext, MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
 
         protected Builder() { }

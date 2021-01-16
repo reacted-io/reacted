@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.util.function.Consumer;
 
 public class SystemLogger {
-    private final static Logger LOGGER = LoggerFactory.getLogger(SystemLogger.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SystemLogger.class);
     public static final ReActions SYSTEM_LOGGER = ReActions.newBuilder()
             .reAct(ReActedError.class,
                    (raCtx, message) -> logMessage(LOGGER::error, message))

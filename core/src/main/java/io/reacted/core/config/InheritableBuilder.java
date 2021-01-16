@@ -12,7 +12,7 @@ public abstract class InheritableBuilder<BuilderT extends InheritableBuilder.Bui
 
     protected InheritableBuilder(Builder<BuilderT, BuiltT> builder) { }
 
-    public static abstract class Builder<BuilderT, BuiltT> {
+    public abstract static class Builder<BuilderT, BuiltT> {
 
         public abstract BuiltT build();
 
