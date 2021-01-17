@@ -8,38 +8,69 @@
 
 package io.reacted.flow.operators;
 
+import io.reacted.core.exceptions.ServiceNotFoundException;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.services.ServiceDiscoveryReply;
+import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
+import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 
 @NonNullByDefault
 public abstract class PipelineStage implements ReActiveEntity {
-    private final Collection<ReActorRef> nextStages;
+    private Set<ReActorRef> nextStages;
     private final ReActions stageReActions;
-    protected PipelineStage(Collection<ReActorRef> nextStages) {
-        this.nextStages = Objects.requireNonNull(nextStages, "Next stages cannot be null");
+    protected PipelineStage() {
+        this.nextStages = Set.of();
         this.stageReActions = ReActions.newBuilder()
                                        .reAct(ReActorInit.class, this::onInit)
                                        .reAct(ReActorStop.class, this::onStop)
-                                       .reAct(this::onNext).build();
+                                       .reAct(this::onNext)
+                                       .build();
+    }
+
+    public CompletionStage<Try<ReActorRef>> of(ReActorSystem localReActorSystem,
+                                               ServiceDiscoverySearchFilter serviceSearchFilter) {
+        return localReActorSystem.serviceDiscovery(serviceSearchFilter)
+                                 .thenApply(tryReply -> tryReply.filter(reply -> reply.getServiceGates()
+                                                                                      .isEmpty(),
+                                                                        ServiceNotFoundException::new)
+                                                                .map(reply -> reply.getServiceGates()
+                                                                                   .iterator()
+                                                                                   .next()));
     }
     @Override
     public final ReActions getReActions() { return stageReActions; }
-    protected abstract Collection<? extends Serializable> onNext(Serializable input, ReActorContext raCtx);
+
+    public void setNextStages(Set<ReActorRef> nextStages) {
+        this.nextStages = Set.copyOf(Objects.requireNonNull(nextStages,
+                                                            "Next stages cannot be null"));
+    }
+
+    public void addNextStage(ReActorRef nextStage) {
+        this.nextStages = Stream.concat(Stream.of(nextStage), nextStages.stream())
+                                .collect(Collectors.toUnmodifiableSet());
+    }
+    protected abstract Collection<? extends Serializable> onNext(Serializable input,
+                                                                 ReActorContext raCtx);
     protected void onLinkError(Throwable error, ReActorContext raCtx, Serializable input) {
         raCtx.logError("Unable to pass {} to the next stage", error);
     }

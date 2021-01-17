@@ -17,9 +17,7 @@ import java.util.Collection;
 
 @NonNullByDefault
 public abstract class Reduce extends PipelineStage {
-    protected Reduce(Collection<ReActorRef> fanOut) {
-        super(fanOut);
-    }
+    protected Reduce() { }
     protected abstract Reducer getReductions();
     @Override
     protected Collection<? extends Serializable> onNext(Serializable input, ReActorContext raCtx) {

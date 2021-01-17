@@ -28,10 +28,8 @@ public class Merge extends Reduce {
     private final Map<Class<? extends Serializable>, Deque<Serializable>> storage;
     private final Map<Class<? extends Serializable>, Long> typeToRequiredForMerge;
     private final Function<Collection<? extends Serializable>, Collection<? extends Serializable>> merger;
-    protected Merge(Collection<ReActorRef> fanOut,
-                    Collection<Class<? extends Serializable>> dataTypesToBeMerged,
+    protected Merge(Collection<Class<? extends Serializable>> dataTypesToBeMerged,
                     Function<Collection<? extends Serializable>, Collection<? extends Serializable>> merger) {
-        super(fanOut);
         this.merger = merger;
         this.storage = dataTypesToBeMerged.stream()
                                           .collect(Collectors.toUnmodifiableMap(Function.identity(),

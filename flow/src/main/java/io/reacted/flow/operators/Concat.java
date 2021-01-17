@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.function.Function;
 
 public final class Concat extends Merge {
-    public Concat(Collection<ReActorRef> fanOut) {
-        super(fanOut, List.of(Serializable.class), Function.identity());
+    public Concat() {
+        super(List.of(Serializable.class), Function.identity());
     }
 }

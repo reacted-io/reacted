@@ -28,7 +28,8 @@ public final class ObjectUtils {
     private ObjectUtils() { /* No instances allowed */ }
 
     @Nullable
-    public static <InputT, OutputT> OutputT ifNotNull(@Nullable InputT input, Function<InputT, OutputT> ifNotNull) {
+    public static <InputT, OutputT> OutputT ifNotNull(@Nullable InputT input,
+                                                      Function<InputT, OutputT> ifNotNull) {
         if (input == null) {
             return null;
         }

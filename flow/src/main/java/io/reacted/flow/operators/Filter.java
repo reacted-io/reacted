@@ -21,8 +21,7 @@ import java.util.function.Predicate;
 @NonNullByDefault
 public final class Filter<InputT extends Serializable> extends PipelineStage {
     private final Predicate<InputT> filter;
-    public Filter(Collection<ReActorRef> fanOut, Predicate<InputT> filter) {
-        super(fanOut);
+    public Filter(Predicate<InputT> filter) {
         this.filter = Objects.requireNonNull(filter, "Filter predicate cannot be null");
     }
     @Override
