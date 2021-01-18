@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
 
+@SuppressWarnings("SameParameterValue")
 @NonNullByDefault
 public final class NullReActorSystemRef extends ReActorSystemRef {
     public static final NullReActorSystemRef NULL_REACTOR_SYSTEM_REF = new NullReActorSystemRef(ReActorSystemId.NO_REACTORSYSTEM_ID,

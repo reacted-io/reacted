@@ -19,32 +19,32 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
-public class Reductions implements Reducer, Serializable {
-    private final Map<Class<? extends Serializable>,
+public class Reductions implements Reducer {
+    private final Map<Class<Serializable>,
                       BiFunction<Serializable, ReActorContext,
-                                 Collection<? extends Serializable>>> reductions;
+                                 Collection<Serializable>>> reductors;
     private Reductions(Builder builder) {
-        this.reductions = builder.reductions.entrySet().stream()
-                                            .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey,
-                                                                                  Map.Entry::getValue));
+        this.reductors = builder.reductions.entrySet().stream()
+                                           .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey,
+                                                                                 Map.Entry::getValue));
     }
 
     @Override
     public Collection<? extends Serializable> reduce(ReActorContext raCtx, Serializable message) {
-        return reductions.get(message.getClass()).apply(message, raCtx);
+        return reductors.get(message.getClass()).apply(message, raCtx);
     }
 
     public static Builder newBuilder() { return new Builder(); }
     public static class Builder {
-        private final Map<Class<? extends Serializable>,
+        private final Map<Class<Serializable>,
                           BiFunction<Serializable, ReActorContext,
-                                     Collection<? extends Serializable>>> reductions;
+                                     Collection<Serializable>>> reductions;
         private Builder() { this.reductions = new HashMap<>(); }
 
-        public <InputT extends Serializable>
-        Builder setReduction(Class<InputT> inputType, BiFunction<InputT, ReActorContext,
-                                                                 Collection<? extends Serializable>> reducer) {
-            this.reductions.put(inputType, (BiFunction<Serializable, ReActorContext, Collection<? extends Serializable>>) reducer);
+        public Builder setReduction(Class<Serializable> inputType,
+                             BiFunction<Serializable, ReActorContext,
+                                        Collection<Serializable>> reducer) {
+            this.reductions.put(inputType, reducer);
             return this;
         }
 

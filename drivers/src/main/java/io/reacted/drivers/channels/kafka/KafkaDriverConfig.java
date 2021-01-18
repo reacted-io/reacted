@@ -9,7 +9,7 @@
 package io.reacted.drivers.channels.kafka;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;

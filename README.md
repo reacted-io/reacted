@@ -20,7 +20,7 @@
  be shared, used, added or created through a location agnostic approach, creating an automatically scalable and location
  agnostic way of designing a system
  
- - Monitoring: creating an event sourced or a choreography oriented microservices system can be tricky,
+ - Monitoring: creating an event source or a choreography oriented microservices system can be tricky,
   but monitoring and debugging it can be even more difficult. ReActed can do this for you through its Re-playable Actors. 
   Run the application and if something goes wrong you can just analyze the log or replay the logs to reset the system
   to its state in any given instant in time.

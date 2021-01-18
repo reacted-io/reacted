@@ -9,7 +9,7 @@
 package io.reacted.core.config.drivers;
 
 import io.reacted.core.config.InheritableBuilder;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.time.Duration;

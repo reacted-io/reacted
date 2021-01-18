@@ -10,18 +10,14 @@ package io.reacted.flow;
 
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.flow.FlowGraph.Builder;
-import io.reacted.flow.operators.PipelineStage;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 @NonNullByDefault
@@ -56,6 +52,7 @@ public class Stage {
 
     public static Builder newBuilder() { return new Builder(); }
 
+    @SuppressWarnings("NotNullFieldNotInitialized")
     public static class Builder {
         private String stageName;
         private Function<ReActorSystem, CompletionStage<ReActorRef>> operatorProvider;

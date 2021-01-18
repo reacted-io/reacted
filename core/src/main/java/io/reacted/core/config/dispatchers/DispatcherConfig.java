@@ -9,7 +9,7 @@
 package io.reacted.core.config.dispatchers;
 
 import com.google.common.base.Strings;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
@@ -18,11 +18,17 @@ import java.util.Objects;
 @Immutable
 @NonNullByDefault
 public class DispatcherConfig {
-
+    public static final String NULL_DISPATCHER_NAME = "NULL_DISPATCHER";
+    public static final DispatcherConfig NULL_DISPATCHER_CFG = new DispatcherConfig();
     private final int batchSize;
     private final int dispatcherThreadsNum;
     private final String dispatcherName;
 
+    private DispatcherConfig() {
+        this.batchSize = 0;
+        this.dispatcherThreadsNum = 0;
+        this.dispatcherName = NULL_DISPATCHER_NAME;
+    }
     private DispatcherConfig(Builder builder) {
         this.batchSize = ObjectUtils.requiredInRange(builder.batchSize, 1, Integer.MAX_VALUE,
                                                      IllegalArgumentException::new);

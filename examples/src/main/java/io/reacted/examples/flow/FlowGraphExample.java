@@ -13,7 +13,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.flow.FlowGraph;
 import io.reacted.flow.Stage;
-import io.reacted.flow.operators.Map;
+import io.reacted.flow.operators.Mapper;
 import java.util.List;
 
 public class FlowGraphExample {
@@ -26,8 +26,9 @@ public class FlowGraphExample {
                               .addStage(Stage.newBuilder()
                                              .setStageName("ToLower")
                                              .setInputStream(inputData.stream())
-                                             .setOperatorProvider(reActorSystem -> Map.of(reActorSystem,
-                                                                                          ReActorConfig.newBuilder()
+                                             .setOperatorProvider(reActorSystem -> Mapper
+                                                 .of(reActorSystem,
+                                                     ReActorConfig.newBuilder()
                                                                                                        .setReActorName("ToLower-1")
                                                                                                        .build(),
                                                                                           input -> List.of(((String)input).toLowerCase())))
@@ -35,8 +36,9 @@ public class FlowGraphExample {
                                              .build())
                               .addStage(Stage.newBuilder()
                                              .setStageName("Printer")
-                                             .setOperatorProvider(reActorSystem -> Map.of(reActorSystem,
-                                                                                          ReActorConfig.newBuilder()
+                                             .setOperatorProvider(reActorSystem -> Mapper
+                                                 .of(reActorSystem,
+                                                     ReActorConfig.newBuilder()
                                                                                                        .setReActorName("Printer-1")
                                                                                                        .build(),
                                                                                           input -> { System.out.println(input); return List.of(); }))

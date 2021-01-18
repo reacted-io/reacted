@@ -8,10 +8,7 @@
 
 package io.reacted.flow.operators;
 
-import io.reacted.core.reactorsystem.ReActorRef;
-
 import java.io.Serializable;
-import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 

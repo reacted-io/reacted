@@ -61,6 +61,7 @@ public class SourceStream extends StreamProxy<Serializable> {
             }
 
             @Override
+            @Nullable
             public Spliterator<Serializable> trySplit() { return null; }
 
             @Override
@@ -87,6 +88,7 @@ public class SourceStream extends StreamProxy<Serializable> {
     private static class SourceSubscription implements Subscriber<Serializable> {
         private final BlockingQueue<Serializable> dataOutput = new LinkedBlockingQueue<>(1);
         private volatile boolean isTerminated = false;
+        @SuppressWarnings("NotNullFieldNotInitialized")
         private Subscription subscription;
         @Override
         public void onSubscribe(Subscription subscription) {
@@ -103,6 +105,7 @@ public class SourceStream extends StreamProxy<Serializable> {
         public void onComplete() { this.isTerminated = true; }
 
         private boolean hasNext() { return !isTerminated; }
+        @Nullable
         private Serializable getNext() { return dataOutput.poll(); }
         private void init() { requestNext(); }
         private void stop() { subscription.cancel(); }

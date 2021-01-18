@@ -602,7 +602,7 @@ public class ReActorSystem {
         return gatesCentralizedManager.findGates(reActorSystemId);
     }
 
-    private void initSystem() throws Exception {
+    private void initSystem() {
 
         if (getAllDispatchers(getSystemConfig().getDispatchersConfigs())
                 .anyMatch(Predicate.not(this::registerDispatcher))) {
@@ -647,7 +647,7 @@ public class ReActorSystem {
     }
 
     /**
-     * @throws ReActorSystemInitException
+     * @throws ReActorSystemInitException If unable to deliver reactor init message
      */
     private void initReActorSystemReActors() {
         reActors.values().stream()
@@ -660,7 +660,7 @@ public class ReActorSystem {
      * @throws NullPointerException
      * @throws ReActorSystemInitException
      * @throws ReActorSystemStructuralInconsistencyError
-     * @throws ReActorRegistrationException
+     * @throws ReActorRegistrationException if a {@link ReActor} with a duplicated name is found
      */
     private void spawnReActorSystemReActors() {
         this.init = spawnInit();
@@ -935,6 +935,7 @@ public class ReActorSystem {
                      .map(Dispatcher::new);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static ScheduledExecutorService createSystemScheduleService(String reactorSystemName,
                                                                         int schedulePoolSize) {
         var taskSchedulerProps = new ThreadFactoryBuilder()

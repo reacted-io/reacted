@@ -9,34 +9,38 @@
 package io.reacted.flow.operators;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-public class Map<InputT extends Serializable, OutputT extends Serializable> extends PipelineStage {
-    private final Function<? super InputT, Collection<? extends OutputT>> mapper;
-    private Map(Function<? super InputT, Collection<? extends OutputT>> mapper) {
-        this.mapper = mapper;
+@NonNullByDefault
+public class Mapper<InputT extends Serializable, OutputT extends Serializable> extends PipelineStage {
+    private final Function<? super InputT, Collection<? extends OutputT>> mapperFunction;
+    private Mapper(Function<? super InputT, Collection<? extends OutputT>> mapperFunction) {
+        this.mapperFunction = mapperFunction;
     }
 
+    @SuppressWarnings("unchecked")
     public static CompletionStage<ReActorRef>
     of(ReActorSystem localReActorSystem, ReActorConfig operatorCfg,
        Function<? extends Serializable, Collection<? extends Serializable>> mapper) {
-        return (CompletionStage<ReActorRef>)localReActorSystem.spawn(new Map<>(mapper), operatorCfg)
+        return (CompletionStage<ReActorRef>)localReActorSystem.spawn(new Mapper<>(mapper),
+                                                                     operatorCfg)
                                                               .mapOrElse(CompletableFuture::completedFuture,
                                                                          CompletableFuture::failedFuture)
                                                               .orElseSneakyThrow();
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected Collection<? extends Serializable> onNext(Serializable input, ReActorContext raCtx) {
-        return mapper.apply((InputT) input);
+        return mapperFunction.apply((InputT) input);
     }
 }

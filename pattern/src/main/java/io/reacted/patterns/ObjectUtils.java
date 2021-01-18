@@ -1,14 +1,12 @@
 /*
- * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * Copyright (c) 2021 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.utils;
-
-import io.reacted.patterns.NonNullByDefault;
+package io.reacted.patterns;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
@@ -18,13 +16,14 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 @NonNullByDefault
 public final class ObjectUtils {
+    @Nullable
+    public static final Void VOID = null;
     private ObjectUtils() { /* No instances allowed */ }
 
     @Nullable
@@ -34,12 +33,6 @@ public final class ObjectUtils {
             return null;
         }
         return Objects.requireNonNull(ifNotNull).apply(input);
-    }
-
-    public static <InputT> void runIfNotNull(@Nullable InputT input, Consumer<InputT> ifNotNull) {
-        if (input != null) {
-            Objects.requireNonNull(ifNotNull).accept(input);
-        }
     }
 
     /**
@@ -52,7 +45,8 @@ public final class ObjectUtils {
      * @throws NullPointerException if the provided argument is null
      * @throws IllegalArgumentException if the provided interval is not positive
      */
-    public static Duration checkNonNullPositiveTimeIntervalWithLimit(@Nullable Duration interval, long limitAmount,
+    public static Duration checkNonNullPositiveTimeIntervalWithLimit(@Nullable Duration interval,
+                                                                     long limitAmount,
                                                                      TimeUnit limitUnit) {
         return requiredCondition(checkNonNullPositiveTimeInterval(interval),
                                  positiveInterval -> positiveInterval.compareTo(Duration.of(limitAmount,

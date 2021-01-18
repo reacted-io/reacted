@@ -34,7 +34,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
@@ -556,7 +556,9 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         return CompletableFuture.runAsync(task, getConfig().getAsyncExecutionService());
     }
     //Side effect on the input properties
-    private static Properties patchServiceProperties(Properties serviceProperties, String key, Object value) {
+    private static Properties patchServiceProperties(Properties serviceProperties,
+                                                     @SuppressWarnings("SameParameterValue") String key,
+                                                     Object value) {
         serviceProperties.merge(key, value, (oldObj, newObj) -> value);
         return serviceProperties;
     }

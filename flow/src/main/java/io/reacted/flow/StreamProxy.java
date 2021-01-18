@@ -8,6 +8,7 @@
 
 package io.reacted.flow;
 
+import io.reacted.patterns.NonNullByDefault;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Objects;
@@ -29,12 +30,10 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
-import javax.annotation.Nonnull;
-
+@NonNullByDefault
 class StreamProxy<T> implements Stream<T> {
-  @Nonnull
   private final Stream<T> sourceStream;
-  StreamProxy(@Nonnull Stream<T> sourceStream) {
+  StreamProxy(Stream<T> sourceStream) {
     this.sourceStream = Objects.requireNonNull(sourceStream, "Source stream cannot be null");
   }
 
@@ -122,8 +121,9 @@ class StreamProxy<T> implements Stream<T> {
   @Override
   public Object[] toArray() { return sourceStream.toArray(); }
 
+  @SuppressWarnings("SuspiciousToArrayCall")
   @Override
-  public <T> T[] toArray(IntFunction<T[]> generator) { return sourceStream.toArray(generator); }
+  public <A> A[] toArray(IntFunction<A[]> generator) { return sourceStream.toArray(generator); }
 
   @Override
   public T reduce(T identity, BinaryOperator<T> accumulator) {

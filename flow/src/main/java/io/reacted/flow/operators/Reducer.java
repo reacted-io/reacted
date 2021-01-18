@@ -16,5 +16,6 @@ import java.util.Collection;
 
 public interface Reducer {
     @Nonnull
-    Collection<? extends Serializable> reduce(@Nonnull ReActorContext raCtx, @Nonnull Serializable message);
+    Collection<? extends Serializable> reduce(@Nonnull ReActorContext raCtx,
+                                              @Nonnull Serializable message);
 }

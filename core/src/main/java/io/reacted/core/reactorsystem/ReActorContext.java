@@ -9,6 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.mailboxes.NullMailbox;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.Message;
@@ -42,8 +43,14 @@ import java.util.stream.Stream;
 
 @NonNullByDefault
 public final class ReActorContext {
-    @Nullable
-    public static final ReActorContext NO_REACTOR_CTX = null;
+    public static final ReActorContext NO_REACTOR_CTX = ReActorContext.newBuilder()
+                                                                      .setMbox(raCtx -> new NullMailbox())
+                                                                      .setParentActor(ReActorRef.NO_REACTOR_REF)
+                                                                      .setReactorRef(ReActorRef.NO_REACTOR_REF)
+                                                                      .setReActions(ReActions.NO_REACTIONS)
+                                                                      .setSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+                                                                      .setDispatcher(Dispatcher.NULL_DISPATCHER)
+                                                                      .build();
     private final MailBox actorMbox;
     private final ReActorRef reactorRef;
     private final ReActorSystem reActorSystem;

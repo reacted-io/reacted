@@ -77,7 +77,6 @@ public final class UnChecked {
     public interface CheckedConsumer<T> {
         void accept(T arg1) throws Throwable;
     }
-
     @FunctionalInterface
     public interface CheckedBiConsumer<T, U> {
         void accept(T arg1, U arg2) throws Throwable;

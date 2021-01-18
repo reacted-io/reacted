@@ -9,7 +9,6 @@
 package io.reacted.flow.operators;
 
 import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.io.Serializable;
@@ -20,13 +19,14 @@ import java.util.function.Predicate;
 
 @NonNullByDefault
 public final class Filter<InputT extends Serializable> extends PipelineStage {
-    private final Predicate<InputT> filter;
-    public Filter(Predicate<InputT> filter) {
-        this.filter = Objects.requireNonNull(filter, "Filter predicate cannot be null");
+    private final Predicate<InputT> filterPredicate;
+    public Filter(Predicate<InputT> filterPredicate) {
+        this.filterPredicate = Objects.requireNonNull(filterPredicate,
+                                                      "Filter predicate cannot be null");
     }
     @Override
     protected Collection<? extends Serializable> onNext(Serializable input, ReActorContext raCtx) {
         //noinspection unchecked
-        return filter.test((InputT)input) ? List.of(input) : List.of();
+        return filterPredicate.test((InputT)input) ? List.of(input) : List.of();
     }
 }

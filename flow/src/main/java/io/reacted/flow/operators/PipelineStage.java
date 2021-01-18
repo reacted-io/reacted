@@ -12,25 +12,24 @@ import io.reacted.core.exceptions.ServiceNotFoundException;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
-import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
-import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.flow.operators.messages.SetNextStagesRequest;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.commons.lang3.ObjectUtils;
 
 import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 
@@ -41,6 +40,7 @@ public abstract class PipelineStage implements ReActiveEntity {
     protected PipelineStage() {
         this.nextStages = Set.of();
         this.stageReActions = ReActions.newBuilder()
+                                       .reAct(SetNextStagesRequest.class, this::setNextStages)
                                        .reAct(ReActorInit.class, this::onInit)
                                        .reAct(ReActorStop.class, this::onStop)
                                        .reAct(this::onNext)
@@ -60,26 +60,24 @@ public abstract class PipelineStage implements ReActiveEntity {
     @Override
     public final ReActions getReActions() { return stageReActions; }
 
-    public void setNextStages(Set<ReActorRef> nextStages) {
-        this.nextStages = Set.copyOf(Objects.requireNonNull(nextStages,
-                                                            "Next stages cannot be null"));
-    }
-
     public void addNextStage(ReActorRef nextStage) {
         this.nextStages = Stream.concat(Stream.of(nextStage), nextStages.stream())
                                 .collect(Collectors.toUnmodifiableSet());
     }
+    public void setNextStages(ReActorContext raCtx, SetNextStagesRequest nextStagesRequest) {
+        this.nextStages = ObjectUtils.defaultIfNull(nextStagesRequest.getNextStages(), Set.of());
+    }
+
     protected abstract Collection<? extends Serializable> onNext(Serializable input,
                                                                  ReActorContext raCtx);
     protected void onLinkError(Throwable error, ReActorContext raCtx, Serializable input) {
-        raCtx.logError("Unable to pass {} to the next stage", error);
+        raCtx.logError("Unable to pass {} to the next stage", input, error);
     }
-
-    protected void onInit(ReActorContext raCtx, ReActorInit init) { }
-    protected void onStop(ReActorContext raCtx, ReActorStop stop) { }
-
-    protected static <InputT extends Serializable> InputT toExpectedType(Serializable message) {
-        return (InputT)message;
+    private void onInit(ReActorContext raCtx, ReActorInit init) {
+        /* No default implementation required */
+    }
+    private void onStop(ReActorContext raCtx, ReActorStop stop) {
+        /* No default implementation required */
     }
     private void onNext(ReActorContext raCtx, Serializable message) {
         var fanOut = onNext(message, raCtx).stream()
@@ -94,6 +92,7 @@ public abstract class PipelineStage implements ReActiveEntity {
         lastDelivery.thenAccept(lastOutcome -> raCtx.getMbox().request(1));
     }
 
+    @SuppressWarnings("SameReturnValue")
     private <InputT extends Serializable>
     DeliveryStatus onFailedDelivery(Throwable error, ReActorContext raCtx, InputT message) {
         onLinkError(error, raCtx, message);

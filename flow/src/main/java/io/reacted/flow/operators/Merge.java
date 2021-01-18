@@ -9,7 +9,6 @@
 package io.reacted.flow.operators;
 
 import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.io.Serializable;
@@ -27,9 +26,9 @@ public class Merge extends Reduce {
     private final Reducer reductions;
     private final Map<Class<? extends Serializable>, Deque<Serializable>> storage;
     private final Map<Class<? extends Serializable>, Long> typeToRequiredForMerge;
-    private final Function<Collection<? extends Serializable>, Collection<? extends Serializable>> merger;
-    protected Merge(Collection<Class<? extends Serializable>> dataTypesToBeMerged,
-                    Function<Collection<? extends Serializable>, Collection<? extends Serializable>> merger) {
+    private final Function<Collection<Serializable>, Collection<Serializable>> merger;
+    protected Merge(Collection<Class<Serializable>> dataTypesToBeMerged,
+                    Function<Collection<Serializable>, Collection<Serializable>> merger) {
         this.merger = merger;
         this.storage = dataTypesToBeMerged.stream()
                                           .collect(Collectors.toUnmodifiableMap(Function.identity(),
@@ -38,13 +37,15 @@ public class Merge extends Reduce {
                                                                     .collect(Collectors.groupingBy(Function.identity(),
                                                                                                    Collectors.counting())));
         var reductionsBuilder = Reductions.newBuilder();
-        dataTypesToBeMerged.forEach(dataType -> reductionsBuilder.setReduction(dataType, this::mergeAttempt));
+        dataTypesToBeMerged.forEach(dataType -> reductionsBuilder.setReduction(dataType,
+                                                                               this::mergeAttempt));
         this.reductions = reductionsBuilder.build();
     }
     @Override
     public Reducer getReductions() { return reductions; }
 
-    private Collection<? extends Serializable> mergeAttempt(Serializable anyMessage, ReActorContext reducerCtx) {
+    private Collection<Serializable> mergeAttempt(Serializable anyMessage,
+                                                  ReActorContext reducerCtx) {
         Deque<Serializable> typeStorage = storage.get(anyMessage.getClass());
         if (typeStorage != null) {
             typeStorage.addLast(anyMessage);

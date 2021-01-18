@@ -8,7 +8,7 @@
 
 package io.reacted.core.messages.reactors;
 
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import java.io.Serializable;
 
 public class SystemMonitorReport implements Serializable {
