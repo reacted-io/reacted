@@ -50,6 +50,7 @@ public final class ReActorContext {
                                                                       .setReActions(ReActions.NO_REACTIONS)
                                                                       .setSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                                       .setDispatcher(Dispatcher.NULL_DISPATCHER)
+                                                                      .setReActorSystem(ReActorSystem.NO_REACTOR_SYSTEM)
                                                                       .build();
     private final MailBox actorMbox;
     private final ReActorRef reactorRef;

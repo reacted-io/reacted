@@ -84,6 +84,7 @@ import java.util.stream.Stream;
 
 @NonNullByDefault
 public class ReActorSystem {
+    public static final ReActorSystem NO_REACTOR_SYSTEM = new ReActorSystem()
     /* Default dispatcher. Used by system internals */
     public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
     private static final int SYSTEM_TASK_SCHEDULER_POOL_SIZE = 2;
@@ -133,6 +134,18 @@ public class ReActorSystem {
     private ReActorRef systemLoggingReActor;
     @Nullable
     private ReActorRef systemMonitor;
+
+    private ReActorSystem() {
+        this.reActorSystemDrivers = ;
+        this.reActors = ;
+        this.typedSubscriptionsManager = ;
+        this.gatesCentralizedManager = ;
+        this.dispatchers = ;
+        this.systemConfig = ;
+        this.newSeqNum = ;
+        this.reActorStop = ;
+        this.localReActorSystemId = ;
+    }
 
     public ReActorSystem(ReActorSystemConfig config) {
         this.systemConfig = Objects.requireNonNull(config);

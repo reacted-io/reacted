@@ -26,9 +26,10 @@ public class Merge extends Reduce {
     private final Reducer reductions;
     private final Map<Class<? extends Serializable>, Deque<Serializable>> storage;
     private final Map<Class<? extends Serializable>, Long> typeToRequiredForMerge;
-    private final Function<Collection<Serializable>, Collection<Serializable>> merger;
-    protected Merge(Collection<Class<Serializable>> dataTypesToBeMerged,
-                    Function<Collection<Serializable>, Collection<Serializable>> merger) {
+    private final Function<Collection<? super Serializable>,
+                           Collection<? extends Serializable>> merger;
+    public Merge(Collection<Class<? extends Serializable>> dataTypesToBeMerged,
+                 Function<Collection<? super Serializable>, Collection<? extends Serializable>> merger) {
         this.merger = merger;
         this.storage = dataTypesToBeMerged.stream()
                                           .collect(Collectors.toUnmodifiableMap(Function.identity(),
@@ -44,13 +45,13 @@ public class Merge extends Reduce {
     @Override
     public Reducer getReductions() { return reductions; }
 
-    private Collection<Serializable> mergeAttempt(Serializable anyMessage,
-                                                  ReActorContext reducerCtx) {
-        Deque<Serializable> typeStorage = storage.get(anyMessage.getClass());
+    private Collection<? extends Serializable> mergeAttempt(Serializable anyMessage,
+                                                            ReActorContext reducerCtx) {
+        Deque<? super Serializable> typeStorage = storage.get(anyMessage.getClass());
         if (typeStorage != null) {
             typeStorage.addLast(anyMessage);
             if (canMerge()) {
-                Stack<Serializable> dataForMerge = new Stack<>();
+                Deque<? super Serializable> dataForMerge = new LinkedList<>();
                 for(var requiredForMerge : typeToRequiredForMerge.entrySet()) {
                     for (long extracted = 0; extracted < requiredForMerge.getValue(); extracted++) {
                         dataForMerge.add(storage.get(requiredForMerge.getKey()).getFirst());

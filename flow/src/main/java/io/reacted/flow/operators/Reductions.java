@@ -20,9 +20,9 @@ import java.util.stream.Collectors;
 
 @NonNullByDefault
 public class Reductions implements Reducer {
-    private final Map<Class<Serializable>,
-                      BiFunction<Serializable, ReActorContext,
-                                 Collection<Serializable>>> reductors;
+    private final Map<Class<? extends Serializable>,
+                      BiFunction<? super Serializable, ReActorContext,
+                                 Collection<? extends Serializable>>> reductors;
     private Reductions(Builder builder) {
         this.reductors = builder.reductions.entrySet().stream()
                                            .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey,
@@ -36,14 +36,14 @@ public class Reductions implements Reducer {
 
     public static Builder newBuilder() { return new Builder(); }
     public static class Builder {
-        private final Map<Class<Serializable>,
-                          BiFunction<Serializable, ReActorContext,
-                                     Collection<Serializable>>> reductions;
+        private final Map<Class<? extends Serializable>,
+                          BiFunction<? super Serializable, ReActorContext,
+                                     Collection<? extends Serializable>>> reductions;
         private Builder() { this.reductions = new HashMap<>(); }
 
-        public Builder setReduction(Class<Serializable> inputType,
-                             BiFunction<Serializable, ReActorContext,
-                                        Collection<Serializable>> reducer) {
+        public Builder setReduction(Class<? extends Serializable> inputType,
+                                    BiFunction<? super Serializable, ReActorContext,
+                                               Collection<? extends Serializable>> reducer) {
             this.reductions.put(inputType, reducer);
             return this;
         }
