@@ -20,6 +20,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
+import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.Try;
 import java.io.File;
 import java.io.UncheckedIOException;
@@ -28,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,59 +39,15 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class SystemLocalDriversTest {
     private static final String TMP_TEST_DIRECT_COMMUNICATION_TXT = "/tmp/testDirectCommunication.txt";
-    private DirectCommunicationDriver localDriver;
-    private ReActorContext reActorContext;
-
-    @BeforeEach
-    void setUp() {
-        localDriver = new DirectCommunicationDriver(DirectCommunicationConfig.newBuilder()
-                                                            .setChannelName("LOGGING_DIRECT_COMMUNICATION")
-                                                            .build());
-        ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
-                .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
-                .setMsgFanOutPoolSize(1)
-                .setRecordExecution(false)
-                .setLocalDriver(localDriver)
-                .addDispatcherConfig(DispatcherConfig.newBuilder()
-                                             .setDispatcherName(CoreConstants.DISPATCHER)
-                                             .setBatchSize(1_000)
-                                             .setDispatcherThreadsNum(1)
-                                             .build())
-                .build();
-        ReActorSystem reActorSystem = new ReActorSystem(reActorSystemConfig);
-        reActorSystem.initReActorSystem();
-
-        localDriver.initDriverLoop(reActorSystem);
-
-        TypedSubscription subscribedTypes = TypedSubscription.LOCAL.forType(Message.class);
-        ReActorConfig reActorConfig = ReActorConfig.newBuilder()
-                .setReActorName(CoreConstants.REACTOR_NAME)
-                .setDispatcherName(CoreConstants.DISPATCHER)
-                .setMailBoxProvider(ctx -> new BasicMbox())
-                .setTypedSubscriptions(subscribedTypes)
-                .build();
-
-        ReActorRef reActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))
-                .orElseSneakyThrow();
-
-        reActorSystem.registerReActorSystemDriver(localDriver);
-
-        reActorContext = ReActorContext.newBuilder()
-                .setMbox(ctx -> new BasicMbox())
-                .setReactorRef(reActorRef)
-                .setReActorSystem(reActorSystem)
-                .setParentActor(ReActorRef.NO_REACTOR_REF)
-                .setSubscriptions(subscribedTypes)
-                .setDispatcher(mock(Dispatcher.class))
-                .setReActions(mock(ReActions.class))
-                .build();
-    }
 
     @Test
-    void fileCreatedInDirectCommunicationLogger() {
+    void test_fileCreatedInDirectCommunicationLogger() {
+        var reActorSystem = getTestSystem(TMP_TEST_DIRECT_COMMUNICATION_TXT);
         Assertions.assertEquals("DIRECT_COMMUNICATION@LOGGING_DIRECT_COMMUNICATION",
-                                localDriver.getChannelId().toString());
+                                reActorSystem.getLoopback().getBackingDriver().getChannelId().toString());
         Assertions.assertTrue(new File(TMP_TEST_DIRECT_COMMUNICATION_TXT).exists());
+        reActorSystem.shutDown();
+        //file needs to be removed
     }
 
     private static Stream<Arguments> incorrectLogPaths() {
@@ -103,8 +61,7 @@ class SystemLocalDriversTest {
     @ParameterizedTest
     @MethodSource("incorrectLogPaths")
     void logFileNotCreatedWhenFileNameIsIncorrect(String logPath) {
-        Assertions.assertThrows(UncheckedIOException.class,
-                                () -> SystemLocalDrivers.getDirectCommunicationLogger(logPath));
+        Assertions.assertThrows(UncheckedIOException.class, () -> getTestSystem(logPath));
     }
 
     private static Stream<Arguments> logPaths() {
@@ -117,19 +74,30 @@ class SystemLocalDriversTest {
     @ParameterizedTest
     @MethodSource("logPaths")
     void messageIsLoggedInDirectCommunicationLogger(String logPath) {
-        var directCommunicationLogger = SystemLocalDrivers.getDirectCommunicationLogger(logPath);
-        localDriver.sendMessage(reActorContext, MessageHelper.getDefaultMessage());
+        var testSystem = getTestSystem(logPath);
 
-        await().until(() -> Files.readString(Path.of(directCommunicationLogger.getDriverConfig().getLogFilePath()),
-                                             StandardCharsets.US_ASCII).strip(),
-                      Matchers.equalTo(MessageHelper.getDefaultMessage().toString()));
+        await().until(() -> Files.readString(Path.of(logPath), StandardCharsets.US_ASCII)
+                                 .strip(), Matchers.equalTo("INIT"));
+        testSystem.shutDown();
     }
 
     @Test
     void deliveryStatusIsDeliveredWhenMessageIsSent() {
-        SystemLocalDrivers.getDirectCommunicationLogger(TMP_TEST_DIRECT_COMMUNICATION_TXT);
-        Try<DeliveryStatus> deliveryStatusTry =
-                localDriver.sendMessage(reActorContext, MessageHelper.getDefaultMessage());
-        Assertions.assertTrue(deliveryStatusTry.get().isDelivered());
+        var testSystem = getTestSystem(TMP_TEST_DIRECT_COMMUNICATION_TXT);
+        var deliveryAttempt = testSystem.getSystemSink().tell("Payload of this message")
+                                        .toCompletableFuture()
+                                        .join();
+        testSystem.shutDown();
+        deliveryAttempt.filter(DeliveryStatus::isDelivered)
+                       .ifError(Assertions::fail);
+    }
+    
+    private static ReActorSystem getTestSystem(String logFilePath) {
+        ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
+                                         .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
+                                         .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(logFilePath))
+                                         .build();
+
+        return new ReActorSystem(reActorSystemConfig).initReActorSystem();
     }
 }
