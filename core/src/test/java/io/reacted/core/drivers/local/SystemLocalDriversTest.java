@@ -37,7 +37,6 @@ class SystemLocalDriversTest {
                                 reActorSystem.getLoopback().getBackingDriver().getChannelId().toString());
         Assertions.assertTrue(new File(TMP_TEST_DIRECT_COMMUNICATION_TXT).exists());
         reActorSystem.shutDown();
-        //file needs to be removed
     }
 
     private static Stream<Arguments> incorrectLogPaths() {
