@@ -30,10 +30,17 @@ class SystemLocalDriversTest {
         Files.deleteIfExists(logFile.toPath());
     }
 
-    @Test
-    void fileCreatedInDirectCommunicationLogger() {
-        var reActorSystem = gerReactorSystem(TMP_TEST_DIRECT_COMMUNICATION_TXT);
-        Assertions.assertEquals("DIRECT_COMMUNICATION@SIMPLIFIED_LOGGING_DIRECT_COMMUNICATION-",
+    private static Stream<Arguments> logger() {
+        return Stream.of(
+                Arguments.of(true, "SIMPLIFIED_LOGGING_DIRECT_COMMUNICATION-"),
+                Arguments.of(false, "LOGGING_DIRECT_COMMUNICATION-"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("logger")
+    void fileCreatedInDirectCommunicationLogger(boolean isSimplifiedLogger, String channelId) {
+        var reActorSystem = gerReactorSystem(isSimplifiedLogger, TMP_TEST_DIRECT_COMMUNICATION_TXT);
+        Assertions.assertEquals("DIRECT_COMMUNICATION@" + channelId,
                                 reActorSystem.getLoopback().getBackingDriver().getChannelId().toString());
         Assertions.assertTrue(new File(TMP_TEST_DIRECT_COMMUNICATION_TXT).exists());
         reActorSystem.shutDown();
@@ -50,20 +57,20 @@ class SystemLocalDriversTest {
     @ParameterizedTest
     @MethodSource("incorrectLogPaths")
     void logFileNotCreatedWhenFileNameIsIncorrect(String logPath) {
-        Assertions.assertThrows(UncheckedIOException.class, () -> gerReactorSystem(logPath));
+        Assertions.assertThrows(UncheckedIOException.class, () -> gerReactorSystem(true, logPath));
     }
 
     private static Stream<Arguments> logPaths() {
         return Stream.of(
-                Arguments.of(TMP_TEST_DIRECT_COMMUNICATION_TXT),
-                Arguments.of("/tmp/testDirect Communication.txt")
+                Arguments.of(true, TMP_TEST_DIRECT_COMMUNICATION_TXT),
+                Arguments.of(false, "/tmp/testDirect Communication.txt")
         );
     }
 
     @ParameterizedTest
     @MethodSource("logPaths")
-    void messageIsLoggedInDirectCommunicationLogger(String logPath) {
-        var reActorSystem = gerReactorSystem(logPath);
+    void messageIsLoggedInDirectCommunicationLogger(boolean isSimplifiedLogger, String logPath) {
+        var reActorSystem = gerReactorSystem(isSimplifiedLogger, logPath);
 
         await().until(() -> Files.readString(Path.of(logPath), StandardCharsets.US_ASCII).strip(),
                       Matchers.containsString("Init"));
@@ -72,7 +79,7 @@ class SystemLocalDriversTest {
 
     @Test
     void deliveryStatusIsDeliveredWhenMessageIsSent() {
-        var reActorSystem = gerReactorSystem(TMP_TEST_DIRECT_COMMUNICATION_TXT);
+        var reActorSystem = gerReactorSystem(true, TMP_TEST_DIRECT_COMMUNICATION_TXT);
         var deliveryAttempt = reActorSystem.getSystemSink().tell("Payload of this message")
                 .toCompletableFuture()
                 .join();
@@ -81,10 +88,13 @@ class SystemLocalDriversTest {
                 .ifError(Assertions::fail);
     }
 
-    private static ReActorSystem gerReactorSystem(String logFilePath) {
+    private static ReActorSystem gerReactorSystem(boolean isSimplifiedLogger, String logFilePath) {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
                 .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
-                .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(logFilePath))
+                .setLocalDriver(isSimplifiedLogger ?
+                                SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(logFilePath)
+                                                   :
+                                SystemLocalDrivers.getDirectCommunicationLogger(logFilePath))
                 .build();
 
         return new ReActorSystem(reActorSystemConfig).initReActorSystem();
