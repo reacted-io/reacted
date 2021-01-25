@@ -16,7 +16,6 @@ import java.util.stream.Stream;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -77,9 +76,17 @@ class SystemLocalDriversTest {
         reActorSystem.shutDown();
     }
 
-    @Test
-    void deliveryStatusIsDeliveredWhenMessageIsSent() {
-        var reActorSystem = gerReactorSystem(true, TMP_TEST_DIRECT_COMMUNICATION_TXT);
+    private static Stream<Arguments> loggerType() {
+        return Stream.of(
+                Arguments.of(true),
+                Arguments.of(false)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("loggerType")
+    void deliveryStatusIsDeliveredWhenMessageIsSent(boolean isSimplifiedLogger) {
+        var reActorSystem = gerReactorSystem(isSimplifiedLogger, TMP_TEST_DIRECT_COMMUNICATION_TXT);
         var deliveryAttempt = reActorSystem.getSystemSink().tell("Payload of this message")
                 .toCompletableFuture()
                 .join();
