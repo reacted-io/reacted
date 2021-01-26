@@ -12,22 +12,31 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.stream.Stream;
+import org.apache.commons.io.FileUtils;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class SystemLocalDriversTest {
-    private static final String TMP_TEST_DIRECT_COMMUNICATION_TXT = "/tmp/testDirectCommunication.txt";
+    private static final String TMP_TEST_LOGS = "/tmp/test_logs/";
+    private static final String TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT =
+            TMP_TEST_LOGS + "testDirectCommunication.txt";
+
+    @BeforeEach
+    void beforeEach() throws IOException {
+        Files.createDirectories(Paths.get("/tmp/test_logs/"));
+    }
 
     @AfterEach
     void cleanUp() throws IOException {
-        File logFile = new File(TMP_TEST_DIRECT_COMMUNICATION_TXT);
-        Files.deleteIfExists(logFile.toPath());
+        FileUtils.deleteDirectory(new File(TMP_TEST_LOGS));
     }
 
     private static Stream<Arguments> logger() {
@@ -39,10 +48,10 @@ class SystemLocalDriversTest {
     @ParameterizedTest
     @MethodSource("logger")
     void fileCreatedInDirectCommunicationLogger(boolean isSimplifiedLogger, String channelId) {
-        var reActorSystem = gerReactorSystem(isSimplifiedLogger, TMP_TEST_DIRECT_COMMUNICATION_TXT);
+        var reActorSystem = gerReactorSystem(isSimplifiedLogger, TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT);
         Assertions.assertEquals("DIRECT_COMMUNICATION@" + channelId,
                                 reActorSystem.getLoopback().getBackingDriver().getChannelId().toString());
-        Assertions.assertTrue(new File(TMP_TEST_DIRECT_COMMUNICATION_TXT).exists());
+        Assertions.assertTrue(new File(TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT).exists());
         reActorSystem.shutDown();
     }
 
@@ -62,9 +71,9 @@ class SystemLocalDriversTest {
 
     private static Stream<Arguments> logPaths() {
         return Stream.of(
-                Arguments.of(true, TMP_TEST_DIRECT_COMMUNICATION_TXT),
-                Arguments.of(false, "/tmp/testDirect Communication.txt"),
-                Arguments.of(false, "/tmp/" + Instant.now().toEpochMilli() + ".txt")
+                Arguments.of(true, TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT),
+                Arguments.of(false, "/tmp/test_logs/testDirect Communication.txt"),
+                Arguments.of(false, "/tmp/test_logs/" + Instant.now().toEpochMilli() + ".txt")
         );
     }
 
@@ -88,7 +97,7 @@ class SystemLocalDriversTest {
     @ParameterizedTest
     @MethodSource("loggerType")
     void deliveryStatusIsDeliveredWhenMessageIsSent(boolean isSimplifiedLogger) {
-        var reActorSystem = gerReactorSystem(isSimplifiedLogger, TMP_TEST_DIRECT_COMMUNICATION_TXT);
+        var reActorSystem = gerReactorSystem(isSimplifiedLogger, TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT);
         var deliveryAttempt = reActorSystem.getSystemSink().tell("Payload of this message")
                 .toCompletableFuture()
                 .join();
