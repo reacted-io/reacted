@@ -12,6 +12,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.stream.Stream;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
@@ -62,7 +63,8 @@ class SystemLocalDriversTest {
     private static Stream<Arguments> logPaths() {
         return Stream.of(
                 Arguments.of(true, TMP_TEST_DIRECT_COMMUNICATION_TXT),
-                Arguments.of(false, "/tmp/testDirect Communication.txt")
+                Arguments.of(false, "/tmp/testDirect Communication.txt"),
+                Arguments.of(false, "/tmp/" + Instant.now().toEpochMilli() + ".txt")
         );
     }
 
