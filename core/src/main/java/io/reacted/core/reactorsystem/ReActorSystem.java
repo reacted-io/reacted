@@ -596,7 +596,10 @@ public class ReActorSystem {
         return gatesCentralizedManager.findGates(reActorSystemId);
     }
 
-    private void initSystem() throws Exception {
+    /**
+     * @throws Exception Sneaky Theown Exceptions
+     */
+    private void initSystem() {
 
         if (getAllDispatchers(getSystemConfig().getDispatchersConfigs())
                 .anyMatch(Predicate.not(this::registerDispatcher))) {
@@ -639,7 +642,7 @@ public class ReActorSystem {
     }
 
     /**
-     * @throws ReActorSystemInitException
+     * @throws ReActorSystemInitException If reactor system cannot start properly
      */
     private void initReActorSystemReActors() {
         reActors.values().stream()
@@ -649,7 +652,7 @@ public class ReActorSystem {
     }
 
     /**
-     * @throws RuntimeException
+     * @throws RuntimeException If the system reactors cannot be properly created
      */
     private void spawnReActorSystemReActors() {
         this.init = spawnInit();
