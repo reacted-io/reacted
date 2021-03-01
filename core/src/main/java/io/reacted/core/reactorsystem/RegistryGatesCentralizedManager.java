@@ -64,6 +64,14 @@ class RegistryGatesCentralizedManager {
         }
         return Optional.ofNullable(route);
     }
+
+    Optional<? extends ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>>
+    findGate(ChannelId channelId) {
+        return reActorSystemsGates.values().stream()
+            .map(gatesMap -> gatesMap.get(channelId))
+            .map(ReActorSystemRef::getBackingDriver)
+            .findAny();
+    }
     Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {
         return RemotingDriver.isLocalReActorSystem(reActorSystemId, localReActorSystemId)
                ? List.of(loopBack)
@@ -91,7 +99,7 @@ class RegistryGatesCentralizedManager {
                                                          .forEach((channelId, reActorRef) -> unregisterRoute(entry.getKey(),
                                                                                                              channelId)));
     }
-    synchronized public void unregisterRoute(ReActorSystemId reActorSystemId, ChannelId channelId) {
+    public synchronized void unregisterRoute(ReActorSystemId reActorSystemId, ChannelId channelId) {
         Optional.ofNullable(reActorSystemsGates.get(reActorSystemId))
                 .ifPresent(elem -> elem.remove(channelId));
         unregisterTarget(reActorSystemId);
