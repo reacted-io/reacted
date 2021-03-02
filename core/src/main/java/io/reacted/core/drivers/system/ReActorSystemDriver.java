@@ -183,6 +183,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                     Try<DeliveryStatus> deliveryResult, Message originalMessage) {
         var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
                                                            deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED),
+                                                           localReActorSystem.getLocalReActorSystemId(),
                                                            gateChannelId);
         /* An ack has to be sent not to the nominal sender, but to the reactorsystem that actually generated the message
            because that is the one that is actually waiting for an ACK.

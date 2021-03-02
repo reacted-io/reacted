@@ -313,16 +313,6 @@ public class ReActorSystem {
     }
 
     /**
-     * Finds the gate responsible for the supplied {@link ChannelId}
-     * @param channelId The {@link ChannelId} for which we are looking for a driver
-     * @return The associated driver for the specified {@link ChannelId}, if any
-     */
-    public Optional<? extends ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>>
-    findGate(ChannelId channelId) {
-        return gatesCentralizedManager.findGate(channelId);
-    }
-
-    /**
      * Activate the reactorsystem. Before this call, the reactorsystem is not operational and does not require an
      * explicit shutdown
      *

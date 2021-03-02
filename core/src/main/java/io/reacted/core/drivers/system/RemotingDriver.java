@@ -130,12 +130,14 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
 
-                if (!getChannelId().equals(deliveryStatusUpdate.getSourceChannelId())) {
+                if (!getChannelId().equals(deliveryStatusUpdate.getFirstMessageSourceChannelId())) {
                     /* We are not in the correct driver? This is an asymmetrical ACK, we must forward
                        this message to the proper driver, if any
                      */
-                    getLocalReActorSystem().findGate(deliveryStatusUpdate.getSourceChannelId())
-                                           .ifPresent(gate -> gate.offerMessage(message));
+                    getLocalReActorSystem().findGate(deliveryStatusUpdate.getAckSourceReActorSystem(),
+                                                     deliveryStatusUpdate.getFirstMessageSourceChannelId())
+                                           .ifPresent(route -> route.getBackingDriver()
+                                                                    .offerMessage(message));
                 } else {
                     var pendingAckTrigger = removePendingAckTrigger(
                         deliveryStatusUpdate.getMsgSeqNum());
@@ -168,8 +170,8 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         var deliverAttempt = (isAckRequired ? destination.atell(sender, payload) : destination.tell(sender, payload));
         if (isAckRequired) {
             deliverAttempt.thenCompose(deliveryResult -> sendDeliveryAck(getLocalReActorSystem(),
-                                                                        getChannelId(),
-                                                                        deliveryResult, message))
+                                                                         getChannelId(),
+                                                                         deliveryResult, message))
                           .thenAccept(sendAckResult -> sendAckResult.ifError(error -> getLocalReActorSystem().logError("Unable to send ack", error)));
         }
     }

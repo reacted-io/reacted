@@ -65,13 +65,6 @@ class RegistryGatesCentralizedManager {
         return Optional.ofNullable(route);
     }
 
-    Optional<? extends ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>>
-    findGate(ChannelId channelId) {
-        return reActorSystemsGates.values().stream()
-            .map(gatesMap -> gatesMap.get(channelId))
-            .map(ReActorSystemRef::getBackingDriver)
-            .findAny();
-    }
     Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {
         return RemotingDriver.isLocalReActorSystem(reActorSystemId, localReActorSystemId)
                ? List.of(loopBack)

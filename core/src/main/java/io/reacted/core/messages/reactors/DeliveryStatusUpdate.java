@@ -10,6 +10,7 @@ package io.reacted.core.messages.reactors;
 
 import com.google.common.base.Objects;
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nullable;
@@ -22,22 +23,31 @@ public class DeliveryStatusUpdate implements Serializable {
 
     private final long msgSeqNum;
     private final DeliveryStatus deliveryStatus;
-    private final ChannelId sourceChannelId;
+    private final ChannelId firstMessageSourceChannelId;
+    private final ReActorSystemId ackSourceReActorSystem;
     public DeliveryStatusUpdate(long msgSeqNum, DeliveryStatus deliveryStatus,
-                                ChannelId sourceChannelId) {
+                                ReActorSystemId ackSourceReActorSystem,
+                                ChannelId firstMessageSourceChannelId) {
         this.msgSeqNum = msgSeqNum;
         this.deliveryStatus = deliveryStatus;
-        this.sourceChannelId = sourceChannelId;
+        this.ackSourceReActorSystem = ackSourceReActorSystem;
+        this.firstMessageSourceChannelId = firstMessageSourceChannelId;
     }
 
     public long getMsgSeqNum() { return msgSeqNum; }
 
     public DeliveryStatus getDeliveryStatus() { return deliveryStatus; }
 
-    public ChannelId getSourceChannelId() { return sourceChannelId; }
+    public ChannelId getFirstMessageSourceChannelId() {
+        return firstMessageSourceChannelId;
+    }
+
+    public ReActorSystemId getAckSourceReActorSystem() {
+        return ackSourceReActorSystem;
+    }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
@@ -47,12 +57,17 @@ public class DeliveryStatusUpdate implements Serializable {
         DeliveryStatusUpdate that = (DeliveryStatusUpdate) o;
         return getMsgSeqNum() == that.getMsgSeqNum() &&
                getDeliveryStatus() == that.getDeliveryStatus() &&
-               Objects.equal(getSourceChannelId(), that.getSourceChannelId());
+               Objects
+                   .equal(getFirstMessageSourceChannelId(),
+                          that.getFirstMessageSourceChannelId()) &&
+               Objects
+                   .equal(getAckSourceReActorSystem(), that.getAckSourceReActorSystem());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(getMsgSeqNum(), getDeliveryStatus(), getSourceChannelId());
+        return Objects
+            .hashCode(getMsgSeqNum(), getDeliveryStatus(), getFirstMessageSourceChannelId(),
+                      getAckSourceReActorSystem());
     }
-
 }
