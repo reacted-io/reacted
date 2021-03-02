@@ -478,11 +478,7 @@ public class ReActorSystem {
      * @param <PayLoadT> Any {@link Serializable} object
      */
     public <PayLoadT extends Serializable> void broadcastToRemoteSubscribers(PayLoadT payload) {
-        gatesCentralizedManager.findAllGates().stream()
-                               .filter(Predicate.not(getLoopback()::equals))
-                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
-                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(ReActorRef.NO_REACTOR_REF),
-                                                                      Objects.requireNonNull(payload)));
+        broadcastToRemoteSubscribers(ReActorRef.NO_REACTOR_REF, payload);
     }
 
     /**
@@ -502,39 +498,23 @@ public class ReActorSystem {
     /**
      * Sends a message to all the remote subscribers for the message type
      * @param channelId {@link ChannelId} towards the message should be broadcasted to
-     * @param msgSender A {@link ReActorRef} defining the sender of this message
      * @param payload The payload that should be broadcasted
      * @param <PayLoadT> Any {@link Serializable} object
      */
-    public <PayLoadT extends Serializable> void broadcastToChannelId(ChannelId channelId, ReActorRef msgSender,
-                                                                     PayLoadT payload) {
-        gatesCentralizedManager.findAllGates(channelId).stream()
-                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
-                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
-                                                                      Objects.requireNonNull(payload)));
+    public <PayLoadT extends Serializable> void broadcastToAllSubscribers(ChannelId channelId, PayLoadT payload) {
+        broadcastToAllSubscribers(channelId, getSystemSink(), payload);
     }
 
     /**
      * Sends a message to all the remote subscribers for the message type
      * @param channelId {@link ChannelId} towards the message should be broadcasted to
-     * @param payload The payload that should be broadcasted
-     * @param <PayLoadT> Any {@link Serializable} object
-     */
-    public <PayLoadT extends Serializable> void broadcastToChannelId(ChannelId channelId, PayLoadT payload) {
-        gatesCentralizedManager.findAllGates(channelId).stream()
-                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
-                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(getSystemSink()),
-                                                                      Objects.requireNonNull(payload)));
-    }
-
-    /**
-     * Sends a message to all the subscribers for the message type
      * @param msgSender A {@link ReActorRef} defining the sender of this message
      * @param payload The payload that should be broadcasted
      * @param <PayLoadT> Any {@link Serializable} object
      */
-    public <PayLoadT extends Serializable> void broadcastToAllSubscribers(ReActorRef msgSender, PayLoadT payload) {
-        gatesCentralizedManager.findAllGates().stream()
+    public <PayLoadT extends Serializable> void broadcastToAllSubscribers(ChannelId channelId, ReActorRef msgSender,
+                                                                          PayLoadT payload) {
+        gatesCentralizedManager.findAllGates(channelId).stream()
                                .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
                                .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
                                                                       Objects.requireNonNull(payload)));
@@ -602,7 +582,10 @@ public class ReActorSystem {
         return gatesCentralizedManager.findGates(reActorSystemId);
     }
 
-    private void initSystem() throws Exception {
+    /**
+     * Exception is sneaky thrown
+     */
+    private void initSystem() {
 
         if (getAllDispatchers(getSystemConfig().getDispatchersConfigs())
                 .anyMatch(Predicate.not(this::registerDispatcher))) {
@@ -638,20 +621,26 @@ public class ReActorSystem {
     /* SneakyThrows */
     @SuppressWarnings("RedundantThrows")
     private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
-                                                                             ? extends ServiceRegistryConfig<?, ?>>> drivers)
-            throws Exception {
-        drivers.forEach(driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())
+                                                                             ? extends ServiceRegistryConfig<?, ?>>> drivers) {
+        drivers.forEach(driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(),
+                                             driver.getConfig())
                 .orElseSneakyThrow());
     }
 
-    private void initReActorSystemReActors() throws ReActorSystemInitException {
+    /**
+     * @throws ReActorSystemInitException If reactor system cannot start properly
+     */
+    private void initReActorSystemReActors() {
         reActors.values().stream()
                 .map(ReActorContext::getSelf)
                 .forEach(reactor -> throwOnFailedDelivery(reactor.tell(getSystemSink(), REACTOR_INIT),
                                                           ReActorSystemInitException::new));
     }
 
-    private void spawnReActorSystemReActors() throws RuntimeException {
+    /**
+     * @throws RuntimeException If the system reactors cannot be properly created
+     */
+    private void spawnReActorSystemReActors() {
         this.init = spawnInit();
         this.reActorSystemRoot = spawnReActorsRoot(init);
         this.systemRemotingRoot = spawnRemotingRoot(reActorSystemRoot);

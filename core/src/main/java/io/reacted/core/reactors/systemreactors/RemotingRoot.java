@@ -31,8 +31,6 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
@@ -73,7 +71,7 @@ public class RemotingRoot {
     private static void onDuplicatedPublicationError(ReActorContext raCtx,
                                                      DuplicatedPublicationError duplicatedPublicationError) {
         raCtx.logError("CRITIC! Duplicated ReActor System detected. ReActorSystem names must be unique within" +
-                       "a cluster. Shutting down reporting driver: {}",
+                       " a cluster. Shutting down reporting driver: {}",
                        raCtx.getSender().getReActorId().getReActorName());
         raCtx.getReActorSystem().stop(raCtx.getSender().getReActorId());
     }
