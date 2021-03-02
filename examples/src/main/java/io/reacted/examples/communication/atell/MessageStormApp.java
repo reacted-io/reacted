@@ -30,6 +30,8 @@ import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.Try;
 
+import java.util.Set;
+import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.List;
@@ -88,11 +90,13 @@ class MessageStormApp {
         var remoteService = clientSystem.serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                            .setServiceName("ServerService")
                                                                                            .build())
-                                        .toCompletableFuture().join()
-                                        .get().getServiceGates()
-                                        .iterator().next();
+                                        .toCompletableFuture().join();
+        var serviceGate = remoteService.filter(gates -> !gates.getServiceGates().isEmpty())
+                                       .orElseSneakyThrow()
+                                       .getServiceGates()
+                                       .iterator().next();
 
-        var clientReActor = clientSystem.spawn(new ClientReActor(remoteService)).orElseSneakyThrow();
+        var clientReActor = clientSystem.spawn(new ClientReActor(serviceGate)).orElseSneakyThrow();
 
         //The reactors are executing now
         TimeUnit.SECONDS.sleep(350);
@@ -141,7 +145,7 @@ class MessageStormApp {
             long start = System.nanoTime();
             AsyncUtils.asyncLoop(noval -> serverReference.atell("Not received"),
                                  Try.of(() -> DeliveryStatus.DELIVERED),
-                                 (Try<DeliveryStatus>) null, 10_000_000L)
+                                 (Try<DeliveryStatus>) null, 1L)
                       .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
                                                               Duration.ofNanos(System.nanoTime() - start)
                                                                       .toString(),
