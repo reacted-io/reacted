@@ -478,11 +478,7 @@ public class ReActorSystem {
      * @param <PayLoadT> Any {@link Serializable} object
      */
     public <PayLoadT extends Serializable> void broadcastToRemoteSubscribers(PayLoadT payload) {
-        gatesCentralizedManager.findAllGates().stream()
-                               .filter(Predicate.not(getLoopback()::equals))
-                               .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
-                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(ReActorRef.NO_REACTOR_REF),
-                                                                      Objects.requireNonNull(payload)));
+        broadcastToRemoteSubscribers(ReActorRef.NO_REACTOR_REF, payload);
     }
 
     /**
@@ -587,7 +583,7 @@ public class ReActorSystem {
     }
 
     /**
-     * @throws Exception Sneaky Theown Exceptions
+     * Exception is sneaky thrown
      */
     private void initSystem() {
 
