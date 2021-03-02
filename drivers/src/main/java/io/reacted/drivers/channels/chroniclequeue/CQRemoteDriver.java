@@ -22,8 +22,6 @@ import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.WireKey;
-import org.apache.log4j.Logger;
-
 import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.Properties;

@@ -479,7 +479,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                  localReActorSystem);
     }
 
-    public final static class ReActedSubscription<PayloadT> {
+    public static final class ReActedSubscription<PayloadT> {
         @Nullable
         public static final ThreadPoolExecutor NO_CUSTOM_SEQUENCER = null;
         private final Flow.Subscriber<? super PayloadT> subscriber;

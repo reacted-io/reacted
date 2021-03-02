@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @NonNullByDefault
 public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
-    private final static Logger LOGGER = Logger.getLogger(ReplayLocalDriver.class);
+    private static final Logger LOGGER = Logger.getLogger(ReplayLocalDriver.class);
     private final Set<ReActorId> spawnedReActors;
     @Nullable
     private ChronicleQueue chronicle;

@@ -58,6 +58,7 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
      }
 
+     @Override
      protected void offerMessage(Message message) {
           var deliveryAttempt = getLocalReActorSystem().getReActor(Objects.requireNonNull(message)
                                                                           .getDestination()
