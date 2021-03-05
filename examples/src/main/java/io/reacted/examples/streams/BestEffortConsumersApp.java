@@ -38,7 +38,6 @@ class BestEffortConsumersApp {
         IntStream.range(0, msgNum)
                  //Propagate them to every consumer, regardless of the location
                  .forEachOrdered(streamPublisher::submit);
-        streamPublisher.close();
         //NOTE: you can join or triggering the new update once the previous one has been delivered
         do {
             long updates = subscriber.getReceivedUpdates();
@@ -48,6 +47,7 @@ class BestEffortConsumersApp {
                 break;
             }
         }while (true);
+        streamPublisher.close();
         System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber.getReceivedUpdates(), msgNum);
         reactorSystem.shutDown();
     }

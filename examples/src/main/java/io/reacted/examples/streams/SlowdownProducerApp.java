@@ -54,6 +54,7 @@ class SlowdownProducerApp {
         Awaitility.await()
                   .atMost(Duration.ofMinutes(1))
                   .until(() -> subscriber.getReceivedUpdates() == msgNum && subscriber2.getReceivedUpdates() == msgNum);
+        TimeUnit.SECONDS.sleep(10);
         System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber3.getReceivedUpdates(), msgNum);
         streamPublisher.close();
         reactorSystem.shutDown();

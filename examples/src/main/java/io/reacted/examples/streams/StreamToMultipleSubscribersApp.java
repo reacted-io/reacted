@@ -50,10 +50,10 @@ class StreamToMultipleSubscribersApp {
                  //updates will keep stacking in memory
                  .forEachOrdered(streamPublisher::submit);
 
-        streamPublisher.close();
         Awaitility.await()
                   .atMost(Duration.ofMinutes(5))
                   .until(() -> subscriber.getReceivedUpdates() == msgNum && subscriber2.getReceivedUpdates() == msgNum);
+        streamPublisher.close();
         System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber3.getReceivedUpdates(), msgNum);
         reactorSystem.shutDown();
     }
