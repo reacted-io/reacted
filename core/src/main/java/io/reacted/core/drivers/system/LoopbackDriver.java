@@ -36,7 +36,7 @@ import java.util.concurrent.RejectedExecutionException;
 @NonNullByDefault
 public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> extends ReActorSystemDriver<ConfigT> {
     private static final TriConsumer<ReActorId, Serializable, ReActorRef> DO_NOT_PROPAGATE = (a, b, c) -> { };
-    private final TriConsumer<ReActorId, Serializable, ReActorRef> PROPAGATE_TO_SUBSCRIBERS = this::propagateMessage;
+    private final TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers = this::propagateMessage;
     private final LocalDriver<ConfigT> localDriver;
     private final ReActorSystem localReActorSystem;
 
@@ -49,7 +49,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     @Override
     public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
-        return tell(src, dst, ackingPolicy, PROPAGATE_TO_SUBSCRIBERS, payload);
+        return tell(src, dst, ackingPolicy, propagateToSubscribers, payload);
     }
 
     @Override

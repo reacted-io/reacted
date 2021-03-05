@@ -97,7 +97,7 @@ public class Service implements ReActiveEntity {
 
     private void onServiceRegistryNotAvailable(ReActorContext raCtx,
                                                ServiceRegistryNotAvailable notAvailable) {
-        raCtx.logInfo("{} makes itself discoverable",
+        raCtx.logInfo("{} makes itself locally discoverable",
                       serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME));
         raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class));
     }

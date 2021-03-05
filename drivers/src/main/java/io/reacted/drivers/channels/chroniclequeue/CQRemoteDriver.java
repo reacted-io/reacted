@@ -22,8 +22,6 @@ import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.WireKey;
-import org.apache.log4j.Logger;
-
 import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.Properties;
@@ -31,7 +29,6 @@ import java.util.concurrent.CompletableFuture;
 
 @NonNullByDefault
 public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
-    private static final Logger LOGGER = Logger.getLogger(CQRemoteDriver.class);
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
@@ -99,7 +96,9 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
                                                               ? documentCtx.wire().read(getDriverConfig().getTopic())
                                                                                   .object(Message.class)
                                                               : null)
-                                .orElse(null, error -> LOGGER.error("Unable to properly decode message", error));
+                                .orElse(null,
+                                        error -> getLocalReActorSystem().logError("Unable to properly decode message",
+                                                                                  error));
             if (newMessage == null) {
                 readPauser.pause();
                 readPauser.reset();
