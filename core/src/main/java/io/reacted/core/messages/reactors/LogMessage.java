@@ -16,7 +16,7 @@ import java.io.Serializable;
 @NonNullByDefault
 public abstract class LogMessage implements Serializable {
     private final String message;
-    public LogMessage(String format, Serializable ...arguments) {
+    protected LogMessage(String format, Serializable ...arguments) {
         var formattingTuple = MessageFormatter.arrayFormat(format, arguments);
         this.message = formattingTuple.getMessage() + (formattingTuple.getThrowable() != null
                                                        ? ExceptionUtils.getStackTrace(formattingTuple.getThrowable())

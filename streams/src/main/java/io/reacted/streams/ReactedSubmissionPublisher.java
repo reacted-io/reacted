@@ -9,6 +9,7 @@
 package io.reacted.streams;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
@@ -138,11 +139,11 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorRef feedGate = new ReActorRef();
-        feedGate.readExternal(in);
-        setFeedGate(feedGate).setLocalReActorSystem(RemotingDriver.getDriverCtx()
-                                                                  .map(DriverCtx::getLocalReActorSystem)
-                                                                  .orElseThrow());
+        ReActorRef gate = new ReActorRef();
+        gate.readExternal(in);
+        setFeedGate(gate).setLocalReActorSystem(ReActorSystemDriver.getDriverCtx()
+                                                                   .map(DriverCtx::getLocalReActorSystem)
+                                                                   .orElseThrow());
     }
 
     /**
@@ -508,7 +509,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                  localReActorSystem);
     }
 
-    public final static class ReActedSubscription<PayloadT> {
+    public static final class ReActedSubscription<PayloadT> {
         @Nullable
         public static final ThreadPoolExecutor NO_CUSTOM_SEQUENCER = null;
         private final Flow.Subscriber<? super PayloadT> subscriber;
@@ -531,7 +532,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
             this.subscriberName = Objects.requireNonNull(builder.subscriberName);
             this.sequencer = builder.sequencer != null
                              ? ObjectUtils.requiredCondition(builder.sequencer,
-                                                             sequencer -> sequencer.getMaximumPoolSize() == 1,
+                                                             sequencePool -> sequencePool.getMaximumPoolSize() == 1,
                                                              IllegalArgumentException::new)
                              : null;
         }
