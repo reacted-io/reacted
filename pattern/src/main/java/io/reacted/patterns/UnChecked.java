@@ -78,6 +78,7 @@ public final class UnChecked {
         void accept(T arg1) throws Throwable;
     }
 
+    @SuppressWarnings("RedundantThrows")
     @FunctionalInterface
     public interface CheckedBiConsumer<T, U> {
         void accept(T arg1, U arg2) throws Throwable;

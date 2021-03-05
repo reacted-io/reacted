@@ -9,12 +9,10 @@
 package io.reacted.streams;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.mailboxes.InflatableMailbox;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.mailboxes.BackpressuringMbox;
-import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -24,7 +22,6 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.PublisherShutdown;
 import io.reacted.streams.messages.PublisherComplete;
@@ -32,8 +29,6 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
-import java.sql.Time;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -477,7 +472,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                     .collect(Collectors.toUnmodifiableList());
         deliveries.stream()
                   .reduce((first, second) -> first.thenCompose(delivery -> second))
-                  .ifPresent(lastDelivery -> lastDelivery.thenAccept(lastRetVal -> { raCtx.getMbox().request(1); }));
+                  .ifPresent(lastDelivery -> lastDelivery.thenAccept(lastRetVal -> raCtx.getMbox().request(1)));
     }
 
     private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {

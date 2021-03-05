@@ -17,7 +17,6 @@ import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
-import io.reacted.patterns.Try;
 
 import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
