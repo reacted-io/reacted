@@ -51,7 +51,7 @@ class StreamToMultipleSubscribersApp {
                  .forEachOrdered(streamPublisher::submit);
 
         Awaitility.await()
-                  .atMost(Duration.ofMinutes(5))
+                  .atMost(Duration.ofMinutes(1))
                   .until(() -> subscriber.getReceivedUpdates() == msgNum && subscriber2.getReceivedUpdates() == msgNum);
         streamPublisher.close();
         System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber3.getReceivedUpdates(), msgNum);

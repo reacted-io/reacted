@@ -52,7 +52,7 @@ class SlowdownProducerApp {
                  .forEachOrdered(CompletableFuture::join);
         //NOTE: you can join or triggering the new update once the previous one has been delivered
         Awaitility.await()
-                  .atMost(Duration.ofMinutes(1))
+                  .atMost(Duration.ofSeconds(10))
                   .until(() -> subscriber.getReceivedUpdates() == msgNum && subscriber2.getReceivedUpdates() == msgNum);
         TimeUnit.SECONDS.sleep(10);
         System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber3.getReceivedUpdates(), msgNum);
