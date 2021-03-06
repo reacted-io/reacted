@@ -16,7 +16,6 @@ import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-
 import java.io.Serializable;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;

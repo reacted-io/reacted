@@ -18,6 +18,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.streams.exceptions.RemoteRegistrationException;
 import io.reacted.streams.messages.PublisherComplete;
 import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.SubscriberError;

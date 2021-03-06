@@ -35,6 +35,9 @@ public class DeadLetter {
                                                          .build();
     /* All messages for reactors not found will be rerouted here */
     public static final AtomicLong RECEIVED = new AtomicLong();
+
+    private DeadLetter() { }
+
     private static <PayloadT extends Serializable>
     void onMessage(ReActorContext raCtx, PayloadT message) {
         LOGGER.debug("{} of {}: {}", DeadLetter.class.getSimpleName(),

@@ -101,6 +101,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
             for(long cycle = 0; cycle < messagesNum && !Thread.currentThread().isInterrupted(); cycle++) {
                 publisher.submit(cycle);
             }
+            Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(50));
             publisher.close();
         });
     }

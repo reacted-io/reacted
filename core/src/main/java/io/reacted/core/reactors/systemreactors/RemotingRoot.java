@@ -71,7 +71,7 @@ public class RemotingRoot {
     private static void onDuplicatedPublicationError(ReActorContext raCtx,
                                                      DuplicatedPublicationError duplicatedPublicationError) {
         raCtx.logError("CRITIC! Duplicated ReActor System detected. ReActorSystem names must be unique within" +
-                       "a cluster. Shutting down reporting driver: {}",
+                       " a cluster. Shutting down reporting driver: {}",
                        raCtx.getSender().getReActorId().getReActorName());
         raCtx.getReActorSystem().stop(raCtx.getSender().getReActorId());
     }

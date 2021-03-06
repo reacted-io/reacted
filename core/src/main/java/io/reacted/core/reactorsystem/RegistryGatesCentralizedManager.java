@@ -63,6 +63,7 @@ class RegistryGatesCentralizedManager {
         }
         return Optional.ofNullable(route);
     }
+
     Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {
         return ReActorSystemDriver.isLocalReActorSystem(reActorSystemId, localReActorSystemId)
                ? List.of(loopBack)

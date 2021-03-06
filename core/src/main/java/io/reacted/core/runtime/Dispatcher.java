@@ -151,15 +151,9 @@ public class Dispatcher {
                                                                scheduledReActor.getNextMsgExecutionId(),
                                                                newEvent.getSequenceNumber()));
                     }
-                    try {
-                        scheduledReActor.reAct(newEvent);
-                    } catch (Exception anyExc) {
-                        scheduledReActor.logError(REACTIONS_EXECUTION_ERROR, anyExc,
-                                                  scheduledReActor.getSelf().getReActorId(),
-                                                  newEvent.getPayload().getClass(),
-                                                  newEvent.getSequenceNumber(), newEvent.toString());
-                        scheduledReActor.stop();
-                    }
+
+                    executeReactionForMessage(scheduledReActor, newEvent);
+
                     processed++;
                 }
                 //memory release
@@ -177,5 +171,17 @@ public class Dispatcher {
             Thread.currentThread().interrupt();
         }
         LOGGER.debug("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
+    }
+
+    private void executeReactionForMessage(ReActorContext scheduledReActor, Message newEvent) {
+        try {
+            scheduledReActor.reAct(newEvent);
+        } catch (Exception anyExc) {
+            scheduledReActor.logError(REACTIONS_EXECUTION_ERROR, anyExc,
+                                      scheduledReActor.getSelf().getReActorId(),
+                                      newEvent.getPayload().getClass(),
+                                      newEvent.getSequenceNumber(), newEvent.toString());
+            scheduledReActor.stop();
+        }
     }
 }

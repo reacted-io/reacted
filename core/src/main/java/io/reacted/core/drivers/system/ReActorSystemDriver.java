@@ -23,15 +23,16 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
 import io.reacted.core.reactors.ReActorId;
+import io.reacted.core.reactorsystem.NullReActorSystemRef;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
-import io.reacted.core.reactorsystem.ReActorSystemRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
+import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,6 +102,11 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message);
     public abstract <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
     route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
+
+    protected void offerMessage(Message message) {
+        getLocalReActorSystem().logError("Invalid message offering {}", message,
+                                         new NotImplementedException());
+    }
 
     @Nullable
     public CompletionStage<Try<DeliveryStatus>> removePendingAckTrigger(long msgSeqNum) {
@@ -172,30 +178,24 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
         return messageAckingPolicy != AckingPolicy.NONE && isAckRequiredByChannel;
     }
 
-    protected static Try<DeliveryStatus> sendDeliveryAck(ReActorSystemId localReActorSystemId,
-                                                         long ackSeqNum,
-                                                         ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> gate,
-                                                         Try<DeliveryStatus> deliveryResult, Message originalMessage) {
+    protected static CompletionStage<Try<DeliveryStatus>>
+    sendDeliveryAck(ReActorSystem localReActorSystem, ChannelId gateChannelId,
+                    Try<DeliveryStatus> deliveryResult, Message originalMessage) {
         var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
-                                                           deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED));
+                                                           deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED),
+                                                           localReActorSystem.getLocalReActorSystemId(),
+                                                           gateChannelId);
         /* An ack has to be sent not to the nominal sender, but to the reactorsystem that actually generated the message
-           because that is the one that is actually waiting for an ACK
+           because that is the one that is actually waiting for an ACK.
+           Here we are supporting asymmetric routes: theoretically this ack could go back to the
+           original sender using a different driver
          */
-        var destSystem = gate.getLocalReActorSystem()
-                             .findGate(originalMessage.getDataLink().getGeneratingReActorSystem(),
-                                       gate.getChannelId())
-                             //The point of the below statement is just returning empty properties because
-                             //the gate and so the channel id are already known
-                             //As a future optimization this could be changed to NullReActorSystemRef, but if it's
-                             //not required the below approach is the type-clean approach
-                             .orElseGet(() -> new ReActorSystemRef(gate, new Properties(),
-                                                                   originalMessage.getDataLink()
-                                                                                  .getGeneratingReActorSystem()));
-
-        return gate.sendMessage(ReActorContext.NO_REACTOR_CTX,
-                                new Message(ReActorRef.NO_REACTOR_REF,
-                                            new ReActorRef(ReActorId.NO_REACTOR_ID, destSystem),
-                                            ackSeqNum, localReActorSystemId, AckingPolicy.NONE, statusUpdatePayload));
+        var destSystem = localReActorSystem.findGate(originalMessage.getDataLink()
+                                                                    .getGeneratingReActorSystem(),
+                                                     gateChannelId)
+                             .orElse(NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF);
+        var destReActor = new ReActorRef(ReActorId.NO_REACTOR_ID, destSystem);
+        return destReActor.tell(ReActorRef.NO_REACTOR_REF, statusUpdatePayload);
     }
 
     private static void

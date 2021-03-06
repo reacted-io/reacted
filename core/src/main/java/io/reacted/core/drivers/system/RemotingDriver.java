@@ -105,6 +105,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     /**
      * Forward a message just received by a channel to ReActed for propagating it towards the destination mailbox
      */
+    @Override
     protected void offerMessage(Message message) {
         //We don't have to read the messages published by the local reactor system because they are meant for someone
         //else. This is a remoting driver, this means that several systems are looking at it
@@ -128,16 +129,26 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             //If so, this is an ACK confirmation for a message sent with atell
             if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
-                var pendingAckTrigger = removePendingAckTrigger(deliveryStatusUpdate.getMsgSeqNum());
-                if (pendingAckTrigger != null) {
-                    pendingAckTrigger.toCompletableFuture()
-                                     .complete(Try.ofSuccess(deliveryStatusUpdate.getDeliveryStatus()));
+
+                if (messageWasNotSentFromThisDriverInstance(deliveryStatusUpdate)) {
+                    /* We are not in the correct driver? This is an asymmetrical ACK, we must forward
+                       this message to the proper driver, if any
+                     */
+                    forwardMessageToSenderDriverInstance(message, deliveryStatusUpdate);
+                } else {
+                    var pendingAckTrigger = removePendingAckTrigger(
+                        deliveryStatusUpdate.getMsgSeqNum());
+                    if (pendingAckTrigger != null) {
+                        pendingAckTrigger.toCompletableFuture()
+                                         .complete(Try.ofSuccess(
+                                             deliveryStatusUpdate.getDeliveryStatus()));
+                    }
+                    //This is functionally useless because systemSink by design swallows received messages, it is required
+                    //only for consistent logging if a logging direct communication local driver is used because in this way
+                    //also the ACK will appear in logs
+                    getLocalReActorSystem().getSystemSink()
+                                           .tell(message.getSender(), message.getPayload());
                 }
-                //This is functionally useless because systemSink by design swallows received messages, it is required
-                //only for consistent logging if a logging direct communication local driver is used because in this way
-                //also the ACK will appear in logs
-                getLocalReActorSystem().getSystemSink()
-                                       .tell(message.getSender(), message.getPayload());
                 return;
             }
         } else {
@@ -155,13 +166,25 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                                 message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
         var deliverAttempt = (isAckRequired ? destination.atell(sender, payload) : destination.tell(sender, payload));
         if (isAckRequired) {
-            deliverAttempt.thenAccept(deliveryResult -> sendDeliveryAck(getLocalReActorSystem().getLocalReActorSystemId(),
-                                                                        getLocalReActorSystem().getNewSeqNum(), this,
-                                                                        deliveryResult, message)
-                                                        .ifError(error -> getLocalReActorSystem()
-                                                                            .logError("Unable to send ack", error)));
+            deliverAttempt.thenCompose(deliveryResult -> sendDeliveryAck(getLocalReActorSystem(),
+                                                                         getChannelId(),
+                                                                         deliveryResult, message))
+                          .thenAccept(sendAckResult -> sendAckResult.ifError(error -> getLocalReActorSystem().logError("Unable to send ack", error)));
         }
     }
+
+    private void forwardMessageToSenderDriverInstance(Message message,
+                                                      DeliveryStatusUpdate deliveryStatusUpdate) {
+        getLocalReActorSystem().findGate(deliveryStatusUpdate.getAckSourceReActorSystem(),
+                                         deliveryStatusUpdate.getFirstMessageSourceChannelId())
+                               .ifPresent(route -> route.getBackingDriver()
+                                                        .offerMessage(message));
+    }
+
+    private boolean messageWasNotSentFromThisDriverInstance(DeliveryStatusUpdate deliveryStatusUpdate) {
+        return !getChannelId().equals(deliveryStatusUpdate.getFirstMessageSourceChannelId());
+    }
+
     private static boolean isTypeSubscribed(ReActorSystem localReActorSystem,
                                             Class<? extends Serializable> payloadType) {
         return localReActorSystem.getTypedSubscriptionsManager().hasFullSubscribers(payloadType);

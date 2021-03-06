@@ -18,7 +18,8 @@ import java.lang.reflect.Field;
 @NonNullByDefault
 public final class SerializationUtils {
     public static final Serializable NO_PAYLOAD = new Serializable() {};
-    private static final Unsafe UNSAFE = Try.of(SerializationUtils::getUnsafeRef).orElseSneakyThrow();
+    private static final Unsafe UNSAFE = Try.of(SerializationUtils::getUnsafeRef)
+                                            .orElseSneakyThrow();
 
     private SerializationUtils() { /* No Implementation required */ }
 
