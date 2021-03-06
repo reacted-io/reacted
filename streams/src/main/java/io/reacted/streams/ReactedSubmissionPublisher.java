@@ -133,7 +133,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeObject(feedGate);
+        feedGate.writeExternal(out);
     }
 
     @Override

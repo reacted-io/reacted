@@ -123,7 +123,6 @@ public final class Message implements Externalizable, Comparable<Message> {
             setPayload((Serializable)in.readObject());
         } catch (Exception exc) {
             exc.printStackTrace();
-            System.exit(0);
         }
     }
 
