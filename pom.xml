@@ -332,6 +332,8 @@
                     </includes>
                     <argLine>
                         --illegal-access=permit
+                        --add-exports
+                        java.base/jdk.internal.ref=ALL-UNNAMED
                     </argLine>
                 </configuration>
             </plugin>
