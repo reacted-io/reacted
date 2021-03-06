@@ -54,7 +54,7 @@ class RegistryGatesCentralizedManager {
     ReActorSystemRef getLoopBack() { return loopBack; }
 
     Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId, ChannelId preferredChannelId) {
-        if (RemotingDriver.isLocalReActorSystem(localReActorSystemId, reActorSystemId)) {
+        if (ReActorSystemDriver.isLocalReActorSystem(localReActorSystemId, reActorSystemId)) {
             return Optional.of(loopBack);
         }
         var routesToReActorSystem = reActorSystemsGates.getOrDefault(reActorSystemId, Map.of());
@@ -66,7 +66,7 @@ class RegistryGatesCentralizedManager {
     }
 
     Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {
-        return RemotingDriver.isLocalReActorSystem(reActorSystemId, localReActorSystemId)
+        return ReActorSystemDriver.isLocalReActorSystem(reActorSystemId, localReActorSystemId)
                ? List.of(loopBack)
                : new ArrayList<>(reActorSystemsGates.getOrDefault(reActorSystemId, Map.of())
                                                     .values());

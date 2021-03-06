@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
 public class SystemMonitor implements ReActiveEntity {
-    private final OperatingSystemMXBean systemMonitor;
+    private final OperatingSystemMXBean systemDataSource;
     private final Duration taskPeriod;
     private final ScheduledExecutorService timerService;
     @Nullable
@@ -39,7 +39,7 @@ public class SystemMonitor implements ReActiveEntity {
 
     public SystemMonitor(Duration taskPeriod, ScheduledExecutorService timerService) {
         this.timerService = Objects.requireNonNull(timerService);
-        this.systemMonitor = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
+        this.systemDataSource = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
         this.taskPeriod = ObjectUtils.checkNonNullPositiveTimeInterval(taskPeriod);
     }
 
@@ -69,7 +69,8 @@ public class SystemMonitor implements ReActiveEntity {
     private void broadcastStatistics(ReActorContext raCtx) {
         Try.ofRunnable(() -> raCtx.getReActorSystem()
                                   .broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF,
-                                                               getSystemStatistics(systemMonitor)))
+                                                               getSystemStatistics(
+                                                                   systemDataSource)))
            .ifError(error -> raCtx.logError("Unable to broadcast statistics update", error));
     }
 

@@ -76,7 +76,7 @@ public final class ObjectUtils {
     public static <ElementT extends Comparable<ElementT>, ExceptionT extends RuntimeException>
     ElementT requiredInRange(ElementT element, ElementT inclusiveRangeStart, ElementT inclusiveRangeEnd,
                              Supplier<ExceptionT> onError) {
-        if (!(Objects.requireNonNull(inclusiveRangeEnd).compareTo(Objects.requireNonNull(inclusiveRangeStart)) < 0) &&
+        if ((Objects.requireNonNull(inclusiveRangeEnd).compareTo(Objects.requireNonNull(inclusiveRangeStart)) >= 0) &&
               Objects.requireNonNull(element).compareTo(inclusiveRangeStart) >= 0 &&
               element.compareTo(inclusiveRangeEnd) <= 0) {
             return element;

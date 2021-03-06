@@ -12,7 +12,6 @@ import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.DriverCtx;
-import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.ReActorInit;
