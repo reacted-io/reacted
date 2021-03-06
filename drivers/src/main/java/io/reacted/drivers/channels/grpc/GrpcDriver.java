@@ -42,7 +42,6 @@ import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -266,7 +265,8 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                                                                                                      .toByteArray()))) {
                         thisDriver.offerMessage((Message)msgSource.readObject());
                     } catch (Exception deserializationError) {
-                        throw new RuntimeException(deserializationError);
+                        thisDriver.getLocalReActorSystem()
+                                  .logError("Error decoding message", deserializationError);
                     }
                 }
 

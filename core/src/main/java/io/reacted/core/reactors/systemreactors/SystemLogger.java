@@ -29,6 +29,8 @@ public class SystemLogger {
                    (raCtx, message) -> logMessage(LOGGER::info, message))
             .reAct(ReActions::noReAction)
             .build();
+
+    private SystemLogger() { }
     private static void logMessage(Consumer<String> logger, LogMessage message) {
         logger.accept(message.getMessage());
     }

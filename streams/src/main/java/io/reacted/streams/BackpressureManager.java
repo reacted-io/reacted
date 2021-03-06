@@ -18,6 +18,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.streams.exceptions.RemoteRegistrationException;
 import io.reacted.streams.messages.PublisherComplete;
 import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.SubscriberError;
@@ -131,7 +132,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
             Try.ofRunnable(() -> subscriber.onSubscribe(this))
                .ifError(error -> errorTermination(raCtx, error, subscriber));
         } else {
-            errorTermination(raCtx, new RuntimeException("RemoteRegistrationException"), subscriber);
+            errorTermination(raCtx, new RemoteRegistrationException(), subscriber);
         }
     }
 

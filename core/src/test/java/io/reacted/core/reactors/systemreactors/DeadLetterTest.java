@@ -19,6 +19,7 @@ import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -51,7 +52,7 @@ class DeadLetterTest {
                      .orElseSneakyThrow();
         new ReActorRef(new ReActorId(ReActorId.NO_REACTOR_ID, CoreConstants.REACTOR_NAME),
                        reActorSystem.getLoopback()).tell(ReActorRef.NO_REACTOR_REF, "message");
-        Thread.sleep(1000);
+        TimeUnit.SECONDS.sleep(1);
         Assertions.assertEquals(1, DeadLetter.RECEIVED.get());
     }
 }

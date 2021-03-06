@@ -109,12 +109,12 @@ public final class Message implements Externalizable, Comparable<Message> {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorRef sender = new ReActorRef();
-        sender.readExternal(in);
-        setSender(sender);
-        ReActorRef destination = new ReActorRef();
-        destination.readExternal(in);
-        setDestination(destination);
+        ReActorRef senderRef = new ReActorRef();
+        senderRef.readExternal(in);
+        setSender(senderRef);
+        ReActorRef destinationRef = new ReActorRef();
+        destinationRef.readExternal(in);
+        setDestination(destinationRef);
         DataLink datalink = new DataLink();
         datalink.readExternal(in);
         setDataLink(datalink);
@@ -123,7 +123,6 @@ public final class Message implements Externalizable, Comparable<Message> {
             setPayload((Serializable)in.readObject());
         } catch (Exception exc) {
             exc.printStackTrace();
-            System.exit(0);
         }
     }
 

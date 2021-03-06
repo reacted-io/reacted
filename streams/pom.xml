@@ -10,7 +10,7 @@
     <parent>
         <artifactId>reacted-all</artifactId>
         <groupId>io.reacted</groupId>
-        <version>1.4.8-SNAPSHOT</version>
+        <version>1.4.9-SNAPSHOT</version>
     </parent>
 
     <developers>
@@ -47,8 +47,6 @@
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <version>7.1.0</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.reactivestreams</groupId>
@@ -65,6 +63,11 @@
         <dependency>
             <groupId>io.reacted</groupId>
             <artifactId>reacted-pattern</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-drivers</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

@@ -9,11 +9,10 @@
 package io.reacted.streams;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.DriverCtx;
-import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.mailboxes.BackpressuringMbox;
-import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -76,13 +75,37 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param feedName           Name of this feed. Feed name must be unique and if deterministic it allows
      *                           cold replay
      */
+
     public ReactedSubmissionPublisher(ReActorSystem localReActorSystem, String feedName) {
+        this(localReActorSystem, feedName, Flow.defaultBufferSize());
+    }
+
+    /**
+     * Creates a location oblivious data publisher with backpressure. Subscribers can slowdown
+     * the producer or just drop data if they are best effort subscribers. Publisher is Serializable,
+     * so it can be sent to any reactor over any gate and subscribers can simply join the stream.
+     *
+     * @param localReActorSystem ReActorSystem used to manage and control the data flow
+     * @param feedName           Name of this feed. Feed name must be unique and if deterministic it allows
+     *                           cold replay
+     * @param bufferSize         Size of the buffer that holds the messages waiting to be sent
+     */
+    public ReactedSubmissionPublisher(ReActorSystem localReActorSystem, String feedName,
+                                      int bufferSize) {
         this.localReActorSystem = Objects.requireNonNull(localReActorSystem);
         this.subscribers = ConcurrentHashMap.newKeySet(10);
         var feedGateConfig = ReActorConfig.newBuilder()
                                        .setReActorName(ReactedSubmissionPublisher.class.getSimpleName() + "-" +
                                                        Objects.requireNonNull(feedName))
-                                       .setMailBoxProvider(ctx -> new BasicMbox())
+                                       .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
+                                                                                    .setRealMailboxOwner(ctx)
+                                                                                    .setBufferSize(bufferSize)
+                                                                                    .setRequestOnStartup(bufferSize)
+                                                                                    .setBackpressureTimeout(BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT)
+                                                                                    .setNonDelayable(Set.of(ReActorInit.class, PublisherShutdown.class,
+                                                                                                            PublisherInterrupt.class, ReActorStop.class,
+                                                                                                            SubscriptionRequest.class, UnsubscriptionRequest.class))
+                                                                                    .build())
                                        .build();
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
@@ -95,6 +118,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                                  this::onSubscriptionRequest)
                                                           .reAct(UnsubscriptionRequest.class,
                                                                  this::onUnSubscriptionRequest)
+                                                          .reAct(this::forwardToSubscribers)
                                                           .build(), feedGateConfig)
                                           .orElseThrow(IllegalArgumentException::new);
     }
@@ -109,16 +133,16 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeObject(feedGate);
+        feedGate.writeExternal(out);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorRef feedGate = new ReActorRef();
-        feedGate.readExternal(in);
-        setFeedGate(feedGate).setLocalReActorSystem(RemotingDriver.getDriverCtx()
-                                                                  .map(DriverCtx::getLocalReActorSystem)
-                                                                  .orElseThrow());
+        ReActorRef gate = new ReActorRef();
+        gate.readExternal(in);
+        setFeedGate(gate).setLocalReActorSystem(ReActorSystemDriver.getDriverCtx()
+                                                                   .map(DriverCtx::getLocalReActorSystem)
+                                                                   .orElseThrow());
     }
 
     /**
@@ -433,17 +457,22 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * delivered to all the subscribers
      */
     public CompletionStage<Void> backpressurableSubmit(PayloadT message) {
-        var deliveries = subscribers.stream()
-                                    .map(subscribed -> subscribed.atell(subscribed, message))
-                                    .collect(Collectors.toUnmodifiableList());
-        return deliveries.stream()
-                         .reduce((first, second) -> first.thenCompose(delivery -> second))
-                         .map(lastDelivery -> lastDelivery.thenAccept(lastRetVal -> {}))
-                         .orElse(CompletableFuture.completedFuture(null));
+        return feedGate.atell(message).thenAccept(delivery -> {});
     }
 
     public void submit(PayloadT message) {
-        subscribers.forEach(subscribed -> subscribed.tell(subscribed, message));
+        feedGate.tell(message)
+                .toCompletableFuture()
+                .thenAccept(delivery -> delivery.ifError(Throwable::printStackTrace));
+    }
+
+    private void forwardToSubscribers(ReActorContext raCtx, Serializable payload) {
+        var deliveries = subscribers.stream()
+                                    .map(subscribed -> subscribed.atell(subscribed, payload))
+                                    .collect(Collectors.toUnmodifiableList());
+        deliveries.stream()
+                  .reduce((first, second) -> first.thenCompose(delivery -> second))
+                  .ifPresent(lastDelivery -> lastDelivery.thenAccept(lastRetVal -> raCtx.getMbox().request(1)));
     }
 
     private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
@@ -479,7 +508,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                  localReActorSystem);
     }
 
-    public final static class ReActedSubscription<PayloadT> {
+    public static final class ReActedSubscription<PayloadT> {
         @Nullable
         public static final ThreadPoolExecutor NO_CUSTOM_SEQUENCER = null;
         private final Flow.Subscriber<? super PayloadT> subscriber;
@@ -502,7 +531,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
             this.subscriberName = Objects.requireNonNull(builder.subscriberName);
             this.sequencer = builder.sequencer != null
                              ? ObjectUtils.requiredCondition(builder.sequencer,
-                                                             sequencer -> sequencer.getMaximumPoolSize() == 1,
+                                                             sequencePool -> sequencePool.getMaximumPoolSize() == 1,
                                                              IllegalArgumentException::new)
                              : null;
         }

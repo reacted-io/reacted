@@ -13,7 +13,7 @@
     <groupId>io.reacted</groupId>
     <artifactId>reacted-all</artifactId>
     <packaging>pom</packaging>
-    <version>1.4.8-SNAPSHOT</version>
+    <version>1.4.9-SNAPSHOT</version>
 
     <name>ReActed</name>
     <description>
@@ -107,6 +107,7 @@
         <kafka.client.version>2.5.0</kafka.client.version>
         <apache.commons.lang.version>3.10</apache.commons.lang.version>
         <reactive.streams.version>1.0.3</reactive.streams.version>
+        <testng.version>7.1.0</testng.version>
     </properties>
     <modules>
         <module>pattern</module>
@@ -234,6 +235,12 @@
             </dependency>
             <!-- Testing -->
             <dependency>
+                <groupId>org.testng</groupId>
+                <artifactId>testng</artifactId>
+                <version>${testng.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-api</artifactId>
                 <version>${junit.version}</version>
@@ -339,6 +346,8 @@
                     </includes>
                     <argLine>
                         --illegal-access=permit
+                        --add-exports
+                        java.base/jdk.internal.ref=ALL-UNNAMED
                     </argLine>
                 </configuration>
             </plugin>

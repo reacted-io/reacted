@@ -42,8 +42,10 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
 
     protected GenericServiceDiscoverySearchFilter(Builder<BuilderT, BuiltT> builder) {
         super(builder);
-        this.serviceName = Objects.requireNonNull(builder.serviceName);
-        this.selectionType = Objects.requireNonNull(builder.selectionType);
+        this.serviceName = Objects.requireNonNull(builder.serviceName,
+                                                  "Service name cannot be null");
+        this.selectionType = Objects.requireNonNull(builder.selectionType,
+                                                    "Selection type cannot be null");
         this.cpuLoad = builder.cpuLoad;
         this.ipAddress = builder.ipAddress;
         this.hostNameExpr = builder.hostNameExpr;
