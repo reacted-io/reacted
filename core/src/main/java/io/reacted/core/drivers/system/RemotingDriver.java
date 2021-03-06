@@ -130,14 +130,11 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
 
-                if (!getChannelId().equals(deliveryStatusUpdate.getFirstMessageSourceChannelId())) {
+                if (messageWasNotSentFromThisDriverInstance(deliveryStatusUpdate)) {
                     /* We are not in the correct driver? This is an asymmetrical ACK, we must forward
                        this message to the proper driver, if any
                      */
-                    getLocalReActorSystem().findGate(deliveryStatusUpdate.getAckSourceReActorSystem(),
-                                                     deliveryStatusUpdate.getFirstMessageSourceChannelId())
-                                           .ifPresent(route -> route.getBackingDriver()
-                                                                    .offerMessage(message));
+                    forwardMessageToSenderDriverInstance(message, deliveryStatusUpdate);
                 } else {
                     var pendingAckTrigger = removePendingAckTrigger(
                         deliveryStatusUpdate.getMsgSeqNum());
@@ -175,6 +172,19 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                           .thenAccept(sendAckResult -> sendAckResult.ifError(error -> getLocalReActorSystem().logError("Unable to send ack", error)));
         }
     }
+
+    private void forwardMessageToSenderDriverInstance(Message message,
+                                                      DeliveryStatusUpdate deliveryStatusUpdate) {
+        getLocalReActorSystem().findGate(deliveryStatusUpdate.getAckSourceReActorSystem(),
+                                         deliveryStatusUpdate.getFirstMessageSourceChannelId())
+                               .ifPresent(route -> route.getBackingDriver()
+                                                        .offerMessage(message));
+    }
+
+    private boolean messageWasNotSentFromThisDriverInstance(DeliveryStatusUpdate deliveryStatusUpdate) {
+        return !getChannelId().equals(deliveryStatusUpdate.getFirstMessageSourceChannelId());
+    }
+
     private static boolean isTypeSubscribed(ReActorSystem localReActorSystem,
                                             Class<? extends Serializable> payloadType) {
         return localReActorSystem.getTypedSubscriptionsManager().hasFullSubscribers(payloadType);

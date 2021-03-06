@@ -19,7 +19,6 @@ import java.time.Duration;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
 
 @NonNullByDefault
 public final class ReActedUtils {
