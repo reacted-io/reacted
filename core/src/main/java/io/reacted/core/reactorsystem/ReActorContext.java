@@ -72,7 +72,8 @@ public final class ReActorContext {
     private ReActorRef lastMsgSender = ReActorRef.NO_REACTOR_REF;
 
     private ReActorContext(Builder reActorCtxBuilder) {
-        this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider).apply(this));
+        this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider)
+                                                       .apply(this));
         this.reactorRef = Objects.requireNonNull(reActorCtxBuilder.reactorRef);
         this.reActorSystem = Objects.requireNonNull(reActorCtxBuilder.reActorSystem);
         this.children = ConcurrentHashMap.newKeySet();

@@ -8,6 +8,7 @@
 
 package io.reacted.patterns;
 
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -33,6 +34,12 @@ public final class ObjectUtils {
             return null;
         }
         return Objects.requireNonNull(ifNotNull).apply(input);
+    }
+
+    public static <InputT> void runIfNotNull(@Nullable InputT input, Consumer<InputT> ifNotNull) {
+        if (input != null) {
+            Objects.requireNonNull(ifNotNull).accept(input);
+        }
     }
 
     /**
