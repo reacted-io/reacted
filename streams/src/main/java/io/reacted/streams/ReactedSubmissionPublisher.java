@@ -96,7 +96,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.subscribers = ConcurrentHashMap.newKeySet(10);
         var feedGateConfig = ReActorConfig.newBuilder()
                                        .setReActorName(ReactedSubmissionPublisher.class.getSimpleName() + "-" +
-                                                       Objects.requireNonNull(feedName))
+                                                       Objects.requireNonNull(feedName,
+                                                                              "Feed name cannot be null"))
                                        .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
                                                                                     .setRealMailboxOwner(ctx)
                                                                                     .setBufferSize(bufferSize)
@@ -264,7 +265,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return subscribe(ReActedSubscription.<PayloadT>newBuilder()
                           .setSubscriber(subscriber)
                           .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
+                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout,
+                                                                                                       "Backpressure timeout cannot be null"),
                                                                                 Predicate.not(Duration::isZero),
                                                                                 IllegalArgumentException::new))
                           .setAsyncBackpressurer(asyncBackpressurer)
@@ -520,15 +522,18 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         private final ThreadPoolExecutor sequencer;
 
         private ReActedSubscription(Builder<PayloadT> builder) {
-            this.subscriber = Objects.requireNonNull(builder.subscriber);
+            this.subscriber = Objects.requireNonNull(builder.subscriber,
+                                                     "Subscriber cannot be null");
             this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                           IllegalArgumentException::new);
             this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
                                                                      timeout -> timeout.compareTo(RELIABLE_SUBSCRIPTION) <= 0 &&
                                                                                 !timeout.isNegative(),
                                                                      IllegalArgumentException::new);
-            this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer);
-            this.subscriberName = Objects.requireNonNull(builder.subscriberName);
+            this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer,
+                                                             "Async backpressurer cannot be null");
+            this.subscriberName = Objects.requireNonNull(builder.subscriberName,
+                                                         "Subscriber name cannot be null");
             this.sequencer = builder.sequencer != null
                              ? ObjectUtils.requiredCondition(builder.sequencer,
                                                              sequencePool -> sequencePool.getMaximumPoolSize() == 1,

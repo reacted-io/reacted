@@ -26,7 +26,8 @@ public class GrpcDriverConfig extends ChannelDriverConfig<GrpcDriverConfig.Build
     private GrpcDriverConfig(Builder builder) {
         super(builder);
         this.port = ObjectUtils.requiredInRange(builder.port, 1, 65535, IllegalArgumentException::new);
-        this.hostName = Objects.requireNonNull(builder.hostName);
+        this.hostName = Objects.requireNonNull(builder.hostName,
+                                               "Bind address/hostname cannot be null");
     }
 
     public int getPort() { return port; }

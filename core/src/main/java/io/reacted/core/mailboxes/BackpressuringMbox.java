@@ -54,13 +54,18 @@ public class BackpressuringMbox implements MailBox {
      * BackpressuringMbox wrapper for any other mailbox type.
      */
     private BackpressuringMbox(Builder builder) {
-        ReActorContext mboxOwner = Objects.requireNonNull(builder.realMailboxOwner);
-        this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
+        ReActorContext mboxOwner = Objects.requireNonNull(builder.realMailboxOwner,
+                                                          "Mailbox owner reactor cannot be null");
+        this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout,
+                                                                                        "Backpressure timeout cannot be null"),
                                                                  timeout -> timeout.compareTo(RELIABLE_DELIVERY_TIMEOUT) <= 0,
                                                                  () -> new IllegalArgumentException("Invalid backpressure timeout"));
-        this.realMbox = Objects.requireNonNull(builder.realMbox);
-        this.notDelayed = Objects.requireNonNull(builder.notDelayable);
-        this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable);
+        this.realMbox = Objects.requireNonNull(builder.realMbox,
+                                               "A backing mailbox must be provided");
+        this.notDelayed = Objects.requireNonNull(builder.notDelayable,
+                                                 "Non delayable messages set cannot be a null");
+        this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable,
+                                                         "Non backpressurable messages set cannot be a null");
         int bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                      IllegalArgumentException::new);
         int requestOnStartup = ObjectUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
@@ -80,7 +85,9 @@ public class BackpressuringMbox implements MailBox {
             this.sequencer = builder.sequencer;
             this.isPrivateSequencer = false;
         }
-        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.asyncBackpressurer), bufferSize);
+        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.asyncBackpressurer,
+                                                                              "Async threadpool for backpressuring cannot be null"),
+                                                       bufferSize);
         this.reliableBackpressuringSubscriber = new BackpressuringSubscriber(requestOnStartup, mboxOwner,
                                                                              realMbox::deliver, backpressurer);
         backpressurer.subscribe(reliableBackpressuringSubscriber);

@@ -15,12 +15,8 @@ import io.reacted.flow.FlowGraph;
 import io.reacted.flow.Stage;
 import io.reacted.flow.operators.Mapper;
 import io.reacted.flow.operators.Merge;
-import io.reacted.patterns.UnChecked;
-import java.io.IOException;
-import java.io.Serializable;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class FlowGraphExample {
@@ -33,43 +29,43 @@ public class FlowGraphExample {
                                    .setFlowName("FlowMerge")
                                    .addStage(Stage.newBuilder()
                                                   .setStageName("Provider-1")
-                                                  .setOutputStagesNames("Feeder-1")
+                                                  .setOutputStageName("Feeder-1")
                                                   .setInputStream(inputData.stream())
-                                                  .setOperatorProvider(reActorSystem -> Mapper
-                                                      .of(reActorSystem,
-                                                          ReActorConfig.newBuilder()
-                                                                       .setReActorName("ToLower-2")
-                                                                       .build(),
-                                                          input -> List.of(((String)input).toLowerCase())))
+                                                  .setOperatorProvider(reActorSystem -> Mapper.of(reActorSystem,
+                                                                                                  ReActorConfig.newBuilder()
+                                                                                                               .setReActorName("ToLower-2")
+                                                                                                               .build(),
+                                                                                                  input -> List.of(((String)input).toLowerCase())))
                                                   .build())
                                    .addStage(Stage.newBuilder()
                                                   .setStageName("Provider-2")
-                                                  .setOutputStagesNames("Feeder-2")
+                                                  .setOutputStageName("Feeder-2")
                                                   .setInputStream(inputInt.stream())
-                                                  .setOperatorProvider(reActorSystem -> Mapper
-                                                      .of(reActorSystem,
-                                                          ReActorConfig.newBuilder()
-                                                                       .setReActorName("Multiplier-2")
-                                                                       .build(),
-                                                          input -> List.of(((Integer)input) * 123)))
+                                                  .setOperatorProvider(reActorSystem -> Mapper.of(reActorSystem,
+                                                                                                  ReActorConfig.newBuilder()
+                                                                                                               .setReActorName("Multiplier-2")
+                                                                                                               .build(),
+                                                                                                  input -> List.of(((Integer)input) * 123)))
                                                   .build())
                                    .addStage(Stage.newBuilder()
                                                   .setStageName("Merger-1")
-                                                  .setOutputStagesNames("Finalizer-1")
+                                                  .setOutputStageName("Finalizer-1")
                                                   .setOperatorProvider(reActorSystem -> CompletableFuture.completedFuture(reActorSystem.spawn(new Merge(List.of(String.class, Integer.class),
-                                                                                                                      inputList -> List.of(inputList.stream()
-                                                                                                                                                    .map(Object::toString)
-                                                                                                                                                    .collect(Collectors.joining()))),
-                                                                                           ReActorConfig.newBuilder().build()).orElseSneakyThrow()))
+                                                                                                                                                        inputList -> List.of(inputList.stream()
+                                                                                                                                                                                      .map(Object::toString)
+                                                                                                                                                                                      .collect(Collectors.joining()))),
+                                                                                                                                              ReActorConfig.newBuilder()
+                                                                                                                                                           .build())
+                                                                                                                                       .orElseSneakyThrow()))
                                                   .build())
                                    .addStage(Stage.newBuilder()
                                                   .setStageName("Finalizer-1")
-                                                  .setOperatorProvider(reActorSystem -> Mapper
-                                                      .of(reActorSystem,
-                                                          ReActorConfig.newBuilder()
-                                                                       .setReActorName("Printer-1")
-                                                                       .build(),
-                                                          input -> { System.out.println(input); return List.of(); }))
+                                                  .setOperatorProvider(reActorSystem -> Mapper.of(reActorSystem,
+                                                                                                  ReActorConfig.newBuilder()
+                                                                                                               .setReActorName("Printer-1")
+                                                                                                               .build(),
+                                                                                                  input -> { System.out.println(input);
+                                                                                                             return List.of(); }))
                                                   .build())
                                    .build();
     System.out.println("Running");

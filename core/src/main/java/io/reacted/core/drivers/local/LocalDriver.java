@@ -60,7 +60,8 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
 
      @Override
      protected void offerMessage(Message message) {
-          var deliveryAttempt = getLocalReActorSystem().getReActor(Objects.requireNonNull(message)
+          var deliveryAttempt = getLocalReActorSystem().getReActor(Objects.requireNonNull(message,
+                                                                                          "Cannot offer() a null message")
                                                                           .getDestination()
                                                                           .getReActorId())
                                                        .map(raCtx -> forwardMessageToLocalActor(raCtx, message));
@@ -82,7 +83,10 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
 
      protected static CompletionStage<Try<DeliveryStatus>> forwardMessageToLocalActor(ReActorContext destination,
                                                                                       Message message) {
-          return SystemLocalDrivers.DIRECT_COMMUNICATION.sendAsyncMessage(destination, Objects.requireNonNull(message));
+          return SystemLocalDrivers.DIRECT_COMMUNICATION
+                                   .sendAsyncMessage(destination,
+                                                     Objects.requireNonNull(message,
+                                                                            "Cannot forward a null message"));
      }
 
      protected static Try<DeliveryStatus> localDeliver(ReActorContext destination, Message message) {

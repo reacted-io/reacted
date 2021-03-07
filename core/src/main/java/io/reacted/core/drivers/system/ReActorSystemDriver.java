@@ -64,7 +64,8 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     private ExecutorService driverThread;
 
     protected ReActorSystemDriver(ConfigT config) {
-        this.driverConfig = Objects.requireNonNull(config);
+        this.driverConfig = Objects.requireNonNull(config,
+                                                   "Driver config cannot be null");
         this.pendingAcksTriggers = CacheBuilder.newBuilder()
                                                .expireAfterWrite(config.getAtellAutomaticFailureTimeout()
                                                                        .toMillis(), TimeUnit.MILLISECONDS)

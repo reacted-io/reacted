@@ -28,9 +28,12 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
 
     private KafkaDriverConfig(Builder builder) {
         super(builder);
-        this.bootstrapEndpoint = Objects.requireNonNull(builder.bootstrapEndpoint);
-        this.topic = Objects.requireNonNull(builder.topic);
-        this.groupId = Objects.requireNonNull(builder.groupId);
+        this.bootstrapEndpoint = Objects.requireNonNull(builder.bootstrapEndpoint,
+                                                        "Bootstrap endpoint cannot be null");
+        this.topic = Objects.requireNonNull(builder.topic,
+                                            "Subscription topic cannot be null");
+        this.groupId = Objects.requireNonNull(builder.groupId,
+                                              "Group id cannot be null");
         this.maxPollRecords = ObjectUtils.requiredInRange(builder.maxPollRecords, 1, Integer.MAX_VALUE,
                                                           IllegalArgumentException::new);
     }

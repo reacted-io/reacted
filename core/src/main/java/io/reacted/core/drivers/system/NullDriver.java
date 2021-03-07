@@ -50,7 +50,8 @@ public final class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     public ReActorSystem getLocalReActorSystem() {
         //If this is null it means that someone is trying to use the driver
         //before its initialization
-        return Objects.requireNonNull(localReActorSystem);
+        return Objects.requireNonNull(localReActorSystem,
+                                      "Null local reactor system?");
     }
 
     @Override

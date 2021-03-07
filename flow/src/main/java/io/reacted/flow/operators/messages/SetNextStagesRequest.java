@@ -21,5 +21,4 @@ public final class SetNextStagesRequest implements Serializable {
     this.nextStages = Objects.requireNonNull(nextStages, "Next stages cannot be null");
   }
   public Set<ReActorRef> getNextStages() { return nextStages; }
-
 }

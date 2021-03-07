@@ -80,8 +80,8 @@ public class Stage {
             return this;
         }
 
-        public Builder setOutputStagesNames(String outputStagesName) {
-            this.outputStageNames = List.of(outputStagesName);
+        public Builder setOutputStageName(String outputStageName) {
+            this.outputStageNames = List.of(outputStageName);
             return this;
         }
 

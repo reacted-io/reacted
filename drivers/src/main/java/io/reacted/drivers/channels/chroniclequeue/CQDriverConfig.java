@@ -25,8 +25,10 @@ public class CQDriverConfig extends ChannelDriverConfig<CQDriverConfig.Builder, 
 
     private CQDriverConfig(Builder configBuilder) {
         super(configBuilder);
-        this.chronicleFilesDir = Objects.requireNonNull(configBuilder.chronicleFilesDir);
-        this.topicName = Objects.requireNonNull(configBuilder.topicName);
+        this.chronicleFilesDir = Objects.requireNonNull(configBuilder.chronicleFilesDir,
+                                                        "Output directory cannot be null");
+        this.topicName = Objects.requireNonNull(configBuilder.topicName,
+                                                "Topic name cannot be null");
     }
 
     public static Builder newBuilder() { return new Builder(); }

@@ -42,8 +42,10 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
 
     public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver<ConfigT> localDriver) {
         super(localDriver.getDriverConfig());
-        this.localDriver = Objects.requireNonNull(localDriver);
-        this.localReActorSystem = Objects.requireNonNull(reActorSystem);
+        this.localDriver = Objects.requireNonNull(localDriver,
+                                                  "Local driver cannot be null");
+        this.localReActorSystem = Objects.requireNonNull(reActorSystem,
+                                                         "ReActorSystem cannot be null");
     }
 
     @Override

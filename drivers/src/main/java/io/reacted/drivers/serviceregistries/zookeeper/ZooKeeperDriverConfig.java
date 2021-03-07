@@ -51,8 +51,10 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         this.maxReconnectionAttempts = ObjectUtils.requiredInRange(builder.maxReconnectionAttempts,
                                                                    0, Integer.MAX_VALUE,
                                                                    () -> new IllegalArgumentException("Invalid max reconnection attempts value"));
-        this.asyncExecutionService = Objects.requireNonNull(builder.asyncExecutorService);
-        this.connectionString = Objects.requireNonNull(builder.connectionString);
+        this.asyncExecutionService = Objects.requireNonNull(builder.asyncExecutorService,
+                                                            "Executor for async operations cannot be null");
+        this.connectionString = Objects.requireNonNull(builder.connectionString,
+                                                       "Connection string cannot be null");
     }
 
     public Duration getPingInterval() { return pingInterval; }
