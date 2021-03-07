@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 
-class SystemLocalDriversTest {
+class SystemLocalLoggingDriversTest {
     private static final String TMP_TEST_LOGS = "/tmp/test_logs/";
     private static final String TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT =
             TMP_TEST_LOGS + "testDirectCommunication.txt";
