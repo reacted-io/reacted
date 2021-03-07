@@ -9,14 +9,13 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.CoreConstants;
-import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
 import io.reacted.core.services.Service;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,11 +31,6 @@ class ServiceTest {
                 .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                 .setMsgFanOutPoolSize(2)
                 .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
-                .addDispatcherConfig(DispatcherConfig.newBuilder()
-                        .setDispatcherName("TestDispatcher")
-                        .setBatchSize(1_000)
-                        .setDispatcherThreadsNum(1)
-                        .build())
                 .build();
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();

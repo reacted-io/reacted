@@ -1,11 +1,18 @@
 package io.reacted.core.drivers.local;
 
-import static org.awaitility.Awaitility.await;
-
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import org.apache.commons.io.FileUtils;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -15,14 +22,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.stream.Stream;
-import org.apache.commons.io.FileUtils;
-import org.hamcrest.Matchers;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+
+import static org.awaitility.Awaitility.await;
 
 class SystemLocalDriversTest {
     private static final String TMP_TEST_LOGS = "/tmp/test_logs/";
@@ -48,9 +49,9 @@ class SystemLocalDriversTest {
     @ParameterizedTest
     @MethodSource("logger")
     void fileCreatedInDirectCommunicationLogger(boolean isSimplifiedLogger, String channelId) {
-        var reActorSystem = gerReactorSystem(isSimplifiedLogger, TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT);
+        var reActorSystem = getReactorSystem(isSimplifiedLogger, TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT);
         Assertions.assertEquals("DIRECT_COMMUNICATION@" + channelId,
-                                reActorSystem.getLoopback().getBackingDriver().getChannelId().toString());
+                reActorSystem.getLoopback().getBackingDriver().getChannelId().toString());
         Assertions.assertTrue(new File(TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT).exists());
         reActorSystem.shutDown();
     }
@@ -66,7 +67,7 @@ class SystemLocalDriversTest {
     @ParameterizedTest
     @MethodSource("incorrectLogPaths")
     void logFileNotCreatedWhenFileNameIsIncorrect(String logPath) {
-        Assertions.assertThrows(UncheckedIOException.class, () -> gerReactorSystem(true, logPath));
+        Assertions.assertThrows(UncheckedIOException.class, () -> getReactorSystem(true, logPath));
     }
 
     private static Stream<Arguments> logPaths() {
@@ -80,10 +81,10 @@ class SystemLocalDriversTest {
     @ParameterizedTest
     @MethodSource("logPaths")
     void messageIsLoggedInDirectCommunicationLogger(boolean isSimplifiedLogger, String logPath) {
-        var reActorSystem = gerReactorSystem(isSimplifiedLogger, logPath);
+        var reActorSystem = getReactorSystem(isSimplifiedLogger, logPath);
 
         await().until(() -> Files.readString(Path.of(logPath), StandardCharsets.US_ASCII).strip(),
-                      Matchers.containsString("Init"));
+                Matchers.containsString("Init"));
         reActorSystem.shutDown();
     }
 
@@ -97,7 +98,7 @@ class SystemLocalDriversTest {
     @ParameterizedTest
     @MethodSource("loggerType")
     void deliveryStatusIsDeliveredWhenMessageIsSent(boolean isSimplifiedLogger) {
-        var reActorSystem = gerReactorSystem(isSimplifiedLogger, TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT);
+        var reActorSystem = getReactorSystem(isSimplifiedLogger, TMP_TEST_LOGS_TEST_DIRECT_COMMUNICATION_TXT);
         var deliveryAttempt = reActorSystem.getSystemSink().tell("Payload of this message")
                 .toCompletableFuture()
                 .join();
@@ -106,13 +107,12 @@ class SystemLocalDriversTest {
                 .ifError(Assertions::fail);
     }
 
-    private static ReActorSystem gerReactorSystem(boolean isSimplifiedLogger, String logFilePath) {
+    private static ReActorSystem getReactorSystem(boolean isSimplifiedLogger, String logFilePath) {
         ReActorSystemConfig reActorSystemConfig = ReActorSystemConfig.newBuilder()
                 .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
-                .setLocalDriver(isSimplifiedLogger ?
-                                SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(logFilePath)
-                                                   :
-                                SystemLocalDrivers.getDirectCommunicationLogger(logFilePath))
+                .setLocalDriver(isSimplifiedLogger
+                        ? SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(logFilePath)
+                        : SystemLocalDrivers.getDirectCommunicationLogger(logFilePath))
                 .build();
 
         return new ReActorSystem(reActorSystemConfig).initReActorSystem();
