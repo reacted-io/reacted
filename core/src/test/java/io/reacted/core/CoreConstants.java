@@ -9,7 +9,9 @@
 package io.reacted.core;
 
 public final class CoreConstants {
+
     public static final String DESTINATION = "DESTINATION";
+    public static final String DISPATCHER = "Dispatcher";
     public static final String DE_SERIALIZATION_SUCCESSFUL = "De/Serialization Successful!";
 
     public static final String HIGH_PRIORITY = "high priority";
@@ -18,9 +20,13 @@ public final class CoreConstants {
 
     public static final String PRIORITY_2 = "priority 2";
 
+    public static final String REACTOR_NAME = "ReactorName";
+    public static final String REACTED_ACTOR_SYSTEM = "ReActedActorSystem";
+
     public static final String SOURCE = "SOURCE";
 
     public static final String TEST_DISPATCHER = "TestDispatcher";
-    public static final String REACTOR_NAME = "ReactorName";
-    public static final String REACTED_ACTOR_SYSTEM = "ReActedActorSystem";
+
+    private CoreConstants() {
+    }
 }
