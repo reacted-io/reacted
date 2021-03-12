@@ -7,40 +7,46 @@ import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.IntStream;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import utils.PreparationRequest;
 import utils.SimpleTestReActor;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
+
 public class CommunicationTests {
-    public static final Collection<ServiceRegistryDriver<?, ?>> NO_SERVICE_REGISTRIES = List.of();
-    public static final Collection<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> NO_REMOTING_DRIVERS = List.of();
+    private static final Collection<ServiceRegistryDriver<?, ?>> NO_SERVICE_REGISTRIES = List.of();
+    private static final Collection<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> NO_REMOTING_DRIVERS = List.of();
+    public static final String DELIMITER = ":";
 
     @Test
     void test1() {
         var simpleReActorSystem = getDefaultStartedReActorSystem("ReactorSystem");
 
-        var pingDelim = ":";
-        int messagesToSend = 20;
-        var newReActorInstance = new SimpleTestReActor(pingDelim, messagesToSend);
+        var messagesToSend = 20;
+        var newReActorInstance = new SimpleTestReActor(DELIMITER, messagesToSend);
         var newReActorReference = simpleReActorSystem.spawn(newReActorInstance.getReActions(),
-                                                            newReActorInstance.getConfig())
+                newReActorInstance.getConfig())
                 .orElse(ReActorRef.NO_REACTOR_REF, error -> {
                     error.printStackTrace();
                     simpleReActorSystem.shutDown();
                 });
 
+        AtomicInteger count = new AtomicInteger();
         newReActorReference.tell(ReActorRef.NO_REACTOR_REF, new PreparationRequest())
                 .toCompletableFuture()
                 .join()
-                .filter(DeliveryStatus::isDelivered)
-                .ifSuccessOrElse(success -> System.out.println("Preparation request has been delivered"),
-                                 error -> System.err.println("Error communicating with reactor"));
-
+                .filter(DeliveryStatus::isDelivered);
         IntStream.range(0, messagesToSend).parallel()
-                .forEach(msgNum -> newReActorReference.atell("Ping Request" + pingDelim + msgNum));
+                .forEach(msgNum -> {
+                    newReActorReference.atell("Ping Request" + DELIMITER + msgNum);
+                    count.getAndIncrement();
+                });
+
+        Assertions.assertEquals(messagesToSend, count.intValue());
     }
 
     public static ReActorSystem getDefaultStartedReActorSystem(String reActorSystemName) {
@@ -49,7 +55,7 @@ public class CommunicationTests {
 
     public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName) {
         return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.DIRECT_COMMUNICATION,
-                                          NO_SERVICE_REGISTRIES, NO_REMOTING_DRIVERS);
+                NO_SERVICE_REGISTRIES, NO_REMOTING_DRIVERS);
     }
 
     public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName,

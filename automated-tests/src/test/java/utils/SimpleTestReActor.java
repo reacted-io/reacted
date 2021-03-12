@@ -11,6 +11,8 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.utils.ObjectUtils;
 import io.reacted.patterns.Try;
+
+import javax.annotation.Nonnull;
 import java.util.Objects;
 
 public class SimpleTestReActor implements ReActor {
@@ -21,15 +23,16 @@ public class SimpleTestReActor implements ReActor {
     public SimpleTestReActor(String splitter, int expectedMessages) {
         this.splitter = Objects.requireNonNull(splitter);
         this.expectedMessages = ObjectUtils.requiredInRange(expectedMessages, 0, Integer.MAX_VALUE,
-                                                            IllegalArgumentException::new);
+                IllegalArgumentException::new);
     }
 
+    @Nonnull
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
                 .reAct(ReActorInit.class, (ctx, init) -> ctx.logInfo("ReActor Started!"))
                 .reAct(ReActorStop.class, (ctx, stop) -> ctx.logInfo("ReActor Stopped! Received {}/{} pings",
-                                                                     receivedPings, expectedMessages))
+                        receivedPings, expectedMessages))
                 .reAct(PreparationRequest.class, (ctx, prepReq) -> ctx.logInfo("ReActor is ready!"))
                 .reAct(String.class, this::onPing)
                 .build();
@@ -37,11 +40,12 @@ public class SimpleTestReActor implements ReActor {
 
     private void onPing(ReActorContext raCtx, String ping) {
         Try.ofRunnable(() -> raCtx.logInfo("Received ping {} on dispatcher {}", ping.split(splitter)[1].trim(),
-                                           Thread.currentThread().getName()))
+                Thread.currentThread().getName()))
                 .ifError(error -> raCtx.logError("Illegal ping format received", error));
         receivedPings++;
     }
 
+    @Nonnull
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                 .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
