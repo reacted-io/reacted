@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<!--    <parent>-->
+<!--        <artifactId>reacted-all</artifactId>-->
+<!--        <groupId>io.reacted</groupId>-->
+<!--        <version>1.4.9-SNAPSHOT</version>-->
+<!--    </parent>-->
+    <modelVersion>4.0.0</modelVersion>
+
+    <developers>
+        <developer>
+            <id>wireknight</id>
+            <name>Pierre Falda</name>
+            <email>pierre@reacted.io</email>
+            <url>https://www.linkedin.com/in/pierrefalda/</url>
+            <organization>ReActed</organization>
+            <organizationUrl>http://www.reacted.io</organizationUrl>
+            <roles>
+                <role>Architect</role>
+                <role>Engineer</role>
+            </roles>
+        </developer>
+        <developer>
+            <id>nicoara.razvan</id>
+            <name>Razvan Nicoara</name>
+            <email>razvan@reacted.io</email>
+            <url>https://www.linkedin.com/in/razvan-nicoara/</url>
+            <organization>ReActed</organization>
+            <organizationUrl>http://www.reacted.io</organizationUrl>
+            <roles>
+                <role>QA Engineer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <artifactId>automated-tests</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -110,6 +110,7 @@
         <testng.version>7.1.0</testng.version>
     </properties>
     <modules>
+        <module>automated-tests</module>
         <module>pattern</module>
         <module>core</module>
         <module>streams</module>
