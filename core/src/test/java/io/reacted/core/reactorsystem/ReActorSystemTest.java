@@ -8,8 +8,6 @@
 
 package io.reacted.core.reactorsystem;
 
-import static org.mockito.Mockito.mock;
-
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
@@ -25,16 +23,19 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.Try;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import org.awaitility.Awaitility;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
+import static org.mockito.Mockito.mock;
 
 class ReActorSystemTest {
     private static final String DISPATCHER_NAME = "TestDispatcher";
@@ -187,27 +188,4 @@ class ReActorSystemTest {
         Awaitility.await()
                   .until(MagicTestReActor.RECEIVED::intValue, CoreMatchers.equalTo(2));
     }
-
-//    @Test
-//    void reactorSystemCanRegisterNewGate() {
-//        ReActorSystemId reActorSystemId = new ReActorSystemId("reActorSystemId");
-//        GateDescriptor gateDescriptor = reActorSystem.registerNewGate(reActorSystemId, new GateDescriptor(new NullReActorSystemRef(), mock(LocalDriver.class)));
-//
-//        Assertions.assertTrue(Optional.ofNullable(reActorSystem.findGate(reActorSystemId)).isPresent());
-//        Assertions.assertEquals(Optional.of(gateDescriptor),
-//                reActorSystem.findGate(reActorSystemId).filter(
-//                        gateDescript -> gateDescript.equals(gateDescriptor)));
-//    }
-//
-//    @Test
-//    void reactorSystemCanRegisterMultipleGates() {
-//        ReActorSystemId reActorSystemId = new ReActorSystemId("reActorSystemId");
-//        GateDescriptor gateDescriptor1 = reActorSystem.registerNewGate(reActorSystemId, new GateDescriptor(new NullReActorSystemRef(), mock(LocalDriver.class)));
-//        GateDescriptor gateDescriptor2 = reActorSystem.registerNewGate(reActorSystemId, new GateDescriptor(new NullReActorSystemRef(), mock(LocalDriver.class)));
-//
-//        Assertions.assertEquals(2, reActorSystem.getReActorSystemsGates().size());
-//        Assertions.assertTrue(reActorSystem.getReActorSystemsGates().containsValue(gateDescriptor1));
-//        Assertions.assertTrue(reActorSystem.getReActorSystemsGates().containsValue(gateDescriptor2));
-//    }
-
 }
