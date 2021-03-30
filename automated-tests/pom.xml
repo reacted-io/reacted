@@ -57,5 +57,10 @@
             <artifactId>reacted-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-drivers</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

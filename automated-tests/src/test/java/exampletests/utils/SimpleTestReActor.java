@@ -1,4 +1,4 @@
-package exampleutils;
+package exampletests.utils;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.mailboxes.BasicMbox;

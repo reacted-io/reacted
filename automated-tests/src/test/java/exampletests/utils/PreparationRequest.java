@@ -1,4 +1,4 @@
-package exampleutils;
+package exampletests.utils;
 
 import java.io.Serializable;
 

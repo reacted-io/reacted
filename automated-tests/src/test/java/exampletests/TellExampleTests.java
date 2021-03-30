@@ -1,7 +1,9 @@
-import exampleutils.PingReActor;
-import exampleutils.PongReActor;
-import exampleutils.PreparationRequest;
-import exampleutils.SimpleTestReActor;
+package exampletests;
+
+import exampletests.utils.PingReActor;
+import exampletests.utils.PongReActor;
+import exampletests.utils.PreparationRequest;
+import exampletests.utils.SimpleTestReActor;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
@@ -19,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
-public class CommunicationExampleTests {
+public class TellExampleTests {
     private static final Collection<ServiceRegistryDriver<?, ?>> NO_SERVICE_REGISTRIES = List.of();
     private static final Collection<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> NO_REMOTING_DRIVERS = List.of();
     public static final String DELIMITER = ":";
