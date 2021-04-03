@@ -1,9 +1,9 @@
-package exampletests;
+package exampletests.communication;
 
-import exampletests.utils.PingReActor;
-import exampletests.utils.PongReActor;
-import exampletests.utils.PreparationRequest;
-import exampletests.utils.SimpleTestReActor;
+import exampletests.communication.utils.PingReActor;
+import exampletests.communication.utils.PongReActor;
+import exampletests.communication.utils.PreparationRequest;
+import exampletests.communication.utils.SimpleTestReActor;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;

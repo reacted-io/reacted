@@ -1,4 +1,4 @@
-package exampletests;
+package exampletests.communication;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ReActorConfig;

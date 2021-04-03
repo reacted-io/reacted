@@ -62,5 +62,10 @@
             <artifactId>reacted-drivers</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-streams</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

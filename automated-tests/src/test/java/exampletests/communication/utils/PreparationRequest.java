@@ -1,4 +1,4 @@
-package exampletests.utils;
+package exampletests.communication.utils;
 
 import java.io.Serializable;
 
