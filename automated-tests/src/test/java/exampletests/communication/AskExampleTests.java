@@ -1,6 +1,6 @@
 package exampletests.communication;
 
-import exampletests.communication.utils.ExampleUtils;
+import exampletests.utils.ExampleUtils;
 import exampletests.communication.utils.TimeRequest;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
