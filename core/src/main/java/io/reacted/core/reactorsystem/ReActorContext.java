@@ -42,7 +42,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 @NonNullByDefault
-public final class ReActorContext {
+public class ReActorContext {
     public static final ReActorContext NO_REACTOR_CTX = ReActorContext.newBuilder()
                                                                       .setMbox(raCtx -> new NullMailbox())
                                                                       .setParentActor(ReActorRef.NO_REACTOR_REF)

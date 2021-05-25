@@ -12,9 +12,12 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
+import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
+import io.reacted.core.typedsubscriptions.NullTypeSubscriptionManager;
+import io.reacted.core.typedsubscriptions.SubscriptionsManager;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
@@ -103,8 +106,8 @@ public class ReActorSystem {
     /* All the reactors spawned by a specific reactor system instance */
     private final Map<ReActorId, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
-    private final TypedSubscriptionsManager typedSubscriptionsManager;
-    private final RegistryGatesCentralizedManager gatesCentralizedManager;
+    private final SubscriptionsManager typedSubscriptionsManager;
+    private final GatesRegistry gatesCentralizedManager;
     private final Map<String, Dispatcher> dispatchers;
     private final ReActorSystemConfig systemConfig;
     private final AtomicLong newSeqNum;
@@ -135,16 +138,18 @@ public class ReActorSystem {
     @Nullable
     private ReActorRef systemMonitor;
 
-    @SuppressWarnings("ConstantConditions")
     private ReActorSystem() {
         this.reActorSystemDrivers = Set.of();
         this.reActors = Map.of();
-        this.typedSubscriptionsManager = null;
-        this.gatesCentralizedManager = null;
-        this.dispatchers = Map.of();
-        this.systemConfig = null;
-        this.newSeqNum = new AtomicLong(Long.MAX_VALUE);
         this.localReActorSystemId = ReActorSystemId.NO_REACTORSYSTEM_ID;
+        this.typedSubscriptionsManager = new NullTypeSubscriptionManager();
+        this.gatesCentralizedManager = new NullRegistryGatesCentralizedManager();
+        this.dispatchers = Map.of();
+        this.systemConfig = ReActorSystemConfig.newBuilder()
+                                               .setReactorSystemName(ReActorSystemId.NO_REACTORSYSTEM_ID_NAME)
+                                               .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
+                                               .build();
+        this.newSeqNum = new AtomicLong(Long.MAX_VALUE);
         this.reActorStop = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF,
                                        Long.MIN_VALUE, localReActorSystemId, AckingPolicy.NONE,
                                        new ReActorStop());
@@ -259,16 +264,34 @@ public class ReActorSystem {
                                                                                               " info:", error)));
     }
 
-    //XXX Generate a new unique sequence number for messages generated from this reactor system
+    /**
+     * Generaates a numeric ID
+     * @return an incremental number guaranteed to be unique for the reactor system
+     */
     public long getNewSeqNum() { return newSeqNum.getAndIncrement(); }
 
-    //XXX Get the identifier for this reactor system
+    /**
+     * Returns the identifier of the local {@link ReActorSystem}
+     * @return {@link ReActorSystemId} of the local {@link ReActorSystem}
+     */
     public ReActorSystemId getLocalReActorSystemId() { return localReActorSystemId; }
 
-    //XXX Get all the typed subscribers. Used as a cache for the propagations
-    public TypedSubscriptionsManager getTypedSubscriptionsManager() { return typedSubscriptionsManager; }
-    public void registerNewRoute(ReActorSystemId reActorSystemId, ChannelId channelId, Properties channelProperties,
-                                 ReActorRef registryDriver) {
+    /**
+     * Returns the {@link SubscriptionsManager} responsible for the typed subscriptions
+     * @return The typed subscriptions manager
+     */
+    public SubscriptionsManager getTypedSubscriptionsManager() { return typedSubscriptionsManager; }
+
+    /**
+     * Register a route towards a specific {@link ReActorSystem}
+     * @param reActorSystemId Identifier of the {@link ReActorSystem}
+     * @param channelId Identifier of the new channel
+     * @param channelProperties Specific properties required for using the specified channel
+     * @param registryDriver Service registry responsible for monitoring the availability of this
+     *                       ReActorSystem on the specified channel
+     */
+    public void registerNewRoute(ReActorSystemId reActorSystemId, ChannelId channelId,
+                                 Properties channelProperties, ReActorRef registryDriver) {
         ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driverForChannelId;
         driverForChannelId = getReActorSystemDrivers().stream()
                                                       .filter(driver -> driver.getChannelId().equals(channelId))
@@ -280,8 +303,11 @@ public class ReActorSystem {
                                                  : driverForChannelId, channelId, channelProperties, registryDriver);
     }
 
-    //XXX Forget how to reach a given reactor system through a specific channel. i.e. the remote reactor system
-    //driver is crashed or has been deactivated
+    /**
+     * Forget how to reach a given reactor system through a specific channel.
+     * @param reActorSystemId Destination {@link ReActorSystem}
+     * @param channelId {@link ChannelId} to forget about
+     */
     public void unregisterRoute(ReActorSystemId reActorSystemId, ChannelId channelId) {
         gatesCentralizedManager.unregisterRoute(reActorSystemId, channelId);
     }
