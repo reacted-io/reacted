@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
+import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
@@ -58,7 +59,8 @@ public class ReactiveServer {
     public static void main(String[] args) throws IOException {
         var serverReactorSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                        /* Use chronicle driver and record execution property for replay */
-                                                                       //.setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLogger(LOG_PATH))
+                                                                       .setLocalDriver(
+                                                                           SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(LOG_PATH))
                                                                        .setReactorSystemName("ReactiveServer")
                                                                        .addDispatcherConfig(DispatcherConfig.newBuilder()
                                                                                                             .setDispatcherName(RESPONSE_DISPATCHER)

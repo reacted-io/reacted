@@ -112,10 +112,10 @@ public final class Message implements Externalizable, Comparable<Message> {
         ReActorRef senderRef = new ReActorRef();
         senderRef.readExternal(in);
         setSender(senderRef);
-        ReActorRef destinationRef = new ReActorRef();
+        var destinationRef = new ReActorRef();
         destinationRef.readExternal(in);
         setDestination(destinationRef);
-        DataLink datalink = new DataLink();
+        var datalink = new DataLink();
         datalink.readExternal(in);
         setDataLink(datalink);
         setSequenceNumber(in.readLong());

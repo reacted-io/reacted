@@ -52,7 +52,7 @@ public class DataLink implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorSystemId receivedGeneratingReActorSystem = new ReActorSystemId();
+        var receivedGeneratingReActorSystem = new ReActorSystemId();
         receivedGeneratingReActorSystem.readExternal(in);
         setGeneratingReActorSystem(receivedGeneratingReActorSystem);
         setAckingPolicy(AckingPolicy.values()[in.readInt()]);

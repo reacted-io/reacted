@@ -107,7 +107,7 @@ public final class AsyncUtils {
         if (iterations <= 0) {
             throw new IllegalArgumentException("Iterations must be positive. Provided [" + iterations + "]");
         }
-        AtomicLong counter = new AtomicLong(0);
+        var counter = new AtomicLong(0);
         return asyncLoop(operation, firstArgument, input ->  counter.getAndIncrement() < iterations,
                          onError, asyncExecutor);
     }

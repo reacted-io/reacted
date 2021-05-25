@@ -85,7 +85,7 @@ public class ChannelId implements Externalizable {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ChannelId channelId1 = (ChannelId) o;
+        var channelId1 = (ChannelId) o;
         return channelType == channelId1.channelType &&
                Objects.equals(channelName, channelId1.channelName);
     }

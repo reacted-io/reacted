@@ -14,6 +14,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.Try;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
@@ -21,21 +22,17 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class Mapper<InputT extends Serializable, OutputT extends Serializable> extends PipelineStage {
+public class MapOperator<InputT extends Serializable, OutputT extends Serializable> extends FlowStage {
     private final Function<? super InputT, Collection<? extends OutputT>> mapperFunction;
-    private Mapper(Function<? super InputT, Collection<? extends OutputT>> mapperFunction) {
+    private MapOperator(Function<? super InputT, Collection<? extends OutputT>> mapperFunction) {
         this.mapperFunction = mapperFunction;
     }
 
-    @SuppressWarnings("unchecked")
-    public static CompletionStage<ReActorRef>
+    public static CompletionStage<Try<ReActorRef>>
     of(ReActorSystem localReActorSystem, ReActorConfig operatorCfg,
        Function<? extends Serializable, Collection<? extends Serializable>> mapper) {
-        return (CompletionStage<ReActorRef>)localReActorSystem.spawn(new Mapper<>(mapper),
-                                                                     operatorCfg)
-                                                              .mapOrElse(CompletableFuture::completedFuture,
-                                                                         CompletableFuture::failedFuture)
-                                                              .orElseSneakyThrow();
+        return CompletableFuture.completedStage(localReActorSystem.spawn(new MapOperator<>(mapper),
+                                                                         operatorCfg));
     }
 
     @Override

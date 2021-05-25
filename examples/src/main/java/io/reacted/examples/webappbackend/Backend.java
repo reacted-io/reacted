@@ -41,14 +41,14 @@ public class Backend {
                           ? new ReplayLocalDriver(chronicleDriverConfig)
                           : new CQLocalDriver(chronicleDriverConfig);
 
-        ReActorSystem backendSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
+        var backendSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                            .setLocalDriver(localDriver)
                                                                            .setReactorSystemName("BackendSystem")
                                                                            .setRecordExecution(true)
                                                                            .build()).initReActorSystem();
 
         MongoClient mongoReactiveClient = IS_REPLAY ? null : MongoClients.create();
-        HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 8001), 10);
+        var server = HttpServer.create(new InetSocketAddress("localhost", 8001), 10);
 
         backendSystem.spawnService(ServiceConfig.newBuilder()
                                                 .setRouteesNum(2)

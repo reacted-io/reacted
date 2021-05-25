@@ -89,7 +89,7 @@ public class EventExecutionAttempt implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorId receivedReActorId = new ReActorId();
+        var receivedReActorId = new ReActorId();
         receivedReActorId.readExternal(in);
         setReActorId(receivedReActorId);
         setExecutionSeqNum(in.readLong());

@@ -15,6 +15,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,6 +112,7 @@ public class BackpressuringMbox implements MailBox {
     @Override
     public long getMaxSize() { return realMbox.getMaxSize(); }
 
+    @Nonnull
     @Override
     public Message getNextMessage() { return realMbox.getNextMessage(); }
 
@@ -120,9 +122,11 @@ public class BackpressuringMbox implements MailBox {
         this.notDelayed = Set.copyOf(notDelayed);
     }
 
+    @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) { return realMbox.deliver(message); }
 
+    @Nonnull
     @Override
     public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
         var payloadType = message.getPayload().getClass();

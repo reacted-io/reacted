@@ -82,7 +82,7 @@ public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<Direc
                            message.getDestination().getReActorId().getReActorName(),
                            message.getSequenceNumber(),
                            message.getPayload().getClass().toString(),
-                           message.getPayload().toString());
+                           message.getPayload());
             logFile.flush();
         }
         return destination.isStop()
@@ -99,7 +99,7 @@ public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<Direc
                            message.getDestination().getReActorId().getReActorName(),
                            message.getSequenceNumber(),
                            message.getPayload().getClass().toString(),
-                           message.getPayload().toString());
+                           message.getPayload());
             logFile.flush();
         }
         return destination.isStop()

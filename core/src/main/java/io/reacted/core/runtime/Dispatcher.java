@@ -75,11 +75,11 @@ public class Dispatcher {
                                              executorService -> Executors.newFixedThreadPool(1, dispatcherFactory))
                                     .limit(getDispatcherConfig().getDispatcherThreadsNum())
                                     .toArray(ExecutorService[]::new);
-        int lifecyclePoolSize = Integer.max(2, getDispatcherConfig().getDispatcherThreadsNum() >> 2);
+        var lifecyclePoolSize = Integer.max(2, getDispatcherConfig().getDispatcherThreadsNum() >> 2);
 
         this.dispatcherLifeCyclePool = Executors.newFixedThreadPool(lifecyclePoolSize,lifecycleFactory);
 
-        for(int currentDispatcher = 0;
+        for(var currentDispatcher = 0;
             currentDispatcher < getDispatcherConfig().getDispatcherThreadsNum(); currentDispatcher++) {
 
             ExecutorService dispatcherThread = dispatcherPool[currentDispatcher];
@@ -104,7 +104,6 @@ public class Dispatcher {
 
     public void dispatch(ReActorContext reActor) {
         if (reActor.acquireScheduling()) {
-            //TODO ringbuffer
             scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)].addLast(reActor);
         }
     }
@@ -117,7 +116,7 @@ public class Dispatcher {
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
                                 ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
-        int processed = 0;
+        var processed = 0;
         try {
             while (!Thread.currentThread().isInterrupted()) {
                 //TODO a lot of time is wasted awakening/putting the thread to sleep, a more performant approach
@@ -126,10 +125,10 @@ public class Dispatcher {
                 //memory acquire
                 scheduledReActor.acquireCoherence();
 
-                for (int msgNum = 0; msgNum < dispatcherBatchSize &&
+                for (var msgNum = 0; msgNum < dispatcherBatchSize &&
                                      !scheduledReActor.getMbox().isEmpty() &&
                                      !scheduledReActor.isStop(); msgNum++) {
-                    Message newEvent = scheduledReActor.getMbox().getNextMessage();
+                    var newEvent = scheduledReActor.getMbox().getNextMessage();
 
                     if (isExecutionRecorded) {
                         /*

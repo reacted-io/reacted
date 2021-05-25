@@ -573,6 +573,16 @@ public class ReActorSystem {
         gatesCentralizedManager.unregisterSource(registryDriver);
     }
 
+    /**
+     * Checks if the {@link ReActor} pointed by a {@link ReActorRef} is local to this
+     * {@link ReActorSystem}
+     * @param reActorRef Any {@link ReActorRef}
+     * @return true is the pointed {@link ReActor} is local, false otherwise
+     */
+    public boolean isLocal(ReActorRef reActorRef) {
+        return reActorRef.getReActorSystemRef() == getLoopback();
+    }
+
     Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> getReActorSystemDrivers() {
         return Set.copyOf(reActorSystemDrivers);
     }
@@ -655,9 +665,7 @@ public class ReActorSystem {
     }
 
     /**
-     * @throws NullPointerException
-     * @throws ReActorSystemInitException
-     * @throws ReActorSystemStructuralInconsistencyError
+     * @throws ReActorSystemStructuralInconsistencyError if no {@link Dispatcher} is found
      * @throws ReActorRegistrationException if a {@link ReActor} with a duplicated name is found
      */
     private void spawnReActorSystemReActors() {

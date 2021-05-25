@@ -46,11 +46,13 @@ public class BoundedBasicMbox implements MailBox {
     @Override
     public boolean isFull() { return inbox.remainingCapacity() == mailboxCapacity; }
 
+    @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) {
         return inbox.offerLast(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.BACKPRESSURED;
     }
 
+    @Nonnull
     @Override
     public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
         return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));

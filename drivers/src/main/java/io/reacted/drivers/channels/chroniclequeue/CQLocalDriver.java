@@ -79,7 +79,7 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     }
 
     private void chronicleMainLoop(ExcerptTailer tailer) {
-        Pauser waitForNextMsg = Pauser.millis(100, 500);
+        var waitForNextMsg = Pauser.millis(100, 500);
 
         while(!Thread.currentThread().isInterrupted()) {
 

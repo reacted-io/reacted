@@ -12,10 +12,12 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 
+import io.reacted.patterns.Try;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -23,44 +25,37 @@ import java.util.stream.Stream;
 @NonNullByDefault
 public class Stage {
     private final String stageName;
-    private final Function<ReActorSystem, CompletionStage<ReActorRef>> operatorProvider;
-    private final Collection<String> outputLevelNames;
+    private final Function<ReActorSystem, CompletionStage<Try<ReActorRef>>> operatorProvider;
+    private final Set<String> outputLevelNames;
     private final Collection<Stream<? extends Serializable>> sourceStreams;
     private Stage(Builder builder) {
         this.stageName = Objects.requireNonNull(builder.stageName, "Stage name cannot be null");
-        this.operatorProvider = Objects.requireNonNull(builder.operatorProvider,
-                                                       "Stage operator cannot be null");
-        this.outputLevelNames = Objects.requireNonNull(builder.outputStageNames,
-                                                       "Stage output stages canno be null");
-        this.sourceStreams = Objects.requireNonNull(builder.sourceStreams,
-                                                    "Source Streams cannot be null");
-        outputLevelNames.forEach(stageName -> Objects.requireNonNull(stageName,
-                                                                     "Output stage name cannot be null"));
-        sourceStreams.forEach(sourceStream -> Objects.requireNonNull(sourceStream,
-                                                                     "Source Stream cannot be null"));
+        this.operatorProvider = Objects.requireNonNull(builder.operatorProvider, "Stage operator cannot be null");
+        this.outputLevelNames = Objects.requireNonNull(builder.outputStageNames, "Stage output stages cannot be null");
+        this.sourceStreams = Objects.requireNonNull(builder.sourceStreams, "Source Streams cannot be null");
+        outputLevelNames.forEach(stageName -> Objects.requireNonNull(stageName, "Output stage name cannot be null"));
+        sourceStreams.forEach(sourceStream -> Objects.requireNonNull(sourceStream, "Source Stream cannot be null"));
     }
 
     public String getStageName() { return stageName; }
 
-    public Function<ReActorSystem, CompletionStage<ReActorRef>> getOperatorProvider() {
-        return operatorProvider;
-    }
+    public Function<ReActorSystem, CompletionStage<Try<ReActorRef>>> getOperatorProvider() { return operatorProvider; }
 
     public Collection<Stream<? extends Serializable>> getSourceStreams() { return sourceStreams; }
 
-    public Collection<String> getOutputStagesNames() { return outputLevelNames; }
+    public Set<String> getOutputStagesNames() { return outputLevelNames; }
 
     public static Builder newBuilder() { return new Builder(); }
 
     @SuppressWarnings("NotNullFieldNotInitialized")
     public static class Builder {
         private String stageName;
-        private Function<ReActorSystem, CompletionStage<ReActorRef>> operatorProvider;
-        private Collection<String> outputStageNames;
+        private Function<ReActorSystem, CompletionStage<Try<ReActorRef>>> operatorProvider;
+        private Set<String> outputStageNames;
 
         private Collection<Stream<? extends Serializable>> sourceStreams;
         private Builder() {
-            this.outputStageNames = List.of();
+            this.outputStageNames = Set.of();
             this.sourceStreams = List.of();
         }
 
@@ -69,19 +64,19 @@ public class Stage {
             return this;
         }
 
-        public Builder setOperatorProvider(Function<ReActorSystem, CompletionStage<ReActorRef>>
+        public Builder setOperatorProvider(Function<ReActorSystem, CompletionStage<Try<ReActorRef>>>
                                            operatorProvider) {
             this.operatorProvider = operatorProvider;
             return this;
         }
 
-        public Builder setOutputStagesNames(Collection<String> outputStagesNames) {
+        public Builder setOutputStagesNames(Set<String> outputStagesNames) {
             this.outputStageNames = outputStagesNames;
             return this;
         }
 
         public Builder setOutputStageName(String outputStageName) {
-            this.outputStageNames = List.of(outputStageName);
+            this.outputStageNames = Set.of(outputStageName);
             return this;
         }
 

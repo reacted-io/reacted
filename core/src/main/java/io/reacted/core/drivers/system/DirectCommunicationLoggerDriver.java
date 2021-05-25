@@ -73,7 +73,7 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
 
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        logFile.println(message.toString());
+        logFile.println(message);
         logFile.flush();
         return destination.isStop()
                ? Try.ofSuccess(DeliveryStatus.NOT_DELIVERED)
@@ -87,7 +87,7 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
                        : asyncLocalDeliver(destination, message);
         delivery.thenAccept(deliveryAttempt -> {
             synchronized (logFile) {
-                logFile.println(message.toString());
+                logFile.println(message);
                 logFile.flush();
             }
         });
