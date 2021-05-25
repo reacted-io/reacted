@@ -339,7 +339,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
 
     private static boolean isThisInstanceMarker(@Nullable byte[] remoteMarkerData,
                                                 UUID reActorSystemInstanceMarker) {
-        return Try.of(() -> UUID.fromString(new String(remoteMarkerData)))
+        return remoteMarkerData != null &&
+               Try.of(() -> UUID.fromString(new String(remoteMarkerData)))
                   .map(reActorSystemInstanceMarker::equals)
                   .orElse(false);
     }

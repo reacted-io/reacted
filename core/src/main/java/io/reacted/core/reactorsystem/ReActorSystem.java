@@ -135,6 +135,7 @@ public class ReActorSystem {
     @Nullable
     private ReActorRef systemMonitor;
 
+    @SuppressWarnings("ConstantConditions")
     private ReActorSystem() {
         this.reActorSystemDrivers = Set.of();
         this.reActors = Map.of();
