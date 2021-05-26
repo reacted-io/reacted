@@ -10,9 +10,10 @@ package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.config.drivers.NullLocalDriverConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
-import io.reacted.core.drivers.local.SystemLocalDrivers;
+import io.reacted.core.drivers.system.NullLocalDriver;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
@@ -89,6 +90,8 @@ public class ReActorSystem {
     public static final ReActorSystem NO_REACTOR_SYSTEM = new ReActorSystem();
     /* Default dispatcher. Used by system internals */
     public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
+    public static final int DEFAULT_DISPATCHER_BATCH_SIZE = 10;
+    public static final int DEFAULT_DISPATCHER_THREAD_NUM = 4;
     private static final int SYSTEM_TASK_SCHEDULER_POOL_SIZE = 2;
     // Service discovery always hits the LOCAL services of the LOCAL service registry driver. There is no reason
     // to wait indefinitely for an answer from local resources
@@ -97,8 +100,8 @@ public class ReActorSystem {
     private static final Serializable REACTOR_INIT = new ReActorInit();
     private static final DispatcherConfig SYSTEM_DISPATCHER_CONFIG = DispatcherConfig.newBuilder()
                                                                                      .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                                                     .setBatchSize(10)
-                                                                                     .setDispatcherThreadsNum(4)
+                                                                                     .setBatchSize(DEFAULT_DISPATCHER_BATCH_SIZE)
+                                                                                     .setDispatcherThreadsNum(DEFAULT_DISPATCHER_THREAD_NUM)
                                                                                      .build();
 
     private final Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> reActorSystemDrivers;
@@ -106,7 +109,7 @@ public class ReActorSystem {
     private final Map<ReActorId, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
     private final SubscriptionsManager typedSubscriptionsManager;
-    private final GatesRegistry gatesCentralizedManager;
+    private final RegistryGatesCentralizedManager gatesCentralizedManager;
     private final Map<String, Dispatcher> dispatchers;
     private final ReActorSystemConfig systemConfig;
     private final AtomicLong newSeqNum;
@@ -142,12 +145,16 @@ public class ReActorSystem {
         this.reActors = Map.of();
         this.localReActorSystemId = ReActorSystemId.NO_REACTORSYSTEM_ID;
         this.typedSubscriptionsManager = new SubscriptionsManager() { };
-        this.gatesCentralizedManager = new GatesRegistry() { };
         this.dispatchers = Map.of();
         this.systemConfig = ReActorSystemConfig.newBuilder()
                                                .setReactorSystemName(ReActorSystemId.NO_REACTORSYSTEM_ID_NAME)
-                                               .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
+                                               .setLocalDriver(new NullLocalDriver(NullLocalDriverConfig.newBuilder()
+                                                                                                        .setChannelName("NO COMMUNICATION DRIVER")
+                                                                                                        .build()))
                                                .build();
+        systemConfig.getLocalDriver().initDriverCtx(this);
+        this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
+                                                                           new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
         this.newSeqNum = new AtomicLong(Long.MAX_VALUE);
         this.reActorStop = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF,
                                        Long.MIN_VALUE, localReActorSystemId, AckingPolicy.NONE,

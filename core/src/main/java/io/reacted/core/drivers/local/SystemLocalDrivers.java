@@ -8,12 +8,12 @@
 
 package io.reacted.core.drivers.local;
 
-import io.reacted.core.drivers.system.DirectCommunicationConfig;
-import io.reacted.core.drivers.system.DirectCommunicationDriver;
-import io.reacted.core.drivers.system.DirectCommunicationLoggerConfig;
-import io.reacted.core.drivers.system.DirectCommunicationLoggerDriver;
-import io.reacted.core.drivers.system.DirectCommunicationSimplifiedLoggerConfig;
-import io.reacted.core.drivers.system.DirectCommunicationSimplifiedLoggerDriver;
+import io.reacted.core.config.drivers.DirectCommunicationConfig;
+import io.reacted.core.config.drivers.DirectCommunicationLoggerConfig;
+import io.reacted.core.config.drivers.DirectCommunicationSimplifiedLoggerConfig;
+import io.reacted.core.config.drivers.NullLocalDriverConfig;
+import io.reacted.core.drivers.system.NullDriver;
+import io.reacted.core.drivers.system.NullLocalDriver;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 

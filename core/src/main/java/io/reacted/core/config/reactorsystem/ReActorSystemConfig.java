@@ -11,7 +11,7 @@ package io.reacted.core.config.reactorsystem;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
-import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.RemotingDriver;

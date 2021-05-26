@@ -6,12 +6,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.drivers.local;
+package io.reacted.core.drivers.system;
 
 import io.reacted.core.CoreConstants;
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.drivers.local.SystemLocalDrivers;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.BasicMbox;
@@ -42,7 +44,8 @@ class LocalDriverTest {
                                                                      .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(1)
                                                                      .setRecordExecution(false)
-                                                                     .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
+                                                                     .setLocalDriver(
+                                                                         SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                                      .addDispatcherConfig(DispatcherConfig.newBuilder()
                                                                                                           .setDispatcherName("Dispatcher")
                                                                                                           .setBatchSize(1_000)

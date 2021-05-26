@@ -9,7 +9,7 @@
 package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;

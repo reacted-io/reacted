@@ -45,7 +45,8 @@ public class TypedSubscriptionsManager implements SubscriptionsManager {
                                    @Nonnull ReActorContext subscriber) {
         var bucket = typeToSubscriber.get(Objects.requireNonNull(payloadType));
         if (bucket != null) {
-            bucket.removeSubscriber(Objects.requireNonNull(subscriptionPolicy), Objects.requireNonNull(subscriber));
+            bucket.removeSubscriber(Objects.requireNonNull(subscriptionPolicy),
+                                    Objects.requireNonNull(subscriber));
         }
     }
     @Override

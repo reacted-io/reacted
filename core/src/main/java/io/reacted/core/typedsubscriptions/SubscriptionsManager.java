@@ -20,22 +20,16 @@ public interface SubscriptionsManager {
 
   default void addSubscription(Class<? extends Serializable> payloadType,
                                TypedSubscriptionPolicy subscriptionPolicy,
-                               ReActorContext subscriber) {
-    throw new UnsupportedOperationException();
-  }
+                               ReActorContext subscriber) { }
 
   default void removeSubscription(Class<? extends Serializable> payloadType,
                                   TypedSubscriptionPolicy subscriptionPolicy,
-                                  ReActorContext subscriber) {
-    throw new UnsupportedOperationException();
-  }
+                                  ReActorContext subscriber) { }
 
-  default boolean hasFullSubscribers(Class<? extends Serializable> payloadType) {
-    throw new UnsupportedOperationException();
-  }
+  default boolean hasFullSubscribers(Class<? extends Serializable> payloadType) { return false; }
 
   @Nonnull
   default List<ReActorContext> getLocalSubscribers(Class<? extends Serializable> payloadType) {
-    throw new UnsupportedOperationException();
+    return List.of();
   }
 }

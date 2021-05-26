@@ -1,14 +1,15 @@
 /*
- * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * Copyright (c) 2021 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.drivers.local;
+package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
@@ -46,7 +47,7 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      }
 
      @Override
-     public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+     public final <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
      tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
           TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
           return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
@@ -59,7 +60,7 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      }
 
      @Override
-     protected void offerMessage(Message message) {
+     protected final void offerMessage(Message message) {
           var deliveryAttempt = getLocalReActorSystem().getReActor(Objects.requireNonNull(message,
                                                                                           "Cannot offer() a null message")
                                                                           .getDestination()

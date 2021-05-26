@@ -10,7 +10,6 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;

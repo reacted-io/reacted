@@ -8,7 +8,7 @@
 
 package io.reacted.core;
 
-import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorRef;

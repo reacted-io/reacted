@@ -10,7 +10,7 @@ package io.reacted.examples;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
