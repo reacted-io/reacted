@@ -18,15 +18,24 @@ import javax.annotation.ParametersAreNonnullByDefault;
 @ParametersAreNonnullByDefault
 public interface SubscriptionsManager {
 
-  void addSubscription(Class<? extends Serializable> payloadType,
-                       TypedSubscriptionPolicy subscriptionPolicy, ReActorContext subscriber);
+  default void addSubscription(Class<? extends Serializable> payloadType,
+                               TypedSubscriptionPolicy subscriptionPolicy,
+                               ReActorContext subscriber) {
+    throw new UnsupportedOperationException();
+  }
 
-  void removeSubscription(Class<? extends Serializable> payloadType,
-                          TypedSubscriptionPolicy subscriptionPolicy,
-                          ReActorContext subscriber);
+  default void removeSubscription(Class<? extends Serializable> payloadType,
+                                  TypedSubscriptionPolicy subscriptionPolicy,
+                                  ReActorContext subscriber) {
+    throw new UnsupportedOperationException();
+  }
 
-  boolean hasFullSubscribers(Class<? extends Serializable> payloadType);
+  default boolean hasFullSubscribers(Class<? extends Serializable> payloadType) {
+    throw new UnsupportedOperationException();
+  }
 
   @Nonnull
-  List<ReActorContext> getLocalSubscribers(Class<? extends Serializable> payloadType);
+  default List<ReActorContext> getLocalSubscribers(Class<? extends Serializable> payloadType) {
+    throw new UnsupportedOperationException();
+  }
 }

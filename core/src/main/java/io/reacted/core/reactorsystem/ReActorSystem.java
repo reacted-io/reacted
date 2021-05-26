@@ -16,7 +16,6 @@ import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.typedsubscriptions.NullTypeSubscriptionManager;
 import io.reacted.core.typedsubscriptions.SubscriptionsManager;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.ChannelId;
@@ -142,8 +141,8 @@ public class ReActorSystem {
         this.reActorSystemDrivers = Set.of();
         this.reActors = Map.of();
         this.localReActorSystemId = ReActorSystemId.NO_REACTORSYSTEM_ID;
-        this.typedSubscriptionsManager = new NullTypeSubscriptionManager();
-        this.gatesCentralizedManager = new NullRegistryGatesCentralizedManager();
+        this.typedSubscriptionsManager = new SubscriptionsManager() { };
+        this.gatesCentralizedManager = new GatesRegistry() { };
         this.dispatchers = Map.of();
         this.systemConfig = ReActorSystemConfig.newBuilder()
                                                .setReactorSystemName(ReActorSystemId.NO_REACTORSYSTEM_ID_NAME)
@@ -161,7 +160,7 @@ public class ReActorSystem {
         this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
                                                                            new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
         this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
-        this.reActors = new ConcurrentHashMap<>(10_000_000, 0.5f);
+        this.reActors = new ConcurrentHashMap<>(config.getExpectedReActorsNum() * 2, 0.5f);
         this.typedSubscriptionsManager = new TypedSubscriptionsManager();
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.newSeqNum = new AtomicLong(0);

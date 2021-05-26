@@ -22,31 +22,55 @@ import javax.annotation.ParametersAreNonnullByDefault;
 interface GatesRegistry {
 
   @Nonnull
-  LoopbackDriver<? extends ChannelDriverConfig<?, ?>> getLoopbackDriver();
+  default LoopbackDriver<? extends ChannelDriverConfig<?, ?>> getLoopbackDriver() {
+    throw new UnsupportedOperationException();
+  }
   @Nonnull
-  ReActorSystemRef getLoopBack();
+  default ReActorSystemRef getLoopBack() {
+    throw new UnsupportedOperationException();
+  }
   @Nonnull
-  Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId,
-                                      ChannelId preferredChannelId);
+  default Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId,
+                                              ChannelId preferredChannelId) {
+    throw new UnsupportedOperationException();
+  }
   @Nonnull
-  Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId);
+  default Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {
+    throw new UnsupportedOperationException();
+  }
   @Nonnull
-  Collection<ReActorSystemRef> findAllGates();
+  default Collection<ReActorSystemRef> findAllGates() {
+    throw new UnsupportedOperationException();
+  }
   @Nonnull
-  Collection<ReActorSystemRef> findAllGates(ChannelId channelId);
+  default Collection<ReActorSystemRef> findAllGates(ChannelId channelId) {
+    throw new UnsupportedOperationException();
+  }
 
-  void unregisterRoute(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> anyDriver);
+  default void unregisterRoute(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> anyDriver) {
+    throw new UnsupportedOperationException();
+  }
 
-  void unregisterRoute(ReActorSystemId reActorSystemId, ChannelId channelId);
+  default void unregisterRoute(ReActorSystemId reActorSystemId, ChannelId channelId) {
+    throw new UnsupportedOperationException();
+  }
   @Nonnull
-  ReActorSystemRef registerNewRoute(ReActorSystemId reActorSystemId,
-                                    ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driver,
-                                    ChannelId channelId, Properties channelProperties,
-                                    ReActorRef sourceServiceRegistry);
+  default ReActorSystemRef registerNewRoute(ReActorSystemId reActorSystemId,
+                                            ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driver,
+                                            ChannelId channelId, Properties channelProperties,
+                                            ReActorRef sourceServiceRegistry) {
+    throw new UnsupportedOperationException();
+  }
 
-  boolean registerNewSource(ReActorRef sourceServiceRegistry, ReActorSystemId target);
+  default boolean registerNewSource(ReActorRef sourceServiceRegistry, ReActorSystemId target) {
+    throw new UnsupportedOperationException();
+  }
 
-  void unregisterSource(ReActorRef registryDriver);
+  default void unregisterSource(ReActorRef registryDriver) {
+    throw new UnsupportedOperationException();
+  }
 
-  void unregisterTarget(ReActorSystemId reActorSystemId);
+  default void unregisterTarget(ReActorSystemId reActorSystemId) {
+    throw new UnsupportedOperationException();
+  }
 }
