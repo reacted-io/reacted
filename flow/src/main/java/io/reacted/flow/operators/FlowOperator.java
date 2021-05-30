@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
@@ -37,11 +36,10 @@ import javax.annotation.Nonnull;
 import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 
 @NonNullByDefault
-public abstract class FlowStage implements ReActiveEntity {
-    private static final Function<Collection<ReActorRef>, ReActorRef> GET_FIRST_GATE = gates -> gates.iterator().next();
+public abstract class FlowOperator implements ReActiveEntity {
     private final ReActions stageReActions;
     private Set<ReActorRef> nextStages;
-    protected FlowStage() {
+    protected FlowOperator() {
         this.nextStages = Set.of();
         this.stageReActions = ReActions.newBuilder()
                                        .reAct(SetNextStagesRequest.class, this::setNextStages)
@@ -51,20 +49,6 @@ public abstract class FlowStage implements ReActiveEntity {
                                        .build();
     }
 
-    public static CompletionStage<Try<ReActorRef>>
-    of(ReActorSystem localReActorSystem, ServiceDiscoverySearchFilter serviceSearchFilter) {
-        return of(localReActorSystem, serviceSearchFilter, GET_FIRST_GATE);
-    }
-
-    public static CompletionStage<Try<ReActorRef>>
-    of(ReActorSystem localReActorSystem, ServiceDiscoverySearchFilter serviceSearchFilter,
-       Function<Collection<ReActorRef>, ReActorRef> gateSelector) {
-        return localReActorSystem.serviceDiscovery(serviceSearchFilter)
-                                 .thenApply(tryReply -> tryReply.filter(reply -> reply.getServiceGates().isEmpty(),
-                                                                        ServiceNotFoundException::new)
-                                                                .map(ServiceDiscoveryReply::getServiceGates)
-                                                                .map(gateSelector::apply));
-    }
     @Nonnull
     @Override
     public ReActions getReActions() { return stageReActions; }
@@ -77,8 +61,8 @@ public abstract class FlowStage implements ReActiveEntity {
         this.nextStages = nextStagesRequest.getNextStages();
     }
 
-    protected abstract Collection<? extends Serializable> onNext(Serializable input,
-                                                                 ReActorContext raCtx);
+    protected abstract CompletionStage<Collection<? extends Serializable>>
+    onNext(Serializable input, ReActorContext raCtx);
     protected void onLinkError(Throwable error, ReActorContext raCtx, Serializable input) {
         raCtx.logError("Unable to pass {} to the next stage", input, error);
     }
@@ -91,27 +75,26 @@ public abstract class FlowStage implements ReActiveEntity {
         /* No default implementation required */
     }
     private void onNext(ReActorContext raCtx, Serializable message) {
-        var fanOut = forwardToNextStages(onNext(message, raCtx), raCtx);
-        var lastDelivery = fanOut.stream()
-                                 .reduce((first, second) -> composeDeliveries(first, second,
-                                                                              error -> onFailedDelivery(error, raCtx, message)))
-                                 .orElseGet(() -> CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED)));
-        lastDelivery.thenAccept(lastOutcome -> raCtx.getMbox().request(1));
+        var fanOut = onNext(message, raCtx).thenApply(outMessages -> forwardToNextStages(outMessages, raCtx));
+        fanOut.thenCompose(deliveries -> deliveries.stream()
+                                                   .reduce((first, second) -> composeDeliveries(first, second,
+                                                                                                error -> onFailedDelivery(error, raCtx, message)))
+                                                   .orElseGet(() -> CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED))))
+              .thenAccept(lastDelivery -> raCtx.getMbox().request(1));
+    }
+    @SuppressWarnings("SameReturnValue")
+    protected  <InputT extends Serializable>
+    DeliveryStatus onFailedDelivery(Throwable error, ReActorContext raCtx, InputT message) {
+        onLinkError(error, raCtx, message);
+        return DeliveryStatus.NOT_DELIVERED;
     }
 
     @Nonnull
     private List<CompletionStage<Try<DeliveryStatus>>>
     forwardToNextStages(Collection<? extends Serializable> stageOutput, ReActorContext raCtx) {
-        return stageOutput.stream()
-                          .flatMap(output -> nextStages.stream()
-                                                       .map(dst -> dst.atell(raCtx.getSelf(),
-                                                                             output)))
-                          .collect(Collectors.toList());
-    }
-    @SuppressWarnings("SameReturnValue")
-    private <InputT extends Serializable>
-    DeliveryStatus onFailedDelivery(Throwable error, ReActorContext raCtx, InputT message) {
-        onLinkError(error, raCtx, message);
-        return DeliveryStatus.NOT_DELIVERED;
+        return  stageOutput.stream()
+                           .flatMap(output -> nextStages.stream()
+                                                        .map(dst -> dst.atell(raCtx.getSelf(), output)))
+                           .collect(Collectors.toList());
     }
 }

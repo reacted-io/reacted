@@ -22,7 +22,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class MapOperator<InputT extends Serializable, OutputT extends Serializable> extends FlowStage {
+public class MapOperator<InputT extends Serializable, OutputT extends Serializable> extends
+                                                                                    FlowOperator {
     private final Function<? super InputT, Collection<? extends OutputT>> mapperFunction;
     private MapOperator(Function<? super InputT, Collection<? extends OutputT>> mapperFunction) {
         this.mapperFunction = mapperFunction;
@@ -37,7 +38,8 @@ public class MapOperator<InputT extends Serializable, OutputT extends Serializab
 
     @Override
     @SuppressWarnings("unchecked")
-    protected Collection<? extends Serializable> onNext(Serializable input, ReActorContext raCtx) {
-        return mapperFunction.apply((InputT) input);
+    protected CompletionStage<Collection<? extends Serializable>>
+    onNext(Serializable input, ReActorContext raCtx) {
+        return CompletableFuture.completedStage(mapperFunction.apply((InputT) input));
     }
 }

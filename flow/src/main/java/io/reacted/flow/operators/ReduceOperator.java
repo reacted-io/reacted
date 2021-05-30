@@ -27,7 +27,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
-public class ReduceOperator extends FlowStage {
+public class ReduceOperator extends FlowOperator {
     private final Map<Class<? extends Serializable>, List<Serializable>> storage;
     private final Map<Class<? extends Serializable>, Long> typeToRequiredForMerge;
     private final Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
@@ -54,14 +54,15 @@ public class ReduceOperator extends FlowStage {
                                                                          operatorCfg));
     }
     @Override
-    protected Collection<? extends Serializable> onNext(Serializable input, ReActorContext raCtx) {
+    protected CompletionStage<Collection<? extends Serializable>>
+    onNext(Serializable input, ReActorContext raCtx) {
         if (typeToRequiredForMerge.containsKey(input.getClass())) {
             storage.get(input.getClass()).add(input);
             if (canReduce()) {
-                return reducer.apply(retrieveReduceData());
+                return CompletableFuture.completedStage(reducer.apply(retrieveReduceData()));
             }
         }
-        return List.of();
+        return CompletableFuture.completedStage(List.of());
     }
 
     private Map<Class<? extends Serializable>, List<? extends Serializable>> retrieveReduceData() {

@@ -24,7 +24,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
 @NonNullByDefault
-public final class FilterOperator extends FlowStage {
+public final class FilterOperator extends FlowOperator {
     private final Predicate<? super Serializable> filterPredicate;
     private FilterOperator(Predicate<? super Serializable> filterPredicate) {
         this.filterPredicate = Objects.requireNonNull(filterPredicate,
@@ -38,7 +38,8 @@ public final class FilterOperator extends FlowStage {
                                                                          operatorCfg));
     }
     @Override
-    protected Collection<? extends Serializable> onNext(Serializable input, ReActorContext raCtx) {
-        return filterPredicate.test(input) ? List.of(input) : List.of();
+    protected CompletionStage<Collection<? extends Serializable>>
+    onNext(Serializable input, ReActorContext raCtx) {
+        return CompletableFuture.completedStage(filterPredicate.test(input) ? List.of(input) : List.of());
     }
 }
