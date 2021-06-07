@@ -10,9 +10,9 @@ package io.reacted.flow.operators;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.exceptions.ServiceNotFoundException;
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
+import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
@@ -26,8 +26,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @NonNullByDefault
 public class ServiceOperator extends FlowOperator {
@@ -36,10 +34,12 @@ public class ServiceOperator extends FlowOperator {
                                                                                                    .skip(ThreadLocalRandom.current().nextInt(0, gates.size() - 1))
                                                                                                    .findAny()
                                                                                                    .get();
+  private static final CompletionStage<Collection<? extends Serializable>> NO_OUTPUT = CompletableFuture.completedFuture(List.of());
   private final Function<Serializable, Collection<? extends Serializable>> toServiceRequests;
   private final Function<Serializable, Collection<? extends Serializable>> fromServiceResponse;
   private final Class<? extends Serializable> serviceReplyType;
   private final ReActorRef service;
+  private final ReActions reActions;
   private long requestCounter;
 
   private ServiceOperator(Class<? extends Serializable> serviceReplyType,
@@ -53,6 +53,10 @@ public class ServiceOperator extends FlowOperator {
     this.fromServiceResponse = Objects.requireNonNull(fromServiceResponse,
                                                       "Output mapper cannot be null");
     this.service = service;
+    this.reActions = ReActions.newBuilder()
+                              .from(super.getReActions())
+                              .reAct(serviceReplyType, this::onReply)
+                              .build();
   }
 
   public static CompletionStage<Try<ReActorRef>>
@@ -85,23 +89,18 @@ public class ServiceOperator extends FlowOperator {
   }
 
   @Override
-  protected CompletionStage<Collection<? extends Serializable>>
+  public ReActions getReActions() { return reActions; }
+
+  @Override
+  protected final CompletionStage<Collection<? extends Serializable>>
   onNext(Serializable input, ReActorContext raCtx) {
     var requestsForService = toServiceRequests.apply(input).stream();
-    var pendingReplies = requestsForService.map(request -> service.ask(request, serviceReplyType,
-                                                  new StringBuilder(ServiceOperator.class.getSimpleName())
-                                                     .append(" ")
-                                                     .append(service)
-                                                     .append(" ")
-                                                     .append(requestCounter++)
-                                                     .toString()));
-    var pendingOutputConversions = pendingReplies.map(request -> request.thenApply(result -> result.peekFailure(error -> onFailedDelivery(error, raCtx, input))
-                                                                                                   .map(fromServiceResponse::apply).stream()))
-                                                 .collect(Collectors.toList());
-    var pendingMergedResults = pendingOutputConversions.stream()
-                                                       .reduce((first, second) -> first.thenCombine(second, Stream::concat))
-                                                       .orElseGet(() -> CompletableFuture.completedFuture(Stream.empty()));
-    return pendingMergedResults.thenApply(results -> results.flatMap(Collection::stream)
-                                                            .collect(Collectors.toList()));
+    requestsForService.map(request -> service.atell(raCtx.getSelf(), request))
+                      .forEach(request -> request.thenAccept(delivery -> delivery.ifError(error -> onFailedDelivery(error, raCtx, input))));
+    return NO_OUTPUT;
+  }
+
+  private <PayloadT extends Serializable> void onReply(ReActorContext raCtx, PayloadT reply) {
+    forwardToNextStages(reply, fromServiceResponse.apply(reply), raCtx, getNextStages());
   }
 }

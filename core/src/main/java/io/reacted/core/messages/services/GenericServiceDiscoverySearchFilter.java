@@ -12,6 +12,7 @@ import com.google.common.collect.Range;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.SelectionType;
 import io.reacted.core.services.Service;
 import io.reacted.patterns.NonNullByDefault;
@@ -176,6 +177,17 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
          */
         public final BuilderT setSelectionType(SelectionType selectionType) {
             this.selectionType = selectionType;
+            return getThis();
+        }
+
+        /**
+         * Returns only the local services as a result. This option is mutually exclusive with
+         * any {@code setChannelId} filter
+         * @param reActorSystem
+         * @return
+         */
+        public final BuilderT setLocalSearch(ReActorSystem reActorSystem) {
+            this.channelIdSet = Set.of(reActorSystem.getLoopback().getBackingDriver().getChannelId());
             return getThis();
         }
 

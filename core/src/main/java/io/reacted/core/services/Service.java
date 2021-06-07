@@ -106,6 +106,7 @@ public class Service implements ReActiveEntity {
         if (!serviceConfig.isRemoteService()) {
             return;
         }
+
         Try.of(() -> raCtx.getReActorSystem()
                           .getSystemSchedulingService()
                           .schedule(() -> sendPublicationRequest(raCtx, serviceInfo),

@@ -11,14 +11,15 @@ package io.reacted.flow.operators.messages;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 
 @NonNullByDefault
 public final class SetNextStagesRequest implements Serializable {
-  private final Set<ReActorRef> nextStages;
-  public SetNextStagesRequest(Set<ReActorRef> nextStages) {
+  private final Collection<ReActorRef> nextStages;
+  public SetNextStagesRequest(Collection<ReActorRef> nextStages) {
     this.nextStages = Objects.requireNonNull(nextStages, "Next stages cannot be null");
   }
-  public Set<ReActorRef> getNextStages() { return nextStages; }
+  public Collection<ReActorRef> getNextStages() { return nextStages; }
 }

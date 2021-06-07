@@ -39,6 +39,8 @@ public class ReActions {
     }
 
     public static Builder newBuilder() { return new Builder(); }
+    private Map<Class<? extends Serializable>, BiConsumer<ReActorContext, ? extends Serializable>>
+    getBehaviors() { return behaviors; }
 
     public static class Builder {
         private final ImmutableMap.Builder<Class<? extends Serializable>,
@@ -58,6 +60,13 @@ public class ReActions {
         Builder reAct(Class<PayloadT> payloadType, BiConsumer<ReActorContext, PayloadT> behavior) {
             callbacks.put(Objects.requireNonNull(payloadType, "Message type cannot be null"),
                           Objects.requireNonNull(behavior, "Message callback cannot be null"));
+            return this;
+        }
+
+        public Builder from(ReActions reActions) {
+            Objects.requireNonNull(reActions, "Source reactions cannot be null")
+                   .getBehaviors()
+                   .forEach(callbacks::put);
             return this;
         }
 

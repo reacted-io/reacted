@@ -54,7 +54,8 @@ public class TimeReActor implements ReActor {
     }
 
     private void onServiceDiscoveryReply(ReActorContext raCtx, ServiceDiscoveryReply serviceDiscoveryReply) {
-        var gate = serviceDiscoveryReply.getServiceGates().stream().findAny();
+        var gate = serviceDiscoveryReply.getServiceGates().stream()
+                                        .findAny();
         gate.ifPresentOrElse(serviceGate -> ifNotDelivered(serviceGate.tell(raCtx.getSelf(), new TimeRequest()),
                                                           Throwable::printStackTrace),
                              () -> raCtx.logError("No service discovery response received"));

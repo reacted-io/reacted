@@ -9,6 +9,8 @@
 package io.reacted.flow;
 
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.flow.operators.FlowOperator;
+import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.patterns.Try;
 import java.util.Collection;
 import javax.annotation.Nonnull;
@@ -31,7 +33,8 @@ public interface FlowGraph {
    * @return The Stages of this graph
    */
   @Nonnull
-  Collection<Stage> getFlowStages();
+  Collection<FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
+                                ? extends FlowOperatorConfig<?, ?>>> getOperatorsCfgs();
 
   @Nonnull
   String getFlowName();

@@ -12,6 +12,8 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.flow.operators.FlowOperator;
+import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.flow.operators.messages.SetNextStagesRequest;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
@@ -19,10 +21,13 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -35,15 +40,14 @@ import javax.annotation.Nonnull;
 @NonNullByDefault
 public class ReActedGraph implements FlowGraph {
     private final String flowName;
-    private final Map<String, Stage> flowStagesByName;
-    private final Map<String, ReActorRef> flowOperatorByStageName;
+    private final Collection<FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
+                                                ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs;
+    private final Map<String, ReActorRef> operatorNameToOperator;
     private ReActedGraph(Builder builder) {
-        this.flowStagesByName = validateFlowStages(Objects.requireNonNull(builder.flowStages,
-                                                                          "flow Stages cannot be null")).stream()
-        .collect(Collectors.toUnmodifiableMap(Stage::getStageName,
-                                              Function.identity()));
         this.flowName = Objects.requireNonNull(builder.flowName, "Flow name cannot be null");
-        this.flowOperatorByStageName = new HashMap<>();
+        this.operatorsCfgs = List.copyOf(Objects.requireNonNull(builder.operatorsCfgs,
+                                                                    "Flow operators cannot be null"));
+        this.operatorNameToOperator = new ConcurrentHashMap<>();
     }
 
     @Nonnull
@@ -52,18 +56,21 @@ public class ReActedGraph implements FlowGraph {
     
     @Nonnull
     @Override
-    public Collection<Stage> getFlowStages() { return flowStagesByName.values(); }
+    public Collection<FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
+                                         ? extends FlowOperatorConfig<?, ?>>> getOperatorsCfgs()
+    { return operatorsCfgs; }
 
     @Override
     public void stop(ReActorSystem localReActorSystem) {
-        destroyGraph(localReActorSystem, flowOperatorByStageName.values());
-        flowOperatorByStageName.clear();
+        destroyGraph(localReActorSystem, operatorNameToOperator.values());
+        operatorNameToOperator.clear();
     }
 
     @Override
     public Try<Void> run(ReActorSystem localReActorSystem) {
         stop(localReActorSystem);
         try {
+
             for (Entry<String, Stage> currentStage : flowStagesByName.entrySet()) {
                 flowOperatorByStageName.put(currentStage.getKey(),
                                             currentStage.getValue()
@@ -77,10 +84,11 @@ public class ReActedGraph implements FlowGraph {
             for(Entry<String, ReActorRef> stageOperator : flowOperatorByStageName.entrySet()) {
                 linkStage(stageOperator.getValue(),
                           flowStagesByName.get(stageOperator.getKey())
-                                          .getOutputStagesNames()
-                                          .stream()
+                                          .getOutputStagesNames().stream()
                                           .map(flowOperatorByStageName::get)
-                                          .collect(Collectors.toUnmodifiableSet())).orElseSneakyThrow();
+                                          .filter(Predicate.not(Objects::isNull))
+                                          .collect(Collectors.toUnmodifiableList()))
+                    .orElseSneakyThrow();
             }
 
             flowStagesByName.entrySet().stream()
@@ -90,25 +98,13 @@ public class ReActedGraph implements FlowGraph {
                                                                                                             inputStream, localReActorSystem, flowName,
                                                                                                             stageEntry.getKey())));
         } catch (Exception operatorsInitError) {
-            destroyGraph(localReActorSystem, flowOperatorByStageName.values());
+            destroyGraph(localReActorSystem, operators);
             return Try.ofFailure(operatorsInitError);
         }
         return Try.VOID;
     }
+
     public static Builder newBuilder() { return new Builder(); }
-
-    private static Try<Void> linkStage(ReActorRef operator, Set<ReActorRef> outputOperators) {
-        return Try.of(() -> operator.atell(operator, new SetNextStagesRequest(outputOperators))
-                                    .toCompletableFuture()
-                                    .join())
-                  .flatMap(Try::identity)
-                  .filter(DeliveryStatus::isDelivered)
-                  .flatMap(delivered -> Try.VOID);
-    }
-
-    private static boolean hasSourceStreams(Stage stage) {
-        return !stage.getSourceStreams().isEmpty();
-    }
     private static void spawnNewStreamConsumer(ReActorRef operator,
                                                Stream<? extends Serializable> inputStream,
                                                ReActorSystem localReActorSystem,
@@ -140,22 +136,20 @@ public class ReActedGraph implements FlowGraph {
     }
 
     public static class Builder {
-        private final Collection<Stage> flowStages;
+        private final Collection<FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
+                                                    ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs;
         private String flowName;
-        private Builder() { this.flowStages = new HashSet<>(); }
+        private Builder() { this.operatorsCfgs = new LinkedList<>(); }
 
         public Builder setFlowName(String flowName) {
             this.flowName = flowName;
             return this;
         }
 
-        public Builder addStage(Collection<Stage> flowStages) {
-            this.flowStages.addAll(flowStages);
-            return this;
-        }
-
-        public Builder addStage(Stage flowStage) {
-            this.flowStages.add(flowStage);
+        public Builder
+        addOperator(FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
+                                       ? extends FlowOperatorConfig<?, ?>> operatorCfg) {
+            operatorsCfgs.add(operatorCfg);
             return this;
         }
 
@@ -165,30 +159,5 @@ public class ReActedGraph implements FlowGraph {
          * @throws IllegalArgumentException is stage names are not unique or there are missing stages
          */
         public ReActedGraph build() { return new ReActedGraph(this); }
-    }
-
-    private static Collection<Stage> validateFlowStages(Collection<Stage> flowStages) {
-        if (areStagesNamesNotUnique(flowStages)) {
-            throw new IllegalArgumentException("Stages names are not unique");
-        }
-
-        if (areThereOutputStagesNotDefined(flowStages)) {
-            throw new IllegalArgumentException("Output stages are not fully defined");
-        }
-        return flowStages;
-    }
-    private static boolean areStagesNamesNotUnique(Collection<Stage> flowStages) {
-        return flowStages.size() != flowStages.stream()
-                                              .map(Stage::getStageName)
-                                              .distinct()
-                                              .count();
-    }
-    private static boolean areThereOutputStagesNotDefined(Collection<Stage> flowStages) {
-        var stageNames = flowStages.stream()
-                                   .map(Stage::getStageName)
-                                   .collect(Collectors.toUnmodifiableSet());
-        return flowStages.stream()
-                      .flatMap(stage -> stage.getOutputStagesNames().stream())
-                      .anyMatch(Predicate.not(stageNames::contains));
     }
 }

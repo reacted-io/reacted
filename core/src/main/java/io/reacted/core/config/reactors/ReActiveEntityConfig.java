@@ -20,8 +20,10 @@ import io.reacted.patterns.NonNullByDefault;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
+import javax.annotation.concurrent.Immutable;
 
 @NonNullByDefault
+@Immutable
 public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig.Builder<BuilderT, BuiltT>,
                                            BuiltT extends ReActiveEntityConfig<BuilderT, BuiltT>>
         extends InheritableBuilder<BuilderT, BuiltT> {

@@ -27,30 +27,30 @@ public class FlowGraphExample {
     List<Integer> inputInt = List.of(1, 2);
     ReActedGraph flowMerge = ReActedGraph.newBuilder()
                                          .setFlowName("FlowMerge")
-                                         .addStage(Stage.newBuilder()
-                                                        .setStageName("Provider-1")
-                                                        .setOutputStageName("Reducer-1")
-                                                        .setInputStream(inputData.stream())
-                                                        .setOperatorProvider(reActorSystem -> MapOperator.of(reActorSystem,
+                                         .addOperator(Stage.newBuilder()
+                                                           .setStageName("Provider-1")
+                                                           .setOutputStageName("Reducer-1")
+                                                           .setInputStream(inputData.stream())
+                                                           .setOperatorProvider(reActorSystem -> MapOperator.of(reActorSystem,
                                                                                                              ReActorConfig.newBuilder()
                                                                                                                           .setReActorName("ToLower-2")
                                                                                                                           .build(),
                                                                                                              input -> List.of(((String)input).toLowerCase())))
-                                                        .build())
-                                         .addStage(Stage.newBuilder()
-                                                        .setStageName("Provider-2")
-                                                        .setOutputStageName("Reducer-1")
-                                                        .setInputStream(inputInt.stream())
-                                                        .setOperatorProvider(reActorSystem -> MapOperator.of(reActorSystem,
+                                                           .build())
+                                         .addOperator(Stage.newBuilder()
+                                                           .setStageName("Provider-2")
+                                                           .setOutputStageName("Reducer-1")
+                                                           .setInputStream(inputInt.stream())
+                                                           .setOperatorProvider(reActorSystem -> MapOperator.of(reActorSystem,
                                                                                                              ReActorConfig.newBuilder()
                                                                                                                           .setReActorName("Multiplier-2")
                                                                                                                           .build(),
                                                                                                              input -> List.of(((Integer)input) * 123)))
-                                                        .build())
-                                         .addStage(Stage.newBuilder()
-                                                        .setStageName("Reducer-1")
-                                                        .setOutputStageName("Finalizer-1")
-                                                        .setOperatorProvider(reActorSystem -> ReduceOperator.of(reActorSystem,
+                                                           .build())
+                                         .addOperator(Stage.newBuilder()
+                                                           .setStageName("Reducer-1")
+                                                           .setOutputStageName("Finalizer-1")
+                                                           .setOperatorProvider(reActorSystem -> ReduceOperator.of(reActorSystem,
                                                                                                                 ReActorConfig.newBuilder()
                                                                                                                              .setReActorName("Joiner-1")
                                                                                                                              .build(),
@@ -59,16 +59,16 @@ public class FlowGraphExample {
                                                                                                                                             .flatMap(List::stream)
                                                                                                                                             .map(Object::toString)
                                                                                                                                             .collect(Collectors.joining(" ")))))
-                                                        .build())
-                                         .addStage(Stage.newBuilder()
-                                                        .setStageName("Finalizer-1")
-                                                        .setOperatorProvider(reActorSystem -> MapOperator.of(reActorSystem,
+                                                           .build())
+                                         .addOperator(Stage.newBuilder()
+                                                           .setStageName("Finalizer-1")
+                                                           .setOperatorProvider(reActorSystem -> MapOperator.of(reActorSystem,
                                                                                                              ReActorConfig.newBuilder()
                                                                                                                           .setReActorName("Printer-1")
                                                                                                                           .build(),
                                                                                                              input -> { System.out.println(input);
                                                                                                                         return List.of(); }))
-                                                        .build())
+                                                           .build())
                                          .build();
     System.out.println("Running");
     flowMerge.run(flowReActorSystem);
