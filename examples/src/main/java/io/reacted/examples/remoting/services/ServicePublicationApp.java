@@ -65,7 +65,7 @@ public class ServicePublicationApp {
                                       .setMailBoxProvider(ctx -> new BasicMbox())
                                       //We do not need to listen for ServiceDiscoveryRequests, we have the
                                       //Service Registry now
-                                      .setRouteeProvider(() -> new ClockReActor(serviceName))
+                                      .setRouteeProvider(serviceConfig -> new ClockReActor(serviceName))
                                       .setIsRemoteService(true)
                                       .build();
 

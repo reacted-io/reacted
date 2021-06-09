@@ -9,6 +9,7 @@
 package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -48,17 +49,19 @@ import java.util.stream.Stream;
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
-public class Service implements ReActiveEntity {
+public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, BuiltT>,
+                     BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>,
+                     ServiceConfigT extends ReActorServiceConfig<BuilderT, BuiltT>>
+    implements ReActiveEntity {
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
     private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router {}";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
     private final Properties serviceInfo;
-    private final ServiceConfig serviceConfig;
+    private final ServiceConfigT serviceConfig;
     private final ArrayList<ReActorRef> routeesMap;
     private long msgReceived;
 
-
-    public Service(ServiceConfig serviceConfig) {
+    public Service(ServiceConfigT serviceConfig) {
         this.serviceInfo = new Properties();
         this.serviceConfig = Objects.requireNonNull(serviceConfig);
         this.msgReceived = 1;
@@ -142,7 +145,7 @@ public class Service implements ReActiveEntity {
         for (int currentRoutee = 0; currentRoutee < serviceConfig.getRouteesNum(); currentRoutee++) {
             try {
                 ReActor routee = Objects.requireNonNull(serviceConfig.getRouteeProvider()
-                                                                     .get());
+                                                                     .apply((BuiltT) serviceConfig));
                 ReActorConfig routeeConfig = routee.getConfig();
                 ReActions routeeReActions = routee.getReActions();
                 //A service has multiple children, so they cannot share the same name
@@ -189,7 +192,8 @@ public class Service implements ReActiveEntity {
 
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
         this.routeesMap.remove(reSpawnRequest.deadRoutee);
-        Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider().get()))
+        Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider()
+                                                         .apply((BuiltT) serviceConfig)))
            .map(routee -> spawnRoutee(raCtx, routee.getReActions(),
                                       ReActorConfig.fromConfig(routee.getConfig())
                                                    .setReActorName(reSpawnRequest.routeeName)

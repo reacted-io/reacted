@@ -29,13 +29,6 @@ public interface FlowGraph {
    */
   void stop(@Nonnull ReActorSystem localReActorSystem);
 
-  /**
-   * @return The Stages of this graph
-   */
-  @Nonnull
-  Collection<FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
-                                ? extends FlowOperatorConfig<?, ?>>> getOperatorsCfgs();
-
   @Nonnull
   String getFlowName();
 }

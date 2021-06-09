@@ -28,7 +28,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class ServiceOperator extends FlowOperator {
+public class ServiceOperator extends FlowOperator<Builder, ServiceOperator> {
   public static final Function<Collection<ReActorRef>, ReActorRef> GET_FIRST_GATE = gates -> gates.iterator().next();
   public static final Function<Collection<ReActorRef>, ReActorRef> GET_RANDOM_GATE = gates -> gates.stream()
                                                                                                    .skip(ThreadLocalRandom.current().nextInt(0, gates.size() - 1))
@@ -101,6 +101,7 @@ public class ServiceOperator extends FlowOperator {
   }
 
   private <PayloadT extends Serializable> void onReply(ReActorContext raCtx, PayloadT reply) {
-    forwardToNextStages(reply, fromServiceResponse.apply(reply), raCtx, getNextStages());
+    routeOutputMessageAfterFiltering(fromServiceResponse.apply(reply))
+        .forEach((opereators, outMessages) -> forwardToNextStages(reply, outMessages, raCtx, opereators));
   }
 }

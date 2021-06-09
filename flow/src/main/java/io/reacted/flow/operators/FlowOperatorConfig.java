@@ -8,6 +8,7 @@
 
 package io.reacted.flow.operators;
 
+import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActor;
@@ -36,9 +37,11 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
   private final Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators;
   private final Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators;
   private final Collection<Stream<? extends Serializable>> inputStreams;
-
+  private final ReActorConfig routeeConfig;
   protected FlowOperatorConfig(Builder<BuilderT, BuiltT> builder) {
     super(builder);
+    this.routeeConfig = Objects.requireNonNull(builder.operatorRouteeCfg,
+                                               "Operator routee config cannot be null");
     this.ifPredicate = Objects.requireNonNull(builder.ifPredicate, "If predicate cannot be null");
     this.ifPredicateOutputOperators = Objects.requireNonNull(builder.ifPredicateOutputOperators,
                                                              "Output filters for if predicate cannot be null");
@@ -61,11 +64,14 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
 
   public Collection<Stream<? extends Serializable>> getInputStreams() { return inputStreams; }
 
+  public ReActorConfig getRouteeConfig() { return routeeConfig; }
+
   public abstract static class Builder<BuilderT, BuiltT> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
-    private Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
-    private Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
-    private Predicate<Serializable> ifPredicate = NO_FILTERING;
-    private Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
+    protected Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
+    protected Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
+    protected Predicate<Serializable> ifPredicate = NO_FILTERING;
+    protected Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
+    protected ReActorConfig operatorRouteeCfg;
     protected Builder() { /* No implementation required */ }
 
     public final BuilderT setIfOutputPredicate(Predicate<Serializable> ifPredicate) {
@@ -93,6 +99,11 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
 
     public final BuilderT setInputStreams(Collection<Stream<? extends Serializable>> inputStreams) {
       this.inputStreams = inputStreams;
+      return getThis();
+    }
+
+    public final BuilderT setOperatorRouteeCfg(ReActorConfig operatorRouteeCfg) {
+      this.operatorRouteeCfg = operatorRouteeCfg;
       return getThis();
     }
   }

@@ -11,6 +11,7 @@ package io.reacted.core.reactorsystem;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.drivers.NullLocalDriverConfig;
+import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.drivers.system.NullLocalDriver;
@@ -503,7 +504,8 @@ public class ReActorSystem {
      * @param serviceConfig service config
      * @return A successful Try containing the ReActorRef for the new service on success, a failed try on failure
      */
-    public Try<ReActorRef> spawnService(ServiceConfig serviceConfig) {
+    public <ServiceConfigT extends ReActorServiceConfig<?, ?>>
+    Try<ReActorRef> spawnService(ServiceConfigT serviceConfig) {
         return spawn(new Service(Objects.requireNonNull(serviceConfig)).getReActions(), serviceConfig);
     }
     public ReActorSystemRef getLoopback() { return gatesCentralizedManager.getLoopBack(); }

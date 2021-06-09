@@ -21,23 +21,23 @@ import java.util.function.Function;
 @NonNullByDefault
 public class MapOperatorConfig extends FlowOperatorConfig<MapOperatorConfig.Builder,
                                                           MapOperatorConfig> {
-  private final Function<?, Collection<? extends Serializable>> mappingFunction;
+  private final Function<Object, Collection<? extends Serializable>> mappingFunction;
   private MapOperatorConfig(Builder builder) {
     super(builder);
     this.mappingFunction = Objects.requireNonNull(builder.mappingFunction,
                                                   "Mapping function cannot be null");
   }
 
-  public Function<?, Collection<? extends Serializable>> getMappingFunction() {
+  public Function<Object, Collection<? extends Serializable>> getMappingFunction() {
     return mappingFunction;
   }
 
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, MapOperatorConfig> {
-    private Function<?, Collection<? extends Serializable>> mappingFunction;
-    private Builder() { /* No implementation required */ }
+    private Function<Object, Collection<? extends Serializable>> mappingFunction;
+    private Builder() { super.setRouteeProvider(MapOperator::new); }
 
-    public Builder setMappingFunction(Function<?, Collection<? extends Serializable>> mappingFunction) {
+    public Builder setMappingFunction(Function<Object, Collection<? extends Serializable>> mappingFunction) {
       this.mappingFunction = mappingFunction;
       return this;
     }

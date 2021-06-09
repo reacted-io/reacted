@@ -9,6 +9,7 @@
 package io.reacted.core.config.reactors;
 
 import io.reacted.core.reactors.ReActor;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
@@ -21,13 +22,13 @@ import javax.annotation.concurrent.Immutable;
 @NonNullByDefault
 @Immutable
 public abstract class  ReActorServiceConfig<BuilderT extends ReActiveEntityConfig.Builder<BuilderT, BuiltT>,
-                                           BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>>
+                                            BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>>
     extends ReActiveEntityConfig<BuilderT, BuiltT> {
     public static final int MIN_ROUTEES_PER_SERVICE = 1;
     public static final int MAX_ROUTEES_PER_SERVICE = 1000;
     public static final Duration DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY = Duration.ofMinutes(2);
     private final int routeesNum;
-    private final UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
+    private final UnChecked.CheckedFunction<BuiltT, ? extends ReActor> routeeProvider;
     private final Service.LoadBalancingPolicy loadBalancingPolicy;
     private final Duration serviceRepublishReattemptDelayOnError;
     private final boolean remoteService;
@@ -52,7 +53,7 @@ public abstract class  ReActorServiceConfig<BuilderT extends ReActiveEntityConfi
         return loadBalancingPolicy;
     }
 
-    public UnChecked.CheckedSupplier<? extends ReActor> getRouteeProvider() {
+    public UnChecked.CheckedFunction<BuiltT, ? extends ReActor> getRouteeProvider() {
         return routeeProvider;
     }
 
@@ -65,7 +66,7 @@ public abstract class  ReActorServiceConfig<BuilderT extends ReActiveEntityConfi
     public abstract static class Builder<BuilderT, BuiltT> extends ReActiveEntityConfig.Builder<BuilderT, BuiltT> {
         private int routeesNum = MIN_ROUTEES_PER_SERVICE;
         @SuppressWarnings("NotNullFieldNotInitialized")
-        private UnChecked.CheckedSupplier<? extends ReActor> routeeProvider;
+        private UnChecked.CheckedFunction<BuiltT, ? extends ReActor> routeeProvider;
         private Service.LoadBalancingPolicy loadBalancingPolicy = Service.LoadBalancingPolicy.ROUND_ROBIN;
         private Duration serviceRepublishReattemptDelayOnError = DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY;
         private boolean remoteService;
@@ -92,7 +93,7 @@ public abstract class  ReActorServiceConfig<BuilderT extends ReActiveEntityConfi
          * @param routeeProvider Used to spawn a new routee reactor on request
          * @return this builder
          */
-        public final BuilderT setRouteeProvider(UnChecked.CheckedSupplier<ReActor> routeeProvider) {
+        public final BuilderT setRouteeProvider(UnChecked.CheckedFunction<BuiltT, ReActor> routeeProvider) {
             this.routeeProvider = routeeProvider;
             return getThis();
         }

@@ -9,28 +9,25 @@
 package io.reacted.flow;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.flow.operators.FlowOperator;
 import io.reacted.flow.operators.FlowOperatorConfig;
-import io.reacted.flow.operators.messages.SetNextStagesRequest;
+import io.reacted.flow.operators.exceptions.OperatorInitException;
+import io.reacted.flow.operators.messages.InitOperatorReply;
+import io.reacted.flow.operators.messages.InitOperatorRequest;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -40,8 +37,8 @@ import javax.annotation.Nonnull;
 @NonNullByDefault
 public class ReActedGraph implements FlowGraph {
     private final String flowName;
-    private final Collection<FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
-                                                ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs;
+    private final Collection<? extends FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
+                                                          ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs;
     private final Map<String, ReActorRef> operatorNameToOperator;
     private ReActedGraph(Builder builder) {
         this.flowName = Objects.requireNonNull(builder.flowName, "Flow name cannot be null");
@@ -54,12 +51,6 @@ public class ReActedGraph implements FlowGraph {
     @Override
     public String getFlowName() { return flowName; }
     
-    @Nonnull
-    @Override
-    public Collection<FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
-                                         ? extends FlowOperatorConfig<?, ?>>> getOperatorsCfgs()
-    { return operatorsCfgs; }
-
     @Override
     public void stop(ReActorSystem localReActorSystem) {
         destroyGraph(localReActorSystem, operatorNameToOperator.values());
@@ -70,35 +61,32 @@ public class ReActedGraph implements FlowGraph {
     public Try<Void> run(ReActorSystem localReActorSystem) {
         stop(localReActorSystem);
         try {
-
-            for (Entry<String, Stage> currentStage : flowStagesByName.entrySet()) {
-                flowOperatorByStageName.put(currentStage.getKey(),
-                                            currentStage.getValue()
-                                                        .getOperatorProvider()
-                                                        .apply(localReActorSystem)
-                                                        .toCompletableFuture()
-                                                        .join()
-                                                        .orElseSneakyThrow());
+            for(var operatorCfg : operatorsCfgs) {
+                operatorNameToOperator.put(operatorCfg.getReActorName(),
+                                           localReActorSystem.spawnService(operatorCfg)
+                                                             .orElseSneakyThrow());
             }
+            var firstOperatorInitFailure = operatorsCfgs.stream()
+                         .map(FlowOperatorConfig::getReActorName)
+                         .map(operatorName -> operatorNameToOperator.get(operatorName)
+                                                                    .ask(new InitOperatorRequest(),
+                                                                         InitOperatorReply.class,
+                                                                         flowName + " " + operatorName))
+                         .map(CompletionStage::toCompletableFuture)
+                         .map(CompletableFuture::join)
+                         .map(Try::orElseSneakyThrow)
+                         .filter(Predicate.not(InitOperatorReply::isInitComplete))
+                         .findFirst();
+            firstOperatorInitFailure.ifPresent(failed -> { throw new OperatorInitException(String.format("Operator [%s] Type [%s] was not able to init",
+                                                                                                         failed.getOperatorName(), failed.getOperatorType().getName())); });
 
-            for(Entry<String, ReActorRef> stageOperator : flowOperatorByStageName.entrySet()) {
-                linkStage(stageOperator.getValue(),
-                          flowStagesByName.get(stageOperator.getKey())
-                                          .getOutputStagesNames().stream()
-                                          .map(flowOperatorByStageName::get)
-                                          .filter(Predicate.not(Objects::isNull))
-                                          .collect(Collectors.toUnmodifiableList()))
-                    .orElseSneakyThrow();
-            }
-
-            flowStagesByName.entrySet().stream()
-                            .filter(stageEntry -> hasSourceStreams(stageEntry.getValue()))
-                            .forEach(stageEntry -> stageEntry.getValue().getSourceStreams()
-                                                             .forEach(inputStream -> spawnNewStreamConsumer(flowOperatorByStageName.get(stageEntry.getKey()),
-                                                                                                            inputStream, localReActorSystem, flowName,
-                                                                                                            stageEntry.getKey())));
+            operatorsCfgs.stream()
+                         .filter(operatorCfg -> !operatorCfg.getInputStreams().isEmpty())
+                         .forEachOrdered(operatorConfig -> operatorConfig.getInputStreams()
+                                                                         .forEach(inputStream -> spawnNewStreamConsumer(operatorNameToOperator.get(operatorConfig.getReActorName()),
+                                                                                                                        inputStream, localReActorSystem, flowName, operatorConfig.getReActorName())));
         } catch (Exception operatorsInitError) {
-            destroyGraph(localReActorSystem, operators);
+            destroyGraph(localReActorSystem, operatorNameToOperator.values());
             return Try.ofFailure(operatorsInitError);
         }
         return Try.VOID;
@@ -146,9 +134,10 @@ public class ReActedGraph implements FlowGraph {
             return this;
         }
 
-        public Builder
-        addOperator(FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
-                                       ? extends FlowOperatorConfig<?, ?>> operatorCfg) {
+        public <BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
+                BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>,
+               OperatorCfgT extends FlowOperatorConfig<BuilderT, BuiltT>>
+        Builder addOperator(OperatorCfgT operatorCfg) {
             operatorsCfgs.add(operatorCfg);
             return this;
         }
