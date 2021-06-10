@@ -66,6 +66,7 @@ public class ReActedGraph implements FlowGraph {
                                            localReActorSystem.spawnService(operatorCfg)
                                                              .orElseSneakyThrow());
             }
+            XXX does not handle multiple routees!!!!!!!!
             var firstOperatorInitFailure = operatorsCfgs.stream()
                          .map(FlowOperatorConfig::getReActorName)
                          .map(operatorName -> operatorNameToOperator.get(operatorName)
@@ -77,9 +78,10 @@ public class ReActedGraph implements FlowGraph {
                          .map(Try::orElseSneakyThrow)
                          .filter(Predicate.not(InitOperatorReply::isInitComplete))
                          .findFirst();
-            firstOperatorInitFailure.ifPresent(failed -> { throw new OperatorInitException(String.format("Operator [%s] Type [%s] was not able to init",
-                                                                                                         failed.getOperatorName(), failed.getOperatorType().getName())); });
-
+            firstOperatorInitFailure.ifPresent(failed -> {
+                throw new OperatorInitException(String.format("Operator [%s] Type [%s] was not able to init",
+                                                              failed.getOperatorName(),
+                                                              failed.getOperatorType().getName())); });
             operatorsCfgs.stream()
                          .filter(operatorCfg -> !operatorCfg.getInputStreams().isEmpty())
                          .forEachOrdered(operatorConfig -> operatorConfig.getInputStreams()

@@ -9,13 +9,17 @@
 package io.reacted.flow.operators.messages;
 
 import io.reacted.flow.operators.FlowOperator;
+import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
+import java.util.Optional;
+import javax.annotation.Nullable;
 
+@NonNullByDefault
 public class InitOperatorReply implements Serializable {
   private final boolean initComplete;
   private final String operatorName;
-  private final Class<? extends FlowOperator<?, ?>> operatorType;
-  private InitOperatorReply(String operatorName, Class<? extends FlowOperator<?, ?>> operatorType,
+  private final Class<? extends FlowOperator> operatorType;
+  public InitOperatorReply(String operatorName, Class<? extends FlowOperator> operatorType,
                             boolean isInitComplete) {
     this.operatorName = operatorName;
     this.operatorType = operatorType;
@@ -26,10 +30,9 @@ public class InitOperatorReply implements Serializable {
     return operatorName;
   }
 
-  public Class<? extends FlowOperator<?, ?>> getOperatorType() {
+  public Class<? extends FlowOperator> getOperatorType() {
     return operatorType;
   }
-
   public boolean isInitComplete() {
     return initComplete;
   }

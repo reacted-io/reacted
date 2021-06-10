@@ -10,21 +10,50 @@ package io.reacted.core.utils;
 
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.messages.services.ServiceDiscoveryReply;
+import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
 import java.io.Serializable;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @NonNullByDefault
 public final class ReActedUtils {
     private ReActedUtils() { /* No Implementation required */ }
 
+    public static CompletionStage<List<ReActorRef>>
+    resolveServices(Collection<ServiceDiscoverySearchFilter> filters, ReActorSystem localSystem,
+                    Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector) {
+        var results = filters.stream()
+                             .map(localSystem::serviceDiscovery)
+                             .map(discovery -> discovery.thenApplyAsync(reply -> reply.peekFailure(error -> localSystem.logError("Error discovering services", error))
+                                                                                      .map(ServiceDiscoveryReply::getServiceGates)
+                                                                                      .map(gateSelector::apply)
+                                                                                      .orElse(Optional.empty())
+                                                                                      .orElse(ReActorRef.NO_REACTOR_REF))
+                                                        .toCompletableFuture())
+                             .map(gate -> gate.thenApply(Stream::of))
+                             .reduce((first, second) -> first.thenCombine(second, Stream::concat))
+                             .orElse(CompletableFuture.completedFuture(Stream.empty()));
+        return results.thenApply(gates -> gates.filter(Predicate.not(ReActorRef.NO_REACTOR_REF::equals))
+                                               .collect(Collectors.toUnmodifiableList()));
+    }
     public static CompletionStage<Try<DeliveryStatus>>
     composeDeliveries(CompletionStage<Try<DeliveryStatus>> first,
                       CompletionStage<Try<DeliveryStatus>> second,

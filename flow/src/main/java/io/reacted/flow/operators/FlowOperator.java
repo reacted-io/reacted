@@ -18,6 +18,9 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.services.GateSelectorPolicies;
+import io.reacted.core.utils.ReActedUtils;
+import io.reacted.flow.operators.messages.InitOperatorReply;
 import io.reacted.flow.operators.messages.InitOperatorRequest;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
@@ -30,6 +33,8 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
@@ -44,6 +49,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     private final ReActorConfig routeeCfg;
     private Collection<ReActorRef> ifPredicateOutputOperatorsRefs;
     private Collection<ReActorRef> thenElseOutputOperatorsRefs;
+    private ScheduledFuture<?> operatorsRefreshTask;
 
     protected FlowOperator(BuiltT operatorCfg) {
         this.operatorCfg = Objects.requireNonNull(operatorCfg, "Operator Config cannot be null");
@@ -54,6 +60,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                        .reAct(InitOperatorRequest.class, (raCtx, payload) -> onOperatorInit(raCtx))
                                        .reAct(ReActorInit.class, this::onInit)
                                        .reAct(ReActorStop.class, this::onStop)
+                                       .reAct(ServicesGatesUpdate.class, this::onServiceGatesUpdate)
                                        .reAct(this::onNext)
                                        .build();
     }
@@ -76,17 +83,45 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     }
     @SuppressWarnings("EmptyMethod")
     protected void onInit(ReActorContext raCtx, ReActorInit init) {
-        /* No default implementation required */
+        // Constantly refresh the gates. The idea is to automatically discover new available operators
+        this.operatorsRefreshTask = raCtx.getReActorSystem()
+            .getSystemSchedulingService()
+            .scheduleWithFixedDelay(() -> ReActedUtils.ifNotDelivered(raCtx.getSelf()
+                                                                           .tell(raCtx.getReActorSystem()
+                                                                                      .getSystemSink(),
+                                                                                 new InitOperatorRequest()),
+                                                                      error -> raCtx.logError("Unable to self init operator",
+                                                                                              error)),
+                                    0, 15, TimeUnit.SECONDS);
+
     }
-    @SuppressWarnings("EmptyMethod")
+
+    protected void onServiceGatesUpdate(ReActorContext raCtx, ServicesGatesUpdate newGates) {
+        this.ifPredicateOutputOperatorsRefs = newGates.ifPredicateServices;
+        this.thenElseOutputOperatorsRefs = newGates.thenElseServices;
+        raCtx.getSender().tell(raCtx.getSelf(), new InitOperatorReply(operatorCfg.getReActorName(),
+                                                                      this.getClass(), true));
+    }
     protected void onStop(ReActorContext raCtx, ReActorStop stop) {
-        /* No default implementation required */
+        operatorsRefreshTask.cancel(true);
     }
 
     private void onOperatorInit(ReActorContext raCtx) {
-        operatorCfg.getIfPredicateOutputOperators().stream()
-                   .map(filter -> raCtx.getReActorSystem().serviceDiscovery(filter))
-
+        var requester = raCtx.getSender();
+        var ifServices = ReActedUtils.resolveServices(operatorCfg.getIfPredicateOutputOperators(),
+                                                      raCtx.getReActorSystem(),
+                                                      GateSelectorPolicies.RANDOM_GATE);
+        var thenElseServices = ReActedUtils.resolveServices(operatorCfg.getThenElseOutputOperators(),
+                                                            raCtx.getReActorSystem(),
+                                                            GateSelectorPolicies.RANDOM_GATE);
+        ifServices.thenCombine(thenElseServices, ServicesGatesUpdate::new)
+                  .thenApply(servicesGatesUpdate -> servicesGatesUpdate.ifPredicateServices.size() !=
+                                                    operatorCfg.getIfPredicateOutputOperators().size() ||
+                                                    servicesGatesUpdate.thenElseServices.size() !=
+                                                    operatorCfg.getThenElseOutputOperators().size()
+                                                    ? requester.tell(new InitOperatorReply(getConfig().getReActorName(),
+                                                                                           this.getClass(), false))
+                                                    : raCtx.getSelf().tell(requester, servicesGatesUpdate));
     }
 
     private void onNext(ReActorContext raCtx, Serializable message) {
@@ -126,5 +161,16 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     DeliveryStatus onFailedDelivery(Throwable error, ReActorContext raCtx, InputT message) {
         onLinkError(error, raCtx, message);
         return DeliveryStatus.NOT_DELIVERED;
+    }
+
+    private static class ServicesGatesUpdate implements Serializable {
+        private final Collection<ReActorRef> ifPredicateServices;
+        private final Collection<ReActorRef> thenElseServices;
+
+        public ServicesGatesUpdate(Collection<ReActorRef> ifPredicateServices,
+                                   Collection<ReActorRef> thenElseServices) {
+            this.ifPredicateServices = ifPredicateServices;
+            this.thenElseServices = thenElseServices;
+        }
     }
 }

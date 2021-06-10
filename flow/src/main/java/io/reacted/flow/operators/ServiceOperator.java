@@ -8,6 +8,8 @@
 
 package io.reacted.flow.operators;
 
+import static io.reacted.flow.operators.ResolveServicesWorker.GET_RANDOM_GATE;
+
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.exceptions.ServiceNotFoundException;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
@@ -16,24 +18,21 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
 @NonNullByDefault
 public class ServiceOperator extends FlowOperator<Builder, ServiceOperator> {
-  public static final Function<Collection<ReActorRef>, ReActorRef> GET_FIRST_GATE = gates -> gates.iterator().next();
-  public static final Function<Collection<ReActorRef>, ReActorRef> GET_RANDOM_GATE = gates -> gates.stream()
-                                                                                                   .skip(ThreadLocalRandom.current().nextInt(0, gates.size() - 1))
-                                                                                                   .findAny()
-                                                                                                   .get();
+
   private static final CompletionStage<Collection<? extends Serializable>> NO_OUTPUT = CompletableFuture.completedFuture(List.of());
   private final Function<Serializable, Collection<? extends Serializable>> toServiceRequests;
   private final Function<Serializable, Collection<? extends Serializable>> fromServiceResponse;
@@ -65,14 +64,14 @@ public class ServiceOperator extends FlowOperator<Builder, ServiceOperator> {
      Class<? extends Serializable> replyT,
      Function<Serializable, Collection<? extends Serializable>> toServiceRequests,
      Function<Serializable, Collection<? extends Serializable>> fromServiceResponse) {
-    return of(localReActorSystem, operatorCfg, serviceSearchFilter, GET_RANDOM_GATE,
+    return of(localReActorSystem, operatorCfg, serviceSearchFilter, GateSelectorPolicies.RANDOM_GATE,
               replyT, toServiceRequests, fromServiceResponse);
   }
 
   public static CompletionStage<Try<ReActorRef>>
   of(ReActorSystem localReActorSystem, ReActorConfig operatorCfg,
      ServiceDiscoverySearchFilter serviceSearchFilter,
-     Function<Collection<ReActorRef>, ReActorRef> gateSelector,
+     Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector,
      Class<? extends Serializable> serviceReplyType,
      Function<Serializable, Collection<? extends Serializable>> toServiceRequests,
      Function<Serializable, Collection<? extends Serializable>> fromServiceResponse) {
@@ -84,7 +83,7 @@ public class ServiceOperator extends FlowOperator<Builder, ServiceOperator> {
                              .thenApply(service -> service.flatMap(serviceRef -> localReActorSystem.spawn(new ServiceOperator(serviceReplyType,
                                                                                                                               toServiceRequests,
                                                                                                                               fromServiceResponse,
-                                                                                                                              serviceRef),
+                                                                                                                              serviceRef.get()),
                                                                                                           operatorCfg)));
   }
 
