@@ -27,32 +27,21 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
-public class ReduceOperator extends FlowOperator {
-    private final Map<Class<? extends Serializable>, List<Serializable>> storage;
+public class ReduceOperator extends FlowOperator<ReduceOperatorConfig.Builder,
+                                                 ReduceOperatorConfig> {
     private final Map<Class<? extends Serializable>, Long> typeToRequiredForMerge;
     private final Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
                            Collection<? extends Serializable>> reducer;
-    private ReduceOperator(Collection<Class<? extends Serializable>> dataTypesToBeReduced,
-                           Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
-                               Collection<? extends Serializable>> reducer) {
-        this.reducer = reducer;
-        this.storage = dataTypesToBeReduced.stream()
-                                           .collect(Collectors.toUnmodifiableMap(Function.identity(),
-                                                                                 dataType -> new LinkedList<>()));
-        this.typeToRequiredForMerge = Map.copyOf(dataTypesToBeReduced.stream()
-                                                                     .collect(Collectors.groupingBy(Function.identity(),
-                                                                                                    Collectors.counting())));
+    private final Map<Class<? extends Serializable>, List<Serializable>> storage;
+    protected ReduceOperator(ReduceOperatorConfig config) {
+        super(config);
+        this.reducer = config.getReducer();
+        this.typeToRequiredForMerge = config.getTypeToRequiredForMerge();
+        this.storage = typeToRequiredForMerge.keySet().stream()
+                                             .collect(Collectors.toUnmodifiableMap(Function.identity(),
+                                                                                  dataType -> new LinkedList<>()));
     }
 
-    public static CompletionStage<Try<ReActorRef>>
-    of(ReActorSystem localReActorSystem, ReActorConfig operatorCfg,
-       Collection<Class<? extends Serializable>> dataTypesToBeMerged,
-       Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
-                Collection<? extends Serializable>> reducer) {
-        return CompletableFuture.completedStage(localReActorSystem.spawn(new ReduceOperator(dataTypesToBeMerged,
-                                                                                            reducer),
-                                                                         operatorCfg));
-    }
     @Override
     protected CompletionStage<Collection<? extends Serializable>>
     onNext(Serializable input, ReActorContext raCtx) {

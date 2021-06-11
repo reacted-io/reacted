@@ -12,9 +12,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.flow.operators.FlowOperatorConfig;
-import io.reacted.flow.operators.exceptions.OperatorInitException;
-import io.reacted.flow.operators.messages.InitOperatorReply;
-import io.reacted.flow.operators.messages.InitOperatorRequest;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import java.io.Serializable;
@@ -23,13 +20,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
@@ -66,22 +59,6 @@ public class ReActedGraph implements FlowGraph {
                                            localReActorSystem.spawnService(operatorCfg)
                                                              .orElseSneakyThrow());
             }
-            XXX does not handle multiple routees!!!!!!!!
-            var firstOperatorInitFailure = operatorsCfgs.stream()
-                         .map(FlowOperatorConfig::getReActorName)
-                         .map(operatorName -> operatorNameToOperator.get(operatorName)
-                                                                    .ask(new InitOperatorRequest(),
-                                                                         InitOperatorReply.class,
-                                                                         flowName + " " + operatorName))
-                         .map(CompletionStage::toCompletableFuture)
-                         .map(CompletableFuture::join)
-                         .map(Try::orElseSneakyThrow)
-                         .filter(Predicate.not(InitOperatorReply::isInitComplete))
-                         .findFirst();
-            firstOperatorInitFailure.ifPresent(failed -> {
-                throw new OperatorInitException(String.format("Operator [%s] Type [%s] was not able to init",
-                                                              failed.getOperatorName(),
-                                                              failed.getOperatorType().getName())); });
             operatorsCfgs.stream()
                          .filter(operatorCfg -> !operatorCfg.getInputStreams().isEmpty())
                          .forEachOrdered(operatorConfig -> operatorConfig.getInputStreams()

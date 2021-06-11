@@ -10,4 +10,4 @@ package io.reacted.flow.operators.messages;
 
 import java.io.Serializable;
 
-public class InitOperatorRequest implements Serializable { }
+public class RefreshOperatorRequest implements Serializable { }

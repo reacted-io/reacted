@@ -8,83 +8,45 @@
 
 package io.reacted.flow.operators;
 
-import static io.reacted.flow.operators.ResolveServicesWorker.GET_RANDOM_GATE;
-
-import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.exceptions.ServiceNotFoundException;
-import io.reacted.core.messages.services.ServiceDiscoveryReply;
+import io.reacted.core.messages.reactors.ReActorInit;
+import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.services.GateSelectorPolicies;
+import io.reacted.flow.operators.messages.RefreshOperatorRequest;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class ServiceOperator extends FlowOperator<Builder, ServiceOperator> {
-
-  private static final CompletionStage<Collection<? extends Serializable>> NO_OUTPUT = CompletableFuture.completedFuture(List.of());
+public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
+                                                  ServiceOperatorConfig> {
+  private final Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector;
   private final Function<Serializable, Collection<? extends Serializable>> toServiceRequests;
   private final Function<Serializable, Collection<? extends Serializable>> fromServiceResponse;
-  private final Class<? extends Serializable> serviceReplyType;
-  private final ReActorRef service;
+  private final ServiceDiscoverySearchFilter serviceSearchFilter;
   private final ReActions reActions;
-  private long requestCounter;
+  private ReActorRef service;
 
-  private ServiceOperator(Class<? extends Serializable> serviceReplyType,
-                          Function<Serializable, Collection<? extends Serializable>> toServiceRequests,
-                          Function<Serializable, Collection<? extends Serializable>> fromServiceResponse,
-                          ReActorRef service) {
-    this.serviceReplyType = Objects.requireNonNull(serviceReplyType,
-                                                   "Reply type cannot be null");
-    this.toServiceRequests = Objects.requireNonNull(toServiceRequests,
-                                                    "Input mapper cannot be null");
-    this.fromServiceResponse = Objects.requireNonNull(fromServiceResponse,
-                                                      "Output mapper cannot be null");
-    this.service = service;
+
+  protected ServiceOperator(ServiceOperatorConfig config) {
+    super(config);
+    this.gateSelector = config.getGateSelector();
+    this.toServiceRequests = config.getToServiceRequests();
+    this.fromServiceResponse = config.getFromServiceResponse();
+    this.serviceSearchFilter = config.getServiceSearchFilter();
     this.reActions = ReActions.newBuilder()
                               .from(super.getReActions())
-                              .reAct(serviceReplyType, this::onReply)
+                              .reAct(ReActorInit.class, this::onServiceOperatorInit)
+                              .reAct(ReActorStop.class, this::onServiceOperatorStop)
+                              .reAct(RefreshOperatorRequest.class,
+                                     this::onRefreshServiceOperatorRequest)
+                              .reAct(config.getServiceReplyType(), this::onReply)
                               .build();
-  }
-
-  public static CompletionStage<Try<ReActorRef>>
-  of(ReActorSystem localReActorSystem, ReActorConfig operatorCfg,
-     ServiceDiscoverySearchFilter serviceSearchFilter,
-     Class<? extends Serializable> replyT,
-     Function<Serializable, Collection<? extends Serializable>> toServiceRequests,
-     Function<Serializable, Collection<? extends Serializable>> fromServiceResponse) {
-    return of(localReActorSystem, operatorCfg, serviceSearchFilter, GateSelectorPolicies.RANDOM_GATE,
-              replyT, toServiceRequests, fromServiceResponse);
-  }
-
-  public static CompletionStage<Try<ReActorRef>>
-  of(ReActorSystem localReActorSystem, ReActorConfig operatorCfg,
-     ServiceDiscoverySearchFilter serviceSearchFilter,
-     Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector,
-     Class<? extends Serializable> serviceReplyType,
-     Function<Serializable, Collection<? extends Serializable>> toServiceRequests,
-     Function<Serializable, Collection<? extends Serializable>> fromServiceResponse) {
-    return localReActorSystem.serviceDiscovery(serviceSearchFilter)
-                             .thenApply(tryReply -> tryReply.filter(reply -> reply.getServiceGates().isEmpty(),
-                                                                    ServiceNotFoundException::new)
-                                                            .map(ServiceDiscoveryReply::getServiceGates)
-                                                            .map(gateSelector::apply))
-                             .thenApply(service -> service.flatMap(serviceRef -> localReActorSystem.spawn(new ServiceOperator(serviceReplyType,
-                                                                                                                              toServiceRequests,
-                                                                                                                              fromServiceResponse,
-                                                                                                                              serviceRef.get()),
-                                                                                                          operatorCfg)));
   }
 
   @Override
@@ -94,13 +56,29 @@ public class ServiceOperator extends FlowOperator<Builder, ServiceOperator> {
   protected final CompletionStage<Collection<? extends Serializable>>
   onNext(Serializable input, ReActorContext raCtx) {
     var requestsForService = toServiceRequests.apply(input).stream();
+
     requestsForService.map(request -> service.atell(raCtx.getSelf(), request))
                       .forEach(request -> request.thenAccept(delivery -> delivery.ifError(error -> onFailedDelivery(error, raCtx, input))));
     return NO_OUTPUT;
   }
 
+  private void onServiceOperatorInit(ReActorContext raCtx, ReActorInit init) {
+    super.onInit(raCtx, init);
+  }
+
+  private void onServiceOperatorStop(ReActorContext raCtx, ReActorStop stop) {
+    super.onStop(raCtx, stop);
+
+  }
+
+  private void onRefreshServiceOperatorRequest(ReActorContext raCtx,
+                                               RefreshOperatorRequest request) {
+    super.onRefreshOperatorRequest(raCtx);
+
+  }
+
   private <PayloadT extends Serializable> void onReply(ReActorContext raCtx, PayloadT reply) {
     routeOutputMessageAfterFiltering(fromServiceResponse.apply(reply))
-        .forEach((opereators, outMessages) -> forwardToNextStages(reply, outMessages, raCtx, opereators));
+        .forEach((opereators, outMessages) -> XXX forwardToOperators(reply, outMessages, raCtx, opereators));
   }
 }

@@ -15,12 +15,12 @@ import java.util.Optional;
 import javax.annotation.Nullable;
 
 @NonNullByDefault
-public class InitOperatorReply implements Serializable {
+public class RefreshOperatorReply implements Serializable {
   private final boolean initComplete;
   private final String operatorName;
   private final Class<? extends FlowOperator> operatorType;
-  public InitOperatorReply(String operatorName, Class<? extends FlowOperator> operatorType,
-                            boolean isInitComplete) {
+  public RefreshOperatorReply(String operatorName, Class<? extends FlowOperator> operatorType,
+                              boolean isInitComplete) {
     this.operatorName = operatorName;
     this.operatorType = operatorType;
     this.initComplete = isInitComplete;

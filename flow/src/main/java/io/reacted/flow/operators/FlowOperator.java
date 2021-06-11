@@ -20,8 +20,8 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.core.utils.ReActedUtils;
-import io.reacted.flow.operators.messages.InitOperatorReply;
-import io.reacted.flow.operators.messages.InitOperatorRequest;
+import io.reacted.flow.operators.messages.RefreshOperatorReply;
+import io.reacted.flow.operators.messages.RefreshOperatorRequest;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -35,6 +35,7 @@ import java.util.concurrent.CompletionStage;
 
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
@@ -44,7 +45,7 @@ import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
                                    BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>>
     implements ReActor {
-    private final ReActions stageReActions;
+    private final ReActions operatorReactions;
     private final BuiltT operatorCfg;
     private final ReActorConfig routeeCfg;
     private Collection<ReActorRef> ifPredicateOutputOperatorsRefs;
@@ -56,13 +57,13 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
         this.routeeCfg = Objects.requireNonNull(operatorCfg.getRouteeConfig());
         this.ifPredicateOutputOperatorsRefs = List.of();
         this.thenElseOutputOperatorsRefs = List.of();
-        this.stageReActions = ReActions.newBuilder()
-                                       .reAct(InitOperatorRequest.class, (raCtx, payload) -> onOperatorInit(raCtx))
-                                       .reAct(ReActorInit.class, this::onInit)
-                                       .reAct(ReActorStop.class, this::onStop)
-                                       .reAct(ServicesGatesUpdate.class, this::onServiceGatesUpdate)
-                                       .reAct(this::onNext)
-                                       .build();
+        this.operatorReactions = ReActions.newBuilder()
+                                          .reAct(RefreshOperatorRequest.class, (raCtx, payload) -> onRefreshOperatorRequest(raCtx))
+                                          .reAct(ReActorInit.class, this::onInit)
+                                          .reAct(ReActorStop.class, this::onStop)
+                                          .reAct(ServicesGatesUpdate.class, this::onServiceGatesUpdate)
+                                          .reAct(this::onNext)
+                                          .build();
     }
 
     @Nonnull
@@ -71,7 +72,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
 
     @Nonnull
     @Override
-    public ReActions getReActions() { return stageReActions; }
+    public ReActions getReActions() { return operatorReactions; }
 
     protected static Try<ReActorRef> of(ReActorSystem localReActorSystem, ServiceConfig config) {
         return localReActorSystem.spawnService(config);
@@ -89,24 +90,23 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
             .scheduleWithFixedDelay(() -> ReActedUtils.ifNotDelivered(raCtx.getSelf()
                                                                            .tell(raCtx.getReActorSystem()
                                                                                       .getSystemSink(),
-                                                                                 new InitOperatorRequest()),
+                                                                                 new RefreshOperatorRequest()),
                                                                       error -> raCtx.logError("Unable to self init operator",
                                                                                               error)),
                                     0, 15, TimeUnit.SECONDS);
-
     }
 
     protected void onServiceGatesUpdate(ReActorContext raCtx, ServicesGatesUpdate newGates) {
         this.ifPredicateOutputOperatorsRefs = newGates.ifPredicateServices;
         this.thenElseOutputOperatorsRefs = newGates.thenElseServices;
-        raCtx.getSender().tell(raCtx.getSelf(), new InitOperatorReply(operatorCfg.getReActorName(),
-                                                                      this.getClass(), true));
+        raCtx.getSender().tell(raCtx.getSelf(), new RefreshOperatorReply(operatorCfg.getReActorName(),
+                                                                         this.getClass(), true));
     }
     protected void onStop(ReActorContext raCtx, ReActorStop stop) {
         operatorsRefreshTask.cancel(true);
     }
 
-    private void onOperatorInit(ReActorContext raCtx) {
+    protected void onRefreshOperatorRequest(ReActorContext raCtx) {
         var requester = raCtx.getSender();
         var ifServices = ReActedUtils.resolveServices(operatorCfg.getIfPredicateOutputOperators(),
                                                       raCtx.getReActorSystem(),
@@ -119,19 +119,27 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                                     operatorCfg.getIfPredicateOutputOperators().size() ||
                                                     servicesGatesUpdate.thenElseServices.size() !=
                                                     operatorCfg.getThenElseOutputOperators().size()
-                                                    ? requester.tell(new InitOperatorReply(getConfig().getReActorName(),
-                                                                                           this.getClass(), false))
+                                                    ? requester.tell(new RefreshOperatorReply(getConfig().getReActorName(),
+                                                                                              this.getClass(), false))
                                                     : raCtx.getSelf().tell(requester, servicesGatesUpdate));
     }
 
     private void onNext(ReActorContext raCtx, Serializable message) {
-        onNext(message, raCtx).thenAccept(outMessages -> routeOutputMessageAfterFiltering(outMessages)
-                                          .forEach((operators, outputs) -> forwardToNextStages(message,
-                                                                                               outputs,
-                                                                                               raCtx,
-                                                                                               operators)));
+        backpressuredPropagation(onNext(message, raCtx), message, raCtx);
     }
 
+    protected CompletionStage<Void> backpressuredPropagation(CompletionStage<Collection<? extends Serializable>> operatorOutput,
+                                                             Serializable inputMessage,
+                                                             ReActorContext raCtx) {
+        Consumer<Throwable> onDeliveryError = error -> onFailedDelivery(error, raCtx, inputMessage);
+        return operatorOutput.thenCompose(messages -> routeOutputMessageAfterFiltering(messages).entrySet().stream()
+                                                                                                .map(msgToDst -> forwardToOperators(onDeliveryError,
+                                                                                                                                    msgToDst.getValue(),
+                                                                                                                                    raCtx, msgToDst.getKey()))
+                                                                                                .reduce((first, second) -> ReActedUtils.composeDeliveries(first, second, onDeliveryError))
+                                                                                                .orElse(CompletableFuture.completedStage(Try.ofSuccess(DeliveryStatus.DELIVERED))))
+                             .thenAccept(lastDelivery -> raCtx.getMbox().request(1));
+    }
     protected Map<Collection<ReActorRef>, ? extends Collection<? extends Serializable>>
     routeOutputMessageAfterFiltering(Collection<? extends Serializable> outputMessages) {
         return outputMessages.stream()
@@ -140,21 +148,15 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                                                 ? ifPredicateOutputOperatorsRefs
                                                                 : thenElseOutputOperatorsRefs));
     }
-    protected void forwardToNextStages(Serializable input,
-                                       Collection<? extends Serializable> outMsgs,
-                                       ReActorContext raCtx,
-                                       Collection<ReActorRef> nextStages) {
-        var fanOut = outMsgs.stream()
-                            .flatMap(output -> nextStages.stream()
-                                                         .map(dst -> dst.atell(raCtx.getSelf(),
-                                                                               output)))
-                            .collect(Collectors.toList());
-        fanOut.stream()
-              .reduce((first, second) -> composeDeliveries(first, second,
-                                                           error -> onFailedDelivery(error, raCtx,
-                                                                                     input)))
-              .orElseGet(() -> CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED)))
-              .thenAccept(lastDelivery -> raCtx.getMbox().request(1));
+    protected CompletionStage<Try<DeliveryStatus>>
+    forwardToOperators(Consumer<Throwable> onDeliveryError,
+                       Collection<? extends Serializable> messages,
+                       ReActorContext raCtx, Collection<ReActorRef> nextStages) {
+        return messages.stream()
+                       .flatMap(output -> nextStages.stream()
+                                                    .map(dst -> dst.atell(raCtx.getSelf(), output)))
+                      .reduce((first, second) -> composeDeliveries(first, second, onDeliveryError))
+                      .orElseGet(() -> CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED)));
     }
     @SuppressWarnings("SameReturnValue")
     protected  <InputT extends Serializable>
