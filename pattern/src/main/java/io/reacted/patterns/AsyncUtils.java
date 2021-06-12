@@ -8,6 +8,9 @@
 
 package io.reacted.patterns;
 
+import java.util.Iterator;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.concurrent.CompletableFuture;
@@ -112,6 +115,15 @@ public final class AsyncUtils {
                          onError, asyncExecutor);
     }
 
+    public static <PayloadT> CompletionStage<Void>
+    asyncForeach(Function<PayloadT, CompletionStage<PayloadT>> operation, Iterator<PayloadT> source,
+                 Consumer<Throwable> onError, Executor asyncExecutor) {
+        return source.hasNext() ? operation.apply(source.next())
+                                           .exceptionally(error -> { onError.accept(error); return null;})
+                                           .thenComposeAsync(prevStepResponse -> asyncForeach(operation, source, onError, asyncExecutor),
+                                                             asyncExecutor)
+                                : CompletableFuture.completedFuture(null);
+    }
     public static <PayloadT> CompletionStage<PayloadT>
     asyncLoop(Function<PayloadT, CompletionStage<PayloadT>> operation, @Nullable PayloadT firstArgument,
               Predicate<PayloadT> shallContinue, Function<Throwable, PayloadT> onError,

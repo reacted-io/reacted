@@ -15,6 +15,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.flow.operators.messages.RefreshOperatorRequest;
+import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 import java.util.Collection;
@@ -55,8 +56,11 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
   @Override
   protected final CompletionStage<Collection<? extends Serializable>>
   onNext(Serializable input, ReActorContext raCtx) {
-    var requestsForService = toServiceRequests.apply(input).stream();
 
+    AsyncUtils.asyncForeach(request -> service.atell(raCtx.getSelf(), request),
+                            toServiceRequests.apply(input).iterator(),
+                            error -> onFailedDelivery(error, raCtx, input),
+                            )
     requestsForService.map(request -> service.atell(raCtx.getSelf(), request))
                       .forEach(request -> request.thenAccept(delivery -> delivery.ifError(error -> onFailedDelivery(error, raCtx, input))));
     return NO_OUTPUT;
