@@ -67,11 +67,11 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
   public ReActorConfig getRouteeConfig() { return routeeConfig; }
 
   public abstract static class Builder<BuilderT, BuiltT> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
-    protected Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
-    protected Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
-    protected Predicate<Serializable> ifPredicate = NO_FILTERING;
-    protected Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
-    protected ReActorConfig operatorRouteeCfg;
+    private Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
+    private Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
+    private Predicate<Serializable> ifPredicate = NO_FILTERING;
+    private Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
+    private ReActorConfig operatorRouteeCfg;
     protected Builder() { /* No implementation required */ }
 
     public final BuilderT setIfOutputPredicate(Predicate<Serializable> ifPredicate) {

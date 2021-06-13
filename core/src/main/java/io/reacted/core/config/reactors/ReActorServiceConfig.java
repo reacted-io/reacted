@@ -99,6 +99,18 @@ public abstract class  ReActorServiceConfig<BuilderT extends ReActiveEntityConfi
         }
 
         /**
+         * On request, the service may need to dynamically spawn a new routee. This provider is
+         * their factory
+         *
+         * @param routeeProvider Used to spawn a new routee reactor on request
+         * @return this builder
+         */
+        public final BuilderT setRouteeProvider(UnChecked.CheckedSupplier<ReActor> routeeProvider) {
+            this.routeeProvider = serviceCfg -> routeeProvider.get();
+            return getThis();
+        }
+
+        /**
          * A service automatically load balances messages to its routees. Here we define how that should be done
          * Default value: {@link Service.LoadBalancingPolicy#ROUND_ROBIN}
          *

@@ -8,8 +8,10 @@
 
 package io.reacted.flow.operators;
 
+import io.reacted.core.reactors.ReActor;
 import io.reacted.flow.operators.ReduceOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.UnChecked;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
@@ -49,8 +51,7 @@ public class ReduceOperatorConfig extends FlowOperatorConfig<Builder, ReduceOper
     private Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
                      Collection<? extends Serializable>> reducer;
     private Builder() { super.setRouteeProvider(ReduceOperator::new); }
-
-    public Builder setTypeToRequiredMessagesMergeMap(Collection<Class<? extends Serializable>> typeToRequiredForMerge) {
+    public Builder setMergeRequiredTypes(Collection<Class<? extends Serializable>> typeToRequiredForMerge) {
       this.typeToRequiredForMerge = typeToRequiredForMerge;
       return this;
     }

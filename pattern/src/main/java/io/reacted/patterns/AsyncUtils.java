@@ -115,8 +115,8 @@ public final class AsyncUtils {
                          onError, asyncExecutor);
     }
 
-    public static <PayloadT> CompletionStage<Void>
-    asyncForeach(Function<PayloadT, CompletionStage<PayloadT>> operation, Iterator<PayloadT> source,
+    public static <PayloadT, OutputT> CompletionStage<Void>
+    asyncForeach(Function<PayloadT, CompletionStage<OutputT>> operation, Iterator<PayloadT> source,
                  Consumer<Throwable> onError, Executor asyncExecutor) {
         return source.hasNext() ? operation.apply(source.next())
                                            .exceptionally(error -> { onError.accept(error); return null;})

@@ -12,6 +12,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.flow.operators.FlowOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;
+import io.reacted.patterns.UnChecked.CheckedFunction;
 import io.reacted.patterns.UnChecked.CheckedSupplier;
 import java.io.Serializable;
 import java.util.Collection;
@@ -36,7 +37,6 @@ public class MapOperatorConfig extends FlowOperatorConfig<MapOperatorConfig.Buil
   public static class Builder extends FlowOperatorConfig.Builder<Builder, MapOperatorConfig> {
     private Function<Object, Collection<? extends Serializable>> mappingFunction;
     private Builder() { super.setRouteeProvider(MapOperator::new); }
-
     public Builder setMappingFunction(Function<Object, Collection<? extends Serializable>> mappingFunction) {
       this.mappingFunction = mappingFunction;
       return this;

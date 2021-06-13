@@ -45,6 +45,7 @@ import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
                                    BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>>
     implements ReActor {
+    public static final Collection<? extends Serializable> NO_OUTPUT = List.of();
     private final ReActions operatorReactions;
     private final BuiltT operatorCfg;
     private final ReActorConfig routeeCfg;
@@ -131,14 +132,21 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     protected CompletionStage<Void> backpressuredPropagation(CompletionStage<Collection<? extends Serializable>> operatorOutput,
                                                              Serializable inputMessage,
                                                              ReActorContext raCtx) {
+
+        return propagate(operatorOutput, inputMessage, raCtx)
+            .thenAccept(lastDelivery -> raCtx.getMbox().request(1));
+    }
+
+    protected CompletionStage<Try<DeliveryStatus>>
+    propagate(CompletionStage<Collection<? extends Serializable>> operatorOutput,
+              Serializable inputMessage, ReActorContext raCtx) {
         Consumer<Throwable> onDeliveryError = error -> onFailedDelivery(error, raCtx, inputMessage);
         return operatorOutput.thenCompose(messages -> routeOutputMessageAfterFiltering(messages).entrySet().stream()
                                                                                                 .map(msgToDst -> forwardToOperators(onDeliveryError,
                                                                                                                                     msgToDst.getValue(),
                                                                                                                                     raCtx, msgToDst.getKey()))
                                                                                                 .reduce((first, second) -> ReActedUtils.composeDeliveries(first, second, onDeliveryError))
-                                                                                                .orElse(CompletableFuture.completedStage(Try.ofSuccess(DeliveryStatus.DELIVERED))))
-                             .thenAccept(lastDelivery -> raCtx.getMbox().request(1));
+                                                                                                .orElse(CompletableFuture.completedStage(Try.ofSuccess(DeliveryStatus.DELIVERED))));
     }
     protected Map<Collection<ReActorRef>, ? extends Collection<? extends Serializable>>
     routeOutputMessageAfterFiltering(Collection<? extends Serializable> outputMessages) {
@@ -155,8 +163,8 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
         return messages.stream()
                        .flatMap(output -> nextStages.stream()
                                                     .map(dst -> dst.atell(raCtx.getSelf(), output)))
-                      .reduce((first, second) -> composeDeliveries(first, second, onDeliveryError))
-                      .orElseGet(() -> CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED)));
+                       .reduce((first, second) -> composeDeliveries(first, second, onDeliveryError))
+                       .orElseGet(() -> CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED)));
     }
     @SuppressWarnings("SameReturnValue")
     protected  <InputT extends Serializable>

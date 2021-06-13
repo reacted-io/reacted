@@ -9,15 +9,19 @@
 package io.reacted.flow.operators;
 
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
+import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.flow.operators.ServiceOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.UnChecked;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOperatorConfig> {
@@ -27,6 +31,8 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
   private final Class<? extends Serializable> serviceReplyType;
   private final ServiceDiscoverySearchFilter serviceSearchFilter;
   private final Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector;
+  @Nullable
+  private final ExecutorService executorService;
   private ServiceOperatorConfig(Builder builder) {
     super(builder);
     this.serviceReplyType = Objects.requireNonNull(builder.serviceReplyType,
@@ -39,6 +45,7 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
                                                       "Service search filter cannot be null");
     this.gateSelector = Objects.requireNonNull(builder.gateSelector,
                                                "Gate selector cannot be null");
+    this.executorService = builder.executorService;
   }
 
   public Function<Serializable, Collection<? extends Serializable>> getToServiceRequests() {
@@ -60,6 +67,10 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
   public Function<Collection<ReActorRef>, Optional<ReActorRef>> getGateSelector() {
     return gateSelector;
   }
+
+  public Optional<ExecutorService> getExecutorService() {
+    return Optional.ofNullable(executorService);
+  }
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, ServiceOperatorConfig> {
     private Function<Serializable, Collection<? extends Serializable>> toServiceRequests;
@@ -67,6 +78,8 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
     private Class<? extends Serializable> serviceReplyType;
     private ServiceDiscoverySearchFilter serviceSearchFilter;
     private Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector = GateSelectorPolicies.RANDOM_GATE;
+    @Nullable
+    private ExecutorService executorService;
     private Builder() { super.setRouteeProvider(ServiceOperator::new); }
 
     public Builder setServiceReplyType(Class<? extends Serializable> serviceReplyType) {
@@ -94,6 +107,11 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
     public Builder setGateSelector(Function<Collection<ReActorRef>, Optional<ReActorRef>>
                                    gateSelector) {
       this.gateSelector = gateSelector;
+      return this;
+    }
+
+    private Builder setExecutor(ExecutorService executor) {
+      this.executorService = executor;
       return this;
     }
 

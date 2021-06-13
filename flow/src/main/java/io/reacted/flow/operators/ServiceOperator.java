@@ -20,7 +20,10 @@ import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 @NonNullByDefault
@@ -31,8 +34,9 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
   private final Function<Serializable, Collection<? extends Serializable>> fromServiceResponse;
   private final ServiceDiscoverySearchFilter serviceSearchFilter;
   private final ReActions reActions;
+  private final ExecutorService executorService;
+  private final boolean shallStopExecutorService;
   private ReActorRef service;
-
 
   protected ServiceOperator(ServiceOperatorConfig config) {
     super(config);
@@ -40,6 +44,9 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
     this.toServiceRequests = config.getToServiceRequests();
     this.fromServiceResponse = config.getFromServiceResponse();
     this.serviceSearchFilter = config.getServiceSearchFilter();
+    this.executorService = config.getExecutorService()
+                                 .orElseGet(Executors::newSingleThreadExecutor);
+    this.shallStopExecutorService = config.getExecutorService().isEmpty();
     this.reActions = ReActions.newBuilder()
                               .from(super.getReActions())
                               .reAct(ReActorInit.class, this::onServiceOperatorInit)
@@ -57,13 +64,11 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
   protected final CompletionStage<Collection<? extends Serializable>>
   onNext(Serializable input, ReActorContext raCtx) {
 
-    AsyncUtils.asyncForeach(request -> service.atell(raCtx.getSelf(), request),
-                            toServiceRequests.apply(input).iterator(),
-                            error -> onFailedDelivery(error, raCtx, input),
-                            )
-    requestsForService.map(request -> service.atell(raCtx.getSelf(), request))
-                      .forEach(request -> request.thenAccept(delivery -> delivery.ifError(error -> onFailedDelivery(error, raCtx, input))));
-    return NO_OUTPUT;
+    return AsyncUtils.asyncForeach(request -> service.atell(raCtx.getSelf(), request),
+                                   toServiceRequests.apply(input).iterator(),
+                                   error -> onFailedDelivery(error, raCtx, input), executorService)
+                     .thenAccept(noVal -> raCtx.getMbox().request(1))
+                     .thenApply(noVal -> FlowOperator.NO_OUTPUT);
   }
 
   private void onServiceOperatorInit(ReActorContext raCtx, ReActorInit init) {
@@ -72,7 +77,9 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
 
   private void onServiceOperatorStop(ReActorContext raCtx, ReActorStop stop) {
     super.onStop(raCtx, stop);
-
+    if (shallStopExecutorService) {
+      executorService.shutdownNow();
+    }
   }
 
   private void onRefreshServiceOperatorRequest(ReActorContext raCtx,
@@ -82,7 +89,7 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
   }
 
   private <PayloadT extends Serializable> void onReply(ReActorContext raCtx, PayloadT reply) {
-    routeOutputMessageAfterFiltering(fromServiceResponse.apply(reply))
-        .forEach((opereators, outMessages) -> XXX forwardToOperators(reply, outMessages, raCtx, opereators));
+    propagate(CompletableFuture.supplyAsync(() -> fromServiceResponse.apply(reply), executorService),
+              reply, raCtx);
   }
 }

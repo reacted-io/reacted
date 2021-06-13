@@ -8,13 +8,12 @@
 
 package io.reacted.examples.flow;
 
-import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.flow.ReActedGraph;
-import io.reacted.flow.Stage;
-import io.reacted.flow.operators.MapOperator;
-import io.reacted.flow.operators.ReduceOperator;
+import io.reacted.flow.operators.MapOperatorConfig;
+import io.reacted.flow.operators.ReduceOperatorConfig;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -27,48 +26,38 @@ public class FlowGraphExample {
     List<Integer> inputInt = List.of(1, 2);
     ReActedGraph flowMerge = ReActedGraph.newBuilder()
                                          .setFlowName("FlowMerge")
-                                         .addOperator(Stage.newBuilder()
-                                                           .setStageName("Provider-1")
-                                                           .setOutputStageName("Reducer-1")
-                                                           .setInputStream(inputData.stream())
-                                                           .setOperatorProvider(reActorSystem -> MapOperator.of(reActorSystem,
-                                                                                                             ReActorConfig.newBuilder()
-                                                                                                                          .setReActorName("ToLower-2")
-                                                                                                                          .build(),
-                                                                                                             input -> List.of(((String)input).toLowerCase())))
-                                                           .build())
-                                         .addOperator(Stage.newBuilder()
-                                                           .setStageName("Provider-2")
-                                                           .setOutputStageName("Reducer-1")
-                                                           .setInputStream(inputInt.stream())
-                                                           .setOperatorProvider(reActorSystem -> MapOperator.of(reActorSystem,
-                                                                                                             ReActorConfig.newBuilder()
-                                                                                                                          .setReActorName("Multiplier-2")
-                                                                                                                          .build(),
-                                                                                                             input -> List.of(((Integer)input) * 123)))
-                                                           .build())
-                                         .addOperator(Stage.newBuilder()
-                                                           .setStageName("Reducer-1")
-                                                           .setOutputStageName("Finalizer-1")
-                                                           .setOperatorProvider(reActorSystem -> ReduceOperator.of(reActorSystem,
-                                                                                                                ReActorConfig.newBuilder()
-                                                                                                                             .setReActorName("Joiner-1")
-                                                                                                                             .build(),
-                                                                                                                List.of(String.class, Integer.class),
-                                                                                                                inputMap -> List.of(inputMap.values().stream()
-                                                                                                                                            .flatMap(List::stream)
-                                                                                                                                            .map(Object::toString)
-                                                                                                                                            .collect(Collectors.joining(" ")))))
-                                                           .build())
-                                         .addOperator(Stage.newBuilder()
-                                                           .setStageName("Finalizer-1")
-                                                           .setOperatorProvider(reActorSystem -> MapOperator.of(reActorSystem,
-                                                                                                             ReActorConfig.newBuilder()
-                                                                                                                          .setReActorName("Printer-1")
-                                                                                                                          .build(),
-                                                                                                             input -> { System.out.println(input);
-                                                                                                                        return List.of(); }))
-                                                           .build())
+                                         .addOperator(MapOperatorConfig.newBuilder()
+                                                                       .setReActorName("ToLower")
+                                                                       .setInputStreams(List.of(inputData.stream()))
+                                                                       .setMappingFunction(input -> List.of(((String)input).toLowerCase()))
+                                                                       .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
+                                                                                                                           .setServiceName("Joiner")
+                                                                                                                           .build())
+                                                                       .build())
+                                         .addOperator(MapOperatorConfig.newBuilder()
+                                                                       .setReActorName("Multiplier")
+                                                                       .setInputStreams(List.of(inputInt.stream()))
+                                                                       .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
+                                                                                                                           .setServiceName("Joiner")
+                                                                                                                           .build())
+                                                                       .setMappingFunction(input -> List.of(((Integer)input) * 123))
+                                                                       .build())
+                                         .addOperator(ReduceOperatorConfig.newBuilder()
+                                                                          .setReActorName("Joiner")
+                                                                          .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
+                                                                                                                              .setServiceName("Printer")
+                                                                                                                              .build())
+                                                                          .setMergeRequiredTypes(List.of(String.class, Integer.class))
+                                                                          .setReducer(inputMap -> List.of(inputMap.values().stream()
+                                                                                                                  .flatMap(List::stream)
+                                                                                                                  .map(Object::toString)
+                                                                                                                  .collect(Collectors.joining(" "))))
+                                                                          .build())
+                                         .addOperator(MapOperatorConfig.newBuilder()
+                                                                       .setReActorName("Printer")
+                                                                       .setMappingFunction(input -> { System.out.println(input);
+                                                                                                      return List.of(); })
+                                                                       .build())
                                          .build();
     System.out.println("Running");
     flowMerge.run(flowReActorSystem);
