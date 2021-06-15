@@ -25,6 +25,8 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 
 @NonNullByDefault
 public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends GenericServiceDiscoverySearchFilter.Builder<BuilderT, BuiltT>,
@@ -40,6 +42,7 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
     private final InetAddress ipAddress;
     @Nullable
     private final Pattern hostNameExpr;
+    private final String discoveryRequestId;
 
     protected GenericServiceDiscoverySearchFilter(Builder<BuilderT, BuiltT> builder) {
         super(builder);
@@ -51,10 +54,17 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
         this.ipAddress = builder.ipAddress;
         this.hostNameExpr = builder.hostNameExpr;
         this.channelIdSet = Objects.requireNonNull(builder.channelIdSet);
+        this.discoveryRequestId = ObjectUtils.defaultIfNull(builder.discoveryRequestId,
+                                                            StringUtils.joinWith("|",
+                                                                                 serviceName,
+                                                                                 selectionType,
+                                                                                 ipAddress,
+                                                                                 hostNameExpr));
     }
 
+    @Override
     public String getServiceName() { return serviceName; }
-
+    @Override
     public SelectionType getSelectionType() { return selectionType; }
 
     public Optional<Range<Double>> getCpuLoad() { return Optional.ofNullable(cpuLoad); }
@@ -64,6 +74,9 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
     public Optional<InetAddress> getIpAddress() { return Optional.ofNullable(ipAddress); }
 
     public Optional<Pattern> getHostNameExpr() { return Optional.ofNullable(hostNameExpr); }
+
+    @Override
+    public String getDiscoveryRequestId() { return discoveryRequestId; }
 
     @Override
     public boolean matches(Properties serviceInfo, ReActorRef serviceGate) {
@@ -125,6 +138,8 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
         private InetAddress ipAddress;
         @Nullable
         private Pattern hostNameExpr;
+        @Nullable
+        private String discoveryRequestId;
 
         protected Builder() { this.channelIdSet = Set.of(); }
 
@@ -204,6 +219,11 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
 
         public final BuilderT setChannelId(ChannelId channelId) {
             this.channelIdSet = Set.of(channelId);
+            return getThis();
+        }
+
+        public final BuilderT setDiscoveryRequestId(String discoveryRequestId) {
+            this.discoveryRequestId = discoveryRequestId;
             return getThis();
         }
     }

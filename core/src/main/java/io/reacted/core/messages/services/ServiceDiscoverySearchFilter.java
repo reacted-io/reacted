@@ -41,4 +41,12 @@ public interface ServiceDiscoverySearchFilter extends Serializable {
      * @return the result of the match
      */
     boolean matches(Properties serviceProperties, ReActorRef serviceGate);
+
+    /**
+     * Returns a string that uniquely identifies this filter in a given moment within the
+     * local Reactor System. This Id needs to be unique while the request is being performed.
+     * Sequential requests can use the same id.
+     * @return A String that uniquely identifies the request within a Reactor System
+     */
+    String getDiscoveryRequestId();
 }

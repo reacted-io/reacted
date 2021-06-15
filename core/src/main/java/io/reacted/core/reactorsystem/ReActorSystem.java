@@ -12,7 +12,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.drivers.NullLocalDriverConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
-import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.drivers.system.NullLocalDriver;
 import io.reacted.core.exceptions.DeliveryException;
@@ -89,10 +88,6 @@ import java.util.stream.Stream;
 @NonNullByDefault
 public class ReActorSystem {
     public static final ReActorSystem NO_REACTOR_SYSTEM = new ReActorSystem();
-    /* Default dispatcher. Used by system internals */
-    public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
-    public static final int DEFAULT_DISPATCHER_BATCH_SIZE = 10;
-    public static final int DEFAULT_DISPATCHER_THREAD_NUM = 4;
     private static final int SYSTEM_TASK_SCHEDULER_POOL_SIZE = 2;
     // Service discovery always hits the LOCAL services of the LOCAL service registry driver. There is no reason
     // to wait indefinitely for an answer from local resources
@@ -100,9 +95,12 @@ public class ReActorSystem {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
     private static final Serializable REACTOR_INIT = new ReActorInit();
     private static final DispatcherConfig SYSTEM_DISPATCHER_CONFIG = DispatcherConfig.newBuilder()
-                                                                                     .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                                                     .setBatchSize(DEFAULT_DISPATCHER_BATCH_SIZE)
-                                                                                     .setDispatcherThreadsNum(DEFAULT_DISPATCHER_THREAD_NUM)
+                                                                                     .setDispatcherName(
+                                                                                         Dispatcher.DEFAULT_DISPATCHER_NAME)
+                                                                                     .setBatchSize(
+                                                                                         Dispatcher.DEFAULT_DISPATCHER_BATCH_SIZE)
+                                                                                     .setDispatcherThreadsNum(
+                                                                                         Dispatcher.DEFAULT_DISPATCHER_THREAD_NUM)
                                                                                      .build();
 
     private final Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> reActorSystemDrivers;
@@ -424,7 +422,7 @@ public class ReActorSystem {
     serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
                                    ServiceDiscoveryReply.class, SERVICE_DISCOVERY_TIMEOUT,
-                                   searchFilter.getServiceName() + "|" + searchFilter.getSelectionType().name());
+                                   searchFilter.getDiscoveryRequestId());
     }
 
     /**

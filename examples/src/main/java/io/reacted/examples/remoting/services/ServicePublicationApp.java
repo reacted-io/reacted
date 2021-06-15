@@ -12,6 +12,7 @@ import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
@@ -52,7 +53,7 @@ public class ServicePublicationApp {
         var serviceName = "ClockService";
         //For simplicity let's use the default dispatcher. A new one could and should
         //be used for load partitioning
-        var serviceDispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
+        var serviceDispatcherName = Dispatcher.DEFAULT_DISPATCHER_NAME;
         //Now let's publish a service in server reactor system
         var serviceCfg = ServiceConfig.newBuilder()
                                       .setReActorName(serviceName)

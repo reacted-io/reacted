@@ -71,7 +71,9 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     private Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
     private Predicate<Serializable> ifPredicate = NO_FILTERING;
     private Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
-    private ReActorConfig operatorRouteeCfg;
+    private ReActorConfig operatorRouteeCfg = ReActorConfig.newBuilder()
+                                                           .setReActorName("ROUTEE")
+                                                           .build();
     protected Builder() { /* No implementation required */ }
 
     public final BuilderT setIfOutputPredicate(Predicate<Serializable> ifPredicate) {

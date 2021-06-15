@@ -8,6 +8,7 @@
 
 package io.reacted.flow.operators;
 
+import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.flow.operators.FlowOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
@@ -36,7 +37,9 @@ public class MapOperatorConfig extends FlowOperatorConfig<MapOperatorConfig.Buil
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, MapOperatorConfig> {
     private Function<Object, Collection<? extends Serializable>> mappingFunction;
-    private Builder() { super.setRouteeProvider(MapOperator::new); }
+    private Builder() {
+      super.setRouteeProvider(MapOperator::new);
+    }
     public Builder setMappingFunction(Function<Object, Collection<? extends Serializable>> mappingFunction) {
       this.mappingFunction = mappingFunction;
       return this;

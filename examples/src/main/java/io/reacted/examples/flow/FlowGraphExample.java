@@ -8,6 +8,7 @@
 
 package io.reacted.examples.flow;
 
+import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.examples.ExampleUtils;
@@ -32,6 +33,7 @@ public class FlowGraphExample {
                                                                        .setMappingFunction(input -> List.of(((String)input).toLowerCase()))
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                            .setServiceName("Joiner")
+                                                                                                                           .setDiscoveryRequestId("1")
                                                                                                                            .build())
                                                                        .build())
                                          .addOperator(MapOperatorConfig.newBuilder()
@@ -39,6 +41,7 @@ public class FlowGraphExample {
                                                                        .setInputStreams(List.of(inputInt.stream()))
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                            .setServiceName("Joiner")
+                                                                                                                           .setDiscoveryRequestId("2")
                                                                                                                            .build())
                                                                        .setMappingFunction(input -> List.of(((Integer)input) * 123))
                                                                        .build())

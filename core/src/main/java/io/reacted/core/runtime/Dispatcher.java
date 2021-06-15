@@ -36,6 +36,10 @@ import java.util.stream.Stream;
 @NonNullByDefault
 public class Dispatcher {
     public static final Dispatcher NULL_DISPATCHER = new Dispatcher(DispatcherConfig.NULL_DISPATCHER_CFG);
+    /* Default dispatcher. Used by system internals */
+    public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
+    public static final int DEFAULT_DISPATCHER_BATCH_SIZE = 10;
+    public static final int DEFAULT_DISPATCHER_THREAD_NUM = 4;
     private static final String UNCAUGHT_EXCEPTION_IN_DISPATCHER = "Uncaught exception in thread [%s] : ";
     private static final String REACTIONS_EXECUTION_ERROR = "Error for ReActor {} processing " +
                                                             "message type {} with seq num {} and value {} ";

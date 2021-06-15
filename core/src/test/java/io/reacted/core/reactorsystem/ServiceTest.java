@@ -11,6 +11,7 @@ package io.reacted.core.reactorsystem;
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
@@ -45,7 +46,7 @@ class ServiceTest {
                                      .setLoadBalancingPolicy(Service.LoadBalancingPolicy.ROUND_ROBIN)
                                      .setMailBoxProvider(ctx -> new BasicMbox())
                                      .setReActorName("TestRouter")
-                                     .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                                     .setDispatcherName(Dispatcher.DEFAULT_DISPATCHER_NAME)
                                      .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                      .setRouteesNum(1)
                                      .setRouteeProvider(() -> new MagicTestReActor(2, true,

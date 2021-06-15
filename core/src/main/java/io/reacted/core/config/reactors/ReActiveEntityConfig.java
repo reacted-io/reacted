@@ -13,7 +13,7 @@ import io.reacted.core.config.InheritableBuilder;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
 
@@ -68,11 +68,11 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
 
     public abstract static class Builder<BuilderT, BuiltT>
             extends InheritableBuilder.Builder<BuilderT, BuiltT> {
-        private String dispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
+        protected String dispatcherName = Dispatcher.DEFAULT_DISPATCHER_NAME;
         @SuppressWarnings("NotNullFieldNotInitialized")
-        private String reActorName;
-        private TypedSubscription[] typedSubscriptions = DEFAULT_TYPED_SUBSCRIPTIONS;
-        private Function<ReActorContext, MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
+        protected String reActorName;
+        protected TypedSubscription[] typedSubscriptions = DEFAULT_TYPED_SUBSCRIPTIONS;
+        protected Function<ReActorContext, MailBox> mailBoxProvider = DEFAULT_MAILBOX_SUPPLIER;
 
         protected Builder() { }
 

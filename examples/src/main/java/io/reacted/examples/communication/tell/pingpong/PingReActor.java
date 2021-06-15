@@ -9,6 +9,7 @@
 package io.reacted.examples.communication.tell.pingpong;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -16,7 +17,6 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystem;
 
 import javax.annotation.Nonnull;
 
@@ -47,7 +47,7 @@ class PingReActor implements ReActor {
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                             .setReActorName(PingReActor.class.getSimpleName())
-                            .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                            .setDispatcherName(Dispatcher.DEFAULT_DISPATCHER_NAME)
                             .setMailBoxProvider(ctx -> new BasicMbox())
                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .build();

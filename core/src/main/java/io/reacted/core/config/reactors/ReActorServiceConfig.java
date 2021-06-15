@@ -8,15 +8,19 @@
 
 package io.reacted.core.config.reactors;
 
+import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.stream.Stream;
 import javax.annotation.concurrent.Immutable;
 
 @NonNullByDefault
@@ -71,7 +75,7 @@ public abstract class  ReActorServiceConfig<BuilderT extends ReActiveEntityConfi
         private Duration serviceRepublishReattemptDelayOnError = DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY;
         private boolean remoteService;
 
-        protected Builder() { }
+        protected Builder() { setIsRemoteService(false); }
 
         /**
          * A Service exposes the behavior of a reactor in a resilient and load balanced manneer. Here we specify
@@ -139,13 +143,23 @@ public abstract class  ReActorServiceConfig<BuilderT extends ReActiveEntityConfi
         }
 
         /**
-         * Specify if this service should be published or not
+         * Specify if this service should be published or not.
+         * If the service is marked as non remote, service discovery subscription is automatically
+         * enabled for this service.
+         * If the desired behaviour should be different, the subscriptions can be overridden
+         * using {@link ReActiveEntityConfig::setTypedSubscriptions}
          *
          * @param remoteService true if this service is meant to be published on the registries
          * @return this builder
          */
         public final BuilderT setIsRemoteService(boolean remoteService) {
             this.remoteService = remoteService;
+            if (!remoteService) {
+                setTypedSubscriptions(Stream.concat(Arrays.stream(super.typedSubscriptions),
+                                                    Stream.of(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class)))
+                                            .distinct()
+                                            .toArray(TypedSubscription[]::new));
+            }
             return getThis();
         }
     }
