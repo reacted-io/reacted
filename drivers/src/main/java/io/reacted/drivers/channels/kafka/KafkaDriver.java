@@ -82,7 +82,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return ChannelId.KAFKA.forChannelName(getDriverConfig().getChannelName());
+        return ChannelId.ChannelType.KAFKA.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override

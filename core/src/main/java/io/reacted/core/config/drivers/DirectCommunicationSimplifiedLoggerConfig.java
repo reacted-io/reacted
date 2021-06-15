@@ -10,7 +10,6 @@ package io.reacted.core.config.drivers;
 
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.Objects;
 
@@ -31,6 +30,17 @@ public class DirectCommunicationSimplifiedLoggerConfig extends ChannelDriverConf
         @SuppressWarnings("NotNullFieldNotInitialized")
         private PrintStream printStream;
         private Builder() { }
+
+        /**
+         * Define the output stream for dumping the messages.
+         *
+         * @param printStream A {@link PrintStream } that will be used to print the messages exchanged
+         *                    within the local {@link io.reacted.core.reactorsystem.ReActorSystem}
+         *
+         *                    Note: The supplied stream will be automatically flushed and closed
+         *                          on driver termination
+         * @return this builder
+         */
         public final Builder setLogStream(PrintStream printStream) {
             this.printStream = printStream;
             return this;

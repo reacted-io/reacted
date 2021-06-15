@@ -11,9 +11,6 @@ package io.reacted.core.drivers.local;
 import io.reacted.core.config.drivers.DirectCommunicationConfig;
 import io.reacted.core.config.drivers.DirectCommunicationLoggerConfig;
 import io.reacted.core.config.drivers.DirectCommunicationSimplifiedLoggerConfig;
-import io.reacted.core.config.drivers.NullLocalDriverConfig;
-import io.reacted.core.drivers.system.NullDriver;
-import io.reacted.core.drivers.system.NullLocalDriver;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.FileNotFoundException;
@@ -62,8 +59,11 @@ public final class SystemLocalDrivers {
      * Returns a {@link DirectCommunicationDriver} for <b>local</b> communication that after sending each message
      * logs the main information of the message in a file. It is a less noisy version of {@link DirectCommunicationLoggerDriver}
      *
-     * @param loggingPrintStream printstream that should be used for printing the messages that are
+     * @param loggingPrintStream {@link PrintStream} that should be used for printing the messages that are
      *                           exchanged within the local {@link ReActorSystem}
+     *
+     *                           Note: the supplied {@Code PrintStream } will be automatically flushed
+     *                                 and closed on driver termination
      * @throws java.io.UncheckedIOException if an error occurs opening the file
      * @return the {@link DirectCommunicationSimplifiedLoggerDriver}
      */

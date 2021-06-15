@@ -70,7 +70,7 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return ChannelId.REMOTING_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
+        return ChannelId.ChannelType.REMOTING_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override

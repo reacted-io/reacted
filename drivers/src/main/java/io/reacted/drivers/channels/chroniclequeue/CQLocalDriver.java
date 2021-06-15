@@ -54,7 +54,7 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return ChannelId.LOCAL_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
+        return ChannelId.ChannelType.LOCAL_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override

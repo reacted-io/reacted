@@ -78,7 +78,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public GrpcDriver(GrpcDriverConfig grpcDriverConfig) {
         super(grpcDriverConfig);
         this.gatesStubs = new ConcurrentHashMap<>(1000, 0.5f);
-        this.channelId = ChannelId.GRPC.forChannelName(grpcDriverConfig.getChannelName());
+        this.channelId = ChannelId.ChannelType.GRPC.forChannelName(grpcDriverConfig.getChannelName());
     }
 
     @Override

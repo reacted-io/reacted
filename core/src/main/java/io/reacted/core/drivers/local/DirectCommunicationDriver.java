@@ -28,7 +28,7 @@ public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCo
     private final ChannelId channelId;
     public DirectCommunicationDriver(DirectCommunicationConfig config) {
         super(config);
-        this.channelId = ChannelId.DIRECT_COMMUNICATION.forChannelName(config.getChannelName());
+        this.channelId = ChannelId.ChannelType.DIRECT_COMMUNICATION.forChannelName(config.getChannelName());
     }
 
     @Override

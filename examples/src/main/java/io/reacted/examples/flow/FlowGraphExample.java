@@ -68,5 +68,6 @@ public class FlowGraphExample {
     System.out.println("Ran");
     flowMerge.stop(flowReActorSystem);
     flowReActorSystem.shutDown();
+    TimeUnit.SECONDS.sleep(3);
   }
 }

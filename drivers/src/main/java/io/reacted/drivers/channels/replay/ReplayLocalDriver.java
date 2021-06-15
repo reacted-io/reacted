@@ -67,7 +67,7 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return ChannelId.REPLAY_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
+        return ChannelId.ChannelType.REPLAY_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override

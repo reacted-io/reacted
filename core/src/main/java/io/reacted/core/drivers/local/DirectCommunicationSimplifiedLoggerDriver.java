@@ -19,8 +19,6 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
 import java.util.Properties;
@@ -41,11 +39,9 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
      */
     public DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerConfig config) {
         super(config);
-        this.channelId = ChannelId.DIRECT_COMMUNICATION
-                                    .forChannelName(getDriverConfig().getChannelName());
-        this.logFile = Try.of(config::getPrintStream)
-                          .map(PrintWriter::new)
-                          .orElseThrow(ioException -> new UncheckedIOException((IOException)ioException));
+        this.channelId = ChannelId.ChannelType.DIRECT_COMMUNICATION
+                                  .forChannelName(getDriverConfig().getChannelName());
+        this.logFile = new PrintWriter(config.getPrintStream());
     }
 
     @Override
