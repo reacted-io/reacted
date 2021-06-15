@@ -43,7 +43,7 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
         super(config);
         this.channelId = ChannelId.DIRECT_COMMUNICATION
                                     .forChannelName(getDriverConfig().getChannelName());
-        this.logFile = Try.of(() -> new FileWriter(config.getLogFilePath(), false))
+        this.logFile = Try.of(config::getPrintStream)
                           .map(PrintWriter::new)
                           .orElseThrow(ioException -> new UncheckedIOException((IOException)ioException));
     }
@@ -53,6 +53,8 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
 
     @Override
     public CompletionStage<Try<Void>> stopDriverCtx(ReActorSystem reActorSystem) {
+        logFile.flush();
+        logFile.close();
         return CompletableFuture.completedFuture(Try.VOID);
     }
 

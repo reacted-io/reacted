@@ -10,28 +10,29 @@ package io.reacted.core.config.drivers;
 
 import io.reacted.patterns.NonNullByDefault;
 
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.util.Objects;
 
 @NonNullByDefault
 public class DirectCommunicationSimplifiedLoggerConfig extends ChannelDriverConfig<DirectCommunicationSimplifiedLoggerConfig.Builder, DirectCommunicationSimplifiedLoggerConfig> {
-    private final String logFilePath;
+    private final PrintStream printStream;
     private DirectCommunicationSimplifiedLoggerConfig(Builder builder) {
         super(builder);
-        this.logFilePath = Objects.requireNonNull(builder.logFilePath,
-                                                  "Log filepath cannot be null");
+        this.printStream = Objects.requireNonNull(builder.printStream,
+                                                  "PrintStream cannot be null");
     }
 
-    public String getLogFilePath() { return logFilePath; }
+    public PrintStream getPrintStream() { return printStream; }
 
     public static DirectCommunicationSimplifiedLoggerConfig.Builder newBuilder() { return new Builder(); }
 
     public static class Builder extends ChannelDriverConfig.Builder<DirectCommunicationSimplifiedLoggerConfig.Builder, DirectCommunicationSimplifiedLoggerConfig> {
         @SuppressWarnings("NotNullFieldNotInitialized")
-        private String logFilePath;
+        private PrintStream printStream;
         private Builder() { }
-
-        public Builder setLogFilePath(String logFilePath) {
-            this.logFilePath = logFilePath;
+        public final Builder setLogStream(PrintStream printStream) {
+            this.printStream = printStream;
             return this;
         }
 

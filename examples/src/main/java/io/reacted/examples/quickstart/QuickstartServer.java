@@ -18,11 +18,12 @@ import io.reacted.drivers.channels.kafka.KafkaDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
+import java.io.FileNotFoundException;
 import java.time.Duration;
 
 @NonNullByDefault
 public class QuickstartServer {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException {
         var zooKeeperDriverConfig = ZooKeeperDriverConfig.newBuilder()
                                                          .setReActorName("LocalhostCluster")
                                                          .build();

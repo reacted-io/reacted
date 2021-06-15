@@ -29,8 +29,7 @@ public class DirectCommunicationLoggerConfig extends ChannelDriverConfig<DirectC
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String logFilePath;
         private Builder() { }
-
-        public Builder setLogFilePath(String logFilePath) {
+        public final Builder setLogFilePath(String logFilePath) {
             this.logFilePath = logFilePath;
             return this;
         }

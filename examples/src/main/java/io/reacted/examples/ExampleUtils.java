@@ -34,7 +34,7 @@ public final class ExampleUtils {
     }
 
     public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName) {
-        return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.DIRECT_COMMUNICATION,
+        return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
                                           NO_SERVICE_REGISTRIES, NO_REMOTING_DRIVERS);
     }
 
@@ -50,7 +50,7 @@ public final class ExampleUtils {
                                   //Fan out pool to message type subscribers
                                   .setMsgFanOutPoolSize(1)
                                   //Generate extra information for replaying if required
-                                  .setRecordExecution(true)
+                                  .setRecordExecution(false)
                                   .setReactorSystemName(reActorSystemName);
        serviceRegistryDrivers.forEach(configBuilder::addServiceRegistryDriver);
        remotingDrivers.forEach(configBuilder::addRemotingDriver);

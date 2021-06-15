@@ -100,8 +100,10 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     protected void onServiceGatesUpdate(ReActorContext raCtx, ServicesGatesUpdate newGates) {
         this.ifPredicateOutputOperatorsRefs = newGates.ifPredicateServices;
         this.thenElseOutputOperatorsRefs = newGates.thenElseServices;
-        raCtx.getSender().tell(raCtx.getSelf(), new RefreshOperatorReply(operatorCfg.getReActorName(),
-                                                                         this.getClass(), true));
+        raCtx.getSender().tell(raCtx.getSelf(),
+                               new RefreshOperatorReply<>(raCtx.getSelf().getReActorId().getReActorName(),
+                                                          (Class<? extends FlowOperator<BuilderT, BuiltT>>) this.getClass(),
+                                                          true));
     }
     protected void onStop(ReActorContext raCtx, ReActorStop stop) {
         operatorsRefreshTask.cancel(true);
@@ -120,8 +122,10 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                                     operatorCfg.getIfPredicateOutputOperators().size() ||
                                                     servicesGatesUpdate.thenElseServices.size() !=
                                                     operatorCfg.getThenElseOutputOperators().size()
-                                                    ? requester.tell(new RefreshOperatorReply(getConfig().getReActorName(),
-                                                                                              this.getClass(), false))
+                                                    ? requester.tell(
+                      new RefreshOperatorReply<>(raCtx.getSelf().getReActorId().getReActorName(),
+                                                 (Class<? extends FlowOperator<BuilderT, BuiltT>>) this
+                                                     .getClass(), false))
                                                     : raCtx.getSelf().tell(requester, servicesGatesUpdate));
     }
 

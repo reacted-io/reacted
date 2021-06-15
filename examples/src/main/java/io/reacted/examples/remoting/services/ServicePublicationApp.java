@@ -19,12 +19,13 @@ import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
 
+import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 public class ServicePublicationApp {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         Properties serviceRegistryProperties = new Properties();
         //The two reactor system will discover each other automatically using this service registry
         var serverReActorSystem = "SERVER_REACTORSYSTEM";

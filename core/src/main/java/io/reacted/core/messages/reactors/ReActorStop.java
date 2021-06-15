@@ -21,5 +21,10 @@ public final class ReActorStop implements Externalizable {
     public void writeExternal(ObjectOutput out) { /* No fields */ }
 
     @Override
+    public String toString() {
+        return "ReActorStop{}";
+    }
+
+    @Override
     public void readExternal(ObjectInput in) { /* No fields */ }
 }
