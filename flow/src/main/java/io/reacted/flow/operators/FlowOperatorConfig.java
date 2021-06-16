@@ -10,18 +10,16 @@ package io.reacted.flow.operators;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
+import io.reacted.core.config.reactors.ReActorServiceConfig.Builder;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
-import io.reacted.core.reactors.ReActor;
-import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.UnChecked;
+import io.reacted.patterns.UnChecked.TriConsumer;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import javax.annotation.concurrent.Immutable;
 
@@ -33,9 +31,19 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
   public static final Predicate<Serializable> NO_FILTERING = element -> true;
   public static final Collection<ServiceDiscoverySearchFilter> NO_OUTPUT = List.of();
   public static final Collection<Stream<? extends Serializable>> NO_INPUT_STREAMS = List.of();
+  public static final TriConsumer<ReActorSystem,
+                                 ? extends FlowOperatorConfig<? extends ReActorServiceConfig.Builder<?, ?>,
+                                                              ? extends ReActorServiceConfig<?, ?>>,
+                                 ? super Throwable> DEFAULT_INPUT_STREAM_LOGGING_ERROR_HANDLER =
+      (reActorSystem, operatorConfig, throwable) ->
+          reActorSystem.logError("Error processing input stream for operator {}",
+                                 operatorConfig.getReActorName(), throwable);
   private static final ReActorConfig DEFAULT_OPERATOR_ROUTEE_CONFIG = ReActorConfig.newBuilder()
                                                                                    .setReActorName("ROUTEE")
                                                                                    .build();
+  private final TriConsumer<ReActorSystem,
+                            ? extends FlowOperatorConfig<BuilderT, BuiltT>,
+                            ? super Throwable> inputStreamErrorHandler;
   private final Predicate<Serializable> ifPredicate;
   private final Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators;
   private final Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators;
@@ -55,6 +63,11 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     this.thenElseOutputOperators = Objects.requireNonNull(builder.thenElseOutputOperators,
                                                           "Output filters if predicate is false cannot be null");
     this.inputStreams = Objects.requireNonNull(builder.inputStreams, "Input Streams cannot be null");
+    this.inputStreamErrorHandler = (TriConsumer<ReActorSystem,
+                                                ? extends FlowOperatorConfig<BuilderT, BuiltT>,
+                                                ? super Throwable>)
+        Objects.requireNonNull(builder.inputStreamErrorHandler,
+                               "Input stream error handler cannot be null");
   }
 
   public Predicate<Serializable> getIfPredicate() {
@@ -73,12 +86,22 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
 
   public ReActorConfig getRouteeConfig() { return routeeConfig; }
 
+  public TriConsumer<ReActorSystem,
+                    ? extends FlowOperatorConfig<BuilderT, BuiltT>,
+                    ? super Throwable> getInputStreamErrorHandler() {
+    return inputStreamErrorHandler;
+  }
+
   public abstract static class Builder<BuilderT, BuiltT> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
     private Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
     private Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
     private Predicate<Serializable> ifPredicate = NO_FILTERING;
     private Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
     private ReActorConfig operatorRouteeCfg = DEFAULT_OPERATOR_ROUTEE_CONFIG;
+    private TriConsumer<ReActorSystem,
+                        ? extends FlowOperatorConfig<?, ?>,
+                        ? super Throwable> inputStreamErrorHandler = DEFAULT_INPUT_STREAM_LOGGING_ERROR_HANDLER;
+
     protected Builder() { /* No implementation required */ }
 
     public final BuilderT setIfOutputPredicate(Predicate<Serializable> ifPredicate) {
@@ -111,6 +134,14 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
 
     public final BuilderT setOperatorRouteeCfg(ReActorConfig operatorRouteeCfg) {
       this.operatorRouteeCfg = operatorRouteeCfg;
+      return getThis();
+    }
+
+    public final BuilderT
+    setInputStreamErrorHandler(TriConsumer<ReActorSystem,
+                               ? extends FlowOperatorConfig<BuilderT, BuiltT>,
+                               ? super Throwable> inputStreamErrorHandler) {
+      this.inputStreamErrorHandler = inputStreamErrorHandler;
       return getThis();
     }
   }

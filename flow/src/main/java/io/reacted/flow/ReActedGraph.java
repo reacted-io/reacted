@@ -13,6 +13,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.flow.operators.FlowOperatorConfig;
+import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import java.io.Serializable;
@@ -64,7 +65,7 @@ public class ReActedGraph implements FlowGraph {
                          .filter(operatorCfg -> !operatorCfg.getInputStreams().isEmpty())
                          .forEachOrdered(operatorConfig -> operatorConfig.getInputStreams()
                                                                          .forEach(inputStream -> spawnNewStreamConsumer(operatorNameToOperator.get(operatorConfig.getReActorName()),
-                                                                                                                        inputStream, localReActorSystem, flowName, operatorConfig.getReActorName())));
+                                                                                                                        inputStream, localReActorSystem, flowName, operatorConfig)));
         } catch (Exception operatorsInitError) {
             destroyGraph(localReActorSystem, operatorNameToOperator.values());
             return Try.ofFailure(operatorsInitError);
@@ -75,14 +76,16 @@ public class ReActedGraph implements FlowGraph {
     public static Builder newBuilder() { return new Builder(); }
     private static void spawnNewStreamConsumer(ReActorRef operator,
                                                Stream<? extends Serializable> inputStream,
-                                               ReActorSystem localReActorSystem,
-                                               String flowName, String stageName) {
+                                               ReActorSystem localReActorSystem, String flowName,
+                                               FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
+                                                                  ? extends FlowOperatorConfig<?, ?>> operatorCfg) {
         ExecutorService streamConsumerExecutor = spawnNewStageInputStreamExecutor(localReActorSystem,
                                                                                   flowName,
-                                                                                  stageName);
+                                                                                  operatorCfg.getReActorName());
 
-        streamConsumerExecutor.submit(() -> { inputStream.forEach(operator::tell);
-                                              streamConsumerExecutor.shutdown(); });
+        AsyncUtils.asyncForeach(operator::atell, inputStream.iterator(),
+                                                                      , streamConsumerExecutor)
+                  .thenAccept(finished -> streamConsumerExecutor.shutdownNow());
     }
 
     private static ExecutorService spawnNewStageInputStreamExecutor(ReActorSystem localReActorSystem,

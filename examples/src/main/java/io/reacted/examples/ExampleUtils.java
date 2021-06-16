@@ -50,7 +50,7 @@ public final class ExampleUtils {
                                   //Fan out pool to message type subscribers
                                   .setMsgFanOutPoolSize(1)
                                   //Generate extra information for replaying if required
-                                  .setRecordExecution(false)
+                                  .setRecordExecution(true)
                                   .setReactorSystemName(reActorSystemName);
        serviceRegistryDrivers.forEach(configBuilder::addServiceRegistryDriver);
        remotingDrivers.forEach(configBuilder::addRemotingDriver);

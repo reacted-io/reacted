@@ -25,8 +25,8 @@ import javax.annotation.concurrent.Immutable;
 
 @NonNullByDefault
 @Immutable
-public abstract class  ReActorServiceConfig<BuilderT extends ReActiveEntityConfig.Builder<BuilderT, BuiltT>,
-                                            BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>>
+public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig.Builder<BuilderT, BuiltT>,
+                                           BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>>
     extends ReActiveEntityConfig<BuilderT, BuiltT> {
     public static final int MIN_ROUTEES_PER_SERVICE = 1;
     public static final int MAX_ROUTEES_PER_SERVICE = 1000;
