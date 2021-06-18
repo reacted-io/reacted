@@ -41,9 +41,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
   private static final ReActorConfig DEFAULT_OPERATOR_ROUTEE_CONFIG = ReActorConfig.newBuilder()
                                                                                    .setReActorName("ROUTEE")
                                                                                    .build();
-  private final TriConsumer<ReActorSystem,
-                            ? extends FlowOperatorConfig<BuilderT, BuiltT>,
-                            ? super Throwable> inputStreamErrorHandler;
+  private final TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler;
   private final Predicate<Serializable> ifPredicate;
   private final Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators;
   private final Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators;
@@ -63,11 +61,8 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     this.thenElseOutputOperators = Objects.requireNonNull(builder.thenElseOutputOperators,
                                                           "Output filters if predicate is false cannot be null");
     this.inputStreams = Objects.requireNonNull(builder.inputStreams, "Input Streams cannot be null");
-    this.inputStreamErrorHandler = (TriConsumer<ReActorSystem,
-                                                ? extends FlowOperatorConfig<BuilderT, BuiltT>,
-                                                ? super Throwable>)
-        Objects.requireNonNull(builder.inputStreamErrorHandler,
-                               "Input stream error handler cannot be null");
+    this.inputStreamErrorHandler = Objects.requireNonNull(builder.inputStreamErrorHandler,
+                                                          "Input stream error handler cannot be null");
   }
 
   public Predicate<Serializable> getIfPredicate() {
@@ -86,21 +81,18 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
 
   public ReActorConfig getRouteeConfig() { return routeeConfig; }
 
-  public TriConsumer<ReActorSystem,
-                    ? extends FlowOperatorConfig<BuilderT, BuiltT>,
-                    ? super Throwable> getInputStreamErrorHandler() {
+  public TriConsumer<ReActorSystem, BuiltT, ? super Throwable> getInputStreamErrorHandler() {
     return inputStreamErrorHandler;
   }
-
-  public abstract static class Builder<BuilderT, BuiltT> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
+  public abstract static class Builder<BuilderT extends ReActorServiceConfig.Builder<BuilderT, BuiltT>,
+                                       BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
     private Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
     private Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
     private Predicate<Serializable> ifPredicate = NO_FILTERING;
     private Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
     private ReActorConfig operatorRouteeCfg = DEFAULT_OPERATOR_ROUTEE_CONFIG;
-    private TriConsumer<ReActorSystem,
-                        ? extends FlowOperatorConfig<?, ?>,
-                        ? super Throwable> inputStreamErrorHandler = DEFAULT_INPUT_STREAM_LOGGING_ERROR_HANDLER;
+    private TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler =
+        (TriConsumer<ReActorSystem, BuiltT, ? super Throwable>) DEFAULT_INPUT_STREAM_LOGGING_ERROR_HANDLER;
 
     protected Builder() { /* No implementation required */ }
 
@@ -138,8 +130,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     }
 
     public final BuilderT
-    setInputStreamErrorHandler(TriConsumer<ReActorSystem,
-                               ? extends FlowOperatorConfig<BuilderT, BuiltT>,
+    setInputStreamErrorHandler(TriConsumer<ReActorSystem, BuiltT,
                                ? super Throwable> inputStreamErrorHandler) {
       this.inputStreamErrorHandler = inputStreamErrorHandler;
       return getThis();

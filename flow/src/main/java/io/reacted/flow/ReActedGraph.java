@@ -12,10 +12,14 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.flow.operators.FlowOperator;
 import io.reacted.flow.operators.FlowOperatorConfig;
+import io.reacted.flow.operators.FlowOperatorConfig.Builder;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.patterns.UnChecked;
+import io.reacted.patterns.UnChecked.TriConsumer;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -32,7 +36,7 @@ import javax.annotation.Nonnull;
 @NonNullByDefault
 public class ReActedGraph implements FlowGraph {
     private final String flowName;
-    private final Collection<? extends FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
+    private final Collection<? extends FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?,?>,
                                                           ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs;
     private final Map<String, ReActorRef> operatorNameToOperator;
     private ReActedGraph(Builder builder) {
@@ -65,7 +69,8 @@ public class ReActedGraph implements FlowGraph {
                          .filter(operatorCfg -> !operatorCfg.getInputStreams().isEmpty())
                          .forEachOrdered(operatorConfig -> operatorConfig.getInputStreams()
                                                                          .forEach(inputStream -> spawnNewStreamConsumer(operatorNameToOperator.get(operatorConfig.getReActorName()),
-                                                                                                                        inputStream, localReActorSystem, flowName, operatorConfig)));
+                                                                                                                        inputStream, localReActorSystem, flowName,
+                                                                                                                        operatorConfig)));
         } catch (Exception operatorsInitError) {
             destroyGraph(localReActorSystem, operatorNameToOperator.values());
             return Try.ofFailure(operatorsInitError);
@@ -74,17 +79,18 @@ public class ReActedGraph implements FlowGraph {
     }
 
     public static Builder newBuilder() { return new Builder(); }
-    private static void spawnNewStreamConsumer(ReActorRef operator,
-                                               Stream<? extends Serializable> inputStream,
-                                               ReActorSystem localReActorSystem, String flowName,
-                                               FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
-                                                                  ? extends FlowOperatorConfig<?, ?>> operatorCfg) {
+    private static
+    void spawnNewStreamConsumer(ReActorRef operator, Stream<? extends Serializable> inputStream,
+                                ReActorSystem localReActorSystem, String flowName,
+                                FlowOperatorConfig<?, ?> operatorCfg) {
         ExecutorService streamConsumerExecutor = spawnNewStageInputStreamExecutor(localReActorSystem,
                                                                                   flowName,
                                                                                   operatorCfg.getReActorName());
-
+        var errorHandler = (TriConsumer<ReActorSystem, Object, ? super Throwable>) operatorCfg.getInputStreamErrorHandler();
         AsyncUtils.asyncForeach(operator::atell, inputStream.iterator(),
-                                                                      , streamConsumerExecutor)
+                                error -> errorHandler.accept(localReActorSystem, operatorCfg,
+                                                             error),
+                                streamConsumerExecutor)
                   .thenAccept(finished -> streamConsumerExecutor.shutdownNow());
     }
 
@@ -107,7 +113,7 @@ public class ReActedGraph implements FlowGraph {
     }
 
     public static class Builder {
-        private final Collection<FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>,
+        private final Collection<FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?,?>,
                                                     ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs;
         private String flowName;
         private Builder() { this.operatorsCfgs = new LinkedList<>(); }
@@ -119,7 +125,7 @@ public class ReActedGraph implements FlowGraph {
 
         public <BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
                 BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>,
-               OperatorCfgT extends FlowOperatorConfig<BuilderT, BuiltT>>
+                OperatorCfgT extends FlowOperatorConfig<BuilderT, BuiltT>>
         Builder addOperator(OperatorCfgT operatorCfg) {
             operatorsCfgs.add(operatorCfg);
             return this;
