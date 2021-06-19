@@ -10,6 +10,7 @@ package io.reacted.flow.operators;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
+import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -85,6 +86,10 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     }
     @SuppressWarnings("EmptyMethod")
     protected void onInit(ReActorContext raCtx, ReActorInit init) {
+        if (BackpressuringMbox.class.isAssignableFrom(raCtx.getMbox().getClass())) {
+            ((BackpressuringMbox)raCtx.getMbox())
+                .addNonDelayedMessageTypes(RefreshOperatorRequest.class, ServicesGatesUpdate.class);
+        }
         // Constantly refresh the gates. The idea is to automatically discover new available operators
         this.operatorsRefreshTask = raCtx.getReActorSystem()
             .getSystemSchedulingService()

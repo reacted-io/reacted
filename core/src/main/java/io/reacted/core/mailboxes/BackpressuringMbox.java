@@ -16,6 +16,8 @@ import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import java.util.Arrays;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
@@ -54,7 +56,7 @@ public class BackpressuringMbox implements MailBox {
     private final boolean isPrivateSequencer;
     private final int bufferSize;
     private final int requestOnStartup;
-    private volatile Set<Class<? extends Serializable>> notDelayed;
+    private final AtomicReference<Set<Class<? extends Serializable>>> notDelayed;
 
     /*
      * BackpressuringMbox wrapper for any other mailbox type.
@@ -68,10 +70,16 @@ public class BackpressuringMbox implements MailBox {
                                                                  () -> new IllegalArgumentException("Invalid backpressure timeout"));
         this.realMbox = Objects.requireNonNull(builder.realMbox,
                                                "A backing mailbox must be provided");
-        this.notDelayed = Objects.requireNonNull(builder.notDelayable,
-                                                 "Non delayable messages set cannot be a null");
+        this.notDelayed = new AtomicReference<>(Objects.requireNonNull(builder.notDelayable,
+                                                "Non delayable messages set cannot be a null")
+                                                       .stream()
+                                                       .filter(Objects::nonNull)
+                                                       .collect(Collectors.toUnmodifiableSet()));
         this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable,
-                                                         "Non backpressurable messages set cannot be a null");
+                                                         "Non backpressurable messages set cannot be a null")
+                                         .stream()
+                                         .filter(Objects::nonNull)
+                                         .collect(Collectors.toUnmodifiableSet());
         this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                      IllegalArgumentException::new);
         this.requestOnStartup = ObjectUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
@@ -128,15 +136,28 @@ public class BackpressuringMbox implements MailBox {
     @Override
     public Message getNextMessage() { return realMbox.getNextMessage(); }
 
-    public Set<Class<? extends Serializable>> getNotDelayedMessageTypes() { return notDelayed; }
+    public Set<Class<? extends Serializable>> getNotDelayedMessageTypes() { return notDelayed.get(); }
 
-    public void setNotDelayedMessageTypes(Class<? extends Serializable> ...newNotDelayed) {
-        this.notDelayed = Set.of(newNotDelayed);
+    public BackpressuringMbox setNotDelayedMessageTypes(Class<? extends Serializable> ...newNotDelayed) {
+        this.notDelayed.set(Objects.requireNonNull(Arrays.stream(newNotDelayed),
+                                                   "Non delayable types cannot be null")
+                                  .filter(Objects::nonNull)
+                                  .collect(Collectors.toUnmodifiableSet()));
+        return this;
     }
 
-    public void addNonDelayedMessageTypes(Class<? extends Serializable> ...notDelayedToAdd) {
-        this.notDelayed = Stream.concat(notDelayed.stream(), Arrays.stream(notDelayedToAdd))
-                                .collect(Collectors.toUnmodifiableSet());
+    public BackpressuringMbox addNonDelayedMessageTypes(Class<? extends Serializable> ...notDelayedToAdd) {
+        Set<Class<? extends Serializable>> notDelayedCache;
+        Set<Class<? extends Serializable>> notDelayedMerge;
+        do {
+            notDelayedCache = notDelayed.get();
+            notDelayedMerge = Stream.concat(notDelayedCache.stream(),
+                                            Objects.requireNonNull(Arrays.stream(notDelayedToAdd),
+                                                                   "Non delayable types cannot be null")
+                                                   .filter(Objects::nonNull))
+                                    .collect(Collectors.toUnmodifiableSet());
+        }while(!notDelayed.compareAndSet(notDelayedCache, notDelayedMerge));
+        return this;
     }
 
     @Nonnull
@@ -183,6 +204,11 @@ public class BackpressuringMbox implements MailBox {
         realMbox.close();
     }
 
+    public static Optional<BackpressuringMbox> toBackpressuringMailbox(MailBox mailBox) {
+        return BackpressuringMbox.class.isAssignableFrom(mailBox.getClass())
+               ? Optional.of((BackpressuringMbox)mailBox)
+               : Optional.empty();
+    }
     /*
      * Exploit Java Submission publisher to backpressure a fast producer.
      * returns a completable future that will be completed with the result of the actual delivery of the message
@@ -209,7 +235,7 @@ public class BackpressuringMbox implements MailBox {
     }
 
     private boolean shouldNotBeDelayed(Class<? extends Serializable> payloadType) {
-        return notDelayed.contains(payloadType);
+        return notDelayed.get().contains(payloadType);
     }
 
     private boolean canBeBackPressured(Class<? extends Serializable> payloadType) {
