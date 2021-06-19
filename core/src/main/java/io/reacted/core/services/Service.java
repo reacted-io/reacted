@@ -31,6 +31,8 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
 import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -54,7 +56,7 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
                      ServiceConfigT extends ReActorServiceConfig<BuilderT, BuiltT>>
     implements ReActiveEntity {
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
-    private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router {}";
+    private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router %s";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
     private final Properties serviceInfo;
     private final ServiceConfigT serviceConfig;
@@ -75,26 +77,14 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
                         .reAct((raCtx, message) -> requestNextMessage(raCtx, message,
                                                                       this::routeMessage))
                         .reAct(ServiceRegistryNotAvailable.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message,
-                                                                      this::onServiceRegistryNotAvailable))
-                        .reAct(ServiceDiscoveryRequest.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message,
-                                                                      this::serviceDiscovery))
-                        .reAct(RouteeReSpawnRequest.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message,
-                                                                      this::respawnRoutee))
-                        .reAct(ReActorInit.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message,
-                                                                      this::initService))
-                        .reAct(ReActorStop.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message,
-                                                                      this::stopService))
+                               this::onServiceRegistryNotAvailable)
+                        .reAct(ServiceDiscoveryRequest.class, this::serviceDiscovery)
+                        .reAct(RouteeReSpawnRequest.class, this::respawnRoutee)
+                        .reAct(ReActorInit.class, this::initService)
+                        .reAct(ReActorStop.class, this::stopService)
                         .reAct(ServicePublicationRequestError.class,
-                               (raCtx, message) -> requestNextMessage(raCtx, message,
-                                                                      this::onServicePublicationError))
-                        .reAct(SystemMonitorReport.class,
-                              (raCtx, message) -> requestNextMessage(raCtx, message,
-                                                                     this::onSystemInfoReport))
+                               this::onServicePublicationError)
+                        .reAct(SystemMonitorReport.class, this::onSystemInfoReport)
                         .build();
     }
 
@@ -139,6 +129,21 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
         if (BackpressuringMbox.class.isAssignableFrom(raCtx.getMbox().getClass())) {
             BackpressuringMbox myMbox = (BackpressuringMbox)raCtx.getMbox();
             myMbox.setNotDelayedMessageTypes(getNonDelayedMessageTypes(myMbox.getNotDelayedMessageTypes()));
+            if (myMbox.getRequestOnStartup() < serviceConfig.getRouteesNum()) {
+                if(myMbox.getBufferSize() < serviceConfig.getRouteesNum()) {
+                    raCtx.logError("Backpressuring mailbox for service {} does not have" +
+                                   "enough space for the specified routees number: {} for {} " +
+                                   "routees. Service is HALING", serviceConfig.getReActorName(),
+                                   myMbox.getBufferSize(), serviceConfig.getRouteesNum());
+                    raCtx.stop();
+                    return;
+                }
+                raCtx.logError("Backpressuring mailbox for service {} does not have" +
+                               "enough space for the specified routees number: {} for {} " +
+                               "routees. Expanding space to fit the minimum requirement [{}]",
+                               serviceConfig.getRouteesNum());
+                myMbox.request(serviceConfig.getRouteesNum() - myMbox.getRequestOnStartup());
+            }
         }
 
         //spawn the minimum number or routees
@@ -179,11 +184,12 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
                                                           .tell(raCtx.getSelf(), discoveryReply));
     }
 
-    private void routeMessage(ReActorContext raCtx, Serializable newMessage) {
-        selectRoutee(raCtx, ++msgReceived)
-                .ifPresentOrElse(routee -> routee.route(raCtx.getSender(), newMessage),
-                                 () -> raCtx.logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
-                                                      serviceConfig.getReActorName(), new IllegalStateException()));
+    private CompletionStage<Try<DeliveryStatus>> routeMessage(ReActorContext raCtx,
+                                                                Serializable newMessage) {
+        return selectRoutee(raCtx, ++msgReceived)
+            .map(routee -> routee.route(raCtx.getSender(), newMessage))
+            .orElse(CompletableFuture.completedStage(Try.ofFailure(new IllegalStateException(String.format(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
+                                                                                                            serviceConfig.getReActorName())))));
     }
 
     private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived) {
@@ -236,9 +242,10 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
     }
 
     private static <PayloadT extends Serializable>
-    void requestNextMessage(ReActorContext raCtx, PayloadT payload, BiConsumer<ReActorContext, PayloadT> realCall) {
-        raCtx.getMbox().request(1);
-        realCall.accept(raCtx, payload);
+    void requestNextMessage(ReActorContext raCtx, PayloadT payload,
+                            BiFunction<ReActorContext, PayloadT, CompletionStage<Try<DeliveryStatus>>> realCall) {
+        ifNotDelivered(realCall.apply(raCtx, payload), error -> raCtx.logError("", error))
+            .thenAccept(delivered -> raCtx.getMbox().request(1));
     }
 
     //Messages required for the Service management logic cannot be backpressured

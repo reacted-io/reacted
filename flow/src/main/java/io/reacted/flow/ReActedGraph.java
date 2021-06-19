@@ -77,7 +77,6 @@ public class ReActedGraph implements FlowGraph {
         }
         return Try.VOID;
     }
-
     public static Builder newBuilder() { return new Builder(); }
     private static
     void spawnNewStreamConsumer(ReActorRef operator, Stream<? extends Serializable> inputStream,

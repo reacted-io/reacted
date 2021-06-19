@@ -49,6 +49,8 @@ public class BackpressuringMbox implements MailBox {
     private final Set<Class<? extends Serializable>> notBackpressurable;
     private final ExecutorService sequencer;
     private final boolean isPrivateSequencer;
+    private final int bufferSize;
+    private final int requestOnStartup;
     private volatile Set<Class<? extends Serializable>> notDelayed;
 
     /*
@@ -67,10 +69,13 @@ public class BackpressuringMbox implements MailBox {
                                                  "Non delayable messages set cannot be a null");
         this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable,
                                                          "Non backpressurable messages set cannot be a null");
-        int bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
+        this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                      IllegalArgumentException::new);
-        int requestOnStartup = ObjectUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
+        this.requestOnStartup = ObjectUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
                                                            IllegalArgumentException::new);
+        ObjectUtils.requiredCondition(requestOnStartup, requested -> requested > bufferSize,
+                                      () -> new IllegalArgumentException("Cannot require more than" +
+                                                                         "buffer size elements"));
         var deliveryThreadFactory = new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> LOGGER.error("Uncaught exception in {} delivery thread",
                                                                                  BackpressuringMbox.class.getSimpleName(),
@@ -111,6 +116,10 @@ public class BackpressuringMbox implements MailBox {
 
     @Override
     public long getMaxSize() { return realMbox.getMaxSize(); }
+
+    public int getBufferSize() { return bufferSize; }
+
+    public int getRequestOnStartup() { return requestOnStartup; }
 
     @Nonnull
     @Override
