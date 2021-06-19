@@ -30,7 +30,9 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
+import java.lang.reflect.Array;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import javax.annotation.Nonnull;
@@ -128,7 +130,7 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
 
         if (BackpressuringMbox.class.isAssignableFrom(raCtx.getMbox().getClass())) {
             BackpressuringMbox myMbox = (BackpressuringMbox)raCtx.getMbox();
-            myMbox.setNotDelayedMessageTypes(getNonDelayedMessageTypes(myMbox.getNotDelayedMessageTypes()));
+            myMbox.addNonDelayedMessageTypes(getNonDelayedMessageTypes());
             if (myMbox.getRequestOnStartup() < serviceConfig.getRouteesNum()) {
                 if(myMbox.getBufferSize() < serviceConfig.getRouteesNum()) {
                     raCtx.logError("Backpressuring mailbox for service {} does not have" +
@@ -249,13 +251,10 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
     }
 
     //Messages required for the Service management logic cannot be backpressured
-    private static Set<Class<? extends Serializable>>
-    getNonDelayedMessageTypes(Set<Class<? extends Serializable>> userDefinedNotDelayedMessageTypes) {
-        return Stream.concat(userDefinedNotDelayedMessageTypes.stream(),
-                             Stream.of(ReActorInit.class, ServiceRegistryNotAvailable.class,
-                                       ServiceDiscoveryRequest.class, RouteeReSpawnRequest.class,
-                                       ServicePublicationRequestError.class, SystemMonitorReport.class))
-                     .collect(Collectors.toUnmodifiableSet());
+    private static Class<? extends Serializable>[] getNonDelayedMessageTypes() {
+        return ObjectUtils.toArray(ReActorInit.class, ServiceRegistryNotAvailable.class,
+                                   ServiceDiscoveryRequest.class, RouteeReSpawnRequest.class,
+                                   ServicePublicationRequestError.class, SystemMonitorReport.class);
     }
 
     public static class RouteeReSpawnRequest implements Serializable {

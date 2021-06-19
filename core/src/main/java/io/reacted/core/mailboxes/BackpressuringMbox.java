@@ -15,6 +15,9 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,8 +130,13 @@ public class BackpressuringMbox implements MailBox {
 
     public Set<Class<? extends Serializable>> getNotDelayedMessageTypes() { return notDelayed; }
 
-    public void setNotDelayedMessageTypes(Set<Class<? extends Serializable>> notDelayed) {
-        this.notDelayed = Set.copyOf(notDelayed);
+    public void setNotDelayedMessageTypes(Class<? extends Serializable> ...newNotDelayed) {
+        this.notDelayed = Set.of(newNotDelayed);
+    }
+
+    public void addNonDelayedMessageTypes(Class<? extends Serializable> ...notDelayedToAdd) {
+        this.notDelayed = Stream.concat(notDelayed.stream(), Arrays.stream(notDelayedToAdd))
+                                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Nonnull
