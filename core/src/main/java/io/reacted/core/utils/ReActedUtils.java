@@ -39,9 +39,10 @@ public final class ReActedUtils {
 
     public static CompletionStage<List<ReActorRef>>
     resolveServices(Collection<ServiceDiscoverySearchFilter> filters, ReActorSystem localSystem,
-                    Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector) {
+                    Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector,
+                    String uniqueRequestId) {
         var results = filters.stream()
-                             .map(localSystem::serviceDiscovery)
+                             .map(filter -> localSystem.serviceDiscovery(filter, uniqueRequestId))
                              .map(discovery -> discovery.thenApplyAsync(reply -> reply.peekFailure(error -> localSystem.logError("Error discovering services", error))
                                                                                       .map(ServiceDiscoveryReply::getServiceGates)
                                                                                       .map(gateSelector::apply)

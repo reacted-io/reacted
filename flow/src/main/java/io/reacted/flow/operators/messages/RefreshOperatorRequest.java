@@ -10,4 +10,10 @@ package io.reacted.flow.operators.messages;
 
 import java.io.Serializable;
 
-public class RefreshOperatorRequest implements Serializable { }
+public class RefreshOperatorRequest implements Serializable {
+
+  @Override
+  public String toString() {
+    return "RefreshOperatorRequest{}";
+  }
+}

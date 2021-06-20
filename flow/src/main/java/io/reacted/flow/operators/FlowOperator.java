@@ -118,10 +118,12 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
         var requester = raCtx.getSender();
         var ifServices = ReActedUtils.resolveServices(operatorCfg.getIfPredicateOutputOperators(),
                                                       raCtx.getReActorSystem(),
-                                                      GateSelectorPolicies.RANDOM_GATE);
+                                                      GateSelectorPolicies.RANDOM_GATE,
+                                                      raCtx.getSelf().getReActorId().toString());
         var thenElseServices = ReActedUtils.resolveServices(operatorCfg.getThenElseOutputOperators(),
                                                             raCtx.getReActorSystem(),
-                                                            GateSelectorPolicies.RANDOM_GATE);
+                                                            GateSelectorPolicies.RANDOM_GATE,
+                                                            raCtx.getSelf().getReActorId().toString());
         ifServices.thenCombine(thenElseServices, ServicesGatesUpdate::new)
                   .thenApply(servicesGatesUpdate -> servicesGatesUpdate.ifPredicateServices.size() !=
                                                     operatorCfg.getIfPredicateOutputOperators().size() ||
@@ -189,6 +191,14 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                    Collection<ReActorRef> thenElseServices) {
             this.ifPredicateServices = ifPredicateServices;
             this.thenElseServices = thenElseServices;
+        }
+
+        @Override
+        public String toString() {
+            return "ServicesGatesUpdate{" +
+                   "ifPredicateServices=" + ifPredicateServices +
+                   ", thenElseServices=" + thenElseServices +
+                   '}';
         }
     }
 }

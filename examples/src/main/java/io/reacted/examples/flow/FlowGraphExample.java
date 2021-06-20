@@ -49,6 +49,7 @@ public class FlowGraphExample {
                                                                           .setReActorName("Joiner")
                                                                           .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                               .setServiceName("Printer")
+                                                                                                                              .setDiscoveryRequestId("Joiner-IfOut-Printer")
                                                                                                                               .build())
                                                                           .setMergeRequiredTypes(List.of(String.class, Integer.class))
                                                                           .setReducer(inputMap -> List.of(inputMap.values().stream()

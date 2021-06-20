@@ -180,10 +180,10 @@ public class Dispatcher {
         try {
             scheduledReActor.reAct(newEvent);
         } catch (Exception anyExc) {
-            scheduledReActor.logError(REACTIONS_EXECUTION_ERROR, anyExc,
+            scheduledReActor.logError(REACTIONS_EXECUTION_ERROR,
                                       scheduledReActor.getSelf().getReActorId(),
                                       newEvent.getPayload().getClass(),
-                                      newEvent.getSequenceNumber(), newEvent.toString());
+                                      newEvent.getSequenceNumber(), newEvent.toString(), anyExc);
             scheduledReActor.stop();
         }
     }

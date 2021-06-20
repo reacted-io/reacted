@@ -10,4 +10,8 @@ package io.reacted.core.exceptions;
 
 import javax.annotation.concurrent.Immutable;
 @Immutable
-public class ReActorRegistrationException extends RuntimeException { }
+public class ReActorRegistrationException extends RuntimeException {
+  public ReActorRegistrationException(String reactorName) {
+    super(reactorName);
+  }
+}

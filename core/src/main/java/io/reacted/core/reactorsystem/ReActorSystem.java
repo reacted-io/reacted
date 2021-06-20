@@ -420,9 +420,24 @@ public class ReActorSystem {
      */
     public CompletionStage<Try<ServiceDiscoveryReply>>
     serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
+        return serviceDiscovery(searchFilter, "");
+    }
+
+    /**
+     * Request a reactor reference for the specified service.
+     *
+     * @param searchFilter A {@link BasicServiceDiscoverySearchFilter} describing the feature of the services that should be
+     *                     found
+     * @param requestId An extra id that will be used together with {@link ServiceDiscoverySearchFilter::getDiscoveryRequestId}
+     *                  to create a uniquely identified request
+     * @return On success a future containing the result of the request
+     * On failure a future containing the exception that caused the failure
+     */
+    public CompletionStage<Try<ServiceDiscoveryReply>>
+    serviceDiscovery(ServiceDiscoverySearchFilter searchFilter, String requestId) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
                                    ServiceDiscoveryReply.class, SERVICE_DISCOVERY_TIMEOUT,
-                                   searchFilter.getDiscoveryRequestId());
+                                   searchFilter.getDiscoveryRequestId() + "-" + requestId);
     }
 
     /**
@@ -798,7 +813,8 @@ public class ReActorSystem {
                                              .setMailBoxProvider(ctx -> new NullMailbox())
                                              .setReActorName(ReActorId.NO_REACTOR_ID.getReActorName())
                                              .build())
-                .filter(reActor -> registerNewReActor(reActor, reActor), ReActorRegistrationException::new)
+                .filter(reActor -> registerNewReActor(reActor, reActor),
+                        () -> new ReActorRegistrationException(ReActorId.NO_REACTOR_ID.getReActorName()))
                 .map(ReActorContext::getSelf)
                 .orElseSneakyThrow();
     }
@@ -889,9 +905,14 @@ public class ReActorSystem {
     private Try<ReActorContext> registerNewReActor(ReActorRef parent, ReActorContext newReActor) {
         return getReActor(parent.getReActorId())
                 .map(parentCtx -> Try.of(() -> registerNewReActor(parentCtx, newReActor))
-                                                .filter(Try::identity, ReActorRegistrationException::new)
-                                                .map(registered -> newReActor))
-                                                .orElseGet(() -> Try.ofFailure(new ReActorRegistrationException()));
+                                     .filter(Try::identity,
+                                             () -> new ReActorRegistrationException(newReActor.getSelf()
+                                                                                              .getReActorId()
+                                                                                              .getReActorName()))
+                                     .map(registered -> newReActor))
+                .orElseGet(() -> Try.ofFailure(new ReActorRegistrationException(newReActor.getSelf()
+                                                                                          .getReActorId()
+                                                                                          .getReActorName())));
     }
 
     private Optional<CompletionStage<Void>> unRegisterReActor(ReActorContext stopMe) {
