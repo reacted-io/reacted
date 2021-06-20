@@ -19,6 +19,7 @@ public final class GateSelectorPolicies {
   public static final Function<Collection<ReActorRef>, Optional<ReActorRef>> FIRST_GATE =
       gates -> Optional.ofNullable(gates.isEmpty() ? null : gates.iterator().next());
   public static final Function<Collection<ReActorRef>, Optional<ReActorRef>> RANDOM_GATE =
+      //TODO: switch expression once we migrate to java 17
       gates -> gates.isEmpty()
                ? Optional.empty()
                : gates.size() == 1
