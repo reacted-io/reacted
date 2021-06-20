@@ -19,8 +19,10 @@ public final class GateSelectorPolicies {
   public static final Function<Collection<ReActorRef>, Optional<ReActorRef>> FIRST_GATE =
       gates -> Optional.ofNullable(gates.isEmpty() ? null : gates.iterator().next());
   public static final Function<Collection<ReActorRef>, Optional<ReActorRef>> RANDOM_GATE =
-      gates -> gates.stream()
-                    .skip(ThreadLocalRandom.current().nextInt(0, gates.size() - 1))
-                    .findAny();
+      gates -> gates.size() == 1
+               ? Optional.of(gates.iterator().next())
+               : gates.stream()
+                      .skip(ThreadLocalRandom.current().nextInt(0, gates.size() - 1))
+                      .findAny();
 
 }

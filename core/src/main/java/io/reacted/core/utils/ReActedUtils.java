@@ -43,9 +43,9 @@ public final class ReActedUtils {
                     String uniqueRequestId) {
         var results = filters.stream()
                              .map(filter -> localSystem.serviceDiscovery(filter, uniqueRequestId))
-                             .map(discovery -> discovery.thenApplyAsync(reply -> reply.peekFailure(error -> localSystem.logError("Error discovering services", error))
-                                                                                      .map(ServiceDiscoveryReply::getServiceGates)
+                             .map(discovery -> discovery.thenApplyAsync(reply -> reply.map(ServiceDiscoveryReply::getServiceGates)
                                                                                       .map(gateSelector::apply)
+                                                                                      .peekFailure(error -> localSystem.logError("Error discovering services", error))
                                                                                       .orElse(Optional.empty())
                                                                                       .orElse(ReActorRef.NO_REACTOR_REF))
                                                         .toCompletableFuture())
