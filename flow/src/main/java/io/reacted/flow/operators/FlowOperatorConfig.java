@@ -47,6 +47,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
   private final Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators;
   private final Collection<Stream<? extends Serializable>> inputStreams;
   private final ReActorConfig routeeConfig;
+  private final String flowName;
   protected FlowOperatorConfig(Builder<BuilderT, BuiltT> builder) {
     super(builder);
     this.routeeConfig = Objects.requireNonNull(builder.operatorRouteeCfg,
@@ -63,6 +64,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     this.inputStreams = Objects.requireNonNull(builder.inputStreams, "Input Streams cannot be null");
     this.inputStreamErrorHandler = Objects.requireNonNull(builder.inputStreamErrorHandler,
                                                           "Input stream error handler cannot be null");
+    this.flowName = builder.flowName;
   }
 
   public Predicate<Serializable> getIfPredicate() {
@@ -84,6 +86,9 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
   public TriConsumer<ReActorSystem, BuiltT, ? super Throwable> getInputStreamErrorHandler() {
     return inputStreamErrorHandler;
   }
+
+  public String getFlowName() { return flowName; }
+
   public abstract static class Builder<BuilderT extends ReActorServiceConfig.Builder<BuilderT, BuiltT>,
                                        BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
     private Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
@@ -93,6 +98,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     private ReActorConfig operatorRouteeCfg = DEFAULT_OPERATOR_ROUTEE_CONFIG;
     private TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler =
         (TriConsumer<ReActorSystem, BuiltT, ? super Throwable>) DEFAULT_INPUT_STREAM_LOGGING_ERROR_HANDLER;
+    private String flowName;
 
     protected Builder() { /* No implementation required */ }
 
@@ -133,6 +139,11 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     setInputStreamErrorHandler(TriConsumer<ReActorSystem, BuiltT,
                                ? super Throwable> inputStreamErrorHandler) {
       this.inputStreamErrorHandler = inputStreamErrorHandler;
+      return getThis();
+    }
+
+    public final BuilderT setFlowName(String flowName) {
+      this.flowName = flowName;
       return getThis();
     }
   }

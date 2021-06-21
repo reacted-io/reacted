@@ -184,7 +184,8 @@ public final class ReActorRef implements Externalizable {
      * On failure, the received Try will contain the cause of the failure, otherwise the requested answer
      */
     public <ReplyT extends Serializable, RequestT extends Serializable>
-    CompletionStage<Try<ReplyT>> ask(RequestT request, Class<ReplyT> expectedReply, String requestName) {
+    CompletionStage<Try<ReplyT>> ask(RequestT request, Class<ReplyT> expectedReply,
+                                     String requestName) {
         return ask(getReActorSystemRef().getBackingDriver().getLocalReActorSystem(), this,
                    Objects.requireNonNull(request), Objects.requireNonNull(expectedReply),
                    NO_TIMEOUT, requestName);

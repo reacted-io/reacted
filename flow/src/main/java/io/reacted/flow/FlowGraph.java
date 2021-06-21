@@ -8,11 +8,15 @@
 
 package io.reacted.flow;
 
+import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.flow.operators.FlowOperator;
 import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.patterns.Try;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletionStage;
 import javax.annotation.Nonnull;
 
 public interface FlowGraph {
@@ -22,13 +26,17 @@ public interface FlowGraph {
    * @param localReActorSystem {@link ReActorSystem} to use for spawning the graph stages and
    *                                                services resolution
    */
+  @Nonnull
   Try<Void> run(@Nonnull ReActorSystem localReActorSystem);
 
   /**
    * Stop a computational graph
    */
-  void stop(@Nonnull ReActorSystem localReActorSystem);
+  Optional<CompletionStage<Void>> stop(@Nonnull ReActorSystem localReActorSystem);
 
   @Nonnull
   String getFlowName();
+
+  @Nonnull
+  Map<String, ReActorRef> getOperatorsByName();
 }

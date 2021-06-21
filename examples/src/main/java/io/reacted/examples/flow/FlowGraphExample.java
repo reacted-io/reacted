@@ -26,7 +26,7 @@ public class FlowGraphExample {
     List<String> inputData = List.of("Hakuna", "Matata");
     List<Integer> inputInt = List.of(1, 2);
     ReActedGraph flowMerge = ReActedGraph.newBuilder()
-                                         .setFlowName("FlowMerge")
+                                         .setReActorName("FlowMerge")
                                          .addOperator(MapOperatorConfig.newBuilder()
                                                                        .setReActorName("ToLower")
                                                                        .setInputStreams(List.of(inputData.stream()))

@@ -474,7 +474,9 @@ public class ReActorSystem {
      * @return A successful Try containing the ReActorRef for the new reactor on success,
      * a failed Try on failure
      */
-    public Try<ReActorRef> spawn(ReActions reActions, ReActiveEntityConfig<?, ?> reActorConfig) {
+    public Try<ReActorRef> spawn(ReActions reActions,
+                                 ReActiveEntityConfig<? extends ReActiveEntityConfig.Builder<?, ?>,
+                                                      ? extends ReActiveEntityConfig<?, ?>> reActorConfig) {
         return spawnChild(Objects.requireNonNull(reActions, "ReActions cannot be null"),
                           Objects.requireNonNull(userReActorsRoot, "System not inited correctly"),
                           Objects.requireNonNull(reActorConfig, "ReActorConfig cannot be null"));
@@ -488,9 +490,13 @@ public class ReActorSystem {
      * @return A successful Try containing the ReActorRef for the new reactor on success,
      * a failed Try on failure
      */
-    public Try<ReActorRef> spawn(ReActiveEntity reActiveEntity, ReActiveEntityConfig<?, ?> reActorConfig) {
-        return spawnChild(Objects.requireNonNull(Objects.requireNonNull(reActiveEntity).getReActions()),
-                          Objects.requireNonNull(userReActorsRoot), Objects.requireNonNull(reActorConfig));
+    public Try<ReActorRef> spawn(ReActiveEntity reActiveEntity,
+                                 ReActiveEntityConfig<? extends ReActiveEntityConfig.Builder<?, ?>,
+                                                      ? extends ReActiveEntityConfig<?, ?>> reActorConfig) {
+        return spawnChild(Objects.requireNonNull(Objects.requireNonNull(reActiveEntity, "ReActor canont be null")
+                                                        .getReActions(), "ReActions cannot be null"),
+                          Objects.requireNonNull(userReActorsRoot),
+                          Objects.requireNonNull(reActorConfig, "ReActor config cannot be null"));
     }
 
     /**
@@ -505,8 +511,9 @@ public class ReActorSystem {
     public Try<ReActorRef> spawnChild(ReActions reActions, ReActorRef father,
                                       ReActiveEntityConfig<? extends ReActiveEntityConfig.Builder<?, ?>,
                                                            ? extends ReActiveEntityConfig<?, ?>> reActorConfig) {
-        Try<ReActorRef> spawned = spawn(getLoopback(), Objects.requireNonNull(reActions),
-                                        Objects.requireNonNull(father), Objects.requireNonNull(reActorConfig));
+        Try<ReActorRef> spawned = spawn(getLoopback(), Objects.requireNonNull(reActions, "ReActions cannot be null"),
+                                        Objects.requireNonNull(father, "Father ReActor cannot be null"),
+                                        Objects.requireNonNull(reActorConfig, "ReActor config cannot be null"));
         spawned.ifSuccess(initMe -> initMe.tell(getSystemSink(), REACTOR_INIT));
         return spawned;
     }
@@ -521,6 +528,21 @@ public class ReActorSystem {
     Try<ReActorRef> spawnService(ServiceConfigT serviceConfig) {
         return spawn(new Service(Objects.requireNonNull(serviceConfig)).getReActions(), serviceConfig);
     }
+
+
+    /**
+     * Create a new service. Services are reactors automatically backed up by a router
+     *
+     * @param serviceConfig service config
+     * @param father This service will be created as a child of the specified ReActor
+     * @return A successful Try containing the ReActorRef for the new service on success, a failed try on failure
+     */
+    public <ServiceConfigT extends ReActorServiceConfig<?, ?>>
+    Try<ReActorRef> spawnService(ServiceConfigT serviceConfig, ReActorRef father) {
+        return spawnChild(new Service(Objects.requireNonNull(serviceConfig)).getReActions(),
+                          father, serviceConfig);
+    }
+
     public ReActorSystemRef getLoopback() { return gatesCentralizedManager.getLoopBack(); }
 
     /**

@@ -21,6 +21,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.core.utils.ReActedUtils;
+import io.reacted.flow.operators.messages.OperatorInitComplete;
 import io.reacted.flow.operators.messages.RefreshOperatorReply;
 import io.reacted.flow.operators.messages.RefreshOperatorRequest;
 import io.reacted.patterns.NonNullByDefault;
@@ -104,6 +105,13 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     protected void onServiceGatesUpdate(ReActorContext raCtx, ServicesGatesUpdate newGates) {
         this.ifPredicateOutputOperatorsRefs = newGates.ifPredicateServices;
         this.thenElseOutputOperatorsRefs = newGates.thenElseServices;
+        raCtx.getReActorSystem()
+             .broadcastToLocalSubscribers(raCtx.getSelf(),
+                                          new OperatorInitComplete(operatorCfg.getFlowName(),
+                                                                   operatorCfg.getReActorName(),
+                                                                   raCtx.getSelf()
+                                                                        .getReActorId()
+                                                                        .getReActorName()));
         raCtx.getSender()
              .tell(raCtx.getSelf(),
                    new RefreshOperatorReply<>(raCtx.getSelf().getReActorId().getReActorName(),
