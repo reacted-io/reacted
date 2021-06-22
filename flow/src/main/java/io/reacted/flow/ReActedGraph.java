@@ -17,7 +17,6 @@ import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.flow.operators.messages.OperatorInitComplete;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -35,7 +34,7 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
                                                        ReActedGraph> implements FlowGraph {
     private final Collection<? extends FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?,?>,
                                                           ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs;
-    private volatile Map<String, ReActorRef> operatorsByName;
+    private Map<String, ReActorRef> operatorsByName;
     @Nullable
     private ReActorRef graphControllerGate;
     private ReActedGraph(Builder builder) {
@@ -63,7 +62,7 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
 
     @Override
     public Try<Void> run(ReActorSystem localReActorSystem) {
-        var graphController = new GraphController(operatorsCfgs);
+        var graphController = new GraphController(getFlowName(), operatorsCfgs);
         return localReActorSystem.spawn(graphController, this)
                                  .map(controller -> {
                                      this.graphControllerGate = controller;
