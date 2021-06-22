@@ -12,6 +12,7 @@ import com.google.common.collect.Streams;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.flow.operators.messages.OperatorInitComplete;
@@ -20,7 +21,6 @@ import io.reacted.patterns.Try;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -40,12 +40,15 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
     private ReActorRef graphControllerGate;
     private ReActedGraph(Builder builder) {
         super(builder);
-        this.operatorsCfgs = (Collection<? extends FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>, ? extends FlowOperatorConfig<?, ?>>>) Objects.requireNonNull(builder.operatorsCfgs,
-                                                                                                                                                                               "Flow operators cannot be null").stream()
-                                                                                                                                                               .map(FlowOperatorConfig::toBuilder)
-                                                                                                                                                               .map(operatorCfgBuilder -> operatorCfgBuilder.setFlowName(getFlowName()))
-                                                                                                                                                               .map(operatorCfgBuilder -> operatorCfgBuilder.build())
-                                                                                                                                                               .collect(Collectors.toUnmodifiableList());
+        this.operatorsCfgs = (Collection<? extends FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>, ? extends FlowOperatorConfig<?, ?>>>)
+            Objects.requireNonNull(builder.operatorsCfgs, "Flow operators cannot be null").stream()
+                   .map(operatorCfg -> operatorCfg.toBuilder()
+                                                  .setFlowName(getFlowName())
+                                                  .setDispatcherName(operatorCfg.getDispatcherName().equals(Dispatcher.DEFAULT_DISPATCHER_NAME)
+                                                                     ? getDispatcherName()
+                                                                     : operatorCfg.getDispatcherName())
+                                                  .build())
+                   .collect(Collectors.toUnmodifiableList());
         this.operatorsByName = Map.of();
     }
 

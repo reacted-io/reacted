@@ -92,14 +92,14 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
   public abstract BuilderT toBuilder();
   public abstract static class Builder<BuilderT extends ReActorServiceConfig.Builder<BuilderT, BuiltT>,
                                        BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
-    private Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
-    private Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
-    private Predicate<Serializable> ifPredicate = NO_FILTERING;
-    private Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
-    private ReActorConfig operatorRouteeCfg = DEFAULT_OPERATOR_ROUTEE_CONFIG;
-    private TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler =
+    protected Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
+    protected Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
+    protected Predicate<Serializable> ifPredicate = NO_FILTERING;
+    protected Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
+    protected ReActorConfig operatorRouteeCfg = DEFAULT_OPERATOR_ROUTEE_CONFIG;
+    protected TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler =
         (TriConsumer<ReActorSystem, BuiltT, ? super Throwable>) DEFAULT_INPUT_STREAM_LOGGING_ERROR_HANDLER;
-    private String flowName;
+    protected String flowName;
 
     protected Builder() { /* No implementation required */ }
 

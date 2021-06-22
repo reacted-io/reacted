@@ -33,7 +33,6 @@ public class FlowGraphExample {
                                                                        .setMappingFunction(input -> List.of(((String)input).toLowerCase()))
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                            .setServiceName("Joiner")
-                                                                                                                           .setDiscoveryRequestId("ToLower-IfOut-Joiner")
                                                                                                                            .build())
                                                                        .build())
                                          .addOperator(MapOperatorConfig.newBuilder()
@@ -41,7 +40,6 @@ public class FlowGraphExample {
                                                                        .setInputStreams(List.of(inputInt.stream()))
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                            .setServiceName("Joiner")
-                                                                                                                           .setDiscoveryRequestId("Multiplier-IfOut-Joiner")
                                                                                                                            .build())
                                                                        .setMappingFunction(input -> List.of(((Integer)input) * 123))
                                                                        .build())
@@ -49,7 +47,6 @@ public class FlowGraphExample {
                                                                           .setReActorName("Joiner")
                                                                           .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                               .setServiceName("Printer")
-                                                                                                                              .setDiscoveryRequestId("Joiner-IfOut-Printer")
                                                                                                                               .build())
                                                                           .setMergeRequiredTypes(List.of(String.class, Integer.class))
                                                                           .setReducer(inputMap -> List.of(inputMap.values().stream()
@@ -64,11 +61,12 @@ public class FlowGraphExample {
                                                                        .build())
                                          .build();
     System.out.println("Running");
-    flowMerge.run(flowReActorSystem);
+    flowMerge.run(flowReActorSystem)
+             .ifError(error -> flowReActorSystem.shutDown());
     TimeUnit.SECONDS.sleep(5);
     System.out.println("Ran");
-    flowMerge.stop(flowReActorSystem);
-    flowReActorSystem.shutDown();
-    TimeUnit.SECONDS.sleep(3);
+    flowMerge.stop(flowReActorSystem)
+             .ifPresentOrElse(stop -> stop.thenAcceptAsync(noVal -> flowReActorSystem.shutDown()),
+                              flowReActorSystem::shutDown);
   }
 }

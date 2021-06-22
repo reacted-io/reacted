@@ -68,12 +68,12 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
     public boolean isRemoteService() { return remoteService; }
 
     public abstract static class Builder<BuilderT, BuiltT> extends ReActiveEntityConfig.Builder<BuilderT, BuiltT> {
-        private int routeesNum = MIN_ROUTEES_PER_SERVICE;
+        protected int routeesNum = MIN_ROUTEES_PER_SERVICE;
         @SuppressWarnings("NotNullFieldNotInitialized")
-        private UnChecked.CheckedFunction<BuiltT, ? extends ReActor> routeeProvider;
-        private Service.LoadBalancingPolicy loadBalancingPolicy = Service.LoadBalancingPolicy.ROUND_ROBIN;
-        private Duration serviceRepublishReattemptDelayOnError = DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY;
-        private boolean remoteService;
+        protected UnChecked.CheckedFunction<BuiltT, ? extends ReActor> routeeProvider;
+        protected Service.LoadBalancingPolicy loadBalancingPolicy = Service.LoadBalancingPolicy.ROUND_ROBIN;
+        protected Duration serviceRepublishReattemptDelayOnError = DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY;
+        protected boolean remoteService;
 
         protected Builder() { setIsRemoteService(false); }
 
