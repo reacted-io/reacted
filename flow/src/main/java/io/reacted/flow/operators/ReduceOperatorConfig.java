@@ -26,6 +26,7 @@ public class ReduceOperatorConfig extends FlowOperatorConfig<Builder, ReduceOper
   private final Map<Class<? extends Serializable>, Long> typeToRequiredForMerge;
   private final Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
                          Collection<? extends Serializable>> reducer;
+  private final Builder builder;
   private ReduceOperatorConfig(Builder builder) {
     super(builder);
     this.typeToRequiredForMerge = Objects.requireNonNull(builder.typeToRequiredForMerge,
@@ -34,6 +35,7 @@ public class ReduceOperatorConfig extends FlowOperatorConfig<Builder, ReduceOper
                                          .collect(Collectors.groupingBy(Function.identity(),
                                                                         Collectors.counting()));
     this.reducer = Objects.requireNonNull(builder.reducer, "Reducer function cannot be null");
+    this.builder = builder;
   }
 
   public Map<Class<? extends Serializable>, Long> getTypeToRequiredForMerge() {
@@ -44,6 +46,9 @@ public class ReduceOperatorConfig extends FlowOperatorConfig<Builder, ReduceOper
                   Collection<? extends Serializable>> getReducer() {
     return reducer;
   }
+
+  @Override
+  public Builder toBuilder() { return builder; }
 
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, ReduceOperatorConfig> {

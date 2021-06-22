@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -39,8 +40,12 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
     private ReActorRef graphControllerGate;
     private ReActedGraph(Builder builder) {
         super(builder);
-        this.operatorsCfgs = List.copyOf(Objects.requireNonNull(builder.operatorsCfgs,
-                                                                    "Flow operators cannot be null"));
+        this.operatorsCfgs = (Collection<? extends FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>, ? extends FlowOperatorConfig<?, ?>>>) Objects.requireNonNull(builder.operatorsCfgs,
+                                                                                                                                                                               "Flow operators cannot be null").stream()
+                                                                                                                                                               .map(FlowOperatorConfig::toBuilder)
+                                                                                                                                                               .map(operatorCfgBuilder -> operatorCfgBuilder.setFlowName(getFlowName()))
+                                                                                                                                                               .map(operatorCfgBuilder -> operatorCfgBuilder.build())
+                                                                                                                                                               .collect(Collectors.toUnmodifiableList());
         this.operatorsByName = Map.of();
     }
 

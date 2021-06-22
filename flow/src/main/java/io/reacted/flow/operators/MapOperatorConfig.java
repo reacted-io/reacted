@@ -24,16 +24,20 @@ import java.util.function.Function;
 public class MapOperatorConfig extends FlowOperatorConfig<MapOperatorConfig.Builder,
                                                           MapOperatorConfig> {
   private final Function<Object, Collection<? extends Serializable>> mappingFunction;
+  private final Builder builder;
   private MapOperatorConfig(Builder builder) {
     super(builder);
     this.mappingFunction = Objects.requireNonNull(builder.mappingFunction,
                                                   "Mapping function cannot be null");
+    this.builder = builder;
   }
 
   public Function<Object, Collection<? extends Serializable>> getMappingFunction() {
     return mappingFunction;
   }
 
+  @Override
+  public Builder toBuilder() { return builder; }
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, MapOperatorConfig> {
     private Function<Object, Collection<? extends Serializable>> mappingFunction;

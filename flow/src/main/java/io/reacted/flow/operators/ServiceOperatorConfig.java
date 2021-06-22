@@ -31,6 +31,7 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
   private final Class<? extends Serializable> serviceReplyType;
   private final ServiceDiscoverySearchFilter serviceSearchFilter;
   private final Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector;
+  private final Builder builder;
   @Nullable
   private final ExecutorService executorService;
   private ServiceOperatorConfig(Builder builder) {
@@ -46,6 +47,7 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
     this.gateSelector = Objects.requireNonNull(builder.gateSelector,
                                                "Gate selector cannot be null");
     this.executorService = builder.executorService;
+    this.builder = builder;
   }
 
   public Function<Serializable, Collection<? extends Serializable>> getToServiceRequests() {
@@ -71,6 +73,9 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
   public Optional<ExecutorService> getExecutorService() {
     return Optional.ofNullable(executorService);
   }
+  @Override
+  public Builder toBuilder() { return builder; }
+
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, ServiceOperatorConfig> {
     private Function<Serializable, Collection<? extends Serializable>> toServiceRequests;

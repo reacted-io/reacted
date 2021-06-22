@@ -89,6 +89,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
 
   public String getFlowName() { return flowName; }
 
+  public abstract BuilderT toBuilder();
   public abstract static class Builder<BuilderT extends ReActorServiceConfig.Builder<BuilderT, BuiltT>,
                                        BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
     private Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
