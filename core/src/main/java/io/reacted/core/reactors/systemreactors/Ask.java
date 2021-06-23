@@ -75,7 +75,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
                        error -> raCtx.stop()
                                      .thenAccept(noVal -> this.completionTrigger.complete(Try.ofFailure(error))));
 
-        this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
+        this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException(raCtx.getSelf().getReActorId().toString())),
                                                  askTimeout.toMillis(), TimeUnit.MILLISECONDS)
                               .thenAccept(reply -> raCtx.stop());
     }

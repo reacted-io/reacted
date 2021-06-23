@@ -59,9 +59,8 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
     @Override
     public Optional<CompletionStage<Void>> stop(ReActorSystem localReActorSystem) {
         this.operatorsByName = Map.of();
-        return Optional.ofNullable(graphControllerGate)
-                       .map(ReActorRef::getReActorId)
-                       .flatMap(localReActorSystem::stop);
+        return getGraphController().map(ReActorRef::getReActorId)
+                                   .flatMap(localReActorSystem::stop);
     }
 
     public Optional<ReActorRef> getGraphController() {

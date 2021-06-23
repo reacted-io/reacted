@@ -84,8 +84,8 @@ public class BackpressuringMbox implements MailBox {
                                                      IllegalArgumentException::new);
         this.requestOnStartup = ObjectUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
                                                            IllegalArgumentException::new);
-        ObjectUtils.requiredCondition(requestOnStartup, requested -> requested > bufferSize,
-                                      () -> new IllegalArgumentException("Cannot require more than" +
+        ObjectUtils.requiredCondition(requestOnStartup, requested -> requested <= bufferSize,
+                                      () -> new IllegalArgumentException("Cannot require more than " +
                                                                          "buffer size elements"));
         var deliveryThreadFactory = new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> LOGGER.error("Uncaught exception in {} delivery thread",

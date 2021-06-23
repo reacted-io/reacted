@@ -54,6 +54,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     private Collection<ReActorRef> ifPredicateOutputOperatorsRefs;
     private Collection<ReActorRef> thenElseOutputOperatorsRefs;
     private ScheduledFuture<?> operatorsRefreshTask;
+    private boolean shallAwakeInputStreams = true;
 
     protected FlowOperator(BuiltT operatorCfg) {
         this.operatorCfg = Objects.requireNonNull(operatorCfg, "Operator Config cannot be null");
@@ -99,19 +100,22 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                                                                  new RefreshOperatorRequest()),
                                                                       error -> raCtx.logError("Unable to self init operator",
                                                                                               error)),
-                                    0, 15, TimeUnit.SECONDS);
+                                    0, 1, TimeUnit.MINUTES);
     }
 
     protected void onServiceGatesUpdate(ReActorContext raCtx, ServicesGatesUpdate newGates) {
         this.ifPredicateOutputOperatorsRefs = newGates.ifPredicateServices;
         this.thenElseOutputOperatorsRefs = newGates.thenElseServices;
-        raCtx.getReActorSystem()
-             .broadcastToLocalSubscribers(raCtx.getSelf(),
-                                          new OperatorInitComplete(operatorCfg.getFlowName(),
-                                                                   operatorCfg.getReActorName(),
-                                                                   raCtx.getSelf()
-                                                                        .getReActorId()
-                                                                        .getReActorName()));
+        if (shallAwakeInputStreams) {
+            this.shallAwakeInputStreams = false;
+            raCtx.getReActorSystem()
+                 .broadcastToLocalSubscribers(raCtx.getSelf(),
+                                              new OperatorInitComplete(operatorCfg.getFlowName(),
+                                                                       operatorCfg.getReActorName(),
+                                                                       raCtx.getSelf()
+                                                                            .getReActorId()
+                                                                            .getReActorName()));
+        }
         raCtx.getSender()
              .tell(raCtx.getSelf(),
                    new RefreshOperatorReply<>(raCtx.getSelf().getReActorId().getReActorName(),
@@ -150,7 +154,6 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     protected CompletionStage<Void> backpressuredPropagation(CompletionStage<Collection<? extends Serializable>> operatorOutput,
                                                              Serializable inputMessage,
                                                              ReActorContext raCtx) {
-
         return propagate(operatorOutput, inputMessage, raCtx)
             .thenAccept(lastDelivery -> raCtx.getMbox().request(1));
     }

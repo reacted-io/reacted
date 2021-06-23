@@ -65,7 +65,7 @@ class GraphController implements ReActiveEntity {
     this.reActions = ReActions.newBuilder()
                               .reAct(ReActorInit.class, (raCtx, init) -> onInit(raCtx))
                               .reAct(InitInputStreams.class, (raCtx, initStreams) -> onInitInputStreams(raCtx))
-                              .reAct(ReActorStop.class, (raCtx, stop) -> onStop())
+                              .reAct(ReActorStop.class, (raCtx, stop) -> onStop(raCtx))
                               .reAct(OperatorInitComplete.class, this::onOperatorInitComplete)
                               .build();
     this.inputStreamProcessors = new LinkedList<>();
@@ -113,16 +113,16 @@ class GraphController implements ReActiveEntity {
       }
     }
   }
-  private void onStop() {
+  private void onStop(ReActorContext raCtx) {
     inputStreamProcessors.forEach(ExecutorService::shutdownNow);
   }
   private void spawnNewStreamConsumer(ReActorRef operator,
                                       Stream<? extends Serializable> inputStream,
                                       ReActorSystem localReActorSystem, String flowName,
                               FlowOperatorConfig<?, ?> operatorCfg) {
-    ExecutorService streamConsumerExecutor = spawnNewStageInputStreamExecutor(localReActorSystem,
-                                                                              flowName,
-                                                                              operatorCfg.getReActorName());
+    ExecutorService streamConsumerExecutor = spawnNewInputStreamExecutor(localReActorSystem,
+                                                                         flowName,
+                                                                         operatorCfg.getReActorName());
     inputStreamProcessors.add(streamConsumerExecutor);
     var errorHandler = (TriConsumer<ReActorSystem, Object, ? super Throwable>) operatorCfg.getInputStreamErrorHandler();
     AsyncUtils.asyncForeach(operator::atell, inputStream.iterator(),
@@ -132,8 +132,8 @@ class GraphController implements ReActiveEntity {
               .thenAccept(finished -> streamConsumerExecutor.shutdownNow());
   }
 
-  private static ExecutorService spawnNewStageInputStreamExecutor(ReActorSystem localReActorSystem,
-                                                                  String flowName, String stageName) {
+  private static ExecutorService spawnNewInputStreamExecutor(ReActorSystem localReActorSystem,
+                                                             String flowName, String stageName) {
     var inputStreamThreadFactory = new ThreadFactoryBuilder();
     inputStreamThreadFactory.setNameFormat(String.format("InputStreamExecutor-Flow[%s]-Stage[%s]-",
                                                          flowName, stageName))

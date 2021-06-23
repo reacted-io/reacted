@@ -30,4 +30,13 @@ public class OperatorInitComplete implements Serializable {
   public String getFlowName() { return flowName; }
 
   public String getRouteeName() { return routeeName; }
+
+  @Override
+  public String toString() {
+    return "OperatorInitComplete{" +
+           "flowName='" + flowName + '\'' +
+           ", operatorName='" + operatorName + '\'' +
+           ", routeeName='" + routeeName + '\'' +
+           '}';
+  }
 }

@@ -34,7 +34,7 @@ public final class ExampleUtils {
     }
 
     public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName) {
-        return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
+        return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.DIRECT_COMMUNICATION,
                                           NO_SERVICE_REGISTRIES, NO_REMOTING_DRIVERS);
     }
 

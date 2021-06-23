@@ -100,6 +100,7 @@ public class ReActorContext {
     public ReActorRef getParent() { return parent; }
 
     public Dispatcher getDispatcher() { return dispatcher; }
+
     public MailBox getMbox() { return actorMbox; }
     public CompletionStage<Void> getHierarchyTermination() { return hierarchyTermination; }
 

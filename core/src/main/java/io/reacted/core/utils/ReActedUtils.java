@@ -49,7 +49,7 @@ public final class ReActedUtils {
                                                                                       .orElse(Optional.empty())
                                                                                       .orElse(ReActorRef.NO_REACTOR_REF))
                                                         .toCompletableFuture())
-                             .map(gate -> gate.thenApply(Stream::of))
+                             .map(gate -> gate.thenApplyAsync(Stream::of))
                              .reduce((first, second) -> first.thenCombine(second, Stream::concat))
                              .orElse(CompletableFuture.completedFuture(Stream.empty()));
         return results.thenApply(gates -> gates.filter(Predicate.not(ReActorRef.NO_REACTOR_REF::equals))

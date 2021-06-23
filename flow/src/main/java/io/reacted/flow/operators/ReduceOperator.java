@@ -64,8 +64,8 @@ public class ReduceOperator extends FlowOperator<ReduceOperatorConfig.Builder,
 
     private boolean canReduce() {
         return typeToRequiredForMerge.entrySet().stream()
-                              .allMatch(entry -> entry.getValue() == storage.get(entry.getKey())
-                                                                            .size());
+                              .allMatch(entry -> storage.get(entry.getKey()).size() >=
+                                                 entry.getValue());
     }
 
     private static List<Serializable> removeNfromInput(List<Serializable> input, long n) {

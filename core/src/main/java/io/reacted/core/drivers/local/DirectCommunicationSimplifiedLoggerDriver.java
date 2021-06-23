@@ -21,9 +21,11 @@ import io.reacted.patterns.UnChecked;
 
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
+import java.time.Instant;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import org.slf4j.LoggerFactory;
 
 @NonNullByDefault
 public class DirectCommunicationSimplifiedLoggerDriver extends
@@ -77,7 +79,8 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
         synchronized (logFile) {
-            logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+            logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+                           Instant.now(),
                            message.getSender().getReActorId().getReActorName(),
                            message.getDestination().getReActorId().getReActorName(),
                            message.getSequenceNumber(),
@@ -94,7 +97,8 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
         synchronized (logFile) {
 
-            logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+            logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+                           Instant.now(),
                            message.getSender().getReActorId().getReActorName(),
                            message.getDestination().getReActorId().getReActorName(),
                            message.getSequenceNumber(),

@@ -9,6 +9,8 @@
 package io.reacted.patterns;
 
 import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
@@ -117,13 +119,24 @@ public final class AsyncUtils {
 
     public static <PayloadT, OutputT> CompletionStage<Void>
     asyncForeach(Function<PayloadT, CompletionStage<OutputT>> operation, Iterator<PayloadT> source,
-                 Consumer<Throwable> onError, Executor asyncExecutor) {
+                 Consumer<Throwable> onError, ExecutorService asyncExecutor) {
+        return CompletableFuture.supplyAsync(() -> asyncForeachLopp(operation, source, onError,
+                                                                    asyncExecutor), asyncExecutor)
+                                .thenCompose(looper -> looper);
+    }
+
+    private static <PayloadT, OutputT> CompletionStage<Void> asyncForeachLopp(
+        Function<PayloadT, CompletionStage<OutputT>> operation, Iterator<PayloadT> source,
+        Consumer<Throwable> onError, ExecutorService asyncExecutor) {
         return source.hasNext() ? operation.apply(source.next())
-                                           .exceptionally(error -> { onError.accept(error); return null;})
-                                           .thenComposeAsync(prevStepResponse -> asyncForeach(operation, source, onError, asyncExecutor),
+                                           .exceptionally(error -> { onError
+                                               .accept(error); return null;})
+                                           .thenComposeAsync(prevStepResponse -> asyncForeach(
+                                               operation, source, onError, asyncExecutor),
                                                              asyncExecutor)
                                 : CompletableFuture.completedFuture(null);
     }
+
     public static <PayloadT> CompletionStage<PayloadT>
     asyncLoop(Function<PayloadT, CompletionStage<PayloadT>> operation, @Nullable PayloadT firstArgument,
               Predicate<PayloadT> shallContinue, Function<Throwable, PayloadT> onError,
