@@ -147,7 +147,7 @@ public class Dispatcher {
                           reactor replicating the same very messages in the same order of when they were executed
                           during the recorded execution. From ReActed perspective, replicating the state of a
                           reactor system is replicating the state of the contained reactors using the strictly
-                          sequentials execution attempts in the execution log
+                          sequential execution attempts in the execution log
                         */
                         devNull.tell(scheduledReActor.getSelf(),
                                      new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),

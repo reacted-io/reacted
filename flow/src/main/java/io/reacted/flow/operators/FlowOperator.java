@@ -94,7 +94,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                                                       ServicesGatesUpdate.class))
                           /* If this init is not delayed, an slot of the backpressuring buffer size
                              has been consumed to deliver init itself, so we must make it available
-                             otherwise we will permantently leak 1 from buffer size
+                             otherwise we will permanently leak 1 from buffer size
                           */
                           .filter(mbox -> !mbox.getNotDelayedMessageTypes().contains(ReActorInit.class))
                           .ifPresent(mbox -> mbox.request(1));

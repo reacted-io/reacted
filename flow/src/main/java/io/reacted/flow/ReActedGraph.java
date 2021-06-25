@@ -38,6 +38,7 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
     private Map<String, ReActorRef> operatorsByName;
     @Nullable
     private ReActorRef graphControllerGate;
+    @SuppressWarnings("unchecked")
     private ReActedGraph(Builder builder) {
         super(builder);
         this.operatorsCfgs = (Collection<? extends FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?, ?>, ? extends FlowOperatorConfig<?, ?>>>)
