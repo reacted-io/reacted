@@ -31,6 +31,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import javax.annotation.Nonnull;
@@ -201,7 +202,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
         this.routeesMap.remove(reSpawnRequest.deadRoutee);
         Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider()
-                                                         .apply((ServiceCfgT) serviceConfig)))
+                                                         .apply(serviceConfig)))
            .map(routee -> spawnRoutee(raCtx, routee.getReActions(),
                                       ReActorConfig.fromConfig(routee.getConfig())
                                                    .setReActorName(reSpawnRequest.routeeName)
@@ -252,10 +253,10 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     }
 
     //Messages required for the Service management logic cannot be backpressured
-    private static Class<? extends Serializable>[] getNonDelayedMessageTypes() {
-        return ObjectUtils.toArray(ServiceRegistryNotAvailable.class,
-                                   ServiceDiscoveryRequest.class, RouteeReSpawnRequest.class,
-                                   ServicePublicationRequestError.class, SystemMonitorReport.class);
+    private static Set<Class<? extends Serializable>> getNonDelayedMessageTypes() {
+        return Set.of(ServiceRegistryNotAvailable.class,
+                      ServiceDiscoveryRequest.class, RouteeReSpawnRequest.class,
+                      ServicePublicationRequestError.class, SystemMonitorReport.class);
     }
 
     public static class RouteeReSpawnRequest implements Serializable {

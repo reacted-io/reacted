@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -91,8 +92,8 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     @SuppressWarnings("EmptyMethod")
     protected void onInit(ReActorContext raCtx, ReActorInit init) {
         BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
-                          .map(mbox -> mbox.addNonDelayedMessageTypes(RefreshOperatorRequest.class,
-                                                                      ServicesGatesUpdate.class))
+                          .map(mbox -> mbox.addNonDelayedMessageTypes(Set.of(RefreshOperatorRequest.class,
+                                                                             ServicesGatesUpdate.class)))
                           /* If this init is not delayed, an slot of the backpressuring buffer size
                              has been consumed to deliver init itself, so we must make it available
                              otherwise we will permanently leak 1 from buffer size

@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -98,7 +99,7 @@ class GraphController implements ReActiveEntity {
   }
   private void onInit(ReActorContext raCtx) {
     BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
-                      .ifPresent(mbox -> mbox.addNonDelayedMessageTypes(OperatorInitComplete.class));
+                      .ifPresent(mbox -> mbox.addNonDelayedMessageTypes(Set.of(OperatorInitComplete.class)));
     for(var operatorCfg : operatorsCfgsByName.entrySet()) {
       operatorNameToOperator.put(operatorCfg.getKey(),
                                  spawnOperator(raCtx.getReActorSystem(),operatorCfg.getValue(),
