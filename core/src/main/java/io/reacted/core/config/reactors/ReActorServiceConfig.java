@@ -78,7 +78,7 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
 
         /**
          * A Service exposes the behavior of a reactor in a resilient and load balanced manneer. Here we specify
-         * how many instances of the exposed reactor should be automatically created and mantained by the router.
+         * how many instances of the exposed reactor should be automatically created and maintained by the router.
          * Valid range [{@link ReActorServiceConfig#MIN_ROUTEES_PER_SERVICE}, {@link ReActorServiceConfig#MAX_ROUTEES_PER_SERVICE}]
          *
          * @param routeesNum number of instances of the exposed reactor that should be created/mantained

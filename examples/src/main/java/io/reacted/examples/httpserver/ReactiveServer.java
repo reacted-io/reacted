@@ -162,7 +162,7 @@ public class ReactiveServer {
         }
 
         private void onInit(ReActorContext raCtx, ReActorInit init) {
-            raCtx.logInfo("Initing {}", raCtx.getSelf().getReActorId().getReActorName());
+            raCtx.logInfo("Initializing {}", raCtx.getSelf().getReActorId().getReActorName());
             Try.ofRunnable(() -> httpCtx.sendResponseHeaders(200, 0))
                .flatMap(noVal -> Try.ofRunnable(() -> sendData("<html><body>")))
                .flatMap(noVal -> spawnPathReaders(filePaths, raCtx, requestId))

@@ -86,7 +86,7 @@ public class ServerGate implements ReActor, HttpHandler {
     /* We use a message to trigger the spawn of the handler because in this way the Replay Driver will be able to
        re-issue the command. Replay driver can only deliver messages to ReActors, not creating them.
        On replay, this ServerGate reactor regardless if a http request arrives or not will receive a spawn request,
-       triggering the handling using the saved logs and initing the flow
+       triggering the handling using the saved logs and initializing the flow
      */
     private void spawnPostHandler(ReActorContext raCtx, SpawnPostHandler spawnRequest) {
         raCtx.spawnChild(new Post(this.requestIdToHttpExchange.remove(spawnRequest.requestId),

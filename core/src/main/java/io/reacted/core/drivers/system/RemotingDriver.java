@@ -46,7 +46,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
      * @param dst          destination of the message
      * @param ackingPolicy Specify if or how we should receive an ACK from the remote reactor system for this message
      * @param message      payload
-     * @return A completablefuture that is going to be completed with the outcome of the operation once the message
+     * @return A {@link CompletableFuture} that is going to be completed with the outcome of the operation once the message
      * has been delivered into the target's mailbox and has been ACK-ed accordingly with the specified policy
      */
     @Override

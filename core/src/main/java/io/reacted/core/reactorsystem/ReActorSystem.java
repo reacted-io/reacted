@@ -270,7 +270,7 @@ public class ReActorSystem {
     }
 
     /**
-     * Generaates a numeric ID
+     * Generates a numeric ID
      * @return an incremental number guaranteed to be unique for the reactor system
      */
     public long getNewSeqNum() { return newSeqNum.getAndIncrement(); }
@@ -389,7 +389,7 @@ public class ReActorSystem {
         Try.ofRunnable(() -> stop(getSystemRemotingRoot().getReActorId())
                                 .map(CompletionStage::toCompletableFuture)
                                 .ifPresent(CompletableFuture::join))
-           .ifError(error -> LOGGER.error("Error stopping service registy drivers"));
+           .ifError(error -> LOGGER.error("Error stopping service registry drivers"));
 
         Try.of(() -> stopSystemReActors().toCompletableFuture().join())
            .ifError(error -> LOGGER.error("Error stopping system reactors", error));

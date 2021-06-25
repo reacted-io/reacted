@@ -103,7 +103,7 @@ class RegistryGatesCentralizedManager {
 
     //XXX Define how a given reactor system / channel is reached from the current reactor system
     //A reactorsystem can be reached through different channels (i.e. kafka, grpc, chronicle queue...)
-    //and channelproperties define how to setup the channel driver to reach the reactor system.
+    //and channel properties define how to setup the channel driver to reach the reactor system.
     //i.e. for a reactor system reachable through grpc, channelProperties will contain ip/address of the other
     //reactor system
     public ReActorSystemRef registerNewRoute(@Nonnull ReActorSystemId reActorSystemId,

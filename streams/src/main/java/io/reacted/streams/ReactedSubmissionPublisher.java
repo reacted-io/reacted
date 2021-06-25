@@ -559,7 +559,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
              * @param backpressureTimeout At most this timeout will be waited while attempting a delivery. Once this
              *                            timeout is expired, the message is dropped.
              *                            {@link ReactedSubmissionPublisher#BEST_EFFORT_SUBSCRIPTION} for best effort subscriptions.
-             *                            If the submission buffer is full, the new messages will be discarder
+             *                            If the submission buffer is full, the new messages will be discarded
              *                            {@link ReactedSubmissionPublisher#RELIABLE_SUBSCRIPTION} for subscriptions where
              *                            no message can be lost. Publisher will wait indefinitely.
              * @return this builder
