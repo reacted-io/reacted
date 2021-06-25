@@ -8,8 +8,6 @@
 
 package io.reacted.core.config.drivers;
 
-import io.reacted.core.config.ChannelId;
-
 public class NullLocalDriverConfig extends ChannelDriverConfig<NullLocalDriverConfig.Builder,
                                                                 NullLocalDriverConfig> {
   private NullLocalDriverConfig(Builder builder) { super(builder); }

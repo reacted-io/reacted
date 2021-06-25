@@ -10,9 +10,7 @@ package io.reacted.patterns;
 
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.concurrent.CompletableFuture;
@@ -120,12 +118,12 @@ public final class AsyncUtils {
     public static <PayloadT, OutputT> CompletionStage<Void>
     asyncForeach(Function<PayloadT, CompletionStage<OutputT>> operation, Iterator<PayloadT> source,
                  Consumer<Throwable> onError, ExecutorService asyncExecutor) {
-        return CompletableFuture.supplyAsync(() -> asyncForeachLopp(operation, source, onError,
+        return CompletableFuture.supplyAsync(() -> asyncForeachLoop(operation, source, onError,
                                                                     asyncExecutor), asyncExecutor)
                                 .thenCompose(looper -> looper);
     }
 
-    private static <PayloadT, OutputT> CompletionStage<Void> asyncForeachLopp(
+    private static <PayloadT, OutputT> CompletionStage<Void> asyncForeachLoop(
         Function<PayloadT, CompletionStage<OutputT>> operation, Iterator<PayloadT> source,
         Consumer<Throwable> onError, ExecutorService asyncExecutor) {
         return source.hasNext() ? operation.apply(source.next())

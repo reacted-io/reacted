@@ -8,9 +8,7 @@
 
 package io.reacted.examples.flow;
 
-import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.mailboxes.BackpressuringMbox;
-import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.examples.ExampleUtils;
@@ -26,9 +24,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;

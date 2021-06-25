@@ -718,6 +718,7 @@ public class ReActorSystem {
     /**
      * @throws Exception a SneakyThrown exception
      */
+    @SuppressWarnings("JavaDoc")
     private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
                                                                              ? extends ServiceRegistryConfig<?, ?>>> drivers) {
         drivers.forEach(driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())

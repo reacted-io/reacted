@@ -9,12 +9,10 @@
 package io.reacted.flow.operators;
 
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
-import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.flow.operators.ServiceOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.UnChecked;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Objects;

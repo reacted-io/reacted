@@ -8,10 +8,8 @@
 
 package io.reacted.flow.operators;
 
-import io.reacted.core.reactors.ReActor;
 import io.reacted.flow.operators.ReduceOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.UnChecked;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
@@ -19,7 +17,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.annotation.concurrent.Immutable;
 
 @NonNullByDefault
 public class ReduceOperatorConfig extends FlowOperatorConfig<Builder, ReduceOperatorConfig> {

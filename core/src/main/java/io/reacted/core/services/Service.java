@@ -118,6 +118,7 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
                                                                    serviceConfig.getReActorName()));
     }
 
+    @SuppressWarnings("unchecked")
     private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
         //All the services can receive service stats
         raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class));
@@ -125,10 +126,10 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
         var backpressuringMbox = BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox());
         backpressuringMbox.filter(mbox -> !mbox.getNotDelayedMessageTypes().contains(ReActorInit.class))
                           .ifPresent(mbox -> mbox.request(1));
-        var isMboxValid =  backpressuringMbox.map(mbox -> mbox.addNonDelayedMessageTypes(getNonDelayedMessageTypes()))
-                                             .filter(mbox -> routeesCannotBeFedAllTogether(mbox.getRequestOnStartup()))
-                                             .map(invalidMbox -> fixMbox(raCtx, invalidMbox))
-                                             .orElse(true);
+        boolean isMboxValid =  backpressuringMbox.map(mbox -> mbox.addNonDelayedMessageTypes(getNonDelayedMessageTypes()))
+                                                 .filter(mbox -> routeesCannotBeFedAllTogether(mbox.getRequestOnStartup()))
+                                                 .map(invalidMbox -> fixMbox(raCtx, invalidMbox))
+                                                 .orElse(true);
         if (!isMboxValid) {
             return;
         }
@@ -202,7 +203,7 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
     private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived) {
         return serviceConfig.getLoadBalancingPolicy().selectRoutee(routerCtx, this, msgReceived);
     }
-
+    @SuppressWarnings("unchecked")
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
         this.routeesMap.remove(reSpawnRequest.deadRoutee);
         Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider()
@@ -257,8 +258,9 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
     }
 
     //Messages required for the Service management logic cannot be backpressured
+    @SuppressWarnings("unchecked")
     private static Class<? extends Serializable>[] getNonDelayedMessageTypes() {
-        return ObjectUtils.toArray(ReActorInit.class, ServiceRegistryNotAvailable.class,
+        return ObjectUtils.toArray(ServiceRegistryNotAvailable.class,
                                    ServiceDiscoveryRequest.class, RouteeReSpawnRequest.class,
                                    ServicePublicationRequestError.class, SystemMonitorReport.class);
     }
@@ -274,6 +276,7 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
 
     public enum LoadBalancingPolicy {
         ROUND_ROBIN {
+            @SuppressWarnings("unchecked")
             @Override
             public Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
                                                      Service thisService, long msgNum) {

@@ -77,11 +77,13 @@ public final class UnChecked {
     public interface CheckedConsumer<T> {
         void accept(T arg1) throws Throwable;
     }
+    @SuppressWarnings("RedundantThrows")
     @FunctionalInterface
     public interface CheckedBiConsumer<T, U> {
         void accept(T arg1, U arg2) throws Throwable;
     }
 
+    @SuppressWarnings("RedundantThrows")
     @FunctionalInterface
     public interface CheckedTriConsumer<T, U, D> {
         void accept(T arg1, U arg2, D arg3) throws Throwable;
@@ -108,6 +110,7 @@ public final class UnChecked {
     @FunctionalInterface
     public interface CheckedBinaryOperator<T> extends CheckedBiFunction<T, T, T> { }
 
+    @SuppressWarnings("RedundantThrows")
     @FunctionalInterface
     public interface CheckedPredicate<T> {
         boolean test(T arg) throws Throwable;
@@ -118,6 +121,7 @@ public final class UnChecked {
         void run() throws Throwable;
     }
 
+    @SuppressWarnings("RedundantThrows")
     @FunctionalInterface
     public interface CheckedCallable<T> {
         T call() throws Throwable;

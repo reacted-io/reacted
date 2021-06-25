@@ -43,6 +43,7 @@ import javax.annotation.Nonnull;
 
 import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 
+@SuppressWarnings("unchecked")
 @NonNullByDefault
 public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
                                    BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>>

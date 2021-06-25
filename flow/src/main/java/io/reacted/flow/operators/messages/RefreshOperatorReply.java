@@ -12,8 +12,6 @@ import io.reacted.flow.operators.FlowOperator;
 import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
-import java.util.Optional;
-import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class RefreshOperatorReply<BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,

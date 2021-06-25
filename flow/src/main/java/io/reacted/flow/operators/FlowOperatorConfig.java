@@ -10,7 +10,6 @@ package io.reacted.flow.operators;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
-import io.reacted.core.config.reactors.ReActorServiceConfig.Builder;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
@@ -97,6 +96,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     protected Predicate<Serializable> ifPredicate = NO_FILTERING;
     protected Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
     protected ReActorConfig operatorRouteeCfg = DEFAULT_OPERATOR_ROUTEE_CONFIG;
+    @SuppressWarnings("unchecked")
     protected TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler =
         (TriConsumer<ReActorSystem, BuiltT, ? super Throwable>) DEFAULT_INPUT_STREAM_LOGGING_ERROR_HANDLER;
     protected String flowName;

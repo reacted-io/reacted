@@ -198,13 +198,24 @@ public abstract class GenericServiceDiscoverySearchFilter<BuilderT extends Gener
         /**
          * Returns only the local services as a result. This option is mutually exclusive with
          * any {@code setChannelId} filter
-         * @param reActorSystem
-         * @return
+         * @param reActorSystem local reactorsystem
+         * @return this builder
          */
         public final BuilderT setLocalSearch(ReActorSystem reActorSystem) {
-            this.channelIdSet = Set.of(reActorSystem.getLoopback().getBackingDriver().getChannelId());
+            return setLocalSearch(reActorSystem.getLoopback().getBackingDriver().getChannelId());
+        }
+
+        /**
+         * Returns only the local services as a result. This option is mutually exclusive with
+         * any {@code setChannelId} filter
+         * @param loopbackChannelId ChannelId associated to the loopback driver
+         * @return this builder
+         */
+        public final BuilderT setLocalSearch(ChannelId loopbackChannelId) {
+            this.channelIdSet = Set.of(loopbackChannelId);
             return getThis();
         }
+
 
         /**
          *

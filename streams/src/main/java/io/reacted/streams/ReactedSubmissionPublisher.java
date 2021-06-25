@@ -31,7 +31,6 @@ import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
 import java.util.concurrent.Flow.Subscriber;
-import java.util.concurrent.SubmissionPublisher;
 import javax.annotation.Nullable;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -49,7 +48,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;

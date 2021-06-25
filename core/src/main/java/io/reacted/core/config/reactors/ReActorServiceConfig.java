@@ -10,7 +10,6 @@ package io.reacted.core.config.reactors;
 
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActor;
-import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.Service;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.ObjectUtils;

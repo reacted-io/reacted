@@ -10,10 +10,7 @@ package io.reacted.flow;
 
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.flow.operators.FlowOperator;
-import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.patterns.Try;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;

@@ -25,7 +25,6 @@ import java.time.Instant;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import org.slf4j.LoggerFactory;
 
 @NonNullByDefault
 public class DirectCommunicationSimplifiedLoggerDriver extends

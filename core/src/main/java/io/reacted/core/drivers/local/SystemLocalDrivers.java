@@ -62,7 +62,7 @@ public final class SystemLocalDrivers {
      * @param loggingPrintStream {@link PrintStream} that should be used for printing the messages that are
      *                           exchanged within the local {@link ReActorSystem}
      *
-     *                           Note: the supplied {@Code PrintStream } will be automatically flushed
+     *                           Note: the supplied {@link PrintStream } will be automatically flushed
      *                                 and closed on driver termination
      * @throws java.io.UncheckedIOException if an error occurs opening the file
      * @return the {@link DirectCommunicationSimplifiedLoggerDriver}

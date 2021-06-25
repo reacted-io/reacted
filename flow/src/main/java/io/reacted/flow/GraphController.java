@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
+@SuppressWarnings("unchecked")
 @NonNullByDefault
 class GraphController implements ReActiveEntity {
   private final Map<String,
