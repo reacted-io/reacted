@@ -493,7 +493,7 @@ public class ReActorSystem {
     public Try<ReActorRef> spawn(ReActiveEntity reActiveEntity,
                                  ReActiveEntityConfig<? extends ReActiveEntityConfig.Builder<?, ?>,
                                                       ? extends ReActiveEntityConfig<?, ?>> reActorConfig) {
-        return spawnChild(Objects.requireNonNull(Objects.requireNonNull(reActiveEntity, "ReActor canont be null")
+        return spawnChild(Objects.requireNonNull(Objects.requireNonNull(reActiveEntity, "ReActor cannot be null")
                                                         .getReActions(), "ReActions cannot be null"),
                           Objects.requireNonNull(userReActorsRoot),
                           Objects.requireNonNull(reActorConfig, "ReActor config cannot be null"));
