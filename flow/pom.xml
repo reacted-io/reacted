@@ -16,6 +16,10 @@
             <groupId>io.reacted</groupId>
             <artifactId>reacted-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-streams</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

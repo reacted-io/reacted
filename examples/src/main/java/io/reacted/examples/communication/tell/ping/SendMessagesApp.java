@@ -12,11 +12,12 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.examples.ExampleUtils;
 
+import java.io.FileNotFoundException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 class SendMessagesApp {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         //ReActor system configuration
         var simpleReActorSystem = ExampleUtils.getDefaultInitedReActorSystem(SendMessagesApp.class.getSimpleName());
 

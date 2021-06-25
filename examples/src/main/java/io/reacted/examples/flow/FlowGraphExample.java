@@ -9,6 +9,7 @@
 package io.reacted.examples.flow;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.examples.ExampleUtils;
@@ -18,6 +19,9 @@ import io.reacted.flow.operators.MapOperatorConfig;
 import io.reacted.flow.operators.ReduceOperatorConfig;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.streams.ReactedSubmissionPublisher;
+import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
+import java.io.FileNotFoundException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -26,24 +30,31 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class FlowGraphExample {
   private static final Logger LOGGER = LoggerFactory.getLogger(FlowGraphExample.class);
 
-  public static void main(String[] args) throws InterruptedException {
+  public static void main(String[] args) throws InterruptedException, FileNotFoundException {
     ReActorSystem flowReActorSystem = ExampleUtils.getDefaultInitedReActorSystem("FlowGraphSystem");
     List<String> inputData = List.of("HAKUNA", "MATATA");
     List<Integer> inputInt = List.of(1, 2);
-    var stringPublisher = new ReactedSubmissionPublisher<>(flowReActorSystem, "StringPublisher");
-    var integerPublisher = new ReactedSubmissionPublisher<>(flowReActorSystem, "IntPublisher");
+    var stringPublisher = new ReactedSubmissionPublisher<>(flowReActorSystem, "StringPublisher",
+                                                           100_000);
+    var integerPublisher = new ReactedSubmissionPublisher<>(flowReActorSystem, "IntPublisher",
+                                                            100_000);
 
     ReActedGraph flowMerge = ReActedGraph.newBuilder()
                                          .setReActorName("FlowMerge")
                                          .addOperator(MapOperatorConfig.newBuilder()
                                                                        .setReActorName("ToLower")
-                                                                       .setInputStreams(List.of(inputData.stream(), SourceStream.of(stringPublisher)))
+                                                                       .setInputStreams(List.of(inputData.stream(), SourceStream.of(stringPublisher,
+                                                                                                                                    ReActedSubscriptionConfig.<Serializable>newBuilder()
+                                                                                                                                                             .setBufferSize(100_000)
+                                                                                                                                                             .setSubscriberName("ToLowerSubscription")
+                                                                                                                                                             .build())))
                                                                        .setMappingFunction(input -> List.of(((String)input).toLowerCase()))
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                            .setServiceName("Joiner")
@@ -51,7 +62,11 @@ public class FlowGraphExample {
                                                                        .build())
                                          .addOperator(MapOperatorConfig.newBuilder()
                                                                        .setReActorName("Multiplier")
-                                                                       .setInputStreams(List.of(inputInt.stream(), SourceStream.of(integerPublisher)))
+                                                                       .setInputStreams(List.of(inputInt.stream(), SourceStream.of(integerPublisher,
+                                                                                                                                   ReActedSubscriptionConfig.<Serializable>newBuilder()
+                                                                                                                                                            .setBufferSize(100_000)
+                                                                                                                                                            .setSubscriberName("MultiplierSubscription")
+                                                                                                                                                            .build())))
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                            .setServiceName("Joiner")
                                                                                                                            .build())
@@ -81,18 +96,18 @@ public class FlowGraphExample {
              .ifError(error -> flowReActorSystem.shutDown());
 
     var asyncLooperExecutor = Executors.newCachedThreadPool();
-    AsyncUtils.asyncForeach(payload -> stringPublisher.backpressurableSubmit(payload)
-                                                      .thenAccept(noVal -> {}),
-                            List.of("I", "AM", "LOCUTUS").iterator(),
+    AsyncUtils.asyncForeach(stringPublisher::backpressurableSubmit,
+                            IntStream.range(0, 10)
+                                     .mapToObj(num -> num + "")
+                                     .iterator(),
                             error -> LOGGER.error("Error feeding string publisher", error),
                             asyncLooperExecutor);
-    AsyncUtils.asyncForeach(payload -> integerPublisher.backpressurableSubmit(payload)
-                                                       .thenAccept(noVal -> {}),
-                            List.of(1, 2, 3).iterator(),
+    AsyncUtils.asyncForeach(integerPublisher::backpressurableSubmit,
+                            IntStream.range(0, 10).iterator(),
                             error -> LOGGER.error("Error feeding int publisher", error),
                             asyncLooperExecutor);
     LOGGER.info("Waiting for pipeline to complete");
-    TimeUnit.SECONDS.sleep(1);
+    TimeUnit.SECONDS.sleep(10);
     LOGGER.info("Shutting down publishers");
     stringPublisher.close();
     integerPublisher.close();

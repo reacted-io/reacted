@@ -11,6 +11,7 @@ package io.reacted.examples.streams;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
+import java.io.FileNotFoundException;
 import org.awaitility.Awaitility;
 
 import java.time.Duration;
@@ -24,7 +25,7 @@ import java.util.stream.IntStream;
 @NonNullByDefault
 class StreamToMultipleSubscribersApp {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         var reactorSystem =
                 ExampleUtils.getDefaultInitedReActorSystem(StreamToMultipleSubscribersApp.class.getSimpleName());
         var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem,

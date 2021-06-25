@@ -18,6 +18,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 
+import java.io.FileNotFoundException;
 import java.util.Collection;
 import java.util.List;
 
@@ -29,12 +30,14 @@ public final class ExampleUtils {
     private ExampleUtils() {
     }
 
-    public static ReActorSystem getDefaultInitedReActorSystem(String reActorSystemName) {
+    public static ReActorSystem getDefaultInitedReActorSystem(String reActorSystemName)
+        throws FileNotFoundException {
         return new ReActorSystem(getDefaultReActorSystemCfg(reActorSystemName)).initReActorSystem();
     }
 
-    public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName) {
-        return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.DIRECT_COMMUNICATION,
+    public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName)
+        throws FileNotFoundException {
+        return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
                                           NO_SERVICE_REGISTRIES, NO_REMOTING_DRIVERS);
     }
 
@@ -54,7 +57,7 @@ public final class ExampleUtils {
                                   .setReactorSystemName(reActorSystemName);
        serviceRegistryDrivers.forEach(configBuilder::addServiceRegistryDriver);
        remotingDrivers.forEach(configBuilder::addRemotingDriver);
-       return  configBuilder.build();
+       return configBuilder.build();
     }
 
     public static GrpcDriverConfig getGrpcDriverCfg(int gatePort) {

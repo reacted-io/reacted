@@ -11,6 +11,7 @@ package io.reacted.examples.streams;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
+import java.io.FileNotFoundException;
 import org.awaitility.Awaitility;
 
 import java.time.Duration;
@@ -26,7 +27,7 @@ import java.util.stream.IntStream;
 @NonNullByDefault
 class SlowdownProducerApp {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         var reactorSystem = ExampleUtils.getDefaultInitedReActorSystem(SlowdownProducerApp.class.getSimpleName());
         var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem,
                                                                       SlowdownProducerApp.class.getSimpleName() +

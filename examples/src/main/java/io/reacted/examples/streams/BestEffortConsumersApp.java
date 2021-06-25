@@ -13,6 +13,7 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher;
 
+import java.io.FileNotFoundException;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.concurrent.Flow;
@@ -23,7 +24,7 @@ import java.util.stream.IntStream;
 @NonNullByDefault
 class BestEffortConsumersApp {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         var reactorSystem = ExampleUtils.getDefaultInitedReActorSystem(BestEffortConsumersApp.class.getSimpleName());
         var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem,
                                                                       BestEffortConsumersApp.class.getSimpleName() +

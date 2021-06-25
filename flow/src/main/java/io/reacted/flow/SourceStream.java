@@ -10,6 +10,8 @@ package io.reacted.flow;
 
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.streams.ReactedSubmissionPublisher;
+import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Spliterator;
@@ -17,6 +19,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Flow;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -26,16 +29,16 @@ import javax.annotation.Nullable;
 @NonNullByDefault
 public class SourceStream<OutputT extends Serializable> extends StreamProxy<OutputT> {
     @Nullable
-    private final SourceSubscription<OutputT> sourceSubscription;
+    private final SourceSubscriber<OutputT> sourceSubscriber;
     private SourceStream(Stream<OutputT> inputStream) {
         super(inputStream);
-        this.sourceSubscription = null;
+        this.sourceSubscriber = null;
     }
 
     private SourceStream(Stream<OutputT> inputStream,
-                         SourceSubscription<OutputT> sourceSubscription) {
+                         SourceSubscriber<OutputT> sourceSubscriber) {
         super(inputStream);
-        this.sourceSubscription = sourceSubscription;
+        this.sourceSubscriber = sourceSubscriber;
     }
     public static <OutputT extends Serializable> SourceStream<OutputT>
     of(Collection<OutputT> inputCollection) {
@@ -44,8 +47,32 @@ public class SourceStream<OutputT extends Serializable> extends StreamProxy<Outp
 
     public static <OutputT extends Serializable>
     SourceStream<OutputT> of(Flow.Publisher<OutputT> publisher) {
-        SourceSubscription<OutputT> subscription = new SourceSubscription<>();
-        publisher.subscribe(subscription);
+        SourceSubscriber<OutputT> subscriber = new SourceSubscriber<>();
+        publisher.subscribe(subscriber);
+        return of(subscriber);
+    }
+
+    public static <OutputT extends Serializable>
+    SourceStream<OutputT> of(ReactedSubmissionPublisher<OutputT> publisher,
+                             ReActedSubscriptionConfig<OutputT> subscriptionConfig) {
+        SourceSubscriber<OutputT> subscriber = new SourceSubscriber<>();
+        publisher.subscribe(subscriptionConfig, subscriber);
+        return of(subscriber);
+    }
+
+    public static <OutputT extends Serializable>
+    SourceStream<OutputT> of(Stream<OutputT> inputStream) {
+        return new SourceStream<>(inputStream);
+    }
+
+    @Override
+    public void close() {
+        if (sourceSubscriber != null) {
+            sourceSubscriber.stop();
+        }
+    }
+    private static <OutputT extends Serializable> SourceStream<OutputT>
+    of(SourceSubscriber<OutputT> subscription) {
         Spliterator<OutputT> spliterator = new Spliterator<>() {
             @Override
             public boolean tryAdvance(Consumer<? super OutputT> action) {
@@ -69,21 +96,9 @@ public class SourceStream<OutputT extends Serializable> extends StreamProxy<Outp
         };
         return new SourceStream<>(StreamSupport.stream(spliterator, false), subscription);
     }
-    public static <OutputT extends Serializable>
-    SourceStream<OutputT> of(Stream<OutputT> inputStream) {
-        return new SourceStream<>(inputStream);
-    }
-
-    @Override
-    public void close() {
-        if (sourceSubscription != null) {
-            sourceSubscription.stop();
-        }
-    }
-
-    private static class SourceSubscription<OutputT extends Serializable>
+    private static class SourceSubscriber<OutputT extends Serializable>
         implements Subscriber<OutputT> {
-        private final BlockingQueue<OutputT> dataOutput = new LinkedBlockingQueue<>(1);
+        private final BlockingQueue<OutputT> dataOutput = new LinkedBlockingQueue<>();
         private volatile boolean isTerminated = false;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private Subscription subscription;

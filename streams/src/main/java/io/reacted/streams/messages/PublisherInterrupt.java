@@ -8,5 +8,13 @@
 package io.reacted.streams.messages;
 
 import java.io.Serializable;
+import javax.annotation.concurrent.Immutable;
 
-public class PublisherInterrupt implements Serializable { }
+@Immutable
+public class PublisherInterrupt implements Serializable {
+
+  @Override
+  public String toString() {
+    return "PublisherInterrupt{}";
+  }
+}

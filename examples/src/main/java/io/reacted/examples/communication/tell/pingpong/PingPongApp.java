@@ -10,10 +10,11 @@ package io.reacted.examples.communication.tell.pingpong;
 
 import io.reacted.examples.ExampleUtils;
 
+import java.io.FileNotFoundException;
 import java.util.concurrent.TimeUnit;
 
 class PingPongApp {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         var reactorSystem = ExampleUtils.getDefaultInitedReActorSystem(PingPongApp.class.getSimpleName());
 
         var pongReActor = reactorSystem.spawn(new PongReActor());

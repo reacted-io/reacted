@@ -16,12 +16,13 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.Try;
 
+import java.io.FileNotFoundException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 public class ReactiveClockApp {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException {
         var reActorSystem = ExampleUtils.getDefaultInitedReActorSystem(ReactiveClockApp.class.getSimpleName());
 
         var reactiveClockReactions = ReActions.newBuilder()

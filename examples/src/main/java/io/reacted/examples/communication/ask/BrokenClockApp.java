@@ -13,11 +13,12 @@ import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.examples.ExampleUtils;
 
+import java.io.FileNotFoundException;
 import java.time.Duration;
 import java.time.Instant;
 
 public class BrokenClockApp {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException {
         var reActorSystem = ExampleUtils.getDefaultInitedReActorSystem(BrokenClockApp.class.getSimpleName());
 
         var reactiveClockConfig = ReActorConfig.newBuilder()

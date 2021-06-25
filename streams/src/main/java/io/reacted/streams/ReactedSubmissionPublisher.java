@@ -30,6 +30,8 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
+import java.util.concurrent.Flow.Subscriber;
+import java.util.concurrent.SubmissionPublisher;
 import javax.annotation.Nullable;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -57,6 +59,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                                                   AutoCloseable, Externalizable {
     public static final Duration RELIABLE_SUBSCRIPTION = BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT;
     public static final Duration BEST_EFFORT_SUBSCRIPTION = BackpressuringMbox.BEST_EFFORT_TIMEOUT;
+
+    private static final String SUBSCRIPTION_NAME_FORMAT = "Backpressure Manager [%s] Subscription [%s] Unique Id [%s]";
     private static final long FEED_GATE_OFFSET = SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class,
                                                                                    "feedGate")
                                                                    .orElseSneakyThrow();
@@ -96,9 +100,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.localReActorSystem = Objects.requireNonNull(localReActorSystem);
         this.subscribers = ConcurrentHashMap.newKeySet(10);
         var feedGateConfig = ReActorConfig.newBuilder()
-                                       .setReActorName(ReactedSubmissionPublisher.class.getSimpleName() + "-" +
-                                                       Objects.requireNonNull(feedName,
-                                                                              "Feed name cannot be null"))
+                                       .setReActorName("Feed Gate: [" + Objects.requireNonNull(feedName, "Feed name cannot be null") + "]")
                                        .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
                                                                                     .setRealMailboxOwner(ctx)
                                                                                     .setBufferSize(bufferSize)
@@ -111,17 +113,14 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                        .build();
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
-                                                          .reAct(PublisherShutdown.class,
-                                                                 (raCtx, shutdown) -> raCtx.stop())
-                                                          .reAct(PublisherInterrupt.class,
-                                                                 this::onInterrupt)
+                                                          .reAct(PublisherShutdown.class, (raCtx, shutdown) -> raCtx.stop())
+                                                          .reAct(PublisherInterrupt.class, this::onInterrupt)
                                                           .reAct(ReActorStop.class, this::onStop)
-                                                          .reAct(SubscriptionRequest.class,
-                                                                 this::onSubscriptionRequest)
-                                                          .reAct(UnsubscriptionRequest.class,
-                                                                 this::onUnSubscriptionRequest)
+                                                          .reAct(SubscriptionRequest.class, this::onSubscriptionRequest)
+                                                          .reAct(UnsubscriptionRequest.class, this::onUnSubscriptionRequest)
                                                           .reAct(this::forwardToSubscribers)
-                                                          .build(), feedGateConfig)
+                                                          .build(),
+                                                 feedGateConfig)
                                           .orElseThrow(IllegalArgumentException::new);
     }
 
@@ -180,19 +179,18 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * For the non lost updates, strict message ordering is guaranteed to be the same of submission
      *
      * @param subscriber     Java Flow compliant subscriber
-     * @param subscriberName This name must be unique and if deterministic it allows cold replay
+     * @param subscriptionName This name must be unique and if deterministic it allows cold replay
      * @throws NullPointerException if any of the arguments is null
      * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
-    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, String subscriberName) {
-        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
-                          .setSubscriber(subscriber)
-                          .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
-                          .setSubscriberName(subscriberName)
-                          .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                          .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
-                          .build());
+    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, String subscriptionName) {
+        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
+                                                  .setBufferSize(Flow.defaultBufferSize())
+                                                  .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
+                                                  .setSubscriberName(subscriptionName)
+                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
+                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
+                                                  .build(), subscriber);
     }
 
     /**
@@ -209,14 +207,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * NOTE: this overload generates NON REPLAYABLE subscriptions
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize) {
-        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
-                          .setSubscriber(subscriber)
-                          .setBufferSize(bufferSize)
-                          .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
-                          .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                          .setSubscriberName(UUID.randomUUID().toString())
-                          .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
-                          .build());
+        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
+                                                  .setBufferSize(bufferSize)
+                                                  .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
+                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
+                                                  .setSubscriberName(UUID.randomUUID().toString())
+                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
+                                                  .build(), subscriber);
     }
 
     /**
@@ -236,14 +233,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            String subscriberName) {
-        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
-                          .setSubscriber(subscriber)
-                          .setBufferSize(bufferSize)
-                          .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
-                          .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                          .setSubscriberName(subscriberName)
-                          .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
-                          .build());
+        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
+                                                  .setBufferSize(bufferSize)
+                                                  .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
+                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
+                                                  .setSubscriberName(subscriberName)
+                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
+                                                  .build(), subscriber);
     }
 
     /**
@@ -263,17 +259,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, Executor asyncBackpressurer,
                                            Duration backpressureErrorTimeout) {
-        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
-                          .setSubscriber(subscriber)
-                          .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout,
-                                                                                                       "Backpressure timeout cannot be null"),
-                                                                                Predicate.not(Duration::isZero),
-                                                                                IllegalArgumentException::new))
-                          .setAsyncBackpressurer(asyncBackpressurer)
-                          .setSubscriberName(UUID.randomUUID().toString())
-                          .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
-                          .build());
+        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
+                                                  .setBufferSize(Flow.defaultBufferSize())
+                                                  .setBackpressureTimeout(backpressureErrorTimeout)
+                                                  .setAsyncBackpressurer(asyncBackpressurer)
+                                                  .setSubscriberName(UUID.randomUUID().toString())
+                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
+                                                  .build(), subscriber);
     }
 
     /**
@@ -291,16 +283,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout) {
-        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
-                          .setSubscriber(subscriber)
-                          .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
-                                                                                Predicate.not(Duration::isZero),
-                                                                                IllegalArgumentException::new))
-                          .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                          .setSubscriberName(UUID.randomUUID().toString())
-                          .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
-                          .build());
+        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
+                                                  .setBufferSize(Flow.defaultBufferSize())
+                                                  .setBackpressureTimeout(backpressureErrorTimeout)
+                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
+                                                  .setSubscriberName(UUID.randomUUID().toString())
+                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
+                                                  .build(), subscriber);
     }
 
     /**
@@ -318,16 +307,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout, String subscriberName) {
-        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
-                          .setSubscriber(subscriber)
-                          .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
-                                                                                Predicate.not(Duration::isZero),
-                                                                                IllegalArgumentException::new))
-                          .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                          .setSubscriberName(subscriberName)
-                          .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
-                          .build());
+        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
+                                                  .setBufferSize(Flow.defaultBufferSize())
+                                                  .setBackpressureTimeout(backpressureErrorTimeout)
+                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
+                                                  .setSubscriberName(subscriberName)
+                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
+                                                  .build(), subscriber);
     }
 
     /**
@@ -348,16 +334,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
                                            Duration backpressureErrorTimeout, Executor asyncBackpressurer,
                                            String subscriberName) {
-        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
-                          .setSubscriber(subscriber)
-                          .setBufferSize(Flow.defaultBufferSize())
-                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
-                                                                                Predicate.not(Duration::isZero),
-                                                                                IllegalArgumentException::new))
-                          .setAsyncBackpressurer(asyncBackpressurer)
-                          .setSubscriberName(subscriberName)
-                          .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
-                          .build());
+        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
+                                                  .setBufferSize(Flow.defaultBufferSize())
+                                                  .setBackpressureTimeout(backpressureErrorTimeout)
+                                                  .setAsyncBackpressurer(asyncBackpressurer)
+                                                  .setSubscriberName(subscriberName)
+                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
+                                                  .build(), subscriber);
     }
 
     /**
@@ -378,16 +361,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            Duration backpressureErrorTimeout) {
-        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
-                          .setSubscriber(subscriber)
-                          .setBufferSize(bufferSize)
-                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
-                                                                                Predicate.not(Duration::isZero),
-                                                                                IllegalArgumentException::new))
-                          .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                          .setSubscriberName(UUID.randomUUID().toString())
-                          .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
-                          .build());
+        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
+                                                  .setBufferSize(bufferSize)
+                                                  .setBackpressureTimeout(backpressureErrorTimeout)
+                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
+                                                  .setSubscriberName(UUID.randomUUID().toString())
+                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
+                                                  .build(), subscriber);
     }
 
     /**
@@ -409,40 +389,41 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
                                            Executor asyncBackpressurer, Duration backpressureErrorTimeout) {
-        return subscribe(ReActedSubscription.<PayloadT>newBuilder()
-                          .setSubscriber(subscriber)
-                          .setBufferSize(bufferSize)
-                          .setBackpressureTimeout(ObjectUtils.requiredCondition(Objects.requireNonNull(backpressureErrorTimeout),
-                                                                                Predicate.not(Duration::isZero),
-                                                                                IllegalArgumentException::new))
-                          .setAsyncBackpressurer(asyncBackpressurer)
-                          .setSubscriberName(UUID.randomUUID().toString())
-                          .setSequencer(ReActedSubscription.NO_CUSTOM_SEQUENCER)
-                          .build());
+        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
+                                                  .setBufferSize(bufferSize)
+                                                  .setBackpressureTimeout(backpressureErrorTimeout)
+                                                  .setAsyncBackpressurer(asyncBackpressurer)
+                                                  .setSubscriberName(UUID.randomUUID().toString())
+                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
+                                                  .build(), subscriber);
     }
 
     /**
      * Register a generic subscriber to the stream.
      * Strict message ordering is guaranteed to be the same of submission
      *
-     * @param subscription A {@link ReActedSubscription}
+     * @param subscriptionConfig A {@link ReActedSubscriptionConfig}
      * SneakyThrows any exception raised
      * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
-    public CompletionStage<Void> subscribe(ReActedSubscription<PayloadT> subscription) {
+    public CompletionStage<Void> subscribe(ReActedSubscriptionConfig<PayloadT> subscriptionConfig,
+                                           Subscriber<? super PayloadT> subscriber) {
         CompletionStage<Void> subscriptionComplete = new CompletableFuture<>();
-        var backpressureManager = new BackpressureManager<>(subscription, feedGate, subscriptionComplete);
+        var backpressureManager = new BackpressureManager<>(subscriptionConfig, subscriber,
+                                                            feedGate, subscriptionComplete);
 
         var subscriberConfig = ReActorConfig.newBuilder()
-                                         .setReActorName(feedGate.getReActorId().getReActorName() +
-                                                         "_subscriber_" + subscription.getSubscriberName() + "_" +
-                                                         feedGate.getReActorId().getReActorUUID().toString())
-                                         .setDispatcherName(Dispatcher.DEFAULT_DISPATCHER_NAME)
-                                         .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
-                                         .setMailBoxProvider(backpressureManager.getManagerMailbox())
-                                         .build();
+                                            .setReActorName(String.format(SUBSCRIPTION_NAME_FORMAT,
+                                                                          feedGate.getReActorId().getReActorName(),
+                                                                          subscriptionConfig.getSubscriberName(),
+                                                                          feedGate.getReActorId().getReActorUUID().toString()))
+                                            .setDispatcherName(Dispatcher.DEFAULT_DISPATCHER_NAME)
+                                            .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+                                            .setMailBoxProvider(backpressureManager.getManagerMailbox())
+                                            .build();
 
-        localReActorSystem.spawnChild(backpressureManager.getReActions(), localReActorSystem.getUserReActorsRoot(),
+        localReActorSystem.spawnChild(backpressureManager.getReActions(),
+                                      localReActorSystem.getUserReActorsRoot(),
                                       subscriberConfig)
                           .orElseSneakyThrow();
         return subscriptionComplete;
@@ -511,10 +492,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                  localReActorSystem);
     }
 
-    public static final class ReActedSubscription<PayloadT> {
+    public static final class ReActedSubscriptionConfig<PayloadT> {
         @Nullable
         public static final ThreadPoolExecutor NO_CUSTOM_SEQUENCER = null;
-        private final Flow.Subscriber<? super PayloadT> subscriber;
         private final int bufferSize;
         private final Duration backpressureTimeout;
         private final Executor asyncBackpressurer;
@@ -522,15 +502,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         @Nullable
         private final ThreadPoolExecutor sequencer;
 
-        private ReActedSubscription(Builder<PayloadT> builder) {
-            this.subscriber = Objects.requireNonNull(builder.subscriber,
-                                                     "Subscriber cannot be null");
+        private ReActedSubscriptionConfig(Builder<PayloadT> builder) {
             this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
-                                                          IllegalArgumentException::new);
+                                                          () -> new IllegalArgumentException("Invalid subscription buffer size"));
             this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
                                                                      timeout -> timeout.compareTo(RELIABLE_SUBSCRIPTION) <= 0 &&
                                                                                 !timeout.isNegative(),
-                                                                     IllegalArgumentException::new);
+                                                                     () -> new IllegalArgumentException("Invalid backpressure timeout"));
             this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer,
                                                              "Async backpressurer cannot be null");
             this.subscriberName = Objects.requireNonNull(builder.subscriberName,
@@ -538,11 +516,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
             this.sequencer = builder.sequencer != null
                              ? ObjectUtils.requiredCondition(builder.sequencer,
                                                              sequencePool -> sequencePool.getMaximumPoolSize() == 1,
-                                                             IllegalArgumentException::new)
+                                                             () -> new IllegalArgumentException("Invalid sequencer pool size"))
                              : null;
         }
-
-        public Flow.Subscriber<? super PayloadT> getSubscriber() { return subscriber; }
 
         public int getBufferSize() { return bufferSize; }
 
@@ -559,25 +535,14 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
         @SuppressWarnings("NotNullFieldNotInitialized")
         public static final class Builder<PayloadT> {
-            private Flow.Subscriber<? super PayloadT> subscriber;
-            private int bufferSize;
-            private Duration backpressureTimeout;
-            private Executor asyncBackpressurer;
+            private int bufferSize = Flow.defaultBufferSize();
+            private Duration backpressureTimeout = BEST_EFFORT_SUBSCRIPTION;
+            private Executor asyncBackpressurer = ForkJoinPool.commonPool();
             private String subscriberName;
             @Nullable
             private ThreadPoolExecutor sequencer = NO_CUSTOM_SEQUENCER;
 
             private Builder() { }
-
-            /**
-             *
-             * @param subscriber Java {@link Flow} compliant subscriber
-             * @return this builder
-             */
-            public Builder<PayloadT> setSubscriber(Flow.Subscriber<? super PayloadT> subscriber) {
-                this.subscriber = subscriber;
-                return this;
-            }
 
             /**
              *
@@ -640,13 +605,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
             /**
              *
-             * @return a {@link ReActedSubscription}
+             * @return a {@link ReActedSubscriptionConfig}
              * @throws NullPointerException if any of the parameters is null
              * @throws IllegalArgumentException if any of the supplied values does not comply to the specified
              *                                  requirements
              */
-            public ReActedSubscription<PayloadT> build() {
-                return new ReActedSubscription<>(this);
+            public ReActedSubscriptionConfig<PayloadT> build() {
+                return new ReActedSubscriptionConfig<>(this);
             }
         }
     }

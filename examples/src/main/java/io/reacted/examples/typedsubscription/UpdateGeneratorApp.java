@@ -17,12 +17,13 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.examples.ExampleUtils;
 
+import java.io.FileNotFoundException;
 import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 public class UpdateGeneratorApp {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         var reActorSystem = ExampleUtils.getDefaultInitedReActorSystem(UpdateGeneratorApp.class.getSimpleName());
         //Create a reactor that subscribes for Updates. Whenever a new Update is received by a reactor within
         //the reactorsystem, the TypeSubscriber reactor will receive a copy of it

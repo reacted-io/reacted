@@ -18,6 +18,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher;
+import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -170,14 +171,14 @@ public class ReactiveServer {
 
         private void onDataPublisher(ReActorContext raCtx, ReactedSubmissionPublisher<String> publisher) {
             var sender = raCtx.getSender();
-            publisher.subscribe(ReactedSubmissionPublisher.ReActedSubscription.<String>newBuilder()
-                                        .setAsyncBackpressurer(asyncBackpressureExecutor)
-                                        .setSubscriberName("sub_" + raCtx.getSender().getReActorId().getReActorName())
-                                        .setBufferSize(ReactiveServer.BACKPRESSURING_BUFFER_SIZE)
-                                        .setBackpressureTimeout(ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION)
-                                        .setSequencer(sequencer)
-                                        .setSubscriber(getNexDataConsumer(raCtx, outputExecutor))
-                                        .build())
+            publisher.subscribe(ReActedSubscriptionConfig.<String>newBuilder()
+                                                         .setAsyncBackpressurer(asyncBackpressureExecutor)
+                                                         .setSubscriberName("sub_" + raCtx.getSender().getReActorId().getReActorName())
+                                                         .setBufferSize(ReactiveServer.BACKPRESSURING_BUFFER_SIZE)
+                                                         .setBackpressureTimeout(ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION)
+                                                         .setSequencer(sequencer)
+                                                         .build(),
+                                getNexDataConsumer(raCtx, outputExecutor))
                      .thenAccept(noVal -> sender.tell(raCtx.getSelf(), new StartPublishing()));
         }
 
