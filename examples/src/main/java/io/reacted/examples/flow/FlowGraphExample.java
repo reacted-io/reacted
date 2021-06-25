@@ -10,6 +10,7 @@ package io.reacted.examples.flow;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.mailboxes.BackpressuringMbox;
+import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.examples.ExampleUtils;
@@ -42,17 +43,25 @@ public class FlowGraphExample {
     List<String> inputData = List.of("HAKUNA", "MATATA");
     List<Integer> inputInt = List.of(1, 2);
     var stringPublisher = new ReactedSubmissionPublisher<>(flowReActorSystem, "StringPublisher",
-                                                           100_000);
+                                                           10);
     var integerPublisher = new ReactedSubmissionPublisher<>(flowReActorSystem, "IntPublisher",
-                                                            100_000);
+                                                            10);
 
     ReActedGraph flowMerge = ReActedGraph.newBuilder()
                                          .setReActorName("FlowMerge")
+                                         .setDispatcherName("FlowDispatcher")
                                          .addOperator(MapOperatorConfig.newBuilder()
                                                                        .setReActorName("ToLower")
+                                                                       .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
+                                                                                                                    .setRequestOnStartup(1)
+                                                                                                                    .setRealMailboxOwner(ctx)
+                                                                                                                    .setBufferSize(1)
+                                                                                                                    .setBackpressureTimeout(BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT)
+                                                                                                                    .build())
                                                                        .setInputStreams(List.of(inputData.stream(), SourceStream.of(stringPublisher,
                                                                                                                                     ReActedSubscriptionConfig.<Serializable>newBuilder()
-                                                                                                                                                             .setBufferSize(100_000)
+                                                                                                                                                             .setBufferSize(1)
+                                                                                                                                                             .setBackpressureTimeout(ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION)
                                                                                                                                                              .setSubscriberName("ToLowerSubscription")
                                                                                                                                                              .build())))
                                                                        .setMappingFunction(input -> List.of(((String)input).toLowerCase()))
@@ -62,9 +71,16 @@ public class FlowGraphExample {
                                                                        .build())
                                          .addOperator(MapOperatorConfig.newBuilder()
                                                                        .setReActorName("Multiplier")
+                                                                       .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
+                                                                                                                    .setRequestOnStartup(1)
+                                                                                                                    .setRealMailboxOwner(ctx)
+                                                                                                                    .setBufferSize(1)
+                                                                                                                    .setBackpressureTimeout(BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT)
+                                                                                                                    .build())
                                                                        .setInputStreams(List.of(inputInt.stream(), SourceStream.of(integerPublisher,
                                                                                                                                    ReActedSubscriptionConfig.<Serializable>newBuilder()
-                                                                                                                                                            .setBufferSize(100_000)
+                                                                                                                                                            .setBufferSize(1)
+                                                                                                                                                            .setBackpressureTimeout(ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION)
                                                                                                                                                             .setSubscriberName("MultiplierSubscription")
                                                                                                                                                             .build())))
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
@@ -97,13 +113,13 @@ public class FlowGraphExample {
 
     var asyncLooperExecutor = Executors.newCachedThreadPool();
     AsyncUtils.asyncForeach(stringPublisher::backpressurableSubmit,
-                            IntStream.range(0, 10)
+                            IntStream.range(1, 1_001)
                                      .mapToObj(num -> num + "")
                                      .iterator(),
                             error -> LOGGER.error("Error feeding string publisher", error),
                             asyncLooperExecutor);
     AsyncUtils.asyncForeach(integerPublisher::backpressurableSubmit,
-                            IntStream.range(0, 10).iterator(),
+                            IntStream.range(1, 1_001).iterator(),
                             error -> LOGGER.error("Error feeding int publisher", error),
                             asyncLooperExecutor);
     LOGGER.info("Waiting for pipeline to complete");

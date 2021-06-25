@@ -8,6 +8,7 @@
 
 package io.reacted.examples;
 
+import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.system.LocalDriver;
@@ -37,7 +38,8 @@ public final class ExampleUtils {
 
     public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName)
         throws FileNotFoundException {
-        return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
+        return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                            //SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
                                           NO_SERVICE_REGISTRIES, NO_REMOTING_DRIVERS);
     }
 
@@ -54,6 +56,11 @@ public final class ExampleUtils {
                                   .setMsgFanOutPoolSize(1)
                                   //Generate extra information for replaying if required
                                   .setRecordExecution(false)
+                                  .addDispatcherConfig(DispatcherConfig.newBuilder()
+                                                                       .setDispatcherName("FlowDispatcher")
+                                                                       .setBatchSize(100)
+                                                                       .setDispatcherThreadsNum(2)
+                                                                       .build())
                                   .setReactorSystemName(reActorSystemName);
        serviceRegistryDrivers.forEach(configBuilder::addServiceRegistryDriver);
        remotingDrivers.forEach(configBuilder::addRemotingDriver);

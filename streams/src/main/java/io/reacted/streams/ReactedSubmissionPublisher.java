@@ -444,10 +444,10 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return feedGate.atell(message).thenAccept(delivery -> {});
     }
 
-    public void submit(PayloadT message) {
-        feedGate.tell(message)
-                .toCompletableFuture()
-                .thenAccept(delivery -> delivery.ifError(Throwable::printStackTrace));
+    public CompletionStage<Void> submit(PayloadT message) {
+        return feedGate.tell(message)
+                       .toCompletableFuture()
+                       .thenAccept(delivery -> delivery.ifError(Throwable::printStackTrace));
     }
 
     private void forwardToSubscribers(ReActorContext raCtx, Serializable payload) {

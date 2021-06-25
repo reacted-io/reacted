@@ -89,8 +89,14 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     @SuppressWarnings("EmptyMethod")
     protected void onInit(ReActorContext raCtx, ReActorInit init) {
         BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
-                          .ifPresent(mbox -> mbox.addNonDelayedMessageTypes(RefreshOperatorRequest.class,
-                                                                            ServicesGatesUpdate.class));
+                          .map(mbox -> mbox.addNonDelayedMessageTypes(RefreshOperatorRequest.class,
+                                                                      ServicesGatesUpdate.class))
+                          /* If this init is not delayed, an slot of the backpressuring buffer size
+                             has been consumed to deliver init itself, so we must make it available
+                             otherwise we will permantently leak 1 from buffer size
+                          */
+                          .filter(mbox -> !mbox.getNotDelayedMessageTypes().contains(ReActorInit.class))
+                          .ifPresent(mbox -> mbox.request(1));
         // Constantly refresh the gates. The idea is to automatically discover new available operators
         this.operatorsRefreshTask = raCtx.getReActorSystem()
             .getSystemSchedulingService()

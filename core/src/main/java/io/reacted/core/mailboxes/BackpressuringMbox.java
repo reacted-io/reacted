@@ -366,6 +366,30 @@ public class BackpressuringMbox implements MailBox {
 
         /**
          *
+         * @param notDelayable Message types that cannot be wait or backpressured. The delivery will be attempted
+         *                     immediately
+         * @return this builder
+         */
+        public Builder setNonDelayable(Class<? extends Serializable> ...notDelayable) {
+            this.notDelayable = Arrays.stream(notDelayable)
+                                      .collect(Collectors.toUnmodifiableSet());
+            return this;
+        }
+
+        /**
+         *
+         * @param notBackpressurable Messages that cannot be lost. If a delivery cannot be done immediately the system
+         *                           will wait till when necessary to deliver the message
+         * @return this builder
+         */
+        public Builder setNonBackpressurable(Class<? extends Serializable>... notBackpressurable) {
+            this.notBackpressurable = Arrays.stream(notBackpressurable)
+                                            .collect(Collectors.toUnmodifiableSet());
+            return this;
+        }
+
+        /**
+         *
          * @param notBackpressurable Messages that cannot be lost. If a delivery cannot be done immediately the system
          *                           will wait till when necessary to deliver the message
          * @return this builder

@@ -122,11 +122,14 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
         //All the services can receive service stats
         raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class));
 
-        var isMboxValid = BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
-                          .map(mbox -> mbox.addNonDelayedMessageTypes(getNonDelayedMessageTypes()))
-                          .filter(mbox -> routeesCannotBeFedAllTogether(mbox.getRequestOnStartup()))
-                          .map(invalidMbox -> fixMbox(raCtx, invalidMbox));
-        if (isMboxValid.isPresent() && !isMboxValid.get()) {
+        var backpressuringMbox = BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox());
+        backpressuringMbox.filter(mbox -> !mbox.getNotDelayedMessageTypes().contains(ReActorInit.class))
+                          .ifPresent(mbox -> mbox.request(1));
+        var isMboxValid =  backpressuringMbox.map(mbox -> mbox.addNonDelayedMessageTypes(getNonDelayedMessageTypes()))
+                                             .filter(mbox -> routeesCannotBeFedAllTogether(mbox.getRequestOnStartup()))
+                                             .map(invalidMbox -> fixMbox(raCtx, invalidMbox))
+                                             .orElse(true);
+        if (!isMboxValid) {
             return;
         }
         //spawn the minimum number or routees
@@ -211,7 +214,8 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
            .ifSuccessOrElse(this.routeesMap::add, spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR, spawnError));
     }
 
-    private ReActorRef spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions, ReActorConfig routeeConfig) {
+    private ReActorRef spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions,
+                                   ReActorConfig routeeConfig) {
         ReActorRef routee = routerCtx.spawnChild(routeeReActions, routeeConfig).orElseSneakyThrow();
         ReActorContext routeeCtx = routerCtx.getReActorSystem().getReActor(routee.getReActorId())
                                             .orElseThrow();
