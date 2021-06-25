@@ -47,19 +47,18 @@ import java.util.concurrent.TimeUnit;
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
-public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, BuiltT>,
-                     BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>,
-                     ServiceConfigT extends ReActorServiceConfig<BuilderT, BuiltT>>
+public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<ServiceCfgBuilderT, ServiceCfgT>,
+                     ServiceCfgT extends ReActorServiceConfig<ServiceCfgBuilderT, ServiceCfgT>>
     implements ReActiveEntity {
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
     private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router %s";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
     private final Properties serviceInfo;
-    private final ServiceConfigT serviceConfig;
+    private final ServiceCfgT serviceConfig;
     private final ArrayList<ReActorRef> routeesMap;
     private long msgReceived;
 
-    public Service(ServiceConfigT serviceConfig) {
+    public Service(ServiceCfgT serviceConfig) {
         this.serviceInfo = new Properties();
         this.serviceConfig = Objects.requireNonNull(serviceConfig);
         this.msgReceived = 1;
@@ -70,16 +69,13 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
     @Nonnull
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct((raCtx, message) -> requestNextMessage(raCtx, message,
-                                                                      this::routeMessage))
-                        .reAct(ServiceRegistryNotAvailable.class,
-                               this::onServiceRegistryNotAvailable)
+                        .reAct((raCtx, message) -> requestNextMessage(raCtx, message, this::routeMessage))
+                        .reAct(ServiceRegistryNotAvailable.class, this::onServiceRegistryNotAvailable)
                         .reAct(ServiceDiscoveryRequest.class, this::serviceDiscovery)
                         .reAct(RouteeReSpawnRequest.class, this::respawnRoutee)
                         .reAct(ReActorInit.class, this::initService)
                         .reAct(ReActorStop.class, this::stopService)
-                        .reAct(ServicePublicationRequestError.class,
-                               this::onServicePublicationError)
+                        .reAct(ServicePublicationRequestError.class, this::onServicePublicationError)
                         .reAct(SystemMonitorReport.class, this::onSystemInfoReport)
                         .build();
     }
@@ -118,7 +114,6 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
                                                                    serviceConfig.getReActorName()));
     }
 
-    @SuppressWarnings("unchecked")
     private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
         //All the services can receive service stats
         raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class));
@@ -137,7 +132,7 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
         for (int currentRoutee = 0; currentRoutee < serviceConfig.getRouteesNum(); currentRoutee++) {
             try {
                 ReActor routee = Objects.requireNonNull(serviceConfig.getRouteeProvider()
-                                                                     .apply((BuiltT) serviceConfig));
+                                                                     .apply(serviceConfig));
                 ReActorConfig routeeConfig = routee.getConfig();
                 ReActions routeeReActions = routee.getReActions();
                 //A service has multiple children, so they cannot share the same name
@@ -203,11 +198,10 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
     private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived) {
         return serviceConfig.getLoadBalancingPolicy().selectRoutee(routerCtx, this, msgReceived);
     }
-    @SuppressWarnings("unchecked")
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
         this.routeesMap.remove(reSpawnRequest.deadRoutee);
         Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider()
-                                                         .apply((BuiltT) serviceConfig)))
+                                                         .apply((ServiceCfgT) serviceConfig)))
            .map(routee -> spawnRoutee(raCtx, routee.getReActions(),
                                       ReActorConfig.fromConfig(routee.getConfig())
                                                    .setReActorName(reSpawnRequest.routeeName)
@@ -275,10 +269,11 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
 
     public enum LoadBalancingPolicy {
         ROUND_ROBIN {
-            @SuppressWarnings("unchecked")
             @Override
-            public Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
-                                                     Service thisService, long msgNum) {
+            public <CfgBuilderT extends ReActorServiceConfig.Builder<CfgBuilderT, CfgT>,
+                    CfgT extends ReActorServiceConfig<CfgBuilderT, CfgT>>
+            Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
+                                              Service<CfgBuilderT, CfgT> thisService, long msgNum) {
                 List<ReActorRef> routees = thisService.routeesMap;
                 int routeeIdx = (int) ((msgNum % Integer.MAX_VALUE) % routees.size());
                 return Try.of(() -> routees.get(routeeIdx))
@@ -287,8 +282,10 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
         },
         LOWEST_LOAD {
             @Override
-            public Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
-                                                     Service thisService, long msgNum) {
+            public <CfgBuilderT extends ReActorServiceConfig.Builder<CfgBuilderT, CfgT>,
+                    CfgT extends ReActorServiceConfig<CfgBuilderT, CfgT>>
+            Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
+                                              Service<CfgBuilderT, CfgT> thisService, long msgNum) {
                 return routerCtx.getChildren().stream()
                                 .map(ReActorRef::getReActorId)
                                 .map(routerCtx.getReActorSystem()::getReActor)
@@ -297,7 +294,9 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
                                 .map(ReActorContext::getSelf);
             }
         };
-        abstract Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
-                                                   Service thisService, long msgNum);
+        abstract <CfgBuilderT extends ReActorServiceConfig.Builder<CfgBuilderT, CfgT>,
+                  CfgT extends ReActorServiceConfig<CfgBuilderT, CfgT>>
+        Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
+                                          Service<CfgBuilderT, CfgT> thisService, long msgNum);
     }
 }

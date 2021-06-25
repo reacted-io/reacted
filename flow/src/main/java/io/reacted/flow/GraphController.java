@@ -9,6 +9,7 @@
 package io.reacted.flow;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -23,6 +24,7 @@ import io.reacted.flow.operators.messages.OperatorInitComplete;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
+import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked.TriConsumer;
 import java.io.Serializable;
 import java.util.Collection;
@@ -43,7 +45,7 @@ import javax.annotation.Nonnull;
 @NonNullByDefault
 class GraphController implements ReActiveEntity {
   private final Map<String,
-                    ? extends FlowOperatorConfig<? extends Builder<?,?>,
+                    ? extends FlowOperatorConfig<? extends FlowOperatorConfig.Builder<?,?>,
                                                  ? extends FlowOperatorConfig<?, ?>>>
       operatorsCfgsByName;
   private final ReActions reActions;
@@ -99,9 +101,8 @@ class GraphController implements ReActiveEntity {
                       .ifPresent(mbox -> mbox.addNonDelayedMessageTypes(OperatorInitComplete.class));
     for(var operatorCfg : operatorsCfgsByName.entrySet()) {
       operatorNameToOperator.put(operatorCfg.getKey(),
-                                 raCtx.getReActorSystem()
-                                      .spawnService(operatorCfg.getValue(), raCtx.getSelf())
-                                      .orElseSneakyThrow());
+                                 spawnOperator(raCtx.getReActorSystem(),operatorCfg.getValue(),
+                                               raCtx.getSelf()).orElseSneakyThrow());
     }
   }
   private void onInitInputStreams(ReActorContext raCtx) {
@@ -133,6 +134,15 @@ class GraphController implements ReActiveEntity {
               .thenAccept(finished -> streamConsumerExecutor.shutdownNow());
   }
 
+  private static <CfgBuilderT extends FlowOperatorConfig.Builder<CfgBuilderT, CfgT>,
+      CfgT extends FlowOperatorConfig<CfgBuilderT, CfgT>>
+  Try<ReActorRef> spawnOperator(ReActorSystem localReActorSystem,
+                                ReActorServiceConfig<? extends ReActorServiceConfig.Builder<?, ?>,
+                                    ? extends ReActorServiceConfig<?,?>> operatorConfig,
+                                ReActorRef operatorFather) {
+    return Try.of(() -> localReActorSystem.spawnService((CfgT)operatorConfig, operatorFather))
+              .flatMap(Try::identity);
+  }
   private static ExecutorService spawnNewInputStreamExecutor(ReActorSystem localReActorSystem,
                                                              String flowName, String stageName) {
     var inputStreamThreadFactory = new ThreadFactoryBuilder();

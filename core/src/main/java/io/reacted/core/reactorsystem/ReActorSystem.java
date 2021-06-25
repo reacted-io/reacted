@@ -524,9 +524,10 @@ public class ReActorSystem {
      * @param serviceConfig service config
      * @return A successful Try containing the ReActorRef for the new service on success, a failed try on failure
      */
-    public <ServiceConfigT extends ReActorServiceConfig<?, ?>>
+    public <ServiceConfigBuilderT extends ReActorServiceConfig.Builder<ServiceConfigBuilderT, ServiceConfigT>,
+            ServiceConfigT extends ReActorServiceConfig<ServiceConfigBuilderT, ServiceConfigT>>
     Try<ReActorRef> spawnService(ServiceConfigT serviceConfig) {
-        return spawn(new Service(Objects.requireNonNull(serviceConfig)).getReActions(), serviceConfig);
+        return spawn(new Service<>(Objects.requireNonNull(serviceConfig)).getReActions(), serviceConfig);
     }
 
 
@@ -537,10 +538,11 @@ public class ReActorSystem {
      * @param father This service will be created as a child of the specified ReActor
      * @return A successful Try containing the ReActorRef for the new service on success, a failed try on failure
      */
-    public <ServiceConfigT extends ReActorServiceConfig<?, ?>>
-    Try<ReActorRef> spawnService(ServiceConfigT serviceConfig, ReActorRef father) {
-        return spawnChild(new Service(Objects.requireNonNull(serviceConfig)).getReActions(),
-                          father, serviceConfig);
+    public <ServiceCfgBuilderT extends ReActorServiceConfig.Builder<ServiceCfgBuilderT, ServiceCfgT>,
+            ServiceCfgT extends ReActorServiceConfig<ServiceCfgBuilderT, ServiceCfgT>>
+    Try<ReActorRef> spawnService(ServiceCfgT serviceConfig, ReActorRef father) {
+        return spawnChild(new Service<>(Objects.requireNonNull(serviceConfig)).getReActions(),
+                                        father, serviceConfig);
     }
 
     public ReActorSystemRef getLoopback() { return gatesCentralizedManager.getLoopBack(); }
