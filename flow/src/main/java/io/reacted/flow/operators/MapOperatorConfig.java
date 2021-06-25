@@ -34,6 +34,7 @@ public class MapOperatorConfig extends FlowOperatorConfig<MapOperatorConfig.Buil
   public Builder toBuilder() { return builder; }
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, MapOperatorConfig> {
+    @SuppressWarnings("NotNullFieldNotInitialized")
     private Function<Object, Collection<? extends Serializable>> mappingFunction;
     private Builder() {
       super.setRouteeProvider(MapOperator::new);

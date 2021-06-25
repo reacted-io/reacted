@@ -68,6 +68,7 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
         return Optional.ofNullable(graphControllerGate);
     }
 
+    @Nonnull
     @Override
     public Try<Void> run(ReActorSystem localReActorSystem) {
         var graphController = new GraphController(getFlowName(), operatorsCfgs);

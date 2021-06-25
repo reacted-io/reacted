@@ -48,6 +48,7 @@ public class ReduceOperatorConfig extends FlowOperatorConfig<Builder, ReduceOper
   public Builder toBuilder() { return builder; }
 
   public static Builder newBuilder() { return new Builder(); }
+  @SuppressWarnings("NotNullFieldNotInitialized")
   public static class Builder extends FlowOperatorConfig.Builder<Builder, ReduceOperatorConfig> {
     private Collection<Class<? extends Serializable>> typeToRequiredForMerge;
     private Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,

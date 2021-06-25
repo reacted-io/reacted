@@ -15,6 +15,7 @@ import io.reacted.flow.operators.ServiceOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
@@ -23,7 +24,7 @@ import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOperatorConfig> {
-
+  public static final Function<Serializable, Collection<? extends Serializable>> IDENTITY = List::of;
   private final Function<Serializable, Collection<? extends Serializable>> toServiceRequests;
   private final Function<Serializable, Collection<? extends Serializable>> fromServiceResponse;
   private final Class<? extends Serializable> serviceReplyType;
@@ -76,9 +77,11 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
 
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, ServiceOperatorConfig> {
-    private Function<Serializable, Collection<? extends Serializable>> toServiceRequests;
-    private Function<Serializable, Collection<? extends Serializable>> fromServiceResponse;
+    private Function<Serializable, Collection<? extends Serializable>> toServiceRequests = IDENTITY;
+    private Function<Serializable, Collection<? extends Serializable>> fromServiceResponse = IDENTITY;
+    @SuppressWarnings("NotNullFieldNotInitialized")
     private Class<? extends Serializable> serviceReplyType;
+    @SuppressWarnings("NotNullFieldNotInitialized")
     private ServiceDiscoverySearchFilter serviceSearchFilter;
     private Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector = GateSelectorPolicies.RANDOM_GATE;
     @Nullable

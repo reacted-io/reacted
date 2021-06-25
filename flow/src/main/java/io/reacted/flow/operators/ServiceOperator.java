@@ -25,6 +25,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
@@ -36,6 +37,7 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
   private final ReActions reActions;
   private final ExecutorService executorService;
   private final boolean shallStopExecutorService;
+  @SuppressWarnings("NotNullFieldNotInitialized")
   private ReActorRef service;
 
   protected ServiceOperator(ServiceOperatorConfig config) {
@@ -57,6 +59,7 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
                               .build();
   }
 
+  @Nonnull
   @Override
   public ReActions getReActions() { return reActions; }
 

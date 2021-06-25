@@ -30,6 +30,7 @@ import io.reacted.streams.messages.UnsubscriptionRequest;
 
 import java.util.concurrent.Flow.Subscriber;
 import java.util.function.Consumer;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Objects;
@@ -108,6 +109,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         return mboxOwner -> bpMailboxBuilder.setRealMailboxOwner(mboxOwner).build();
     }
 
+    @Nonnull
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()

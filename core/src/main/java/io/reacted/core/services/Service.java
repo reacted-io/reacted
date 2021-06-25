@@ -258,7 +258,6 @@ public class Service<BuilderT extends ReActorServiceConfig.Builder<BuilderT, Bui
     }
 
     //Messages required for the Service management logic cannot be backpressured
-    @SuppressWarnings("unchecked")
     private static Class<? extends Serializable>[] getNonDelayedMessageTypes() {
         return ObjectUtils.toArray(ServiceRegistryNotAvailable.class,
                                    ServiceDiscoveryRequest.class, RouteeReSpawnRequest.class,

@@ -54,6 +54,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     private final ReActorConfig routeeCfg;
     private Collection<ReActorRef> ifPredicateOutputOperatorsRefs;
     private Collection<ReActorRef> thenElseOutputOperatorsRefs;
+    @SuppressWarnings("NotNullFieldNotInitialized")
     private ScheduledFuture<?> operatorsRefreshTask;
     private boolean shallAwakeInputStreams = true;
 

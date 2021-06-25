@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
 @NonNullByDefault
@@ -40,6 +41,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
   private static final ReActorConfig DEFAULT_OPERATOR_ROUTEE_CONFIG = ReActorConfig.newBuilder()
                                                                                    .setReActorName("ROUTEE")
                                                                                    .build();
+  private static final String FLOW_NAME_MISSING = "FLOW NAME MISSING";
   private final TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler;
   private final Predicate<Serializable> ifPredicate;
   private final Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators;
@@ -63,7 +65,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     this.inputStreams = Objects.requireNonNull(builder.inputStreams, "Input Streams cannot be null");
     this.inputStreamErrorHandler = Objects.requireNonNull(builder.inputStreamErrorHandler,
                                                           "Input stream error handler cannot be null");
-    this.flowName = builder.flowName;
+    this.flowName = Objects.requireNonNull(builder.flowName, "Flow Name cannot be null");
   }
 
   public Predicate<Serializable> getIfPredicate() {
@@ -99,7 +101,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     @SuppressWarnings("unchecked")
     protected TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler =
         (TriConsumer<ReActorSystem, BuiltT, ? super Throwable>) DEFAULT_INPUT_STREAM_LOGGING_ERROR_HANDLER;
-    protected String flowName;
+    protected String flowName = FLOW_NAME_MISSING;
 
     protected Builder() { /* No implementation required */ }
 

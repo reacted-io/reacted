@@ -96,7 +96,8 @@ public final class ObjectUtils {
         return element;
     }
 
-    public static <T, K extends T> K[] toArray(K ...data) { return data; }
+    @SafeVarargs
+    public static <T, K extends T> T[] toArray(K ...data) { return data; }
 
     public static byte[] toBytes(Properties properties) throws IOException {
         var byteArrayOutputStream = new ByteArrayOutputStream();
