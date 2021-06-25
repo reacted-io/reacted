@@ -29,7 +29,6 @@ public class MapOperator extends FlowOperator<MapOperatorConfig.Builder, MapOper
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     protected CompletionStage<Collection<? extends Serializable>>
     onNext(Serializable input, ReActorContext raCtx) {
         return CompletableFuture.completedStage(mappingFunction.apply(input));
