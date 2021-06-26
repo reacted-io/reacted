@@ -14,18 +14,23 @@ import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.utils.ReActedUtils;
 import io.reacted.flow.operators.messages.RefreshOperatorRequest;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
@@ -37,6 +42,8 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
   private final ReActions reActions;
   private final ExecutorService executorService;
   private final boolean shallStopExecutorService;
+  @Nullable
+  private ScheduledFuture<?> serviceRefreshTask;
   @SuppressWarnings("NotNullFieldNotInitialized")
   private ReActorRef service;
 
@@ -53,8 +60,7 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
                               .from(super.getReActions())
                               .reAct(ReActorInit.class, this::onServiceOperatorInit)
                               .reAct(ReActorStop.class, this::onServiceOperatorStop)
-                              .reAct(RefreshOperatorRequest.class,
-                                     this::onRefreshServiceOperatorRequest)
+                              .reAct(RefreshOperatorRequest.class, this::onRefreshServiceOperatorRequest)
                               .reAct(config.getServiceReplyType(), this::onReply)
                               .build();
   }
@@ -76,10 +82,22 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
 
   private void onServiceOperatorInit(ReActorContext raCtx, ReActorInit init) {
     super.onInit(raCtx, init);
+    /*
+    raCtx.getReActorSystem()
+         .getSystemSchedulingService()
+         .scheduleWithFixedDelay(() -> ReActedUtils.resolveServices(List.of(serviceSearchFilter),
+                                                                    raCtx.getReActorSystem(),
+                                                                    gateSelector,
+                                                                    raCtx.getSelf().getReActorId().toString())
+                                                   .thenAccept(service -> ),
+                                 0, 15, TimeUnit.SECONDS); */
   }
 
   private void onServiceOperatorStop(ReActorContext raCtx, ReActorStop stop) {
     super.onStop(raCtx, stop);
+    if (serviceRefreshTask != null) {
+      serviceRefreshTask.cancel(true);
+    }
     if (shallStopExecutorService) {
       executorService.shutdownNow();
     }

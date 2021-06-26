@@ -22,7 +22,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.core.utils.ReActedUtils;
 import io.reacted.flow.operators.messages.OperatorInitComplete;
-import io.reacted.flow.operators.messages.RefreshOperatorReply;
+import io.reacted.flow.operators.messages.OperatorOutputGatesReply;
 import io.reacted.flow.operators.messages.RefreshOperatorRequest;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
@@ -46,12 +46,12 @@ import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 
 @SuppressWarnings("unchecked")
 @NonNullByDefault
-public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
-                                   BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>>
+public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builder<CfgBuilderT, CfgT>,
+                                   CfgT extends FlowOperatorConfig<CfgBuilderT, CfgT>>
     implements ReActor {
     public static final Collection<? extends Serializable> NO_OUTPUT = List.of();
     private final ReActions operatorReactions;
-    private final BuiltT operatorCfg;
+    private final CfgT operatorCfg;
     private final ReActorConfig routeeCfg;
     private Collection<ReActorRef> ifPredicateOutputOperatorsRefs;
     private Collection<ReActorRef> thenElseOutputOperatorsRefs;
@@ -59,7 +59,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     private ScheduledFuture<?> operatorsRefreshTask;
     private boolean shallAwakeInputStreams = true;
 
-    protected FlowOperator(BuiltT operatorCfg) {
+    protected FlowOperator(CfgT operatorCfg) {
         this.operatorCfg = Objects.requireNonNull(operatorCfg, "Operator Config cannot be null");
         this.routeeCfg = Objects.requireNonNull(operatorCfg.getRouteeConfig());
         this.ifPredicateOutputOperatorsRefs = List.of();
@@ -68,7 +68,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                           .reAct(RefreshOperatorRequest.class, (raCtx, payload) -> onRefreshOperatorRequest(raCtx))
                                           .reAct(ReActorInit.class, this::onInit)
                                           .reAct(ReActorStop.class, this::onStop)
-                                          .reAct(ServicesGatesUpdate.class, this::onServiceGatesUpdate)
+                                          .reAct(OperatorOutputGatesUpdate.class, this::onServiceGatesUpdate)
                                           .reAct(this::onNext)
                                           .build();
     }
@@ -93,7 +93,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
     protected void onInit(ReActorContext raCtx, ReActorInit init) {
         BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
                           .map(mbox -> mbox.addNonDelayedMessageTypes(Set.of(RefreshOperatorRequest.class,
-                                                                             ServicesGatesUpdate.class)))
+                                                                             OperatorOutputGatesUpdate.class)))
                           /* If this init is not delayed, an slot of the backpressuring buffer size
                              has been consumed to deliver init itself, so we must make it available
                              otherwise we will permanently leak 1 from buffer size
@@ -112,7 +112,7 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                     0, 1, TimeUnit.MINUTES);
     }
 
-    protected void onServiceGatesUpdate(ReActorContext raCtx, ServicesGatesUpdate newGates) {
+    protected void onServiceGatesUpdate(ReActorContext raCtx, OperatorOutputGatesUpdate newGates) {
         this.ifPredicateOutputOperatorsRefs = newGates.ifPredicateServices;
         this.thenElseOutputOperatorsRefs = newGates.thenElseServices;
         if (shallAwakeInputStreams) {
@@ -127,9 +127,9 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
         }
         raCtx.getSender()
              .tell(raCtx.getSelf(),
-                   new RefreshOperatorReply<>(raCtx.getSelf().getReActorId().getReActorName(),
-                                              (Class<? extends FlowOperator<BuilderT, BuiltT>>) this.getClass(),
-                                              true));
+                   new OperatorOutputGatesReply<>(raCtx.getSelf().getReActorId().getReActorName(),
+                                                  (Class<? extends FlowOperator<CfgBuilderT, CfgT>>) this.getClass(),
+                                                  true));
     }
     protected void onStop(ReActorContext raCtx, ReActorStop stop) {
         operatorsRefreshTask.cancel(true);
@@ -145,15 +145,15 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
                                                             raCtx.getReActorSystem(),
                                                             GateSelectorPolicies.RANDOM_GATE,
                                                             raCtx.getSelf().getReActorId().toString());
-        ifServices.thenCombine(thenElseServices, ServicesGatesUpdate::new)
-                  .thenApply(servicesGatesUpdate -> servicesGatesUpdate.ifPredicateServices.size() !=
-                                                    operatorCfg.getIfPredicateOutputOperators().size() ||
-                                                    servicesGatesUpdate.thenElseServices.size() !=
-                                                    operatorCfg.getThenElseOutputOperators().size()
-                                                    ? requester.tell(new RefreshOperatorReply<>(raCtx.getSelf().getReActorId().getReActorName(),
-                                                                                                (Class<? extends FlowOperator<BuilderT, BuiltT>>) this.getClass(),
-                                                                                                false))
-                                                    : raCtx.getSelf().tell(requester, servicesGatesUpdate));
+        ifServices.thenCombine(thenElseServices, OperatorOutputGatesUpdate::new)
+                  .thenApply(operatorOutputGatesUpdate -> operatorOutputGatesUpdate.ifPredicateServices.size() !=
+                                                          operatorCfg.getIfPredicateOutputOperators().size() ||
+                                                          operatorOutputGatesUpdate.thenElseServices.size() !=
+                                                          operatorCfg.getThenElseOutputOperators().size()
+                                                          ? requester.tell(new OperatorOutputGatesReply<>(raCtx.getSelf().getReActorId().getReActorName(),
+                                                                                                          (Class<? extends FlowOperator<CfgBuilderT, CfgT>>) this.getClass(),
+                                                                                                          false))
+                                                          : raCtx.getSelf().tell(requester, operatorOutputGatesUpdate));
     }
 
     private void onNext(ReActorContext raCtx, Serializable message) {
@@ -203,19 +203,19 @@ public abstract class FlowOperator<BuilderT extends FlowOperatorConfig.Builder<B
         return DeliveryStatus.NOT_DELIVERED;
     }
 
-    private static class ServicesGatesUpdate implements Serializable {
+    private static class OperatorOutputGatesUpdate implements Serializable {
         private final Collection<ReActorRef> ifPredicateServices;
         private final Collection<ReActorRef> thenElseServices;
 
-        public ServicesGatesUpdate(Collection<ReActorRef> ifPredicateServices,
-                                   Collection<ReActorRef> thenElseServices) {
+        public OperatorOutputGatesUpdate(Collection<ReActorRef> ifPredicateServices,
+                                         Collection<ReActorRef> thenElseServices) {
             this.ifPredicateServices = ifPredicateServices;
             this.thenElseServices = thenElseServices;
         }
 
         @Override
         public String toString() {
-            return "ServicesGatesUpdate{" +
+            return "OperatorOutputGatesUpdate{" +
                    "ifPredicateServices=" + ifPredicateServices +
                    ", thenElseServices=" + thenElseServices +
                    '}';

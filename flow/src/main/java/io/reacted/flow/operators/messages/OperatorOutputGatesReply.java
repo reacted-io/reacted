@@ -14,14 +14,14 @@ import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 
 @NonNullByDefault
-public class RefreshOperatorReply<BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
+public class OperatorOutputGatesReply<BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
                                   BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>> implements Serializable {
   private final boolean initComplete;
   private final String operatorName;
   private final Class<? extends FlowOperator<BuilderT, BuiltT>> operatorType;
-  public RefreshOperatorReply(String operatorName,
-                              Class<? extends FlowOperator<BuilderT, BuiltT>> operatorType,
-                              boolean isInitComplete) {
+  public OperatorOutputGatesReply(String operatorName,
+                                  Class<? extends FlowOperator<BuilderT, BuiltT>> operatorType,
+                                  boolean isInitComplete) {
     this.operatorName = operatorName;
     this.operatorType = operatorType;
     this.initComplete = isInitComplete;
@@ -41,7 +41,7 @@ public class RefreshOperatorReply<BuilderT extends FlowOperatorConfig.Builder<Bu
 
   @Override
   public String toString() {
-    return "RefreshOperatorReply{" +
+    return "OperatorOutputGatesReply{" +
            "initComplete=" + initComplete +
            ", operatorName='" + operatorName + '\'' +
            ", operatorType=" + operatorType +

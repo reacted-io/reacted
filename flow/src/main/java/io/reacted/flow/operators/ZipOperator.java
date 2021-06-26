@@ -23,44 +23,44 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
-public class ReduceOperator extends FlowOperator<ReduceOperatorConfig.Builder,
-                                                 ReduceOperatorConfig> {
-    private final Map<Class<? extends Serializable>, Long> typeToRequiredForMerge;
+public class ZipOperator extends FlowOperator<ZipOperatorConfig.Builder,
+    ZipOperatorConfig> {
+    private final Map<Class<? extends Serializable>, Long> zipperRequiredTypes;
     private final Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
-                           Collection<? extends Serializable>> reducer;
+                           Collection<? extends Serializable>> zipper;
     private final Map<Class<? extends Serializable>, List<Serializable>> storage;
-    protected ReduceOperator(ReduceOperatorConfig config) {
+    protected ZipOperator(ZipOperatorConfig config) {
         super(config);
-        this.reducer = config.getReducer();
-        this.typeToRequiredForMerge = config.getTypeToRequiredForMerge();
-        this.storage = typeToRequiredForMerge.keySet().stream()
-                                             .collect(Collectors.toUnmodifiableMap(Function.identity(),
-                                                                                  dataType -> new LinkedList<>()));
+        this.zipper = config.getZipper();
+        this.zipperRequiredTypes = config.getZipperRequiredTypes();
+        this.storage = zipperRequiredTypes.keySet().stream()
+                                          .collect(Collectors.toUnmodifiableMap(Function.identity(),
+                                                                                dataType -> new LinkedList<>()));
     }
 
     @Override
     protected CompletionStage<Collection<? extends Serializable>>
     onNext(Serializable input, ReActorContext raCtx) {
-        if (typeToRequiredForMerge.containsKey(input.getClass())) {
+        if (zipperRequiredTypes.containsKey(input.getClass())) {
             storage.get(input.getClass()).add(input);
-            if (canReduce()) {
-                return CompletableFuture.completedStage(reducer.apply(retrieveReduceData()));
+            if (canZip()) {
+                return CompletableFuture.completedStage(zipper.apply(retrieveZipData()));
             }
         }
         return CompletableFuture.completedStage(List.of());
     }
 
-    private Map<Class<? extends Serializable>, List<? extends Serializable>> retrieveReduceData() {
-        return typeToRequiredForMerge.entrySet().stream()
-                              .collect(Collectors.toMap(Entry::getKey,
+    private Map<Class<? extends Serializable>, List<? extends Serializable>> retrieveZipData() {
+        return zipperRequiredTypes.entrySet().stream()
+                                  .collect(Collectors.toMap(Entry::getKey,
                                                         entry -> removeNfromInput(storage.get(entry.getKey()),
                                                                                   entry.getValue()),
                                                         (f, s) -> { throw new UnsupportedOperationException(); }));
     }
 
-    private boolean canReduce() {
-        return typeToRequiredForMerge.entrySet().stream()
-                              .allMatch(entry -> storage.get(entry.getKey()).size() >=
+    private boolean canZip() {
+        return zipperRequiredTypes.entrySet().stream()
+                                  .allMatch(entry -> storage.get(entry.getKey()).size() >=
                                                  entry.getValue());
     }
 

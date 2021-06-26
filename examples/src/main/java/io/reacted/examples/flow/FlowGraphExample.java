@@ -15,7 +15,7 @@ import io.reacted.examples.ExampleUtils;
 import io.reacted.flow.ReActedGraph;
 import io.reacted.flow.SourceStream;
 import io.reacted.flow.operators.MapOperatorConfig;
-import io.reacted.flow.operators.ReduceOperatorConfig;
+import io.reacted.flow.operators.ZipOperatorConfig;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.streams.ReactedSubmissionPublisher;
 import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
@@ -84,17 +84,17 @@ public class FlowGraphExample {
                                                                                                                            .build())
                                                                        .setMappingFunction(input -> List.of(((Integer)input) * 123))
                                                                        .build())
-                                         .addOperator(ReduceOperatorConfig.newBuilder()
-                                                                          .setReActorName("Joiner")
-                                                                          .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
+                                         .addOperator(ZipOperatorConfig.newBuilder()
+                                                                       .setReActorName("Joiner")
+                                                                       .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                               .setServiceName("Printer")
                                                                                                                               .build())
-                                                                          .setMergeRequiredTypes(List.of(String.class, Integer.class))
-                                                                          .setReducer(inputMap -> List.of(inputMap.values().stream()
-                                                                                                                  .flatMap(List::stream)
-                                                                                                                  .map(Object::toString)
-                                                                                                                  .collect(Collectors.joining(" "))))
-                                                                          .build())
+                                                                       .setZipRequiredTypes(List.of(String.class, Integer.class))
+                                                                       .setZipper(inputMap -> List.of(inputMap.values().stream()
+                                                                                                              .flatMap(List::stream)
+                                                                                                              .map(Object::toString)
+                                                                                                              .collect(Collectors.joining(" "))))
+                                                                       .build())
                                          .addOperator(MapOperatorConfig.newBuilder()
                                                                        .setReActorName("Printer")
                                                                        .setMappingFunction(input -> { LOGGER.info("Merged: {}",input);

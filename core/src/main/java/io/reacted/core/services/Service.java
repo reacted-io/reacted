@@ -29,7 +29,6 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -155,16 +154,17 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
 
     private boolean fixMbox(ReActorContext raCtx, BackpressuringMbox invalidMbox) {
         if(invalidMbox.getBufferSize() < serviceConfig.getRouteesNum()) {
-            raCtx.logError("Backpressuring mailbox for service {} does not have" +
+            raCtx.logError("Backpressuring mailbox for service {} does not have " +
                            "enough space for the specified routees number: {} for {} " +
                            "routees. Service is HALTING", serviceConfig.getReActorName(),
                             invalidMbox.getBufferSize(), serviceConfig.getRouteesNum());
             raCtx.stop();
             return false;
         }
-        raCtx.logError("Backpressuring mailbox for service {} does not have" +
+        raCtx.logError("Backpressuring mailbox for service {} does not have " +
                        "enough space for the specified routees number: {} for {} " +
                        "routees. Expanding space to fit the minimum requirement [{}]",
+                       serviceConfig.getReActorName(), invalidMbox.getBufferSize(),
                        serviceConfig.getRouteesNum());
         invalidMbox.request(serviceConfig.getRouteesNum() - invalidMbox.getRequestOnStartup());
         return true;

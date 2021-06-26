@@ -146,7 +146,7 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
          * If the service is marked as non remote, service discovery subscription is automatically
          * enabled for this service.
          * If the desired behaviour should be different, the subscriptions can be overridden
-         * using {@link ReActiveEntityConfig::setTypedSubscriptions}
+         * using {@link ReActiveEntityConfig#setTypedSubscriptions}
          *
          * @param remoteService true if this service is meant to be published on the registries
          * @return this builder
