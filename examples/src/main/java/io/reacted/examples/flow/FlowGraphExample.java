@@ -60,7 +60,7 @@ public class FlowGraphExample {
                                                                                                                                                              .setBackpressureTimeout(ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION)
                                                                                                                                                              .setSubscriberName("ToLowerSubscription")
                                                                                                                                                              .build())))
-                                                                       .setMappingFunction(input -> List.of(((String)input).toLowerCase()))
+                                                                       .setMapper(input -> List.of(((String)input).toLowerCase()))
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                            .setServiceName("Joiner")
                                                                                                                            .build())
@@ -82,7 +82,7 @@ public class FlowGraphExample {
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                            .setServiceName("Joiner")
                                                                                                                            .build())
-                                                                       .setMappingFunction(input -> List.of(((Integer)input) * 123))
+                                                                       .setMapper(input -> List.of(((Integer)input) * 123))
                                                                        .build())
                                          .addOperator(ZipOperatorConfig.newBuilder()
                                                                        .setReActorName("Joiner")
@@ -97,7 +97,7 @@ public class FlowGraphExample {
                                                                        .build())
                                          .addOperator(MapOperatorConfig.newBuilder()
                                                                        .setReActorName("Printer")
-                                                                       .setMappingFunction(input -> { LOGGER.info("Merged: {}",input);
+                                                                       .setMapper(input -> { LOGGER.info("Merged: {}", input);
                                                                                                       return List.of(); })
                                                                        .build())
                                          .build();

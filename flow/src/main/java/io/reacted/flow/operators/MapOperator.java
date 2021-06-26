@@ -24,7 +24,7 @@ public class MapOperator extends FlowOperator<MapOperatorConfig.Builder, MapOper
 
     protected MapOperator(MapOperatorConfig config) {
         super(config);
-        this.mappingFunction = Objects.requireNonNull(config.getMappingFunction(),
+        this.mappingFunction = Objects.requireNonNull(config.getMapper(),
                                                       "Mapping function cannot be null");
     }
 

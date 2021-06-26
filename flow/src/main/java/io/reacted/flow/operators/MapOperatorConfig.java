@@ -11,23 +11,25 @@ package io.reacted.flow.operators;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 @NonNullByDefault
 public class MapOperatorConfig extends FlowOperatorConfig<MapOperatorConfig.Builder,
                                                           MapOperatorConfig> {
-  private final Function<Object, Collection<? extends Serializable>> mappingFunction;
+  private final Function<Object, Collection<? extends Serializable>> mapper;
   private final Builder builder;
   private MapOperatorConfig(Builder builder) {
     super(builder);
-    this.mappingFunction = Objects.requireNonNull(builder.mappingFunction,
-                                                  "Mapping function cannot be null");
+    this.mapper = Objects.requireNonNull(builder.mapper,
+                                         "Mapping function cannot be null");
     this.builder = builder;
   }
 
-  public Function<Object, Collection<? extends Serializable>> getMappingFunction() {
-    return mappingFunction;
+  public Function<Object, Collection<? extends Serializable>> getMapper() {
+    return mapper;
   }
 
   @Override
@@ -35,12 +37,17 @@ public class MapOperatorConfig extends FlowOperatorConfig<MapOperatorConfig.Buil
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, MapOperatorConfig> {
     @SuppressWarnings("NotNullFieldNotInitialized")
-    private Function<Object, Collection<? extends Serializable>> mappingFunction;
+    private Function<Object, Collection<? extends Serializable>> mapper;
     private Builder() {
       super.setRouteeProvider(MapOperator::new);
     }
-    public Builder setMappingFunction(Function<Object, Collection<? extends Serializable>> mappingFunction) {
-      this.mappingFunction = mappingFunction;
+    public Builder setMapper(Function<Object, Collection<? extends Serializable>> mapper) {
+      this.mapper = mapper;
+      return this;
+    }
+
+    public Builder setConsumer(Consumer<Object> consumer) {
+      this.mapper = input -> { consumer.accept(input); return List.of(); };
       return this;
     }
 

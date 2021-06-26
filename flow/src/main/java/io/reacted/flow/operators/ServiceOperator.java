@@ -81,8 +81,7 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
   }
 
   private void onServiceOperatorInit(ReActorContext raCtx, ReActorInit init) {
-    super.onInit(raCtx, init);
-    /*
+    super.onInit(raCtx, init);/*
     raCtx.getReActorSystem()
          .getSystemSchedulingService()
          .scheduleWithFixedDelay(() -> ReActedUtils.resolveServices(List.of(serviceSearchFilter),
