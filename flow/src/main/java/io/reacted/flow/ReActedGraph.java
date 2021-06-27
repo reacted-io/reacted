@@ -24,6 +24,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -70,13 +71,16 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
 
     @Nonnull
     @Override
-    public Try<Void> run(ReActorSystem localReActorSystem) {
-        var graphController = new GraphController(getFlowName(), operatorsCfgs);
-        return localReActorSystem.spawn(graphController, this)
-                                 .map(controller -> {
-                                     this.graphControllerGate = controller;
-                                     this.operatorsByName = graphController.getOperatorsByName();
-                                     return null; });
+    public CompletionStage<Try<Void>> run(ReActorSystem localReActorSystem) {
+        CompletableFuture<Try<Void>> graphInited = new CompletableFuture<>();
+        var graphController = new GraphController(getFlowName(), operatorsCfgs, graphInited);
+        var spawnResult = localReActorSystem.spawn(graphController, this)
+                                            .map(controller -> {
+                                                this.graphControllerGate = controller;
+                                                this.operatorsByName = graphController.getOperatorsByName();
+                                                return null; });
+        spawnResult.ifError(error -> graphInited.complete(Try.ofFailure(error)));
+        return graphInited;
     }
 
     @Nonnull

@@ -104,6 +104,8 @@ public class FlowGraphExample {
     LOGGER.info("Launching the system");
 
     flowMerge.run(flowReActorSystem)
+             .toCompletableFuture()
+             .join()
              .peekFailure(error -> LOGGER.error("Failure, shutting down", error))
              .ifError(error -> flowReActorSystem.shutDown());
 

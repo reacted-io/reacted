@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,10 +55,13 @@ class GraphController implements ReActiveEntity {
   private final Map<String, Integer> operatorToInitedRoutees;
   private final List<ExecutorService> inputStreamProcessors;
   private final String flowName;
+  private final CompletableFuture<Try<Void>> completeOnInitComplete;
   private boolean inputStreamsHaveBeenInited = false;
   GraphController(String flowName,
-                  Collection<? extends FlowOperatorConfig<? extends Builder<?,?>,
-                             ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs) {
+                  Collection<? extends FlowOperatorConfig<? extends Builder<?, ?>,
+                      ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs,
+                  CompletableFuture<Try<Void>> completeOnInitComplete) {
+    this.completeOnInitComplete = completeOnInitComplete;
     this.operatorsCfgsByName = ObjectUtils.requiredCondition(Objects.requireNonNull(operatorsCfgs),
                                                              ops -> !ops.isEmpty(),
                                                              () -> new IllegalArgumentException("Operators cannot be empty"))
@@ -115,6 +119,7 @@ class GraphController implements ReActiveEntity {
                                operatorCfg.getValue());
       }
     }
+    completeOnInitComplete.complete(Try.VOID);
   }
   private void onStop(ReActorContext raCtx) {
     inputStreamProcessors.forEach(ExecutorService::shutdownNow);

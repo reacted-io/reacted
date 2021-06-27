@@ -24,7 +24,7 @@ public interface FlowGraph {
    *                                                services resolution
    */
   @Nonnull
-  Try<Void> run(@Nonnull ReActorSystem localReActorSystem);
+  CompletionStage<Try<Void>> run(@Nonnull ReActorSystem localReActorSystem);
 
   /**
    * Stop a computational graph
