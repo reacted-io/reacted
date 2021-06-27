@@ -41,8 +41,6 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
-
-@SuppressWarnings("unchecked")
 @NonNullByDefault
 public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builder<CfgBuilderT, CfgT>,
                                    CfgT extends FlowOperatorConfig<CfgBuilderT, CfgT>>
