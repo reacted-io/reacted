@@ -6,9 +6,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.flow.operators;
+package io.reacted.flow.operators.zip;
 
-import io.reacted.flow.operators.ZipOperatorConfig.Builder;
+import io.reacted.flow.operators.FlowOperatorConfig;
+import io.reacted.flow.operators.zip.ZipOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 import java.util.Collection;

@@ -6,12 +6,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.flow.operators;
+package io.reacted.flow.operators.service;
 
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.services.GateSelectorPolicies;
-import io.reacted.flow.operators.ServiceOperatorConfig.Builder;
+import io.reacted.flow.operators.FlowOperatorConfig;
+import io.reacted.flow.operators.service.ServiceOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import java.io.Serializable;

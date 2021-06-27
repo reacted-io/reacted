@@ -6,8 +6,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.flow.operators;
+package io.reacted.flow.operators.map;
 
+import io.reacted.flow.operators.FlowOperatorConfig;
+import io.reacted.flow.operators.map.MapOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 import java.util.Collection;
@@ -17,7 +19,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class MapOperatorConfig extends FlowOperatorConfig<MapOperatorConfig.Builder,
+public class MapOperatorConfig extends FlowOperatorConfig<Builder,
                                                           MapOperatorConfig> {
   private final Function<Object, Collection<? extends Serializable>> mapper;
   private final Builder builder;

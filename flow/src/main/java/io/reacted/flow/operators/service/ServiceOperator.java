@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.flow.operators;
+package io.reacted.flow.operators.service;
 
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -15,6 +15,8 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.utils.ReActedUtils;
+import io.reacted.flow.operators.FlowOperator;
+import io.reacted.flow.operators.service.ServiceOperatorConfig.Builder;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
@@ -31,7 +33,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 @NonNullByDefault
-public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
+public class ServiceOperator extends FlowOperator<Builder,
                                                   ServiceOperatorConfig> {
   private final ReActions reActions;
   private final ExecutorService executorService;
