@@ -11,18 +11,15 @@ package io.reacted.flow.operators;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
-import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.utils.ReActedUtils;
-import io.reacted.flow.operators.messages.RefreshOperatorRequest;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -30,7 +27,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -44,9 +40,11 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
   private ScheduledFuture<?> serviceRefreshTask;
   @SuppressWarnings("NotNullFieldNotInitialized")
   private ReActorRef service;
+  private boolean serviceInitializationMissing;
 
   protected ServiceOperator(ServiceOperatorConfig config) {
     super(config);
+    this.serviceInitializationMissing = true;
     this.executorService = config.getExecutorService()
                                  .orElseGet(Executors::newSingleThreadExecutor);
     this.shallStopExecutorService = config.getExecutorService().isEmpty();
@@ -56,6 +54,7 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
                               .reAct(ReActorStop.class, this::onServiceOperatorStop)
                               .reAct(RefreshServiceRequest.class,
                                      (raCtx, refreshServiceRequest) -> onRefreshServiceRequest(raCtx))
+                              .reAct(RefreshServiceUpdate.class, this::onRefreshServiceUpdate)
                               .reAct(config.getServiceReplyType(), this::onReply)
                               .build();
   }
@@ -75,6 +74,12 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
                      .thenApply(noVal -> FlowOperator.NO_OUTPUT);
   }
 
+  @Override
+  protected void broadcastOperatorInitializationComplete(ReActorContext raCtx) {
+    if (!serviceInitializationMissing) {
+      super.broadcastOperatorInitializationComplete(raCtx);
+    }
+  }
   private void onServiceOperatorInit(ReActorContext raCtx, ReActorInit init) {
     super.onInit(raCtx, init);
     BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
@@ -98,7 +103,27 @@ public class ServiceOperator extends FlowOperator<ServiceOperatorConfig.Builder,
   }
 
   private void onRefreshServiceRequest(ReActorContext raCtx) {
+    ReActedUtils.resolveServices(List.of(getOperatorCfg().getServiceSearchFilter()),
+                                 raCtx.getReActorSystem(),
+                                 getOperatorCfg().getGateSelector(),
+                                 raCtx.getSelf().getReActorId().toString())
+                .thenAccept(selectedService -> {
+                  if (!selectedService.isEmpty()) {
+                    raCtx.selfTell(new RefreshServiceUpdate(selectedService));
+                  }
+                });
 
+  }
+  private void onRefreshServiceUpdate(ReActorContext reActorContext,
+                                      RefreshServiceUpdate refreshServiceUpdate) {
+    this.service = refreshServiceUpdate.serviceGates.iterator().next();
+
+    if (serviceInitializationMissing) {
+      this.serviceInitializationMissing = false;
+      if (isShallAwakeInputStreams()) {
+        super.broadcastOperatorInitializationComplete(reActorContext);
+      }
+    }
   }
   private <PayloadT extends Serializable> void onReply(ReActorContext raCtx, PayloadT reply) {
     propagate(CompletableFuture.supplyAsync(() -> getOperatorCfg().getFromServiceResponse()

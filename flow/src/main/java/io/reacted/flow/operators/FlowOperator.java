@@ -22,7 +22,6 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.core.utils.ReActedUtils;
 import io.reacted.flow.operators.messages.OperatorInitComplete;
-import io.reacted.flow.operators.messages.RefreshOperatorRequest;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -80,6 +79,8 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
     @Override
     public ReActions getReActions() { return operatorReactions; }
 
+    protected boolean isShallAwakeInputStreams() { return shallAwakeInputStreams; }
+
     protected CfgT getOperatorCfg() { return operatorCfg; }
 
     protected static Try<ReActorRef> of(ReActorSystem localReActorSystem, ServiceConfig config) {
@@ -114,17 +115,21 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
     protected void onServiceGatesUpdate(ReActorContext raCtx, OperatorOutputGatesUpdate newGates) {
         this.ifPredicateOutputOperatorsRefs = newGates.ifPredicateServices;
         this.thenElseOutputOperatorsRefs = newGates.thenElseServices;
-        if (shallAwakeInputStreams) {
+        if (isShallAwakeInputStreams()) {
             this.shallAwakeInputStreams = false;
-            raCtx.getReActorSystem()
-                 .broadcastToLocalSubscribers(raCtx.getSelf(),
-                                              new OperatorInitComplete(operatorCfg.getFlowName(),
-                                                                       operatorCfg.getReActorName(),
-                                                                       raCtx.getSelf()
-                                                                            .getReActorId()
-                                                                            .getReActorName()));
+            broadcastOperatorInitializationComplete(raCtx);
         }
     }
+    protected void broadcastOperatorInitializationComplete(ReActorContext raCtx) {
+        raCtx.getReActorSystem()
+             .broadcastToLocalSubscribers(raCtx.getSelf(),
+                                          new OperatorInitComplete(operatorCfg.getFlowName(),
+                                                                   operatorCfg.getReActorName(),
+                                                                   raCtx.getSelf()
+                                                                        .getReActorId()
+                                                                        .getReActorName()));
+    }
+
     protected void onStop(ReActorContext raCtx, ReActorStop stop) {
         operatorsRefreshTask.cancel(true);
     }
@@ -201,6 +206,15 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
         return update.ifPredicateServices.size() == expectedIfServices &&
                update.thenElseServices.size() == expectedThenElseServices;
     }
+
+    private static class RefreshOperatorRequest implements Serializable {
+
+        @Override
+        public String toString() {
+            return "RefreshOperatorRequest{}";
+        }
+    }
+
     private static class OperatorOutputGatesUpdate implements Serializable {
         private final Collection<ReActorRef> ifPredicateServices;
         private final Collection<ReActorRef> thenElseServices;

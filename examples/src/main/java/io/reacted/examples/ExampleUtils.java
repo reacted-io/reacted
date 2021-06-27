@@ -58,8 +58,8 @@ public final class ExampleUtils {
                                   .setRecordExecution(false)
                                   .addDispatcherConfig(DispatcherConfig.newBuilder()
                                                                        .setDispatcherName("FlowDispatcher")
-                                                                       .setBatchSize(100)
-                                                                       .setDispatcherThreadsNum(2)
+                                                                       .setBatchSize(10)
+                                                                       .setDispatcherThreadsNum(4)
                                                                        .build())
                                   .setReactorSystemName(reActorSystemName);
        serviceRegistryDrivers.forEach(configBuilder::addServiceRegistryDriver);
