@@ -70,7 +70,7 @@ public final class ObjectUtils {
      * @throws IllegalArgumentException if the provided interval is not positive
      */
     public static Duration checkNonNullPositiveTimeInterval(@Nullable Duration interval) {
-        return requiredCondition(Objects.requireNonNull(interval),
+        return requiredCondition(Objects.requireNonNull(interval, "Interval cannot be null"),
                                  nonNullInterval -> nonNullInterval.compareTo(Duration.ZERO) > 0,
                                  () -> new IllegalArgumentException("Provided interval is not positive"));
     }

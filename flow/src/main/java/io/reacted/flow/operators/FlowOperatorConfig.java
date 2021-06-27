@@ -13,8 +13,10 @@ import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.UnChecked.TriConsumer;
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -27,6 +29,7 @@ import javax.annotation.concurrent.Immutable;
 public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.Builder<BuilderT, BuiltT>,
                                          BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>>
     extends ReActorServiceConfig<BuilderT, BuiltT> {
+  public static final Duration DEFAULT_OUTPUT_OPERATORS_REFRESH = Duration.ofMinutes(1);
   public static final Predicate<Serializable> NO_FILTERING = element -> true;
   public static final Collection<ServiceDiscoverySearchFilter> NO_OUTPUT = List.of();
   public static final Collection<Stream<? extends Serializable>> NO_INPUT_STREAMS = List.of();
@@ -48,6 +51,8 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
   private final Collection<Stream<? extends Serializable>> inputStreams;
   private final ReActorConfig routeeConfig;
   private final String flowName;
+
+  private final Duration outputOperatorsRefreshPeriod;
   protected FlowOperatorConfig(Builder<BuilderT, BuiltT> builder) {
     super(builder);
     this.routeeConfig = Objects.requireNonNull(builder.operatorRouteeCfg,
@@ -65,6 +70,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     this.inputStreamErrorHandler = Objects.requireNonNull(builder.inputStreamErrorHandler,
                                                           "Input stream error handler cannot be null");
     this.flowName = Objects.requireNonNull(builder.flowName, "Flow Name cannot be null");
+    this.outputOperatorsRefreshPeriod = ObjectUtils.checkNonNullPositiveTimeInterval(builder.outputOperatorsRefreshPeriod);
   }
 
   public Predicate<Serializable> getIfPredicate() {
@@ -89,6 +95,8 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
 
   public String getFlowName() { return flowName; }
 
+  public Duration getOutputOperatorsRefreshPeriod() { return outputOperatorsRefreshPeriod; }
+
   public abstract BuilderT toBuilder();
   public abstract static class Builder<BuilderT extends ReActorServiceConfig.Builder<BuilderT, BuiltT>,
                                        BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
@@ -97,6 +105,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     protected Predicate<Serializable> ifPredicate = NO_FILTERING;
     protected Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
     protected ReActorConfig operatorRouteeCfg = DEFAULT_OPERATOR_ROUTEE_CONFIG;
+    protected Duration outputOperatorsRefreshPeriod = DEFAULT_OUTPUT_OPERATORS_REFRESH;
     @SuppressWarnings("unchecked")
     protected TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler =
         (TriConsumer<ReActorSystem, BuiltT, ? super Throwable>) DEFAULT_INPUT_STREAM_LOGGING_ERROR_HANDLER;
@@ -146,6 +155,11 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
 
     public final BuilderT setFlowName(String flowName) {
       this.flowName = flowName;
+      return getThis();
+    }
+
+    public final BuilderT setOutputOperatorsRefreshPeriod(Duration outputOperatorsRefreshPeriod) {
+      this.outputOperatorsRefreshPeriod = outputOperatorsRefreshPeriod;
       return getThis();
     }
   }

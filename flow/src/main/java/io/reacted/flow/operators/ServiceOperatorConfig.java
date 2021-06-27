@@ -13,7 +13,9 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.flow.operators.ServiceOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -24,6 +26,7 @@ import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOperatorConfig> {
+  public static final Duration DEFAULT_SERVICE_REFRESH_PERIOD = Duration.ofMinutes(1);
   public static final Function<Serializable, Collection<? extends Serializable>> IDENTITY = List::of;
   private final Function<Serializable, Collection<? extends Serializable>> toServiceRequests;
   private final Function<Serializable, Collection<? extends Serializable>> fromServiceResponse;
@@ -31,6 +34,8 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
   private final ServiceDiscoverySearchFilter serviceSearchFilter;
   private final Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector;
   private final Builder builder;
+
+  private final Duration serviceRefreshPeriod;
   @Nullable
   private final ExecutorService executorService;
   private ServiceOperatorConfig(Builder builder) {
@@ -45,6 +50,7 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
                                                       "Service search filter cannot be null");
     this.gateSelector = Objects.requireNonNull(builder.gateSelector,
                                                "Gate selector cannot be null");
+    this.serviceRefreshPeriod = ObjectUtils.checkNonNullPositiveTimeInterval(builder.serviceRefreshPeriod);
     this.executorService = builder.executorService;
     this.builder = builder;
   }
@@ -72,6 +78,9 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
   public Optional<ExecutorService> getExecutorService() {
     return Optional.ofNullable(executorService);
   }
+
+  public Duration getServiceRefreshPeriod() { return serviceRefreshPeriod; }
+
   @Override
   public Builder toBuilder() { return builder; }
 
@@ -86,6 +95,8 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
     private Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector = GateSelectorPolicies.RANDOM_GATE;
     @Nullable
     private ExecutorService executorService;
+
+    private Duration serviceRefreshPeriod = DEFAULT_SERVICE_REFRESH_PERIOD;
     private Builder() { super.setRouteeProvider(ServiceOperator::new); }
 
     public Builder setServiceReplyType(Class<? extends Serializable> serviceReplyType) {
@@ -118,6 +129,11 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
 
     private Builder setExecutor(ExecutorService executor) {
       this.executorService = executor;
+      return this;
+    }
+
+    private Builder setServiceRefreshPeriod(Duration serviceRefreshPeriod) {
+      this.serviceRefreshPeriod = serviceRefreshPeriod;
       return this;
     }
 

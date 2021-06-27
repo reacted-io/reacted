@@ -22,7 +22,6 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.core.utils.ReActedUtils;
 import io.reacted.flow.operators.messages.OperatorInitComplete;
-import io.reacted.flow.operators.messages.OperatorOutputGatesReply;
 import io.reacted.flow.operators.messages.RefreshOperatorRequest;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
@@ -81,6 +80,8 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
     @Override
     public ReActions getReActions() { return operatorReactions; }
 
+    protected CfgT getOperatorCfg() { return operatorCfg; }
+
     protected static Try<ReActorRef> of(ReActorSystem localReActorSystem, ServiceConfig config) {
         return localReActorSystem.spawnService(config);
     }
@@ -103,13 +104,11 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
         // Constantly refresh the gates. The idea is to automatically discover new available operators
         this.operatorsRefreshTask = raCtx.getReActorSystem()
             .getSystemSchedulingService()
-            .scheduleWithFixedDelay(() -> ReActedUtils.ifNotDelivered(raCtx.getSelf()
-                                                                           .tell(raCtx.getReActorSystem()
-                                                                                      .getSystemSink(),
-                                                                                 new RefreshOperatorRequest()),
-                                                                      error -> raCtx.logError("Unable to self init operator",
+            .scheduleWithFixedDelay(() -> ReActedUtils.ifNotDelivered(raCtx.selfTell(new RefreshOperatorRequest()),
+                                                                      error -> raCtx.logError("Unable to request refresh of operator outputs",
                                                                                               error)),
-                                    0, 1, TimeUnit.MINUTES);
+                                    0, operatorCfg.getOutputOperatorsRefreshPeriod()
+                                                  .toNanos(), TimeUnit.NANOSECONDS);
     }
 
     protected void onServiceGatesUpdate(ReActorContext raCtx, OperatorOutputGatesUpdate newGates) {
@@ -125,18 +124,12 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                                                                             .getReActorId()
                                                                             .getReActorName()));
         }
-        raCtx.getSender()
-             .tell(raCtx.getSelf(),
-                   new OperatorOutputGatesReply<>(raCtx.getSelf().getReActorId().getReActorName(),
-                                                  (Class<? extends FlowOperator<CfgBuilderT, CfgT>>) this.getClass(),
-                                                  true));
     }
     protected void onStop(ReActorContext raCtx, ReActorStop stop) {
         operatorsRefreshTask.cancel(true);
     }
 
     protected void onRefreshOperatorRequest(ReActorContext raCtx) {
-        var requester = raCtx.getSender();
         var ifServices = ReActedUtils.resolveServices(operatorCfg.getIfPredicateOutputOperators(),
                                                       raCtx.getReActorSystem(),
                                                       GateSelectorPolicies.RANDOM_GATE,
@@ -146,14 +139,13 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                                                             GateSelectorPolicies.RANDOM_GATE,
                                                             raCtx.getSelf().getReActorId().toString());
         ifServices.thenCombine(thenElseServices, OperatorOutputGatesUpdate::new)
-                  .thenApply(operatorOutputGatesUpdate -> operatorOutputGatesUpdate.ifPredicateServices.size() !=
-                                                          operatorCfg.getIfPredicateOutputOperators().size() ||
-                                                          operatorOutputGatesUpdate.thenElseServices.size() !=
-                                                          operatorCfg.getThenElseOutputOperators().size()
-                                                          ? requester.tell(new OperatorOutputGatesReply<>(raCtx.getSelf().getReActorId().getReActorName(),
-                                                                                                          (Class<? extends FlowOperator<CfgBuilderT, CfgT>>) this.getClass(),
-                                                                                                          false))
-                                                          : raCtx.getSelf().tell(requester, operatorOutputGatesUpdate));
+                  .thenAccept(operatorOutputGatesUpdate -> {
+                      if (isUpdateMatchingRequest(operatorCfg.getIfPredicateOutputOperators().size(),
+                                                  operatorCfg.getThenElseOutputOperators().size(),
+                                                  operatorOutputGatesUpdate)) {
+                          raCtx.selfTell(operatorOutputGatesUpdate);
+                      }
+                  });
     }
 
     private void onNext(ReActorContext raCtx, Serializable message) {
@@ -203,6 +195,12 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
         return DeliveryStatus.NOT_DELIVERED;
     }
 
+    private static boolean isUpdateMatchingRequest(int expectedIfServices,
+                                                   int expectedThenElseServices,
+                                                   OperatorOutputGatesUpdate update) {
+        return update.ifPredicateServices.size() == expectedIfServices &&
+               update.thenElseServices.size() == expectedThenElseServices;
+    }
     private static class OperatorOutputGatesUpdate implements Serializable {
         private final Collection<ReActorRef> ifPredicateServices;
         private final Collection<ReActorRef> thenElseServices;
@@ -212,7 +210,6 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
             this.ifPredicateServices = ifPredicateServices;
             this.thenElseServices = thenElseServices;
         }
-
         @Override
         public String toString() {
             return "OperatorOutputGatesUpdate{" +
