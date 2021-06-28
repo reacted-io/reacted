@@ -407,7 +407,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     public CompletionStage<Void> subscribe(ReActedSubscriptionConfig<PayloadT> subscriptionConfig,
                                            Subscriber<? super PayloadT> subscriber) {
         CompletionStage<Void> subscriptionComplete = new CompletableFuture<>();
-        var backpressureManager = new BackpressureManager<>(subscriptionConfig, subscriber,
+        var backpressureManager = new BackpressureManager<>(Objects.requireNonNull(subscriptionConfig,
+                                                                                   "Subscription config cannot be null"),
+                                                            Objects.requireNonNull(subscriber, "Subscriber cannot be null"),
                                                             feedGate, subscriptionComplete);
 
         var subscriberConfig = ReActorConfig.newBuilder()
