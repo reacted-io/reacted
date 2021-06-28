@@ -224,12 +224,12 @@ public final class ReActorRef implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorId reActorId = new ReActorId();
-        reActorId.readExternal(in);
-        setReActorId(reActorId);
-        ReActorSystemRef reActorSystemRef = new ReActorSystemRef();
-        reActorSystemRef.readExternal(in);
-        setReActorSystemRef(reActorSystemRef);
+        ReActorId receivedReActorId = new ReActorId();
+        receivedReActorId.readExternal(in);
+        setReActorId(receivedReActorId);
+        ReActorSystemRef receivedReActorSystemRef = new ReActorSystemRef();
+        receivedReActorSystemRef.readExternal(in);
+        setReActorSystemRef(receivedReActorSystemRef);
         setHashCode(in.readInt());
     }
 

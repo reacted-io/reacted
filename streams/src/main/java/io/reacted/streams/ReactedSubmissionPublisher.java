@@ -127,7 +127,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.subscribers = Set.of();
         this.feedGate = ReActorRef.NO_REACTOR_REF;
         //noinspection ConstantConditions
-        this.localReActorSystem = null; //TODO null reactor system object
+        this.localReActorSystem = ReActorSystem.NO_REACTOR_SYSTEM;
     }
 
     @Override

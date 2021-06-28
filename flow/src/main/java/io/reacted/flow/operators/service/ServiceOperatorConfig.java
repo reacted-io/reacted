@@ -128,12 +128,12 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
       return this;
     }
 
-    private Builder setExecutor(ExecutorService executor) {
+    public final Builder setExecutor(ExecutorService executor) {
       this.executorService = executor;
       return this;
     }
 
-    private Builder setServiceRefreshPeriod(Duration serviceRefreshPeriod) {
+    public final Builder setServiceRefreshPeriod(Duration serviceRefreshPeriod) {
       this.serviceRefreshPeriod = serviceRefreshPeriod;
       return this;
     }

@@ -53,7 +53,7 @@ public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperat
       setReductionRules(setZipTypes);
       setKeyExtractors(setZipTypes.keySet().stream()
                                   .collect(Collectors.toUnmodifiableMap(Function.identity(),
-                                                                        key -> (arg) -> NO_KEY)));
+                                                                        element -> value -> NO_KEY)));
       return this;
     }
     public final Builder setZipper(Function<Map<Class<? extends Serializable>,

@@ -73,7 +73,7 @@ class GraphController implements ReActiveEntity {
     this.reActions = ReActions.newBuilder()
                               .reAct(ReActorInit.class, (raCtx, init) -> onInit(raCtx))
                               .reAct(InitInputStreams.class, (raCtx, initStreams) -> onInitInputStreams(raCtx))
-                              .reAct(ReActorStop.class, (raCtx, stop) -> onStop(raCtx))
+                              .reAct(ReActorStop.class, (raCtx, stop) -> onStop())
                               .reAct(OperatorInitComplete.class, this::onOperatorInitComplete)
                               .build();
     this.inputStreamProcessors = new LinkedList<>();
@@ -121,7 +121,7 @@ class GraphController implements ReActiveEntity {
     }
     completeOnInitComplete.complete(Try.VOID);
   }
-  private void onStop(ReActorContext raCtx) {
+  private void onStop() {
     inputStreamProcessors.forEach(ExecutorService::shutdownNow);
   }
   private void spawnNewStreamConsumer(ReActorRef operator,
@@ -159,7 +159,7 @@ class GraphController implements ReActiveEntity {
     return Executors.newSingleThreadExecutor(inputStreamThreadFactory.build());
   }
 
-  private final static class InitInputStreams implements Serializable {
+  private static final class InitInputStreams implements Serializable {
     @Override
     public String toString() {
       return "InitInputStreams{}";

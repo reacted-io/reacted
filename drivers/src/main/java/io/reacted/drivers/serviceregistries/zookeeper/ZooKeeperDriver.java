@@ -122,6 +122,12 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         return Objects.hash(getConfig());
     }
 
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof ZooKeeperDriver &&
+               getConfig().equals(((ZooKeeperDriver) o).getConfig());
+    }
+
     @Nonnull
     public ReActions getReActions() {
         return ReActions.newBuilder()

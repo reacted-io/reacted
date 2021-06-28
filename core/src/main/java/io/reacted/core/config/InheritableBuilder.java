@@ -10,6 +10,7 @@ package io.reacted.core.config;
 public abstract class InheritableBuilder<BuilderT extends InheritableBuilder.Builder<BuilderT, BuiltT>,
                                          BuiltT extends InheritableBuilder<BuilderT, BuiltT>> {
 
+    protected InheritableBuilder() { /* No implementation required */ }
     protected InheritableBuilder(Builder<BuilderT, BuiltT> builder) { }
 
     public abstract static class Builder<BuilderT, BuiltT> {

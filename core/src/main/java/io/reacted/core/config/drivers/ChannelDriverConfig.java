@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
 public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Builder<BuilderT, BuiltT>,
-                                       BuiltT extends InheritableBuilder<BuilderT, BuiltT>>
+                                          BuiltT extends InheritableBuilder<BuilderT, BuiltT>>
         extends InheritableBuilder<BuilderT, BuiltT> {
     public static final Duration NEVER_FAIL = Duration.ofNanos(Long.MAX_VALUE);
     public static final Duration DEFAULT_MSG_LOST_TIMEOUT = Duration.ofSeconds(20);
