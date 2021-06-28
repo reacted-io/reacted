@@ -8,68 +8,81 @@
 
 package io.reacted.flow.operators.zip;
 
-import io.reacted.flow.operators.FlowOperatorConfig;
+import io.reacted.flow.operators.reduce.ReducingOperatorConfig;
+import io.reacted.flow.operators.reduce.ReduceKey;
+import io.reacted.flow.operators.reduce.ReduceOperatorConfig;
 import io.reacted.flow.operators.zip.ZipOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
-public class ZipOperatorConfig extends FlowOperatorConfig<Builder, ZipOperatorConfig> {
-  private final Map<Class<? extends Serializable>, Long> zipperRequiredTypes;
-  private final Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
-                         Collection<? extends Serializable>> zipper;
+public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperatorConfig> {
+  private static final ReduceKey NO_KEY = new ZipKey();
   private final Builder builder;
   private ZipOperatorConfig(Builder builder) {
     super(builder);
-    this.zipperRequiredTypes = Objects.requireNonNull(builder.zipperRequiredTypes,
-                                                      "Zip types cannot be null")
-                                      .stream()
-                                      .collect(Collectors.groupingBy(Function.identity(),
-                                                                     Collectors.counting()));
-    this.zipper = Objects.requireNonNull(builder.zipper, "Zipper function cannot be null");
     this.builder = builder;
   }
-
-  public Map<Class<? extends Serializable>, Long> getZipperRequiredTypes() {
-    return zipperRequiredTypes;
-  }
-
-  public Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
-                  Collection<? extends Serializable>> getZipper() {
-    return zipper;
-  }
-
   @Override
   public Builder toBuilder() { return builder; }
-
   public static Builder newBuilder() { return new Builder(); }
-  @SuppressWarnings("NotNullFieldNotInitialized")
-  public static class Builder extends FlowOperatorConfig.Builder<Builder, ZipOperatorConfig> {
-    private Collection<Class<? extends Serializable>> zipperRequiredTypes;
-    private Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
-                     Collection<? extends Serializable>> zipper;
+
+  public static class Builder extends ReducingOperatorConfig.Builder<Builder, ZipOperatorConfig> {
     private Builder() { super.setRouteeProvider(ZipOperator::new); }
-    public Builder setZipRequiredTypes(Collection<Class<? extends Serializable>> zipperRequiredTypes) {
-      this.zipperRequiredTypes = zipperRequiredTypes;
+
+    public Builder setZipTypes(Class<? extends Serializable> ...zipTypes) {
+      return setZipTypes(Arrays.stream(zipTypes).collect(Collectors.toUnmodifiableList()));
+    }
+    public Builder setZipTypes(Collection<Class<? extends Serializable>> zipTypes) {
+      var zipRequiredTypes = zipTypes.stream()
+                                     .collect(Collectors.collectingAndThen(Collectors.groupingBy(Function.identity(),
+                                                                                                 Collectors.counting()),
+                                                                           Map::copyOf));
+      setZipTypes(zipRequiredTypes);
       return this;
     }
 
-    public Builder setZipper(Function<Map<Class<? extends Serializable>,
-                                       List<? extends Serializable>>,
-                                       Collection<? extends Serializable>> zipper) {
-      this.zipper = zipper;
+    public Builder setZipTypes(Map<Class<? extends Serializable>, Long> setZipTypes) {
+      setReductionRules(setZipTypes);
+      setKeyExtractors(setZipTypes.keySet().stream()
+                                  .collect(Collectors.toUnmodifiableMap(Function.identity(),
+                                                                        key -> (arg) -> NO_KEY)));
       return this;
+    }
+    public Builder setZipper(Function<Map<Class<? extends Serializable>,
+                                          List<? extends Serializable>>,
+                             Collection<? extends Serializable>> zipper) {
+      return setReducer(zipper);
+    }
+
+    public Builder setZippingConsumer(Consumer<Map<Class<? extends Serializable>,
+                                                   List<? extends Serializable>>> zippingConsumer) {
+      return setReducer(map -> { zippingConsumer.accept(map); return List.of(); });
     }
 
     @Override
     public ZipOperatorConfig build() {
       return new ZipOperatorConfig(this);
+    }
+  }
+
+  private static class ZipKey implements ReduceKey {
+    @Override
+    public int hashCode() { return 0; }
+
+    @Override
+    public boolean equals(Object obj) { return obj instanceof ZipKey; }
+
+    @Override
+    public int compareTo(ReduceKey o) {
+      return 0;
     }
   }
 }

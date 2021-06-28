@@ -89,7 +89,7 @@ public class FlowGraphExample {
                                                                        .setIfOutputFilter(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                                                               .setServiceName("Printer")
                                                                                                                               .build())
-                                                                       .setZipRequiredTypes(List.of(String.class, Integer.class))
+                                                                       .setZipTypes(List.of(String.class, Integer.class))
                                                                        .setZipper(inputMap -> List.of(inputMap.values().stream()
                                                                                                               .flatMap(List::stream)
                                                                                                               .map(Object::toString)
