@@ -43,7 +43,7 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
         if (storage.containsKey(inputType)) {
             ReduceKey key = getOperatorCfg().getKeyExtractors()
                                             .get(input.getClass()).apply(input);
-            storage.get(inputType).putIfAbsent(key, new LinkedList<>())
+            storage.get(inputType).computeIfAbsent(key, newKey -> new LinkedList<>())
                    .add(input);
             if (canReduce(key)) {
                 return CompletableFuture.completedStage(getOperatorCfg().getReducer()

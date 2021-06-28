@@ -10,7 +10,6 @@ package io.reacted.flow.operators.zip;
 
 import io.reacted.flow.operators.reduce.ReducingOperatorConfig;
 import io.reacted.flow.operators.reduce.ReduceKey;
-import io.reacted.flow.operators.reduce.ReduceOperatorConfig;
 import io.reacted.flow.operators.zip.ZipOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
@@ -37,7 +36,8 @@ public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperat
   public static class Builder extends ReducingOperatorConfig.Builder<Builder, ZipOperatorConfig> {
     private Builder() { super.setRouteeProvider(ZipOperator::new); }
 
-    public Builder setZipTypes(Class<? extends Serializable> ...zipTypes) {
+    @SafeVarargs
+    public final Builder setZipTypes(Class<? extends Serializable>... zipTypes) {
       return setZipTypes(Arrays.stream(zipTypes).collect(Collectors.toUnmodifiableList()));
     }
     public Builder setZipTypes(Collection<Class<? extends Serializable>> zipTypes) {
