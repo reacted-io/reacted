@@ -94,9 +94,10 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
                                                     ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs;
         private Builder() { this.operatorsCfgs = new LinkedList<>(); }
 
-        public <BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
-                BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>,
-                OperatorCfgT extends FlowOperatorConfig<BuilderT, BuiltT>>
+        public final
+        <BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
+         BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>,
+         OperatorCfgT extends FlowOperatorConfig<BuilderT, BuiltT>>
         Builder addOperator(OperatorCfgT operatorCfg) {
             operatorsCfgs.add(operatorCfg);
             return this;

@@ -43,12 +43,12 @@ public class MapOperatorConfig extends FlowOperatorConfig<Builder,
     private Builder() {
       super.setRouteeProvider(MapOperator::new);
     }
-    public Builder setMapper(Function<Object, Collection<? extends Serializable>> mapper) {
+    public final Builder setMapper(Function<Object, Collection<? extends Serializable>> mapper) {
       this.mapper = mapper;
       return this;
     }
 
-    public Builder setConsumer(Consumer<Object> consumer) {
+    public final Builder setConsumer(Consumer<Object> consumer) {
       this.mapper = input -> { consumer.accept(input); return List.of(); };
       return this;
     }

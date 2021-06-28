@@ -40,7 +40,7 @@ public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperat
     public final Builder setZipTypes(Class<? extends Serializable>... zipTypes) {
       return setZipTypes(Arrays.stream(zipTypes).collect(Collectors.toUnmodifiableList()));
     }
-    public Builder setZipTypes(Collection<Class<? extends Serializable>> zipTypes) {
+    public final Builder setZipTypes(Collection<Class<? extends Serializable>> zipTypes) {
       var zipRequiredTypes = zipTypes.stream()
                                      .collect(Collectors.collectingAndThen(Collectors.groupingBy(Function.identity(),
                                                                                                  Collectors.counting()),
@@ -49,20 +49,20 @@ public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperat
       return this;
     }
 
-    public Builder setZipTypes(Map<Class<? extends Serializable>, Long> setZipTypes) {
+    public final Builder setZipTypes(Map<Class<? extends Serializable>, Long> setZipTypes) {
       setReductionRules(setZipTypes);
       setKeyExtractors(setZipTypes.keySet().stream()
                                   .collect(Collectors.toUnmodifiableMap(Function.identity(),
                                                                         key -> (arg) -> NO_KEY)));
       return this;
     }
-    public Builder setZipper(Function<Map<Class<? extends Serializable>,
+    public final Builder setZipper(Function<Map<Class<? extends Serializable>,
                                           List<? extends Serializable>>,
                              Collection<? extends Serializable>> zipper) {
       return setReducer(zipper);
     }
 
-    public Builder setZippingConsumer(Consumer<Map<Class<? extends Serializable>,
+    public final Builder setZippingConsumer(Consumer<Map<Class<? extends Serializable>,
                                                    List<? extends Serializable>>> zippingConsumer) {
       return setReducer(map -> { zippingConsumer.accept(map); return List.of(); });
     }

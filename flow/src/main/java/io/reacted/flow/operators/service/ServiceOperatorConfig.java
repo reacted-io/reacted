@@ -100,29 +100,29 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
     private Duration serviceRefreshPeriod = DEFAULT_SERVICE_REFRESH_PERIOD;
     private Builder() { super.setRouteeProvider(ServiceOperator::new); }
 
-    public Builder setServiceReplyType(Class<? extends Serializable> serviceReplyType) {
+    public final Builder setServiceReplyType(Class<? extends Serializable> serviceReplyType) {
       this.serviceReplyType = serviceReplyType;
       return this;
     }
 
-    public Builder setToServiceRequest(Function<Serializable, Collection<? extends Serializable>>
+    public final Builder setToServiceRequest(Function<Serializable, Collection<? extends Serializable>>
                                            toServiceRequests) {
       this.toServiceRequests = toServiceRequests;
       return this;
     }
 
-    public Builder setFromServiceResponse(Function<Serializable, Collection<? extends Serializable>>
+    public final Builder setFromServiceResponse(Function<Serializable, Collection<? extends Serializable>>
                                               fromServiceResponse) {
       this.fromServiceResponse = fromServiceResponse;
       return this;
     }
 
-    public Builder setServiceFilter(ServiceDiscoverySearchFilter serviceSearchFilter) {
+    public final Builder setServiceFilter(ServiceDiscoverySearchFilter serviceSearchFilter) {
       this.serviceSearchFilter = serviceSearchFilter;
       return this;
     }
 
-    public Builder setGateSelector(Function<Collection<ReActorRef>, Optional<ReActorRef>>
+    public final Builder setGateSelector(Function<Collection<ReActorRef>, Optional<ReActorRef>>
                                    gateSelector) {
       this.gateSelector = gateSelector;
       return this;

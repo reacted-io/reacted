@@ -11,7 +11,7 @@ package io.reacted.core.config.reactors;
 import io.reacted.patterns.NonNullByDefault;
 
 @NonNullByDefault
-public class ReActorConfig extends ReActiveEntityConfig<ReActorConfig.Builder, ReActorConfig> {
+public final class ReActorConfig extends ReActiveEntityConfig<ReActorConfig.Builder, ReActorConfig> {
 
     protected ReActorConfig(Builder reActorConfig) {
         super(reActorConfig);
@@ -26,10 +26,10 @@ public class ReActorConfig extends ReActiveEntityConfig<ReActorConfig.Builder, R
                            .setReActorName(reActorConfig.getReActorName());
     }
 
-    public static class Builder extends ReActiveEntityConfig.Builder<Builder, ReActorConfig> {
-        protected Builder() { }
+    public static final class Builder extends ReActiveEntityConfig.Builder<Builder, ReActorConfig> {
+        private Builder() { }
         @Override
-        public ReActorConfig build() {
+        public final ReActorConfig build() {
             return new ReActorConfig(this);
         }
     }

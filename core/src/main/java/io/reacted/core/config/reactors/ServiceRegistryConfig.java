@@ -29,13 +29,11 @@ public abstract class ServiceRegistryConfig<BuilderT extends ServiceRegistryConf
     @Nonnull
     public final Properties getServiceRegistryProperties() { return serviceRegistryProperties; }
 
-    public abstract static class Builder<BuilderT, BuiltT> extends
-                                                           ReActiveEntityConfig.Builder<BuilderT,
-                                                                                        BuiltT> {
-        private Properties serviceRegistryProperties = new Properties();
+    public abstract static class Builder<BuilderT, BuiltT>
+        extends ReActiveEntityConfig.Builder<BuilderT, BuiltT> {
+        private Properties serviceRegistryProperties;
 
-        protected Builder() { }
-
+        protected Builder() { this.serviceRegistryProperties = new Properties(); }
         public final BuilderT
         setServiceRegistryProperties(@Nonnull Properties serviceRegistryProperties) {
             this.serviceRegistryProperties = serviceRegistryProperties;

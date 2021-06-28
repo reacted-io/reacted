@@ -56,12 +56,12 @@ public class GrpcDriverConfig extends ChannelDriverConfig<GrpcDriverConfig.Build
             return this;
         }
 
-        public Builder setHostName(String hostName) {
+        public final Builder setHostName(String hostName) {
             this.hostName = hostName;
             return this;
         }
 
-        public GrpcDriverConfig build() {
+        public final GrpcDriverConfig build() {
             return new GrpcDriverConfig(this);
         }
     }

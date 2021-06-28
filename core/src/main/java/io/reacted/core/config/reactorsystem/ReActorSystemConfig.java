@@ -103,7 +103,7 @@ public class ReActorSystemConfig {
          * @param reactorSystemName Must be unique in the cluster
          * @return this builder
          */
-        public Builder setReactorSystemName(String reactorSystemName) {
+        public final Builder setReactorSystemName(String reactorSystemName) {
             this.reactorSystemName = reactorSystemName;
             return this;
         }
@@ -116,7 +116,7 @@ public class ReActorSystemConfig {
          *                          Range {@link ReActorSystemConfig#DEFAULT_FANOUT_POOL_SIZE} to {@link ReActorSystemConfig#MAX_DISPATCHER_CONFIGS}
          * @return this builder
          */
-        public Builder setMsgFanOutPoolSize(int msgFanOutPoolSize) {
+        public final Builder setMsgFanOutPoolSize(int msgFanOutPoolSize) {
             this.msgFanOutPoolSize = msgFanOutPoolSize;
             return this;
         }
@@ -129,7 +129,7 @@ public class ReActorSystemConfig {
          *                             during execution.
          * @return this builder
          */
-        public Builder setRecordExecution(boolean shallRecordExecution) {
+        public final Builder setRecordExecution(boolean shallRecordExecution) {
             this.shallRecordExecution = shallRecordExecution;
             return this;
         }
@@ -144,7 +144,7 @@ public class ReActorSystemConfig {
          *                    reactor system
          * @return this builder
          */
-        public Builder setLocalDriver(LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver) {
+        public final Builder setLocalDriver(LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver) {
             this.localDriver = localDriver;
             return this;
         }
@@ -156,7 +156,7 @@ public class ReActorSystemConfig {
          * @param refreshInterval Period after which a refresh of the system statistics should be done
          * @return this builder
          */
-        public Builder setSystemMonitorRefreshInterval(Duration refreshInterval) {
+        public final Builder setSystemMonitorRefreshInterval(Duration refreshInterval) {
             this.systemMonitorRefreshInterval = refreshInterval;
             return this;
         }
@@ -165,7 +165,7 @@ public class ReActorSystemConfig {
          * @param dispatcherConfig new dispatcher config
          * @return this builder
          */
-        public Builder addDispatcherConfig(DispatcherConfig dispatcherConfig) {
+        public final Builder addDispatcherConfig(DispatcherConfig dispatcherConfig) {
             this.dispatcherConfigs.add(dispatcherConfig);
             return this;
         }
@@ -177,7 +177,7 @@ public class ReActorSystemConfig {
          * @param remotingDriver remoting driver
          * @return this builder
          */
-        public Builder addRemotingDriver(RemotingDriver<? extends ChannelDriverConfig<?, ?>> remotingDriver) {
+        public final Builder addRemotingDriver(RemotingDriver<? extends ChannelDriverConfig<?, ?>> remotingDriver) {
             this.remotingDrivers.add(remotingDriver);
             return this;
         }
@@ -188,7 +188,7 @@ public class ReActorSystemConfig {
          * @param serviceRegistryDriver service registry driver
          * @return this builder
          */
-        public Builder addServiceRegistryDriver(ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
+        public final Builder addServiceRegistryDriver(ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
                 ? extends ServiceRegistryConfig<?, ?>> serviceRegistryDriver) {
             this.serviceRegistryDrivers.add(serviceRegistryDriver);
             return this;
@@ -200,7 +200,7 @@ public class ReActorSystemConfig {
          *                            expected maximum reactor population size
          * @return this builder
          */
-        public Builder setExpectedReActorsNum(int expectedReActorsNum) {
+        public final Builder setExpectedReActorsNum(int expectedReActorsNum) {
             this.expectedReActorsNum = expectedReActorsNum;
             return this;
         }

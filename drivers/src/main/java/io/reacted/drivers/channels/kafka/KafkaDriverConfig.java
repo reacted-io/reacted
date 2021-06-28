@@ -69,22 +69,22 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
 
         private Builder() { }
 
-        public Builder setBootstrapEndpoint(String bootstrapEndpoint) {
+        public final Builder setBootstrapEndpoint(String bootstrapEndpoint) {
             this.bootstrapEndpoint = bootstrapEndpoint;
             return this;
         }
 
-        public Builder setTopic(String topic) {
+        public final Builder setTopic(String topic) {
             this.topic = topic;
             return this;
         }
 
-        public Builder setGroupId(String groupId) {
+        public final Builder setGroupId(String groupId) {
             this.groupId = groupId;
             return this;
         }
 
-        public Builder setMaxPollRecords(int maxPollRecords) {
+        public final Builder setMaxPollRecords(int maxPollRecords) {
             this.maxPollRecords = maxPollRecords;
             return this;
         }

@@ -67,7 +67,7 @@ public class DispatcherConfig {
          *                  scheduling request
          * @return this builder
          */
-        public Builder setBatchSize(int batchSize) {
+        public final Builder setBatchSize(int batchSize) {
             this.batchSize = batchSize;
             return this;
         }
@@ -79,7 +79,7 @@ public class DispatcherConfig {
          * @param dispatcherThreadsNum How many thread should be allocated to this dispatcher
          * @return this builder
          */
-        public Builder setDispatcherThreadsNum(int dispatcherThreadsNum) {
+        public final Builder setDispatcherThreadsNum(int dispatcherThreadsNum) {
             this.dispatcherThreadsNum = dispatcherThreadsNum;
             return this;
         }
@@ -91,7 +91,7 @@ public class DispatcherConfig {
          *                       dispatcher specifying this name
          * @return this builder
          */
-        public Builder setDispatcherName(String dispatcherName) {
+        public final Builder setDispatcherName(String dispatcherName) {
             this.dispatcherName = dispatcherName;
             return this;
         }

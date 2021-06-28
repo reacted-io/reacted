@@ -276,7 +276,7 @@ public class BackpressuringMbox implements MailBox {
          *                 Default: {@link BasicMbox}
          * @return this builder
          */
-        public Builder setRealMbox(MailBox realMbox) {
+        public final Builder setRealMbox(MailBox realMbox) {
             this.realMbox = realMbox;
             return this;
         }
@@ -289,7 +289,7 @@ public class BackpressuringMbox implements MailBox {
          *                            Default: {@link #BEST_EFFORT_TIMEOUT}
          * @return this builder
          */
-        public Builder setBackpressureTimeout(Duration backpressureTimeout) {
+        public final Builder setBackpressureTimeout(Duration backpressureTimeout) {
             this.backpressureTimeout = backpressureTimeout;
             return this;
         }
@@ -301,7 +301,7 @@ public class BackpressuringMbox implements MailBox {
          *                   Default: {@link Flow#defaultBufferSize()}
          * @return this builder
          */
-        public Builder setBufferSize(int bufferSize) {
+        public final Builder setBufferSize(int bufferSize) {
             this.bufferSize = bufferSize;
             return this;
         }
@@ -313,7 +313,7 @@ public class BackpressuringMbox implements MailBox {
          *                         Default {@link #DEFAULT_MESSAGES_REQUESTED_ON_STARTUP}
          * @return this builder
          */
-        public Builder setRequestOnStartup(int requestOnStartup) {
+        public final Builder setRequestOnStartup(int requestOnStartup) {
             this.requestOnStartup = requestOnStartup;
             return this;
         }
@@ -324,7 +324,7 @@ public class BackpressuringMbox implements MailBox {
          *                           Default: {@link ForkJoinPool#commonPool()}
          * @return this builder
          */
-        public Builder setAsyncBackpressurer(Executor asyncBackpressurer) {
+        public final Builder setAsyncBackpressurer(Executor asyncBackpressurer) {
             this.asyncBackpressurer = asyncBackpressurer;
             return this;
         }
@@ -340,7 +340,7 @@ public class BackpressuringMbox implements MailBox {
          * @param sequencer an executor that ensures the sequentiality of the tasks submitted
          * @return this builder
          */
-        public Builder setSequencer(@Nullable ThreadPoolExecutor sequencer) {
+        public final Builder setSequencer(@Nullable ThreadPoolExecutor sequencer) {
             this.sequencer = sequencer;
             return this;
         }
@@ -351,7 +351,7 @@ public class BackpressuringMbox implements MailBox {
          *                     immediately
          * @return this builder
          */
-        public Builder setNonDelayable(Set<Class<? extends Serializable>> notDelayable) {
+        public final Builder setNonDelayable(Set<Class<? extends Serializable>> notDelayable) {
             this.notDelayable = notDelayable;
             return this;
         }
@@ -362,7 +362,7 @@ public class BackpressuringMbox implements MailBox {
          *                           will wait till when necessary to deliver the message
          * @return this builder
          */
-        public Builder setNonBackpressurable(Set<Class<? extends Serializable>> notBackpressurable) {
+        public final Builder setNonBackpressurable(Set<Class<? extends Serializable>> notBackpressurable) {
             this.notBackpressurable = notBackpressurable;
             return this;
         }
@@ -372,7 +372,7 @@ public class BackpressuringMbox implements MailBox {
          * @param realMailboxOwner {@link ReActorContext} of the reactor owning {@link BackpressuringMbox#realMbox}
          * @return this builder
          */
-        public Builder setRealMailboxOwner(ReActorContext realMailboxOwner) {
+        public final Builder setRealMailboxOwner(ReActorContext realMailboxOwner) {
             this.realMailboxOwner = realMailboxOwner;
             return this;
         }

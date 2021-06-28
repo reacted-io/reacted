@@ -126,7 +126,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          * @param asyncExecutor Alternate executor. Default: {@link ForkJoinPool#commonPool()}
          * @return this builder
          */
-        public Builder setAsyncExecutor(Executor asyncExecutor) {
+        public final Builder setAsyncExecutor(Executor asyncExecutor) {
             this.asyncExecutorService = asyncExecutor;
             return this;
         }
@@ -137,7 +137,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          *                          A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          * @return this builder
          */
-        public Builder setReconnectionDelay(Duration reconnectionDelay) {
+        public final Builder setReconnectionDelay(Duration reconnectionDelay) {
             this.reconnectionDelay = reconnectionDelay;
             return this;
         }
@@ -148,7 +148,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          * @param maxReconnectionAttempts A positive amount
          * @return this builder
          */
-        public Builder setMaxReconnectionAttempts(int maxReconnectionAttempts) {
+        public final Builder setMaxReconnectionAttempts(int maxReconnectionAttempts) {
             this.maxReconnectionAttempts = maxReconnectionAttempts;
             return this;
         }
@@ -159,7 +159,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          *                         Default {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_CONNECTION_STRING}
          * @return this builder
          */
-        public Builder setConnectionString(String connectionString) {
+        public final Builder setConnectionString(String connectionString) {
             this.connectionString = connectionString;
             return this;
         }

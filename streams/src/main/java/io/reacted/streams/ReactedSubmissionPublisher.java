@@ -532,7 +532,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         public static <PayloadT> Builder<PayloadT> newBuilder() { return new Builder<>(); }
 
         @SuppressWarnings("NotNullFieldNotInitialized")
-        public static final class Builder<PayloadT> {
+        public static class Builder<PayloadT> {
             private int bufferSize = Flow.defaultBufferSize();
             private Duration backpressureTimeout = BEST_EFFORT_SUBSCRIPTION;
             private Executor asyncBackpressurer = ForkJoinPool.commonPool();
@@ -549,7 +549,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
              *                   <b>Positive</b> values only
              * @return this builder
              */
-            public Builder<PayloadT> setBufferSize(int bufferSize) {
+            public final Builder<PayloadT> setBufferSize(int bufferSize) {
                 this.bufferSize = bufferSize;
                 return this;
             }
@@ -564,7 +564,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
              *                            no message can be lost. Publisher will wait indefinitely.
              * @return this builder
              */
-            public Builder<PayloadT> setBackpressureTimeout(Duration backpressureTimeout) {
+            public final Builder<PayloadT> setBackpressureTimeout(Duration backpressureTimeout) {
                 this.backpressureTimeout = backpressureTimeout;
                 return this;
             }
@@ -575,7 +575,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
              *                           independent thread
              * @return this builder
              */
-            public Builder<PayloadT> setAsyncBackpressurer(Executor asyncBackpressurer) {
+            public final Builder<PayloadT> setAsyncBackpressurer(Executor asyncBackpressurer) {
                 this.asyncBackpressurer = asyncBackpressurer;
                 return this;
             }
@@ -585,7 +585,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
              * @param subscriberName This name must be unique and if deterministic it allows <b>replay</b>
              * @return this builder
              */
-            public Builder<PayloadT> setSubscriberName(String subscriberName) {
+            public final Builder<PayloadT> setSubscriberName(String subscriberName) {
                 this.subscriberName = subscriberName;
                 return this;
             }
@@ -596,7 +596,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
              *                  a new thread will be automatically created for this
              * @return this builder
              */
-            public Builder<PayloadT> setSequencer(@Nullable ThreadPoolExecutor sequencer) {
+            public final Builder<PayloadT> setSequencer(@Nullable ThreadPoolExecutor sequencer) {
                 this.sequencer = sequencer;
                 return this;
             }

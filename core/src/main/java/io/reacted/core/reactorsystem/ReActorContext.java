@@ -138,7 +138,7 @@ public class ReActorContext {
         return interceptedMsgTypes;
     }
 
-    public final void reschedule() { getDispatcher().dispatch(this); }
+    public void reschedule() { getDispatcher().dispatch(this); }
 
     public CompletionStage<Try<DeliveryStatus>> reply(Serializable anyPayload) { return reply(getSelf(), anyPayload); }
 
@@ -319,37 +319,37 @@ public class ReActorContext {
         private Dispatcher dispatcher;
         private ReActions reActions;
 
-        public Builder setMbox(Function<ReActorContext, MailBox> actorMboxProvider) {
+        public final Builder setMbox(Function<ReActorContext, MailBox> actorMboxProvider) {
             this.mboxProvider = actorMboxProvider;
             return this;
         }
 
-        public Builder setReactorRef(ReActorRef reactorRef) {
+        public final Builder setReactorRef(ReActorRef reactorRef) {
             this.reactorRef = reactorRef;
             return this;
         }
 
-        public Builder setReActorSystem(ReActorSystem reActorSystem) {
+        public final Builder setReActorSystem(ReActorSystem reActorSystem) {
             this.reActorSystem = reActorSystem;
             return this;
         }
 
-        public Builder setParentActor(ReActorRef parentActor) {
+        public final Builder setParentActor(ReActorRef parentActor) {
             this.parent = parentActor;
             return this;
         }
 
-        public Builder setSubscriptions(TypedSubscription... typedSubscriptions) {
+        public final Builder setSubscriptions(TypedSubscription... typedSubscriptions) {
             this.typedSubscriptions = typedSubscriptions;
             return this;
         }
 
-        public Builder setDispatcher(Dispatcher dispatcher) {
+        public final Builder setDispatcher(Dispatcher dispatcher) {
             this.dispatcher = dispatcher;
             return this;
         }
 
-        public Builder setReActions(ReActions reActions) {
+        public final Builder setReActions(ReActions reActions) {
             this.reActions = reActions;
             return this;
         }

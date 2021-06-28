@@ -51,19 +51,19 @@ public class ReActions {
             this.callbacks = ImmutableMap.builder();
         }
 
-        public Builder reAct(BiConsumer<ReActorContext, Serializable> defaultReaction) {
+        public final Builder reAct(BiConsumer<ReActorContext, Serializable> defaultReaction) {
             this.anyType = defaultReaction;
             return this;
         }
 
-        public <PayloadT extends Serializable>
+        public final <PayloadT extends Serializable>
         Builder reAct(Class<PayloadT> payloadType, BiConsumer<ReActorContext, PayloadT> behavior) {
             callbacks.put(Objects.requireNonNull(payloadType, "Message type cannot be null"),
                           Objects.requireNonNull(behavior, "Message callback cannot be null"));
             return this;
         }
 
-        public Builder from(ReActions reActions) {
+        public final Builder from(ReActions reActions) {
             Objects.requireNonNull(reActions, "Source reactions cannot be null")
                    .getBehaviors()
                    .forEach(callbacks::put);
