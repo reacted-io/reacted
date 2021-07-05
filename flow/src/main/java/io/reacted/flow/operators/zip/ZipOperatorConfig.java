@@ -79,10 +79,5 @@ public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperat
 
     @Override
     public boolean equals(Object obj) { return obj instanceof ZipKey; }
-
-    @Override
-    public int compareTo(ReduceKey o) {
-      return 0;
-    }
   }
 }

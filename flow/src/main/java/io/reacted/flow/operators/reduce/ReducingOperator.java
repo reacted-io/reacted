@@ -8,10 +8,12 @@
 
 package io.reacted.flow.operators.reduce;
 
+import com.google.common.collect.ImmutableMap;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.flow.operators.FlowOperator;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -27,8 +29,9 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
                                                                                       ConfigT>,
                                 ConfigT extends ReducingOperatorConfig<ConfigBuilderT, ConfigT>>
     extends FlowOperator<ConfigBuilderT, ConfigT> {
+    private static final List<Serializable> NO_ELEMENTS = List.of();
     private final Map<Class<? extends Serializable>,
-                      Map<ReduceKey, List<Serializable>>> storage;
+                      Map<? super ReduceKey, List<Serializable>>> storage;
     protected ReducingOperator(ConfigT config) {
         super(config);
         this.storage = config.getKeyExtractors().keySet().stream()
@@ -39,32 +42,53 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
     @Override
     protected CompletionStage<Collection<? extends Serializable>>
     onNext(Serializable input, ReActorContext raCtx) {
+        Collection<? extends Serializable> result = List.of();
         Class<? extends Serializable> inputType = input.getClass();
         if (storage.containsKey(inputType)) {
-            ReduceKey key = getOperatorCfg().getKeyExtractors()
-                                            .get(input.getClass()).apply(input);
-            storage.get(inputType).computeIfAbsent(key, newKey -> new LinkedList<>())
+            var keyExtractorForType = getOperatorCfg().getKeyExtractors()
+                                                      .get(input.getClass());
+            var key = keyExtractorForType.apply(input);
+            storage.get(inputType)
+                   .computeIfAbsent(key, newKey -> new LinkedList<>())
                    .add(input);
             if (canReduce(key)) {
-                return CompletableFuture.completedStage(getOperatorCfg().getReducer()
-                                                                        .apply(getReduceData(key)));
+                var reduceData = getReduceData(key, getOperatorCfg().getReductionRules());
+                result = getOperatorCfg().getReducer().apply(reduceData);
             }
         }
-        return CompletableFuture.completedStage(List.of());
+        return CompletableFuture.completedStage(result);
     }
 
-    private Map<Class<? extends Serializable>,
-                List<? extends Serializable>> getReduceData(ReduceKey key) {
-        return storage.values().stream()
-                      .map(keyStorage -> keyStorage.remove(key))
-                      .collect(Collectors.toUnmodifiableMap(payload -> payload.get(0).getClass(),
-                                                            Function.identity()));
+    private Map<Class<? extends Serializable>, List<? extends Serializable>>
+    getReduceData(ReduceKey key, Map<Class<? extends Serializable>, Long> reductionRules) {
+        ImmutableMap.Builder<Class<? extends Serializable>, List<? extends Serializable>> output;
+        output = ImmutableMap.builder();
+        for(var entry : storage.entrySet()) {
+            Class<? extends Serializable> type = entry.getKey();
+            Map<? super ReduceKey, List<Serializable>> payloads = entry.getValue();
+            var required = reductionRules.get(type).intValue();
+            var elements = payloads.get(key).size() == required
+                           ? payloads.remove(key)
+                           : removeNfromInput(payloads.get(key), required);
+            output.put(type, elements);
+        }
+        return output.build();
+    }
+
+    private static List<Serializable> removeNfromInput(List<Serializable> input,
+                                                       long howManyToRemove) {
+        List<Serializable> output = new ArrayList<>((int)howManyToRemove);
+        for(int iter = 0; iter < howManyToRemove; iter++) {
+            output.add(input.remove(0));
+        }
+        return output;
     }
     private boolean canReduce(ReduceKey reduceKey) {
         return getOperatorCfg().getReductionRules().entrySet().stream()
                                .allMatch(typeToNum -> storage.getOrDefault(typeToNum.getKey(),
                                                                            Map.of())
-                                                             .getOrDefault(reduceKey, List.of())
-                                                             .size() == typeToNum.getValue());
+                                                             .getOrDefault(reduceKey, NO_ELEMENTS)
+                                                             .size() >= typeToNum.getValue()
+                                                                                 .intValue());
     }
 }

@@ -10,4 +10,5 @@ package io.reacted.flow.operators.reduce;
 
 import java.io.Serializable;
 
-public interface ReduceKey extends Serializable, Comparable<ReduceKey> { }
+public interface ReduceKey extends Serializable { }
+
