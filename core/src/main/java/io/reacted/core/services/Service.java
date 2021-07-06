@@ -36,7 +36,6 @@ import java.util.function.BiFunction;
 import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -100,6 +99,8 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
            .peekFailure(failure -> raCtx.logError("Unable to reschedule service publication", failure))
            .ifError(failure -> raCtx.getSelf().tell(raCtx.getSender(), error));
     }
+
+    List<ReActorRef> getRouteesMap() { return routeesMap; }
 
     private void onSystemInfoReport(ReActorContext raCtx, SystemMonitorReport report) {
         serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_CPU_LOAD, report.getCpuLoad());
@@ -179,25 +180,27 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
             return;
         }
 
-        Optional<ReActorRef> serviceSelection = request.getSearchFilter().getSelectionType() == SelectionType.ROUTED
+        Optional<ReActorRef> serviceSelection = request.getSearchFilter()
+                                                       .getSelectionType() == SelectionType.ROUTED
                                                 ? Optional.of(raCtx.getSelf())
-                                                : selectRoutee(raCtx, msgReceived);
+                                                : selectRoutee(raCtx, msgReceived, request);
 
         serviceSelection.map(ServiceDiscoveryReply::new)
-                        .ifPresent(discoveryReply -> raCtx.getSender()
-                                                          .tell(raCtx.getSelf(), discoveryReply));
+                        .ifPresent(discoveryReply -> raCtx.reply(raCtx.getSelf(), discoveryReply));
     }
 
     private CompletionStage<Try<DeliveryStatus>> routeMessage(ReActorContext raCtx,
-                                                                Serializable newMessage) {
-        return selectRoutee(raCtx, ++msgReceived)
+                                                              Serializable newMessage) {
+        return selectRoutee(raCtx, ++msgReceived, newMessage)
             .map(routee -> routee.route(raCtx.getSender(), newMessage))
             .orElse(CompletableFuture.completedStage(Try.ofFailure(new IllegalStateException(String.format(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
-                                                                                                            serviceConfig.getReActorName())))));
+                                                                                                           serviceConfig.getReActorName())))));
     }
 
-    private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived) {
-        return serviceConfig.getLoadBalancingPolicy().selectRoutee(routerCtx, this, msgReceived);
+    private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived,
+                                              Serializable message) {
+        return serviceConfig.getLoadBalancingPolicy()
+                            .selectRoutee(routerCtx, this, msgReceived, message);
     }
     private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
         this.routeesMap.remove(reSpawnRequest.deadRoutee);
@@ -207,7 +210,8 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
                                       ReActorConfig.fromConfig(routee.getConfig())
                                                    .setReActorName(reSpawnRequest.routeeName)
                                                    .build()))
-           .ifSuccessOrElse(this.routeesMap::add, spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR, spawnError));
+           .ifSuccessOrElse(this.routeesMap::add, spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR,
+                                                                               spawnError));
     }
 
     private ReActorRef spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions,
@@ -266,38 +270,5 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
             this.deadRoutee = deadRoutee;
             this.routeeName = routeeName;
         }
-    }
-
-    public enum LoadBalancingPolicy {
-        ROUND_ROBIN {
-            @Override
-            public <CfgBuilderT extends ReActorServiceConfig.Builder<CfgBuilderT, CfgT>,
-                    CfgT extends ReActorServiceConfig<CfgBuilderT, CfgT>>
-            Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
-                                              Service<CfgBuilderT, CfgT> thisService, long msgNum) {
-                List<ReActorRef> routees = thisService.routeesMap;
-                int routeeIdx = (int) ((msgNum % Integer.MAX_VALUE) % routees.size());
-                return Try.of(() -> routees.get(routeeIdx))
-                          .toOptional();
-            }
-        },
-        LOWEST_LOAD {
-            @Override
-            public <CfgBuilderT extends ReActorServiceConfig.Builder<CfgBuilderT, CfgT>,
-                    CfgT extends ReActorServiceConfig<CfgBuilderT, CfgT>>
-            Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
-                                              Service<CfgBuilderT, CfgT> thisService, long msgNum) {
-                return routerCtx.getChildren().stream()
-                                .map(ReActorRef::getReActorId)
-                                .map(routerCtx.getReActorSystem()::getReActor)
-                                .flatMap(Optional::stream)
-                                .min(Comparator.comparingLong(reActorCtx -> reActorCtx.getMbox().getMsgNum()))
-                                .map(ReActorContext::getSelf);
-            }
-        };
-        abstract <CfgBuilderT extends ReActorServiceConfig.Builder<CfgBuilderT, CfgT>,
-                  CfgT extends ReActorServiceConfig<CfgBuilderT, CfgT>>
-        Optional<ReActorRef> selectRoutee(ReActorContext routerCtx,
-                                          Service<CfgBuilderT, CfgT> thisService, long msgNum);
     }
 }

@@ -9,6 +9,7 @@
 package io.reacted.examples.communication.atell;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -21,7 +22,6 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
@@ -79,7 +79,7 @@ class MessageStormApp {
 
         var serverReActor = serverSystem.spawnService(ServiceConfig.newBuilder()
                                                                    .setRouteeProvider(ServerReActor::new)
-                                                                   .setLoadBalancingPolicy(Service.LoadBalancingPolicy.ROUND_ROBIN)
+                                                                   .setLoadBalancingPolicy(LoadBalancingPolicies.ROUND_ROBIN)
                                                                    .setReActorName("ServerService")
                                                                    .setRouteesNum(1)
                                                                    .setIsRemoteService(true)

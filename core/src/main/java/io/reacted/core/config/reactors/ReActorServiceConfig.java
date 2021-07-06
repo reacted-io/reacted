@@ -10,7 +10,8 @@ package io.reacted.core.config.reactors;
 
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActor;
-import io.reacted.core.services.Service;
+import io.reacted.core.services.LoadBalancingPolicies;
+import io.reacted.core.services.LoadBalancingPolicy;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
@@ -32,7 +33,7 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
     public static final Duration DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY = Duration.ofMinutes(2);
     private final int routeesNum;
     private final UnChecked.CheckedFunction<BuiltT, ? extends ReActor> routeeProvider;
-    private final Service.LoadBalancingPolicy loadBalancingPolicy;
+    private final LoadBalancingPolicy loadBalancingPolicy;
     private final Duration serviceRepublishReattemptDelayOnError;
     private final boolean remoteService;
 
@@ -52,7 +53,7 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
         return routeesNum;
     }
 
-    public Service.LoadBalancingPolicy getLoadBalancingPolicy() {
+    public LoadBalancingPolicy getLoadBalancingPolicy() {
         return loadBalancingPolicy;
     }
 
@@ -70,7 +71,7 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
         protected int routeesNum = MIN_ROUTEES_PER_SERVICE;
         @SuppressWarnings("NotNullFieldNotInitialized")
         protected UnChecked.CheckedFunction<BuiltT, ? extends ReActor> routeeProvider;
-        protected Service.LoadBalancingPolicy loadBalancingPolicy = Service.LoadBalancingPolicy.ROUND_ROBIN;
+        protected LoadBalancingPolicy loadBalancingPolicy = LoadBalancingPolicies.ROUND_ROBIN;
         protected Duration serviceRepublishReattemptDelayOnError = DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY;
         protected boolean remoteService;
 
@@ -115,13 +116,13 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
 
         /**
          * A service automatically load balances messages to its routees. Here we define how that should be done
-         * Default value: {@link Service.LoadBalancingPolicy#ROUND_ROBIN}
+         * Default value: {@link LoadBalancingPolicies#ROUND_ROBIN}
          *
          * @param loadBalancingPolicy Policy to use for selecting the destination among routee when a message
          *                            when a message for a routee is received by the service
          * @return this builder
          */
-        public final BuilderT setLoadBalancingPolicy(Service.LoadBalancingPolicy loadBalancingPolicy) {
+        public final BuilderT setLoadBalancingPolicy(LoadBalancingPolicy loadBalancingPolicy) {
             this.loadBalancingPolicy = loadBalancingPolicy;
             return getThis();
         }

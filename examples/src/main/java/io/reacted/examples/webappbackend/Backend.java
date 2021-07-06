@@ -11,12 +11,12 @@ package io.reacted.examples.webappbackend;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.sun.net.httpserver.HttpServer;
+import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.config.reactors.ServiceConfig;
-import io.reacted.core.services.Service;
 import io.reacted.drivers.channels.chroniclequeue.CQDriverConfig;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
 import io.reacted.drivers.channels.replay.ReplayLocalDriver;
@@ -54,7 +54,7 @@ public class Backend {
                                                 .setRouteesNum(2)
                                                 .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                 .setReActorName(DB_SERVICE_NAME)
-                                                .setLoadBalancingPolicy(Service.LoadBalancingPolicy.LOWEST_LOAD)
+                                                .setLoadBalancingPolicy(LoadBalancingPolicies.LOWEST_LOAD)
                                                 .setRouteeProvider(() -> new DatabaseService(mongoReactiveClient))
                                                 .build());
         backendSystem.spawn(new ServerGate(server, Executors.newSingleThreadExecutor(),
