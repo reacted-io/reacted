@@ -7,6 +7,6 @@
  */
 
 @Unstable
-package io.reacted.flow;
+package io.reacted.flow.operators.service;
 
 import io.reacted.patterns.annotations.unstable.Unstable;

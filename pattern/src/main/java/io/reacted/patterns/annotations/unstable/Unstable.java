@@ -6,19 +6,19 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.flow;
+package io.reacted.patterns.annotations.unstable;
 
-import com.google.common.annotations.GwtCompatible;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.ANNOTATION_TYPE, ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD,
-         ElementType.TYPE, ElementType.PACKAGE})
+         ElementType.TYPE, ElementType.PACKAGE, ElementType.MODULE})
+@Inherited
 @Documented
-@GwtCompatible
 public @interface Unstable {
 }
