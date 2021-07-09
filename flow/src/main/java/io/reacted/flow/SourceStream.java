@@ -10,6 +10,7 @@ package io.reacted.flow;
 
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.patterns.annotations.unstable.Unstable;
 import io.reacted.streams.ReactedSubmissionPublisher;
 import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
 import java.io.Serializable;

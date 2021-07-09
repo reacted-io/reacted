@@ -10,15 +10,13 @@ package io.reacted.patterns.annotations.unstable;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.ANNOTATION_TYPE, ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD,
+@Target({ElementType.CONSTRUCTOR, ElementType.METHOD,
          ElementType.TYPE, ElementType.PACKAGE, ElementType.MODULE})
-@Inherited
 @Documented
 public @interface Unstable {
 }

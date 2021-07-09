@@ -10,6 +10,7 @@ package io.reacted.flow.operators.reduce;
 
 import io.reacted.flow.operators.reduce.ReduceOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
+
 @NonNullByDefault
 public class ReduceOperatorConfig extends ReducingOperatorConfig<Builder, ReduceOperatorConfig> {
   private final Builder builder;

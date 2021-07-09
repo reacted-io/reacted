@@ -12,6 +12,7 @@ import com.google.common.collect.ImmutableMap;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.flow.operators.FlowOperator;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.annotations.unstable.Unstable;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,6 +26,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
+@Unstable
 public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorConfig.Builder<ConfigBuilderT,
                                                                                       ConfigT>,
                                 ConfigT extends ReducingOperatorConfig<ConfigBuilderT, ConfigT>>

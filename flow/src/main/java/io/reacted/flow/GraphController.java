@@ -26,6 +26,7 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked.TriConsumer;
+import io.reacted.patterns.annotations.unstable.Unstable;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;

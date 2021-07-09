@@ -10,6 +10,7 @@ package io.reacted.flow.operators.reduce;
 
 import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.annotations.unstable.Unstable;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
@@ -20,6 +21,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @NonNullByDefault
+@Unstable
 public abstract class ReducingOperatorConfig<OperatorConfigBuilderT extends FlowOperatorConfig.Builder<OperatorConfigBuilderT,
                                                                                                               OperatorConfigT>,
                                                     OperatorConfigT extends FlowOperatorConfig<OperatorConfigBuilderT, OperatorConfigT>>

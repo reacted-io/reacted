@@ -8,7 +8,9 @@
 
 package io.reacted.flow.operators.reduce;
 
+import io.reacted.patterns.annotations.unstable.Unstable;
 import java.io.Serializable;
 
+@Unstable
 public interface ReduceKey extends Serializable { }
 
