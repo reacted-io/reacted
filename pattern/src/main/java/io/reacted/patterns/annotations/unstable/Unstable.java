@@ -15,8 +15,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.CONSTRUCTOR, ElementType.METHOD,
-         ElementType.TYPE, ElementType.PACKAGE, ElementType.MODULE})
+@Target({ElementType.CONSTRUCTOR, ElementType.METHOD, ElementType.TYPE, ElementType.PACKAGE,
+         ElementType.MODULE})
 @Documented
 public @interface Unstable {
 }
