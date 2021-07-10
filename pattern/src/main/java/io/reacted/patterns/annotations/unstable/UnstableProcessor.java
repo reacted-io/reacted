@@ -21,11 +21,10 @@ import javax.tools.Diagnostic.Kind;
 @SupportedAnnotationTypes("io.reacted.patterns.annotations.unstable.Unstable")
 @SupportedSourceVersion(SourceVersion.RELEASE_11)
 public class UnstableProcessor extends AbstractProcessor {
-
   private ProcessingEnvironment env;
-
   @Override
   public synchronized void init(ProcessingEnvironment pe) {
+    super.init(pe);
     this.env = pe;
   }
 
@@ -37,6 +36,9 @@ public class UnstableProcessor extends AbstractProcessor {
 
   @Override
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    if (roundEnv.processingOver()) {
+      return false;
+    }
     roundEnv.getElementsAnnotatedWith(Unstable.class)
             .forEach(element -> env.getMessager()
                                    .printMessage(Kind.MANDATORY_WARNING,
