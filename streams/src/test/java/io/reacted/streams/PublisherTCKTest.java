@@ -14,6 +14,8 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.Try;
 import org.reactivestreams.tck.TestEnvironment;
 import org.reactivestreams.tck.flow.FlowPublisherVerification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeMethod;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Test
 public class PublisherTCKTest extends FlowPublisherVerification<Long> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PublisherTCKTest.class);
     private final AtomicLong counter = new AtomicLong(0);
     private final ReActorSystem localReActorSystem;
     private final BlockingQueue<ReactedSubmissionPublisher<Long>> generatedFlows = new LinkedBlockingDeque<>();
@@ -99,7 +102,11 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
         submitterThread.submit(() -> {
             Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(150));
             for(long cycle = 0; cycle < messagesNum && !Thread.currentThread().isInterrupted(); cycle++) {
-                publisher.submit(cycle);
+                publisher.submit(cycle)
+                         .toCompletableFuture()
+                         .exceptionally(error -> { LOGGER.error("Error on submit", error);
+                                                   return null; })
+                         .join();
             }
             Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(50));
             publisher.close();

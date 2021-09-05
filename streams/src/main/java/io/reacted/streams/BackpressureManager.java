@@ -23,6 +23,7 @@ import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
 import io.reacted.streams.exceptions.RemoteRegistrationException;
 import io.reacted.streams.messages.PublisherComplete;
 import io.reacted.streams.messages.PublisherInterrupt;
+import io.reacted.streams.messages.PublisherShutdown;
 import io.reacted.streams.messages.SubscriberError;
 import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
@@ -79,7 +80,8 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                                                                           UnsubscriptionRequest.class,
                                                                           SubscriberError.class,
                                                                           PublisherInterrupt.class))
-                                                  .setNonBackpressurable(Set.of(PublisherComplete.class))
+                                                  .setNonBackpressurable(Set.of(PublisherComplete.class,
+                                                                                PublisherShutdown.class))
                                                   .setSequencer(subscription.getSequencer());
     }
 

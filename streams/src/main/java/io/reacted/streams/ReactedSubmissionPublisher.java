@@ -23,6 +23,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.Try;
 import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.PublisherShutdown;
 import io.reacted.streams.messages.PublisherComplete;
@@ -64,7 +65,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                                    .orElseSneakyThrow();
     private static final long LOCAL_REACTOR_SYSTEM =
             SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class, "localReActorSystem")
-                                                                       .orElseSneakyThrow();
+                              .orElseSneakyThrow();
     private final transient Set<ReActorRef> subscribers;
     private final transient ReActorSystem localReActorSystem;
     private final ReActorRef feedGate;
@@ -104,9 +105,11 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                                                     .setBufferSize(bufferSize)
                                                                                     .setRequestOnStartup(bufferSize)
                                                                                     .setBackpressureTimeout(BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT)
-                                                                                    .setNonDelayable(Set.of(ReActorInit.class, PublisherShutdown.class,
+                                                                                    .setNonDelayable(Set.of(ReActorInit.class,
                                                                                                             PublisherInterrupt.class, ReActorStop.class,
                                                                                                             SubscriptionRequest.class, UnsubscriptionRequest.class))
+                                                                                    .setNonBackpressurable(Set.of(PublisherShutdown.class,
+                                                                                                                  PublisherComplete.class))
                                                                                     .build())
                                        .build();
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
@@ -447,7 +450,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     public CompletionStage<Void> submit(PayloadT message) {
         return feedGate.tell(message)
                        .toCompletableFuture()
-                       .thenAccept(delivery -> delivery.ifError(Throwable::printStackTrace));
+                       .thenAccept(Try::orElseSneakyThrow);
     }
 
     private void forwardToSubscribers(ReActorContext raCtx, Serializable payload) {
@@ -466,7 +469,9 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), new PublisherComplete()));
+        subscribers.forEach(subscriber -> ifNotDelivered(subscriber.tell(raCtx.getSelf(), new PublisherComplete()),
+                                                         error -> raCtx.logError("Unable to stop subscriber {}",
+                                                                                 subscriber, error)));
         subscribers.clear();
     }
 
