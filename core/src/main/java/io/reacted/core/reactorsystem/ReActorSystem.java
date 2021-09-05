@@ -428,7 +428,7 @@ public class ReActorSystem {
      *
      * @param searchFilter A {@link BasicServiceDiscoverySearchFilter} describing the feature of the services that should be
      *                     found
-     * @param requestId An extra id that will be used together with {@link ServiceDiscoverySearchFilter::getDiscoveryRequestId}
+     * @param requestId An extra id that will be used together with {@link ServiceDiscoverySearchFilter#getDiscoveryRequestId}
      *                  to create a uniquely identified request
      * @return On success a future containing the result of the request
      * On failure a future containing the exception that caused the failure
