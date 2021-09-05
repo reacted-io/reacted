@@ -30,7 +30,7 @@ class BasicMboxTest {
         testMsgDst = ReactorHelper.generateReactor(CoreConstants.DESTINATION);
 
         originalMsg = new Message(testMsgSrc, testMsgDst, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
-                                    AckingPolicy.NONE, CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
+                AckingPolicy.NONE, CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
     }
 
     @BeforeEach
@@ -83,7 +83,7 @@ class BasicMboxTest {
 
         Message originalMsg2 =
                 new Message(testMsgSrc2, testMsgDst2, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
-                              AckingPolicy.NONE, "De/Serialization Successful!");
+                        AckingPolicy.NONE, "De/Serialization Successful!");
 
         basicMbox.deliver(originalMsg2);
         Assertions.assertEquals(2, basicMbox.getMsgNum());
