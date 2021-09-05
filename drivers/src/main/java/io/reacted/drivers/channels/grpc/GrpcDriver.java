@@ -38,7 +38,7 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -78,12 +78,12 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public GrpcDriver(GrpcDriverConfig grpcDriverConfig) {
         super(grpcDriverConfig);
         this.gatesStubs = new ConcurrentHashMap<>(1000, 0.5f);
-        this.channelId = ChannelId.GRPC.forChannelName(grpcDriverConfig.getChannelName());
+        this.channelId = ChannelId.ChannelType.GRPC.forChannelName(grpcDriverConfig.getChannelName());
     }
 
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
-        DriverCtx grpcDriverCtx = RemotingDriver.REACTOR_SYSTEM_CTX.get();
+        DriverCtx grpcDriverCtx = REACTOR_SYSTEM_CTX.get();
         this.grpcServerExecutor = Executors.newFixedThreadPool(3, new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> localReActorSystem.logError("Uncaught exception in {}",
                                                                                                 thread.getName(), throwable))
@@ -96,7 +96,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                 .setNameFormat("Grpc-Client-Executor-" + grpcDriverCtx.getLocalReActorSystem().getLocalReActorSystemId()
                                                                       .getReActorSystemName() + "-%d")
                 .build());
-        this.grpcClientExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
+        this.grpcClientExecutor.submit(() -> REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
         this.workerEventLoopGroup = new NioEventLoopGroup(2);
         this.bossEventLoopGroup = new NioEventLoopGroup(1);
         this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(getDriverConfig().getHostName(),

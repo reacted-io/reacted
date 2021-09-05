@@ -9,7 +9,7 @@
 package io.reacted.core.config.drivers;
 
 import io.reacted.core.config.InheritableBuilder;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.time.Duration;
@@ -19,24 +19,29 @@ import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
 public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Builder<BuilderT, BuiltT>,
-                                       BuiltT extends InheritableBuilder<BuilderT, BuiltT>>
+                                          BuiltT extends InheritableBuilder<BuilderT, BuiltT>>
         extends InheritableBuilder<BuilderT, BuiltT> {
     public static final Duration NEVER_FAIL = Duration.ofNanos(Long.MAX_VALUE);
     public static final Duration DEFAULT_MSG_LOST_TIMEOUT = Duration.ofSeconds(20);
+    public static final int DEFAULT_ACK_CACHE_SIZE = 10_000_000;
     public static final String CHANNEL_ID_PROPERTY_NAME = "channelName";
     private final String channelName;
     private final boolean deliveryAckRequiredByChannel;
     private final Duration atellAutomaticFailureTimeout;
     private final Duration ackCacheCleanupInterval;
+    private final int ackCacheSize;
 
     protected ChannelDriverConfig(Builder<BuilderT, BuiltT> builder) {
         super(builder);
-        this.channelName = Objects.requireNonNull(builder.channelName);
+        this.channelName = Objects.requireNonNull(builder.channelName,
+                                                  "Channel name cannot be null");
         this.deliveryAckRequiredByChannel = builder.deliveryAckRequiredByChannel;
         this.atellAutomaticFailureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.atellFailureTimeout,
                                                                                                   Long.MAX_VALUE,
                                                                                                   TimeUnit.NANOSECONDS);
         this.ackCacheCleanupInterval = ObjectUtils.checkNonNullPositiveTimeInterval(builder.ackCacheCleanupInterval);
+        this.ackCacheSize = ObjectUtils.requiredInRange(builder.ackCacheSize, 0, Integer.MAX_VALUE,
+                                                        IllegalArgumentException::new);
     }
 
     public Properties getProperties() {
@@ -55,6 +60,8 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
 
     public Duration getAckCacheCleanupInterval() { return ackCacheCleanupInterval; }
 
+    public int getAckCacheSize() { return ackCacheSize; }
+
     public abstract static class Builder<BuilderT, BuiltT>
             extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         @SuppressWarnings("NotNullFieldNotInitialized")
@@ -62,6 +69,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         private Duration atellFailureTimeout = DEFAULT_MSG_LOST_TIMEOUT;
         private Duration ackCacheCleanupInterval = DEFAULT_MSG_LOST_TIMEOUT;
         private boolean deliveryAckRequiredByChannel;
+        private int ackCacheSize = DEFAULT_ACK_CACHE_SIZE;
 
         public final BuilderT setChannelName(String channelName) {
             this.channelName = channelName;
@@ -102,6 +110,16 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
          */
         public final BuilderT setAckCacheCleanupInterval(Duration ackCacheCleanupInterval) {
             this.ackCacheCleanupInterval = ackCacheCleanupInterval;
+            return getThis();
+        }
+
+        /**
+         * Gives a hint regarding the size of the ack cache for this driver
+         * @param ackCacheSize A non negative integer
+         * @return This builder
+         */
+        public final BuilderT setAckCacheSize(int ackCacheSize) {
+            this.ackCacheSize = ackCacheSize;
             return getThis();
         }
     }

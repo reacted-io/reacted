@@ -12,9 +12,14 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,23 +53,39 @@ public class BackpressuringMbox implements MailBox {
     private final Set<Class<? extends Serializable>> notBackpressurable;
     private final ExecutorService sequencer;
     private final boolean isPrivateSequencer;
-    private volatile Set<Class<? extends Serializable>> notDelayed;
+    private final int bufferSize;
+    private final int requestOnStartup;
+    private final AtomicReference<Set<Class<? extends Serializable>>> notDelayed;
 
     /*
      * BackpressuringMbox wrapper for any other mailbox type.
      */
     private BackpressuringMbox(Builder builder) {
-        ReActorContext mboxOwner = Objects.requireNonNull(builder.realMailboxOwner);
-        this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
+        ReActorContext mboxOwner = Objects.requireNonNull(builder.realMailboxOwner,
+                                                          "Mailbox owner reactor cannot be null");
+        this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout,
+                                                                                        "Backpressure timeout cannot be null"),
                                                                  timeout -> timeout.compareTo(RELIABLE_DELIVERY_TIMEOUT) <= 0,
                                                                  () -> new IllegalArgumentException("Invalid backpressure timeout"));
-        this.realMbox = Objects.requireNonNull(builder.realMbox);
-        this.notDelayed = Objects.requireNonNull(builder.notDelayable);
-        this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable);
-        int bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
+        this.realMbox = Objects.requireNonNull(builder.realMbox,
+                                               "A backing mailbox must be provided");
+        this.notDelayed = new AtomicReference<>(Objects.requireNonNull(builder.notDelayable,
+                                                "Non delayable messages set cannot be a null")
+                                                       .stream()
+                                                       .filter(Objects::nonNull)
+                                                       .collect(Collectors.toUnmodifiableSet()));
+        this.notBackpressurable = Objects.requireNonNull(builder.notBackpressurable,
+                                                         "Non backpressurable messages set cannot be a null")
+                                         .stream()
+                                         .filter(Objects::nonNull)
+                                         .collect(Collectors.toUnmodifiableSet());
+        this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                      IllegalArgumentException::new);
-        int requestOnStartup = ObjectUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
+        this.requestOnStartup = ObjectUtils.requiredInRange(builder.requestOnStartup, 0, Integer.MAX_VALUE,
                                                            IllegalArgumentException::new);
+        ObjectUtils.requiredCondition(requestOnStartup, requested -> requested <= bufferSize,
+                                      () -> new IllegalArgumentException("Cannot require more than " +
+                                                                         "buffer size elements"));
         var deliveryThreadFactory = new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> LOGGER.error("Uncaught exception in {} delivery thread",
                                                                                  BackpressuringMbox.class.getSimpleName(),
@@ -80,7 +101,9 @@ public class BackpressuringMbox implements MailBox {
             this.sequencer = builder.sequencer;
             this.isPrivateSequencer = false;
         }
-        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.asyncBackpressurer), bufferSize);
+        this.backpressurer = new SubmissionPublisher<>(Objects.requireNonNull(builder.asyncBackpressurer,
+                                                                              "Async threadpool for backpressuring cannot be null"),
+                                                       bufferSize);
         this.reliableBackpressuringSubscriber = new BackpressuringSubscriber(requestOnStartup, mboxOwner,
                                                                              realMbox::deliver, backpressurer);
         backpressurer.subscribe(reliableBackpressuringSubscriber);
@@ -104,18 +127,36 @@ public class BackpressuringMbox implements MailBox {
     @Override
     public long getMaxSize() { return realMbox.getMaxSize(); }
 
+    public int getBufferSize() { return bufferSize; }
+
+    public int getRequestOnStartup() { return requestOnStartup; }
+
+    @Nonnull
     @Override
     public Message getNextMessage() { return realMbox.getNextMessage(); }
 
-    public Set<Class<? extends Serializable>> getNotDelayedMessageTypes() { return notDelayed; }
+    public Set<Class<? extends Serializable>> getNotDelayedMessageTypes() { return notDelayed.get(); }
 
-    public void setNotDelayedMessageTypes(Set<Class<? extends Serializable>> notDelayed) {
-        this.notDelayed = Set.copyOf(notDelayed);
+    public BackpressuringMbox addNonDelayedMessageTypes(Set<Class<? extends Serializable>> notDelayedToAdd) {
+        Set<Class<? extends Serializable>> notDelayedCache;
+        Set<Class<? extends Serializable>> notDelayedMerge;
+        do {
+            notDelayedCache = notDelayed.get();
+            notDelayedMerge = Stream.concat(notDelayedCache.stream(),
+                                            Objects.requireNonNull(notDelayedToAdd,
+                                                                   "Non delayable types cannot be null")
+                                                   .stream()
+                                                   .filter(Objects::nonNull))
+                                    .collect(Collectors.toUnmodifiableSet());
+        }while(!notDelayed.compareAndSet(notDelayedCache, notDelayedMerge));
+        return this;
     }
 
+    @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) { return realMbox.deliver(message); }
 
+    @Nonnull
     @Override
     public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
         var payloadType = message.getPayload().getClass();
@@ -155,6 +196,11 @@ public class BackpressuringMbox implements MailBox {
         realMbox.close();
     }
 
+    public static Optional<BackpressuringMbox> toBackpressuringMailbox(MailBox mailBox) {
+        return BackpressuringMbox.class.isAssignableFrom(mailBox.getClass())
+               ? Optional.of((BackpressuringMbox)mailBox)
+               : Optional.empty();
+    }
     /*
      * Exploit Java Submission publisher to backpressure a fast producer.
      * returns a completable future that will be completed with the result of the actual delivery of the message
@@ -181,7 +227,7 @@ public class BackpressuringMbox implements MailBox {
     }
 
     private boolean shouldNotBeDelayed(Class<? extends Serializable> payloadType) {
-        return notDelayed.contains(payloadType);
+        return notDelayed.get().contains(payloadType);
     }
 
     private boolean canBeBackPressured(Class<? extends Serializable> payloadType) {
@@ -230,7 +276,7 @@ public class BackpressuringMbox implements MailBox {
          *                 Default: {@link BasicMbox}
          * @return this builder
          */
-        public Builder setRealMbox(MailBox realMbox) {
+        public final Builder setRealMbox(MailBox realMbox) {
             this.realMbox = realMbox;
             return this;
         }
@@ -243,7 +289,7 @@ public class BackpressuringMbox implements MailBox {
          *                            Default: {@link #BEST_EFFORT_TIMEOUT}
          * @return this builder
          */
-        public Builder setBackpressureTimeout(Duration backpressureTimeout) {
+        public final Builder setBackpressureTimeout(Duration backpressureTimeout) {
             this.backpressureTimeout = backpressureTimeout;
             return this;
         }
@@ -255,7 +301,7 @@ public class BackpressuringMbox implements MailBox {
          *                   Default: {@link Flow#defaultBufferSize()}
          * @return this builder
          */
-        public Builder setBufferSize(int bufferSize) {
+        public final Builder setBufferSize(int bufferSize) {
             this.bufferSize = bufferSize;
             return this;
         }
@@ -267,7 +313,7 @@ public class BackpressuringMbox implements MailBox {
          *                         Default {@link #DEFAULT_MESSAGES_REQUESTED_ON_STARTUP}
          * @return this builder
          */
-        public Builder setRequestOnStartup(int requestOnStartup) {
+        public final Builder setRequestOnStartup(int requestOnStartup) {
             this.requestOnStartup = requestOnStartup;
             return this;
         }
@@ -278,7 +324,7 @@ public class BackpressuringMbox implements MailBox {
          *                           Default: {@link ForkJoinPool#commonPool()}
          * @return this builder
          */
-        public Builder setAsyncBackpressurer(Executor asyncBackpressurer) {
+        public final Builder setAsyncBackpressurer(Executor asyncBackpressurer) {
             this.asyncBackpressurer = asyncBackpressurer;
             return this;
         }
@@ -294,7 +340,7 @@ public class BackpressuringMbox implements MailBox {
          * @param sequencer an executor that ensures the sequentiality of the tasks submitted
          * @return this builder
          */
-        public Builder setSequencer(@Nullable ThreadPoolExecutor sequencer) {
+        public final Builder setSequencer(@Nullable ThreadPoolExecutor sequencer) {
             this.sequencer = sequencer;
             return this;
         }
@@ -305,7 +351,7 @@ public class BackpressuringMbox implements MailBox {
          *                     immediately
          * @return this builder
          */
-        public Builder setNonDelayable(Set<Class<? extends Serializable>> notDelayable) {
+        public final Builder setNonDelayable(Set<Class<? extends Serializable>> notDelayable) {
             this.notDelayable = notDelayable;
             return this;
         }
@@ -316,7 +362,7 @@ public class BackpressuringMbox implements MailBox {
          *                           will wait till when necessary to deliver the message
          * @return this builder
          */
-        public Builder setNonBackpressurable(Set<Class<? extends Serializable>> notBackpressurable) {
+        public final Builder setNonBackpressurable(Set<Class<? extends Serializable>> notBackpressurable) {
             this.notBackpressurable = notBackpressurable;
             return this;
         }
@@ -326,7 +372,7 @@ public class BackpressuringMbox implements MailBox {
          * @param realMailboxOwner {@link ReActorContext} of the reactor owning {@link BackpressuringMbox#realMbox}
          * @return this builder
          */
-        public Builder setRealMailboxOwner(ReActorContext realMailboxOwner) {
+        public final Builder setRealMailboxOwner(ReActorContext realMailboxOwner) {
             this.realMailboxOwner = realMailboxOwner;
             return this;
         }

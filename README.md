@@ -8,7 +8,7 @@
  ReActed is an actor oriented framework for creating reactive applications. It naturally embraces the microcomponents
  paradigm in its design, allowing the realization of distributed, flexible, reliable, monitorable and automatically scalable
  applications out of the box. ReActed amplifies the productivity of developers providing a ready to use solution that can be
- easily integrated with almost any other technology and fine grained tuned only if required.
+ easily integrated with almost any other technology and fine-grained tuned only if required.
  
  ReActed can manage for you:
  
@@ -20,7 +20,7 @@
  be shared, used, added or created through a location agnostic approach, creating an automatically scalable and location
  agnostic way of designing a system
  
- - Monitoring: creating an event sourced or a choreography oriented microservices system can be tricky,
+ - Monitoring: creating an event source or a choreography oriented microservices system can be tricky,
   but monitoring and debugging it can be even more difficult. ReActed can do this for you through its Re-playable Actors. 
   Run the application and if something goes wrong you can just analyze the log or replay the logs to reset the system
   to its state in any given instant in time.

@@ -10,7 +10,7 @@ package io.reacted.core.mailboxes;
 
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -46,11 +46,13 @@ public class BoundedBasicMbox implements MailBox {
     @Override
     public boolean isFull() { return inbox.remainingCapacity() == mailboxCapacity; }
 
+    @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) {
         return inbox.offerLast(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.BACKPRESSURED;
     }
 
+    @Nonnull
     @Override
     public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
         return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));

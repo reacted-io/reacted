@@ -28,4 +28,12 @@ public class ServiceCancellationRequest implements Serializable {
     public ReActorSystemId getReActorSystemId() { return reActorSystemId; }
 
     public String getServiceName() { return serviceName; }
+
+    @Override
+    public String toString() {
+        return "ServiceCancellationRequest{" +
+               "reActorSystemId=" + reActorSystemId +
+               ", serviceName='" + serviceName + '\'' +
+               '}';
+    }
 }

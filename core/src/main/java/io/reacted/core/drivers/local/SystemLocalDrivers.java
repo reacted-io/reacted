@@ -8,14 +8,13 @@
 
 package io.reacted.core.drivers.local;
 
-import io.reacted.core.drivers.system.DirectCommunicationConfig;
-import io.reacted.core.drivers.system.DirectCommunicationDriver;
-import io.reacted.core.drivers.system.DirectCommunicationLoggerConfig;
-import io.reacted.core.drivers.system.DirectCommunicationLoggerDriver;
-import io.reacted.core.drivers.system.DirectCommunicationSimplifiedLoggerConfig;
-import io.reacted.core.drivers.system.DirectCommunicationSimplifiedLoggerDriver;
+import io.reacted.core.config.drivers.DirectCommunicationConfig;
+import io.reacted.core.config.drivers.DirectCommunicationLoggerConfig;
+import io.reacted.core.config.drivers.DirectCommunicationSimplifiedLoggerConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 
 @NonNullByDefault
 public final class SystemLocalDrivers {
@@ -52,9 +51,26 @@ public final class SystemLocalDrivers {
      * @return the {@link DirectCommunicationSimplifiedLoggerDriver}
      */
     public static DirectCommunicationSimplifiedLoggerDriver
-    getDirectCommunicationSimplifiedLoggerDriver(String loggingFilePath) {
+    getDirectCommunicationSimplifiedLoggerDriver(String loggingFilePath)
+        throws FileNotFoundException {
+        return getDirectCommunicationSimplifiedLoggerDriver(new PrintStream(loggingFilePath));
+    }
+    /**
+     * Returns a {@link DirectCommunicationDriver} for <b>local</b> communication that after sending each message
+     * logs the main information of the message in a file. It is a less noisy version of {@link DirectCommunicationLoggerDriver}
+     *
+     * @param loggingPrintStream {@link PrintStream} that should be used for printing the messages that are
+     *                           exchanged within the local {@link ReActorSystem}
+     *
+     *                           Note: the supplied {@link PrintStream } will be automatically flushed
+     *                                 and closed on driver termination
+     * @throws java.io.UncheckedIOException if an error occurs opening the file
+     * @return the {@link DirectCommunicationSimplifiedLoggerDriver}
+     */
+    public static DirectCommunicationSimplifiedLoggerDriver
+    getDirectCommunicationSimplifiedLoggerDriver(PrintStream loggingPrintStream) {
         return new DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerConfig.newBuilder()
-                                                                                                      .setLogFilePath(loggingFilePath)
+                                                                                                      .setLogStream(loggingPrintStream)
                                                                                                       .setChannelName("SIMPLIFIED_LOGGING_DIRECT_COMMUNICATION-")
                                                                                                       .build());
     }

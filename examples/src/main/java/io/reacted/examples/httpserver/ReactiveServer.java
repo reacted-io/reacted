@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
+import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
@@ -17,6 +18,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher;
+import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +60,8 @@ public class ReactiveServer {
     public static void main(String[] args) throws IOException {
         var serverReactorSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                        /* Use chronicle driver and record execution property for replay */
-                                                                       //.setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLogger(LOG_PATH))
+                                                                       .setLocalDriver(
+                                                                           SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(LOG_PATH))
                                                                        .setReactorSystemName("ReactiveServer")
                                                                        .addDispatcherConfig(DispatcherConfig.newBuilder()
                                                                                                             .setDispatcherName(RESPONSE_DISPATCHER)
@@ -159,7 +162,7 @@ public class ReactiveServer {
         }
 
         private void onInit(ReActorContext raCtx, ReActorInit init) {
-            raCtx.logInfo("Initing {}", raCtx.getSelf().getReActorId().getReActorName());
+            raCtx.logInfo("Initializing {}", raCtx.getSelf().getReActorId().getReActorName());
             Try.ofRunnable(() -> httpCtx.sendResponseHeaders(200, 0))
                .flatMap(noVal -> Try.ofRunnable(() -> sendData("<html><body>")))
                .flatMap(noVal -> spawnPathReaders(filePaths, raCtx, requestId))
@@ -168,14 +171,14 @@ public class ReactiveServer {
 
         private void onDataPublisher(ReActorContext raCtx, ReactedSubmissionPublisher<String> publisher) {
             var sender = raCtx.getSender();
-            publisher.subscribe(ReactedSubmissionPublisher.ReActedSubscription.<String>newBuilder()
-                                        .setAsyncBackpressurer(asyncBackpressureExecutor)
-                                        .setSubscriberName("sub_" + raCtx.getSender().getReActorId().getReActorName())
-                                        .setBufferSize(ReactiveServer.BACKPRESSURING_BUFFER_SIZE)
-                                        .setBackpressureTimeout(ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION)
-                                        .setSequencer(sequencer)
-                                        .setSubscriber(getNexDataConsumer(raCtx, outputExecutor))
-                                        .build())
+            publisher.subscribe(ReActedSubscriptionConfig.<String>newBuilder()
+                                                         .setAsyncBackpressurer(asyncBackpressureExecutor)
+                                                         .setSubscriberName("sub_" + raCtx.getSender().getReActorId().getReActorName())
+                                                         .setBufferSize(ReactiveServer.BACKPRESSURING_BUFFER_SIZE)
+                                                         .setBackpressureTimeout(ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION)
+                                                         .setSequencer(sequencer)
+                                                         .build(),
+                                getNexDataConsumer(raCtx, outputExecutor))
                      .thenAccept(noVal -> sender.tell(raCtx.getSelf(), new StartPublishing()));
         }
 

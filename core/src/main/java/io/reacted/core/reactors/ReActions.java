@@ -27,16 +27,20 @@ public class ReActions {
 
     private ReActions(Builder builder) {
         this.behaviors = builder.callbacks.build();
-        this.defaultReaction = Objects.requireNonNull(builder.anyType);
+        this.defaultReaction = Objects.requireNonNull(builder.anyType,
+                                                      "Default reaction cannot be null");
     }
 
     @SuppressWarnings("unchecked")
     public <PayloadT extends Serializable>
     BiConsumer<ReActorContext, PayloadT> getReAction(PayloadT payload) {
-        return (BiConsumer<ReActorContext, PayloadT>) behaviors.getOrDefault(payload.getClass(), defaultReaction);
+        return (BiConsumer<ReActorContext, PayloadT>) behaviors.getOrDefault(payload.getClass(),
+                                                                             defaultReaction);
     }
 
     public static Builder newBuilder() { return new Builder(); }
+    private Map<Class<? extends Serializable>, BiConsumer<ReActorContext, ? extends Serializable>>
+    getBehaviors() { return behaviors; }
 
     public static class Builder {
         private final ImmutableMap.Builder<Class<? extends Serializable>,
@@ -47,14 +51,22 @@ public class ReActions {
             this.callbacks = ImmutableMap.builder();
         }
 
-        public Builder reAct(BiConsumer<ReActorContext, Serializable> defaultReaction) {
+        public final Builder reAct(BiConsumer<ReActorContext, Serializable> defaultReaction) {
             this.anyType = defaultReaction;
             return this;
         }
 
-        public <PayloadT extends Serializable>
+        public final <PayloadT extends Serializable>
         Builder reAct(Class<PayloadT> payloadType, BiConsumer<ReActorContext, PayloadT> behavior) {
-            callbacks.put(Objects.requireNonNull(payloadType), Objects.requireNonNull(behavior));
+            callbacks.put(Objects.requireNonNull(payloadType, "Message type cannot be null"),
+                          Objects.requireNonNull(behavior, "Message callback cannot be null"));
+            return this;
+        }
+
+        public final Builder from(ReActions reActions) {
+            Objects.requireNonNull(reActions, "Source reactions cannot be null")
+                   .getBehaviors()
+                   .forEach(callbacks::put);
             return this;
         }
 

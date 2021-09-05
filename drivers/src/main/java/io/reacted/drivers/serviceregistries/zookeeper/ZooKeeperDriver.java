@@ -34,10 +34,11 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import javax.annotation.Nonnull;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -121,6 +122,13 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         return Objects.hash(getConfig());
     }
 
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof ZooKeeperDriver &&
+               getConfig().equals(((ZooKeeperDriver) o).getConfig());
+    }
+
+    @Nonnull
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
@@ -337,7 +345,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
 
     private static boolean isThisInstanceMarker(@Nullable byte[] remoteMarkerData,
                                                 UUID reActorSystemInstanceMarker) {
-        return Try.of(() -> UUID.fromString(new String(remoteMarkerData)))
+        return remoteMarkerData != null &&
+               Try.of(() -> UUID.fromString(new String(remoteMarkerData)))
                   .map(reActorSystemInstanceMarker::equals)
                   .orElse(false);
     }
@@ -454,7 +463,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         Optional<ChannelId> channelId = ChannelId.fromToString(reActorSystemNameAndChannelId.getNode());
         CompletionStage<Try<DeliveryStatus>> onError;
         onError = CompletableFuture.completedFuture(Try.ofFailure(new IllegalArgumentException("Unable to decode channel id from " +
-                                                                                               reActorSystemNameAndChannelId.toString())));
+                                                                                               reActorSystemNameAndChannelId)));
         return channelId.map(channel -> reActorSystem.getSystemRemotingRoot()
                                                      .tell(driverReActor,
                                                            new RegistryGateRemoved(reActorSystemNameAndChannelId.getPath().substring(1),
@@ -470,7 +479,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         Try<Properties> properties = Try.of(() -> ObjectUtils.fromBytes(nodeData.getData()));
         CompletionStage<Try<DeliveryStatus>> onError;
         onError = CompletableFuture.completedFuture(Try.ofFailure(new IllegalArgumentException("Unable to decode channel id from " +
-                                                                                               reActorSystemNameAndChannelId.toString())));
+                                                                                               reActorSystemNameAndChannelId)));
         return channelId.map(channel -> properties.map(props -> reActorSystem.getSystemRemotingRoot()
                                                                              .tell(driverReActor,
                                                                                    new RegistryGateUpserted(reActorSystemName,
@@ -522,7 +531,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     }
     private static String getGatePublicationPath(ReActorSystemId reActorSystemId, ChannelId channelId) {
         return String.format(NEW_REACTOR_SYSTEM_GATE_PATH_FORMAT, reActorSystemId.getReActorSystemName(),
-                             channelId.toString());
+                             channelId);
     }
     private static boolean shouldProcessUpdate(String updatedPath) {
 
@@ -556,7 +565,9 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         return CompletableFuture.runAsync(task, getConfig().getAsyncExecutionService());
     }
     //Side effect on the input properties
-    private static Properties patchServiceProperties(Properties serviceProperties, String key, Object value) {
+    private static Properties patchServiceProperties(Properties serviceProperties,
+                                                     @SuppressWarnings("SameParameterValue") String key,
+                                                     Object value) {
         serviceProperties.merge(key, value, (oldObj, newObj) -> value);
         return serviceProperties;
     }

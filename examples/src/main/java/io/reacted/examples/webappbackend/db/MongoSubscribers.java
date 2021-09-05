@@ -24,7 +24,6 @@ final class MongoSubscribers {
         private Subscription subscription;
         private final ReActorRef mongoGate;
         private final ReActorRef requester;
-
         MongoQuerySubscriber(ReActorRef mongoGate, ReActorRef requester) {
             this.mongoGate = mongoGate;
             this.requester = requester;

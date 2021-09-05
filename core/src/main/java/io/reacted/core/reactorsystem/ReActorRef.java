@@ -184,7 +184,8 @@ public final class ReActorRef implements Externalizable {
      * On failure, the received Try will contain the cause of the failure, otherwise the requested answer
      */
     public <ReplyT extends Serializable, RequestT extends Serializable>
-    CompletionStage<Try<ReplyT>> ask(RequestT request, Class<ReplyT> expectedReply, String requestName) {
+    CompletionStage<Try<ReplyT>> ask(RequestT request, Class<ReplyT> expectedReply,
+                                     String requestName) {
         return ask(getReActorSystemRef().getBackingDriver().getLocalReActorSystem(), this,
                    Objects.requireNonNull(request), Objects.requireNonNull(expectedReply),
                    NO_TIMEOUT, requestName);
@@ -207,8 +208,8 @@ public final class ReActorRef implements Externalizable {
     public <ReplyT extends Serializable, RequestT extends Serializable>
     CompletionStage<Try<ReplyT>> ask(RequestT request, Class<ReplyT> expectedReply, Duration expireTimeout,
                                      String requestName) {
-        return ask(Objects.requireNonNull(getReActorSystemRef().getBackingDriver().getLocalReActorSystem()), this,
-                   Objects.requireNonNull(request), Objects.requireNonNull(expectedReply),
+        return ask(Objects.requireNonNull(getReActorSystemRef().getBackingDriver().getLocalReActorSystem()),
+                   this, Objects.requireNonNull(request), Objects.requireNonNull(expectedReply),
                    Objects.requireNonNull(expireTimeout), Objects.requireNonNull(requestName));
     }
 
@@ -223,12 +224,12 @@ public final class ReActorRef implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorId reActorId = new ReActorId();
-        reActorId.readExternal(in);
-        setReActorId(reActorId);
-        ReActorSystemRef reActorSystemRef = new ReActorSystemRef();
-        reActorSystemRef.readExternal(in);
-        setReActorSystemRef(reActorSystemRef);
+        ReActorId receivedReActorId = new ReActorId();
+        receivedReActorId.readExternal(in);
+        setReActorId(receivedReActorId);
+        ReActorSystemRef receivedReActorSystemRef = new ReActorSystemRef();
+        receivedReActorSystemRef.readExternal(in);
+        setReActorSystemRef(receivedReActorSystemRef);
         setHashCode(in.readInt());
     }
 

@@ -11,12 +11,12 @@ package io.reacted.core.config.reactorsystem;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
-import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.reactors.systemreactors.SystemMonitor;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.time.Duration;
@@ -30,9 +30,11 @@ public class ReActorSystemConfig {
     public static final int DEFAULT_FANOUT_POOL_SIZE = 1;
     public static final LocalDriver<? extends ChannelDriverConfig<?, ?>> DEFAULT_LOCAL_DRIVER = SystemLocalDrivers.DIRECT_COMMUNICATION;
     public static final Duration SYSTEM_MONITOR_DEFAULT_REFRESH_RATE = Duration.ofSeconds(20);
+    public static final int DEFAULT_EXPECTED_REACTORS_NUM = 1_000_000;
     private final String reactorSystemName;
     private final boolean recordedExecution;
     private final int msgFanOutPoolSize;
+    private final int expectedReActorsNum;
     private final Duration systemMonitorRefreshInterval;
     private final LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver;
     private final Set<DispatcherConfig> dispatchersConfigs;
@@ -41,11 +43,13 @@ public class ReActorSystemConfig {
                                             ? extends ServiceRegistryConfig<?, ?>>> serviceRegistryDrivers;
 
     private ReActorSystemConfig(Builder reactorSystemConfig) {
-        this.reactorSystemName = Objects.requireNonNull(reactorSystemConfig.reactorSystemName);
+        this.reactorSystemName = Objects.requireNonNull(reactorSystemConfig.reactorSystemName,
+                                                        "Reactor system name cannot be null");
         this.msgFanOutPoolSize = ObjectUtils.requiredInRange(reactorSystemConfig.msgFanOutPoolSize,
                                                              DEFAULT_FANOUT_POOL_SIZE, 10,
                                                              IllegalArgumentException::new);
-        this.localDriver = Objects.requireNonNull(reactorSystemConfig.localDriver);
+        this.localDriver = Objects.requireNonNull(reactorSystemConfig.localDriver,
+                                                  "Local delivery driver cannot be null");
         this.recordedExecution = reactorSystemConfig.shallRecordExecution;
         ObjectUtils.requiredInRange(reactorSystemConfig.dispatcherConfigs.size(), 0, MAX_DISPATCHER_CONFIGS,
                                     IllegalArgumentException::new);
@@ -53,6 +57,9 @@ public class ReActorSystemConfig {
         this.remotingDrivers = Set.copyOf(reactorSystemConfig.remotingDrivers);
         this.serviceRegistryDrivers = Set.copyOf(reactorSystemConfig.serviceRegistryDrivers);
         this.systemMonitorRefreshInterval = ObjectUtils.checkNonNullPositiveTimeInterval(reactorSystemConfig.systemMonitorRefreshInterval);
+        this.expectedReActorsNum = ObjectUtils.requiredInRange(reactorSystemConfig.expectedReActorsNum,
+                                                               1, Integer.MAX_VALUE / 2,
+                                                               IllegalArgumentException::new);
     }
 
     public String getReActorSystemName() { return reactorSystemName; }
@@ -74,6 +81,7 @@ public class ReActorSystemConfig {
 
     public Duration getSystemMonitorRefreshInterval() { return systemMonitorRefreshInterval; }
 
+    public int getExpectedReActorsNum() { return expectedReActorsNum; }
     public static Builder newBuilder() { return new Builder(); }
 
     public static class Builder {
@@ -83,6 +91,7 @@ public class ReActorSystemConfig {
         private LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver = DEFAULT_LOCAL_DRIVER;
         private Duration systemMonitorRefreshInterval = SYSTEM_MONITOR_DEFAULT_REFRESH_RATE;
         private boolean shallRecordExecution;
+        private int expectedReActorsNum = DEFAULT_EXPECTED_REACTORS_NUM;
         private final Set<DispatcherConfig> dispatcherConfigs = new HashSet<>();
         private final Set<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> remotingDrivers = new HashSet<>();
         private final Set<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
@@ -94,7 +103,7 @@ public class ReActorSystemConfig {
          * @param reactorSystemName Must be unique in the cluster
          * @return this builder
          */
-        public Builder setReactorSystemName(String reactorSystemName) {
+        public final Builder setReactorSystemName(String reactorSystemName) {
             this.reactorSystemName = reactorSystemName;
             return this;
         }
@@ -107,7 +116,7 @@ public class ReActorSystemConfig {
          *                          Range {@link ReActorSystemConfig#DEFAULT_FANOUT_POOL_SIZE} to {@link ReActorSystemConfig#MAX_DISPATCHER_CONFIGS}
          * @return this builder
          */
-        public Builder setMsgFanOutPoolSize(int msgFanOutPoolSize) {
+        public final Builder setMsgFanOutPoolSize(int msgFanOutPoolSize) {
             this.msgFanOutPoolSize = msgFanOutPoolSize;
             return this;
         }
@@ -120,7 +129,7 @@ public class ReActorSystemConfig {
          *                             during execution.
          * @return this builder
          */
-        public Builder setRecordExecution(boolean shallRecordExecution) {
+        public final Builder setRecordExecution(boolean shallRecordExecution) {
             this.shallRecordExecution = shallRecordExecution;
             return this;
         }
@@ -135,7 +144,7 @@ public class ReActorSystemConfig {
          *                    reactor system
          * @return this builder
          */
-        public Builder setLocalDriver(LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver) {
+        public final Builder setLocalDriver(LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver) {
             this.localDriver = localDriver;
             return this;
         }
@@ -147,7 +156,7 @@ public class ReActorSystemConfig {
          * @param refreshInterval Period after which a refresh of the system statistics should be done
          * @return this builder
          */
-        public Builder setSystemMonitorRefreshInterval(Duration refreshInterval) {
+        public final Builder setSystemMonitorRefreshInterval(Duration refreshInterval) {
             this.systemMonitorRefreshInterval = refreshInterval;
             return this;
         }
@@ -156,7 +165,7 @@ public class ReActorSystemConfig {
          * @param dispatcherConfig new dispatcher config
          * @return this builder
          */
-        public Builder addDispatcherConfig(DispatcherConfig dispatcherConfig) {
+        public final Builder addDispatcherConfig(DispatcherConfig dispatcherConfig) {
             this.dispatcherConfigs.add(dispatcherConfig);
             return this;
         }
@@ -168,7 +177,7 @@ public class ReActorSystemConfig {
          * @param remotingDriver remoting driver
          * @return this builder
          */
-        public Builder addRemotingDriver(RemotingDriver<? extends ChannelDriverConfig<?, ?>> remotingDriver) {
+        public final Builder addRemotingDriver(RemotingDriver<? extends ChannelDriverConfig<?, ?>> remotingDriver) {
             this.remotingDrivers.add(remotingDriver);
             return this;
         }
@@ -179,9 +188,20 @@ public class ReActorSystemConfig {
          * @param serviceRegistryDriver service registry driver
          * @return this builder
          */
-        public Builder addServiceRegistryDriver(ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
+        public final Builder addServiceRegistryDriver(ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
                 ? extends ServiceRegistryConfig<?, ?>> serviceRegistryDriver) {
             this.serviceRegistryDrivers.add(serviceRegistryDriver);
+            return this;
+        }
+
+        /**
+         * Gives a hint regarding the expected maximum reactors population size
+         * @param expectedReActorsNum An integer [1, Integer.MAX_VALUE / 2] representing the
+         *                            expected maximum reactor population size
+         * @return this builder
+         */
+        public final Builder setExpectedReActorsNum(int expectedReActorsNum) {
+            this.expectedReActorsNum = expectedReActorsNum;
             return this;
         }
 

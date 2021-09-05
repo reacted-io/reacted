@@ -22,43 +22,47 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 @NonNullByDefault
-public class TypedSubscriptionsManager {
+public class TypedSubscriptionsManager implements SubscriptionsManager {
     private final Map<Class<? extends Serializable>, SubscriptionBucket> typeToSubscriber;
     public TypedSubscriptionsManager() {
         this.typeToSubscriber = new ConcurrentHashMap<>(5000, 0.5f);
     }
 
-    public void addSubscription(Class<? extends Serializable> payloadType,
-                                TypedSubscription.TypedSubscriptionPolicy subscriptionPolicy,
-                                ReActorContext subscriber) {
+    @Override
+    public void addSubscription(@Nonnull Class<? extends Serializable> payloadType,
+                                @Nonnull TypedSubscription.TypedSubscriptionPolicy subscriptionPolicy,
+                                @Nonnull ReActorContext subscriber) {
         var bucket = typeToSubscriber.computeIfAbsent(Objects.requireNonNull(payloadType),
                                                       type -> new SubscriptionBucket());
         bucket.addSubscriber(Objects.requireNonNull(subscriptionPolicy), Objects.requireNonNull(subscriber));
     }
-
-    public void removeSubscription(Class<? extends Serializable> payloadType,
-                                   TypedSubscription.TypedSubscriptionPolicy subscriptionPolicy,
-                                   ReActorContext subscriber) {
+    @Override
+    public void removeSubscription(@Nonnull Class<? extends Serializable> payloadType,
+                                   @Nonnull TypedSubscription.TypedSubscriptionPolicy subscriptionPolicy,
+                                   @Nonnull ReActorContext subscriber) {
         var bucket = typeToSubscriber.get(Objects.requireNonNull(payloadType));
         if (bucket != null) {
-            bucket.removeSubscriber(Objects.requireNonNull(subscriptionPolicy), Objects.requireNonNull(subscriber));
+            bucket.removeSubscriber(Objects.requireNonNull(subscriptionPolicy),
+                                    Objects.requireNonNull(subscriber));
         }
     }
-
-    public boolean hasFullSubscribers(Class<? extends Serializable> payloadType) {
+    @Override
+    public boolean hasFullSubscribers(@Nonnull Class<? extends Serializable> payloadType) {
         var bucket = typeToSubscriber.get(payloadType);
         return bucket != null && bucket.hasFullSubscriptions();
     }
-
-    public List<ReActorContext> getLocalSubscribers(Class<? extends Serializable> payloadType) {
+    @Nonnull
+    @Override
+    public List<ReActorContext> getLocalSubscribers(
+        @Nonnull Class<? extends Serializable> payloadType) {
         var localBucket = typeToSubscriber.get(payloadType);
         return localBucket != null
                ? localBucket.subscribers
                : List.of();
     }
-
     public static TypedSubscription[] getNormalizedSubscriptions(TypedSubscription ...subscriptions) {
         var uniquePerPolicy = Arrays.stream(subscriptions).distinct()
                                     .collect(Collectors.groupingBy(TypedSubscription::getSubscriptionPolicy,

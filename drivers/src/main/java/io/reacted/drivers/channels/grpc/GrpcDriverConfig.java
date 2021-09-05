@@ -9,7 +9,7 @@
 package io.reacted.drivers.channels.grpc;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
@@ -26,7 +26,8 @@ public class GrpcDriverConfig extends ChannelDriverConfig<GrpcDriverConfig.Build
     private GrpcDriverConfig(Builder builder) {
         super(builder);
         this.port = ObjectUtils.requiredInRange(builder.port, 1, 65535, IllegalArgumentException::new);
-        this.hostName = Objects.requireNonNull(builder.hostName);
+        this.hostName = Objects.requireNonNull(builder.hostName,
+                                               "Bind address/hostname cannot be null");
     }
 
     public int getPort() { return port; }
@@ -55,12 +56,12 @@ public class GrpcDriverConfig extends ChannelDriverConfig<GrpcDriverConfig.Build
             return this;
         }
 
-        public Builder setHostName(String hostName) {
+        public final Builder setHostName(String hostName) {
             this.hostName = hostName;
             return this;
         }
 
-        public GrpcDriverConfig build() {
+        public final GrpcDriverConfig build() {
             return new GrpcDriverConfig(this);
         }
     }

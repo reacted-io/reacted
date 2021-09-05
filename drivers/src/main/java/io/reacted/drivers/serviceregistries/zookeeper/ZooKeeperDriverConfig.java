@@ -11,7 +11,7 @@ package io.reacted.drivers.serviceregistries.zookeeper;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.time.Duration;
@@ -51,8 +51,10 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
         this.maxReconnectionAttempts = ObjectUtils.requiredInRange(builder.maxReconnectionAttempts,
                                                                    0, Integer.MAX_VALUE,
                                                                    () -> new IllegalArgumentException("Invalid max reconnection attempts value"));
-        this.asyncExecutionService = Objects.requireNonNull(builder.asyncExecutorService);
-        this.connectionString = Objects.requireNonNull(builder.connectionString);
+        this.asyncExecutionService = Objects.requireNonNull(builder.asyncExecutorService,
+                                                            "Executor for async operations cannot be null");
+        this.connectionString = Objects.requireNonNull(builder.connectionString,
+                                                       "Connection string cannot be null");
     }
 
     public Duration getPingInterval() { return pingInterval; }
@@ -124,7 +126,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          * @param asyncExecutor Alternate executor. Default: {@link ForkJoinPool#commonPool()}
          * @return this builder
          */
-        public Builder setAsyncExecutor(Executor asyncExecutor) {
+        public final Builder setAsyncExecutor(Executor asyncExecutor) {
             this.asyncExecutorService = asyncExecutor;
             return this;
         }
@@ -135,7 +137,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          *                          A positive amount no bigger than {@link Integer#MAX_VALUE} {@link TimeUnit#MILLISECONDS}
          * @return this builder
          */
-        public Builder setReconnectionDelay(Duration reconnectionDelay) {
+        public final Builder setReconnectionDelay(Duration reconnectionDelay) {
             this.reconnectionDelay = reconnectionDelay;
             return this;
         }
@@ -146,7 +148,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          * @param maxReconnectionAttempts A positive amount
          * @return this builder
          */
-        public Builder setMaxReconnectionAttempts(int maxReconnectionAttempts) {
+        public final Builder setMaxReconnectionAttempts(int maxReconnectionAttempts) {
             this.maxReconnectionAttempts = maxReconnectionAttempts;
             return this;
         }
@@ -157,7 +159,7 @@ public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriver
          *                         Default {@link ZooKeeperDriverConfig#ZOOKEEPER_DEFAULT_CONNECTION_STRING}
          * @return this builder
          */
-        public Builder setConnectionString(String connectionString) {
+        public final Builder setConnectionString(String connectionString) {
             this.connectionString = connectionString;
             return this;
         }

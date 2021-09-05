@@ -11,6 +11,7 @@ package io.reacted.examples.services;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
+import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
@@ -23,7 +24,6 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.services.Service;
 import io.reacted.core.services.SelectionType;
 import io.reacted.patterns.UnChecked;
 
@@ -86,7 +86,7 @@ public class ServicePublicationApp {
                                               .setRouteesNum(5)
                                               //and requests to the service will be balanced
                                               //among the routees using the following policy
-                                              .setLoadBalancingPolicy(Service.LoadBalancingPolicy.LOWEST_LOAD)
+                                              .setLoadBalancingPolicy(LoadBalancingPolicies.LOWEST_LOAD)
                                               .setDispatcherName(serviceDispatcherName)
                                               //We can have at maximum 5 pending messages in the
                                               //service mailbox. The exceeding ones will be

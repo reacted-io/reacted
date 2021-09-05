@@ -15,6 +15,7 @@ import io.reacted.patterns.Try;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class NullMailbox implements MailBox {
@@ -25,6 +26,7 @@ public class NullMailbox implements MailBox {
     @Override
     public boolean isFull() { return false; }
 
+    @Nonnull
     @Override
     public Message getNextMessage() { throw new UnsupportedOperationException(); }
 
@@ -34,9 +36,11 @@ public class NullMailbox implements MailBox {
     @Override
     public long getMaxSize() { return Long.MAX_VALUE; }
 
+    @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) { return DeliveryStatus.DELIVERED; }
 
+    @Nonnull
     @Override
     public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
         return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));

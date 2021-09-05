@@ -20,4 +20,11 @@ public class UnsubscriptionRequest implements Serializable {
     public ReActorRef getSubscriptionBackpressuringManager() {
         return subscriptionBackpressuringManager;
     }
+
+    @Override
+    public String toString() {
+        return "UnsubscriptionRequest{" +
+               "subscriptionBackpressuringManager=" + subscriptionBackpressuringManager +
+               '}';
+    }
 }

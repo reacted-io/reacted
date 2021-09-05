@@ -17,6 +17,7 @@ import java.util.Deque;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.LinkedBlockingDeque;
+import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class BasicMbox implements MailBox {
@@ -31,6 +32,7 @@ public class BasicMbox implements MailBox {
     @Override
     public boolean isFull() { return false; }
 
+    @Nonnull
     @Override
     public Message getNextMessage() { return inbox.removeFirst(); }
 
@@ -40,6 +42,7 @@ public class BasicMbox implements MailBox {
     @Override
     public long getMaxSize() { return Integer.MAX_VALUE; }
 
+    @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) {
         return inbox.offerLast(message)
@@ -47,6 +50,7 @@ public class BasicMbox implements MailBox {
                 : DeliveryStatus.BACKPRESSURED;
     }
 
+    @Nonnull
     @Override
     public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
         return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));

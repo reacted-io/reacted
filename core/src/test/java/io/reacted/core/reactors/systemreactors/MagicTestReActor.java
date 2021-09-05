@@ -9,6 +9,7 @@
 package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.Message;
@@ -16,7 +17,6 @@ import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.core.reactorsystem.ReActorSystem;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.atomic.LongAdder;
@@ -34,7 +34,8 @@ public class MagicTestReActor implements ReActor {
 
     public MagicTestReActor(int maxMsgValue, boolean checkMsgOrdering, String reactorName) {
         this(maxMsgValue, checkMsgOrdering, ReActorConfig.newBuilder()
-                                                         .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                                                         .setDispatcherName(
+                                                             Dispatcher.DEFAULT_DISPATCHER_NAME)
                                                          .setMailBoxProvider(ctx -> new BasicMbox())
                                                          .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                          .setReActorName(reactorName)

@@ -28,7 +28,7 @@ class BackpressuringSubscriber implements Flow.Subscriber<BackpressuringMbox.Del
     private final LongAdder preInitializationRequests;
     private final ReActorContext targetMailboxOwner;
     @Nullable
-    private Flow.Subscription subscription;
+    private volatile Flow.Subscription subscription;
 
     BackpressuringSubscriber(long requestOnStartup,
                              ReActorContext raCtx,

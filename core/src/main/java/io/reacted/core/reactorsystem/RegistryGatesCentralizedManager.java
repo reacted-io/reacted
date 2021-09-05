@@ -14,7 +14,6 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.LoopbackDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
-import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.ArrayList;
@@ -26,6 +25,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 @NonNullByDefault
 class RegistryGatesCentralizedManager {
@@ -49,11 +49,11 @@ class RegistryGatesCentralizedManager {
         this.loopBack = registerNewRoute(localReActorSystemId, loopbackDriver, loopbackDriver.getChannelId(),
                                          new Properties(), ReActorRef.NO_REACTOR_REF);
     }
+    public LoopbackDriver<? extends ChannelDriverConfig<?, ?>> getLoopbackDriver() { return loopbackDriver; }
+    public ReActorSystemRef getLoopBack() { return loopBack; }
 
-    LoopbackDriver<? extends ChannelDriverConfig<?, ?>> getLoopbackDriver() { return loopbackDriver; }
-    ReActorSystemRef getLoopBack() { return loopBack; }
-
-    Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId, ChannelId preferredChannelId) {
+    public Optional<ReActorSystemRef> findGate(@Nonnull ReActorSystemId reActorSystemId,
+                                               @Nonnull ChannelId preferredChannelId) {
         if (ReActorSystemDriver.isLocalReActorSystem(localReActorSystemId, reActorSystemId)) {
             return Optional.of(loopBack);
         }
@@ -65,25 +65,27 @@ class RegistryGatesCentralizedManager {
         return Optional.ofNullable(route);
     }
 
-    Collection<ReActorSystemRef> findGates(ReActorSystemId reActorSystemId) {
+    public Collection<ReActorSystemRef> findGates(@Nonnull ReActorSystemId reActorSystemId) {
         return ReActorSystemDriver.isLocalReActorSystem(reActorSystemId, localReActorSystemId)
                ? List.of(loopBack)
                : new ArrayList<>(reActorSystemsGates.getOrDefault(reActorSystemId, Map.of())
                                                     .values());
     }
 
-    Collection<ReActorSystemRef> findAllGates() {
+    public Collection<ReActorSystemRef> findAllGates() {
         return reActorSystemsGates.values().stream()
                 .flatMap(gatesMap -> gatesMap.values().stream())
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    Collection<ReActorSystemRef> findAllGates(ChannelId channelId) {
+    public Collection<ReActorSystemRef> findAllGates(@Nonnull ChannelId channelId) {
         return reActorSystemsGates.values().stream()
                                   .map(gatesMap -> gatesMap.get(channelId))
                                   .collect(Collectors.toUnmodifiableSet());
     }
-    synchronized void unregisterRoute(ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> anyDriver) {
+
+    public synchronized void unregisterRoute(
+        @Nonnull ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> anyDriver) {
         reActorSystemsGates.entrySet().stream()
                            .filter(entry -> entry.getValue().values().stream()
                                                  .map(ReActorSystemRef::getBackingDriver)
@@ -92,7 +94,8 @@ class RegistryGatesCentralizedManager {
                                                          .forEach((channelId, reActorRef) -> unregisterRoute(entry.getKey(),
                                                                                                              channelId)));
     }
-    public synchronized void unregisterRoute(ReActorSystemId reActorSystemId, ChannelId channelId) {
+
+    public synchronized void unregisterRoute(@Nonnull ReActorSystemId reActorSystemId, @Nonnull ChannelId channelId) {
         Optional.ofNullable(reActorSystemsGates.get(reActorSystemId))
                 .ifPresent(elem -> elem.remove(channelId));
         unregisterTarget(reActorSystemId);
@@ -100,13 +103,13 @@ class RegistryGatesCentralizedManager {
 
     //XXX Define how a given reactor system / channel is reached from the current reactor system
     //A reactorsystem can be reached through different channels (i.e. kafka, grpc, chronicle queue...)
-    //and channelproperties define how to setup the channel driver to reach the reactor system.
+    //and channel properties define how to setup the channel driver to reach the reactor system.
     //i.e. for a reactor system reachable through grpc, channelProperties will contain ip/address of the other
     //reactor system
-    ReActorSystemRef registerNewRoute(ReActorSystemId reActorSystemId,
-                                      ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driver,
-                                      ChannelId channelId, Properties channelProperties,
-                                      ReActorRef sourceServiceRegistry) {
+    public ReActorSystemRef registerNewRoute(@Nonnull ReActorSystemId reActorSystemId,
+                                             @Nonnull ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driver,
+                                             @Nonnull ChannelId channelId, @Nonnull Properties channelProperties,
+                                             @Nonnull ReActorRef sourceServiceRegistry) {
         var channelMap = this.reActorSystemsGates.computeIfAbsent(reActorSystemId,
                                                                   newReActorSystem -> new ConcurrentHashMap<>());
         var newRoute = channelMap.computeIfAbsent(channelId,
@@ -116,7 +119,8 @@ class RegistryGatesCentralizedManager {
         return newRoute;
     }
 
-    synchronized boolean registerNewSource(ReActorRef sourceServiceRegistry, ReActorSystemId target) {
+    public synchronized boolean registerNewSource(@Nonnull ReActorRef sourceServiceRegistry,
+                                                  @Nonnull ReActorSystemId target) {
         var previousSource = reActorSystemIdToSourceServiceRegistry.get(target);
         if (previousSource != null && !previousSource.equals(sourceServiceRegistry)) {
             return false;
@@ -126,14 +130,14 @@ class RegistryGatesCentralizedManager {
         return true;
     }
 
-    synchronized void unregisterSource(ReActorRef registryDriver) {
+    public synchronized void unregisterSource(@Nonnull ReActorRef registryDriver) {
         var reActorSystems = this.serviceRegistryToReActorSystemId.removeAll(registryDriver);
         if (reActorSystems != null) {
             reActorSystems.forEach(this.reActorSystemIdToSourceServiceRegistry::remove);
         }
     }
 
-    synchronized void unregisterTarget(ReActorSystemId reActorSystemId) {
+    public synchronized void unregisterTarget(@Nonnull ReActorSystemId reActorSystemId) {
         var source = this.reActorSystemIdToSourceServiceRegistry.remove(reActorSystemId);
         if (source != null) {
             serviceRegistryToReActorSystemId.get(source).remove(reActorSystemId);

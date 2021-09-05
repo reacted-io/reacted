@@ -8,7 +8,7 @@
 
 package io.reacted.core.messages.reactors;
 
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import java.io.Serializable;
 
 public class SystemMonitorReport implements Serializable {
@@ -41,12 +41,12 @@ public class SystemMonitorReport implements Serializable {
         private long freeMemorySize;
         private Builder() { /* No implementation required */ }
 
-        public Builder setCpuLoad(double cpuLoad) {
+        public final Builder setCpuLoad(double cpuLoad) {
             this.cpuLoad = cpuLoad;
             return this;
         }
 
-        public Builder setFreeMemorySize(long freeMemorySize) {
+        public final Builder setFreeMemorySize(long freeMemorySize) {
             this.freeMemorySize = freeMemorySize;
             return this;
         }

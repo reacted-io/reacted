@@ -12,18 +12,20 @@ import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.services.Service;
+import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
 
+import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 public class ServicePublicationApp {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         Properties serviceRegistryProperties = new Properties();
         //The two reactor system will discover each other automatically using this service registry
         var serverReActorSystem = "SERVER_REACTORSYSTEM";
@@ -52,20 +54,20 @@ public class ServicePublicationApp {
         var serviceName = "ClockService";
         //For simplicity let's use the default dispatcher. A new one could and should
         //be used for load partitioning
-        var serviceDispatcherName = ReActorSystem.DEFAULT_DISPATCHER_NAME;
+        var serviceDispatcherName = Dispatcher.DEFAULT_DISPATCHER_NAME;
         //Now let's publish a service in server reactor system
         var serviceCfg = ServiceConfig.newBuilder()
                                       .setReActorName(serviceName)
                                       //Two workers for service will be created for load balancing reasons
                                       .setRouteesNum(2)
                                       //For every new request select a different worker instance
-                                      .setLoadBalancingPolicy(Service.LoadBalancingPolicy.ROUND_ROBIN)
+                                      .setLoadBalancingPolicy(LoadBalancingPolicies.ROUND_ROBIN)
                                       .setDispatcherName(serviceDispatcherName)
                                       //Let's assume that we do not need any form of backpressure
                                       .setMailBoxProvider(ctx -> new BasicMbox())
                                       //We do not need to listen for ServiceDiscoveryRequests, we have the
                                       //Service Registry now
-                                      .setRouteeProvider(() -> new ClockReActor(serviceName))
+                                      .setRouteeProvider(serviceConfig -> new ClockReActor(serviceName))
                                       .setIsRemoteService(true)
                                       .build();
 

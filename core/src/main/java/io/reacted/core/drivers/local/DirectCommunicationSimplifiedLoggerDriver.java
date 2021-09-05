@@ -1,15 +1,16 @@
 /*
- * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * Copyright (c) 2021 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.drivers.system;
+package io.reacted.core.drivers.local;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.config.drivers.DirectCommunicationSimplifiedLoggerConfig;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -18,16 +19,16 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
+import java.time.Instant;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<DirectCommunicationSimplifiedLoggerConfig> {
+public class DirectCommunicationSimplifiedLoggerDriver extends
+                                                       LocalDriver<DirectCommunicationSimplifiedLoggerConfig> {
     private final ChannelId channelId;
     private final PrintWriter logFile;
 
@@ -39,11 +40,9 @@ public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<Direc
      */
     public DirectCommunicationSimplifiedLoggerDriver(DirectCommunicationSimplifiedLoggerConfig config) {
         super(config);
-        this.channelId = ChannelId.DIRECT_COMMUNICATION
-                                    .forChannelName(getDriverConfig().getChannelName());
-        this.logFile = Try.of(() -> new FileWriter(config.getLogFilePath(), false))
-                          .map(PrintWriter::new)
-                          .orElseThrow(ioException -> new UncheckedIOException((IOException)ioException));
+        this.channelId = ChannelId.ChannelType.DIRECT_COMMUNICATION
+                                  .forChannelName(getDriverConfig().getChannelName());
+        this.logFile = new PrintWriter(config.getPrintStream());
     }
 
     @Override
@@ -51,6 +50,8 @@ public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<Direc
 
     @Override
     public CompletionStage<Try<Void>> stopDriverCtx(ReActorSystem reActorSystem) {
+        logFile.flush();
+        logFile.close();
         return CompletableFuture.completedFuture(Try.VOID);
     }
 
@@ -77,12 +78,13 @@ public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<Direc
     @Override
     public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
         synchronized (logFile) {
-            logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+            logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+                           Instant.now(),
                            message.getSender().getReActorId().getReActorName(),
                            message.getDestination().getReActorId().getReActorName(),
                            message.getSequenceNumber(),
                            message.getPayload().getClass().toString(),
-                           message.getPayload().toString());
+                           message.getPayload());
             logFile.flush();
         }
         return destination.isStop()
@@ -94,12 +96,13 @@ public class DirectCommunicationSimplifiedLoggerDriver extends LocalDriver<Direc
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
         synchronized (logFile) {
 
-            logFile.printf("SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+            logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
+                           Instant.now(),
                            message.getSender().getReActorId().getReActorName(),
                            message.getDestination().getReActorId().getReActorName(),
                            message.getSequenceNumber(),
                            message.getPayload().getClass().toString(),
-                           message.getPayload().toString());
+                           message.getPayload());
             logFile.flush();
         }
         return destination.isStop()

@@ -23,12 +23,6 @@ import java.util.Optional;
 @Immutable
 @NonNullByDefault
 public class ChannelId implements Externalizable {
-    public static final ChannelType GRPC = ChannelType.GRPC;
-    public static final ChannelType KAFKA = ChannelType.KAFKA;
-    public static final ChannelType DIRECT_COMMUNICATION = ChannelType.DIRECT_COMMUNICATION;
-    public static final ChannelType REPLAY_CHRONICLE_QUEUE = ChannelType.REPLAY_CHRONICLE_QUEUE;
-    public static final ChannelType LOCAL_CHRONICLE_QUEUE = ChannelType.LOCAL_CHRONICLE_QUEUE;
-    public static final ChannelType REMOTING_CHRONICLE_QUEUE = ChannelType.REMOTING_CHRONICLE_QUEUE;
     public static final ChannelId NO_CHANNEL_ID = ChannelType.NULL_CHANNEL_TYPE.forChannelName("");
     public static final ChannelId INVALID_CHANNEL_ID = ChannelType.INVALID_CHANNEL_TYPE
                                                                   .forChannelName("INVALID CHANNEL NAME");
@@ -85,7 +79,7 @@ public class ChannelId implements Externalizable {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ChannelId channelId1 = (ChannelId) o;
+        var channelId1 = (ChannelId) o;
         return channelType == channelId1.channelType &&
                Objects.equals(channelName, channelId1.channelName);
     }

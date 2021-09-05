@@ -10,7 +10,6 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.drivers.local.LocalDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
@@ -19,7 +18,7 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -42,8 +41,10 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
 
     public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver<ConfigT> localDriver) {
         super(localDriver.getDriverConfig());
-        this.localDriver = Objects.requireNonNull(localDriver);
-        this.localReActorSystem = Objects.requireNonNull(reActorSystem);
+        this.localDriver = Objects.requireNonNull(localDriver,
+                                                  "Local driver cannot be null");
+        this.localReActorSystem = Objects.requireNonNull(reActorSystem,
+                                                         "ReActorSystem cannot be null");
     }
 
     @Override

@@ -9,7 +9,7 @@
 package io.reacted.drivers.channels.kafka;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
@@ -28,9 +28,12 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
 
     private KafkaDriverConfig(Builder builder) {
         super(builder);
-        this.bootstrapEndpoint = Objects.requireNonNull(builder.bootstrapEndpoint);
-        this.topic = Objects.requireNonNull(builder.topic);
-        this.groupId = Objects.requireNonNull(builder.groupId);
+        this.bootstrapEndpoint = Objects.requireNonNull(builder.bootstrapEndpoint,
+                                                        "Bootstrap endpoint cannot be null");
+        this.topic = Objects.requireNonNull(builder.topic,
+                                            "Subscription topic cannot be null");
+        this.groupId = Objects.requireNonNull(builder.groupId,
+                                              "Group id cannot be null");
         this.maxPollRecords = ObjectUtils.requiredInRange(builder.maxPollRecords, 1, Integer.MAX_VALUE,
                                                           IllegalArgumentException::new);
     }
@@ -66,22 +69,22 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
 
         private Builder() { }
 
-        public Builder setBootstrapEndpoint(String bootstrapEndpoint) {
+        public final Builder setBootstrapEndpoint(String bootstrapEndpoint) {
             this.bootstrapEndpoint = bootstrapEndpoint;
             return this;
         }
 
-        public Builder setTopic(String topic) {
+        public final Builder setTopic(String topic) {
             this.topic = topic;
             return this;
         }
 
-        public Builder setGroupId(String groupId) {
+        public final Builder setGroupId(String groupId) {
             this.groupId = groupId;
             return this;
         }
 
-        public Builder setMaxPollRecords(int maxPollRecords) {
+        public final Builder setMaxPollRecords(int maxPollRecords) {
             this.maxPollRecords = maxPollRecords;
             return this;
         }

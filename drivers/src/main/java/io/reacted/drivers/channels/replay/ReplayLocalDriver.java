@@ -9,7 +9,7 @@
 package io.reacted.drivers.channels.replay;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
@@ -67,7 +67,7 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
 
     @Override
     public ChannelId getChannelId() {
-        return ChannelId.REPLAY_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
+        return ChannelId.ChannelType.REPLAY_CHRONICLE_QUEUE.forChannelName(getDriverConfig().getChannelName());
     }
 
     @Override

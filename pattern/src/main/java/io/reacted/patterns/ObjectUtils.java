@@ -1,15 +1,14 @@
 /*
- * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * Copyright (c) 2021 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.utils;
+package io.reacted.patterns;
 
-import io.reacted.patterns.NonNullByDefault;
-
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -18,17 +17,19 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 @NonNullByDefault
 public final class ObjectUtils {
+    @Nullable
+    public static final Void VOID = null;
     private ObjectUtils() { /* No instances allowed */ }
 
     @Nullable
-    public static <InputT, OutputT> OutputT ifNotNull(@Nullable InputT input, Function<InputT, OutputT> ifNotNull) {
+    public static <InputT, OutputT> OutputT ifNotNull(@Nullable InputT input,
+                                                      Function<InputT, OutputT> ifNotNull) {
         if (input == null) {
             return null;
         }
@@ -51,7 +52,8 @@ public final class ObjectUtils {
      * @throws NullPointerException if the provided argument is null
      * @throws IllegalArgumentException if the provided interval is not positive
      */
-    public static Duration checkNonNullPositiveTimeIntervalWithLimit(@Nullable Duration interval, long limitAmount,
+    public static Duration checkNonNullPositiveTimeIntervalWithLimit(@Nullable Duration interval,
+                                                                     long limitAmount,
                                                                      TimeUnit limitUnit) {
         return requiredCondition(checkNonNullPositiveTimeInterval(interval),
                                  positiveInterval -> positiveInterval.compareTo(Duration.of(limitAmount,
@@ -68,7 +70,7 @@ public final class ObjectUtils {
      * @throws IllegalArgumentException if the provided interval is not positive
      */
     public static Duration checkNonNullPositiveTimeInterval(@Nullable Duration interval) {
-        return requiredCondition(Objects.requireNonNull(interval),
+        return requiredCondition(Objects.requireNonNull(interval, "Interval cannot be null"),
                                  nonNullInterval -> nonNullInterval.compareTo(Duration.ZERO) > 0,
                                  () -> new IllegalArgumentException("Provided interval is not positive"));
     }
@@ -93,7 +95,6 @@ public final class ObjectUtils {
         }
         return element;
     }
-
     public static byte[] toBytes(Properties properties) throws IOException {
         var byteArrayOutputStream = new ByteArrayOutputStream();
         properties.store(byteArrayOutputStream,"");

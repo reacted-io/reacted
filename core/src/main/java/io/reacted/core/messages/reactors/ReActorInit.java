@@ -26,4 +26,9 @@ public final class ReActorInit implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) { /* No fields */ }
+
+    @Override
+    public String toString() {
+        return "ReActorInit{}";
+    }
 }

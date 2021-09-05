@@ -14,10 +14,12 @@ import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
+import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
 import io.reacted.streams.exceptions.RemoteRegistrationException;
 import io.reacted.streams.messages.PublisherComplete;
 import io.reacted.streams.messages.PublisherInterrupt;
@@ -26,6 +28,9 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
+import java.util.concurrent.Flow.Subscriber;
+import java.util.function.Consumer;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Objects;
@@ -37,7 +42,9 @@ import java.util.function.Function;
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
-public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription, AutoCloseable {
+public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription,
+                                                                           AutoCloseable,
+                                                                           ReActiveEntity {
     private final Flow.Subscriber<? super PayloadT> subscriber;
     private final ReActorRef feedGate;
     private final BackpressuringMbox.Builder bpMailboxBuilder;
@@ -51,13 +58,14 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
      * It manages a backpressured reactive streams. A reactive stream can accept local (to the reactor system) or
      * remote subscribers
      *
-     * @param subscription A {@link io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscription} containing the details of the subscriber
+     * @param subscription A {@link ReActedSubscriptionConfig} containing the details of the subscriber
      * @param feedGate source of data for the managed stream
      */
-    BackpressureManager(ReactedSubmissionPublisher.ReActedSubscription<PayloadT> subscription,
+    BackpressureManager(ReActedSubscriptionConfig<PayloadT> subscription,
+                        Subscriber<? super PayloadT> subscriber,
                         ReActorRef feedGate, CompletionStage<Void> onSubscriptionCompleteTrigger) {
         this.onSubscriptionCompleteTrigger = onSubscriptionCompleteTrigger;
-        this.subscriber = subscription.getSubscriber();
+        this.subscriber = subscriber;
         this.feedGate = Objects.requireNonNull(feedGate);
         this.bpMailboxBuilder = BackpressuringMbox.newBuilder()
                                                   .setRealMbox(new BoundedBasicMbox(subscription.getBufferSize()))
@@ -101,7 +109,9 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         return mboxOwner -> bpMailboxBuilder.setRealMailboxOwner(mboxOwner).build();
     }
 
-    ReActions getReActions() {
+    @Nonnull
+    @Override
+    public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
                         .reAct(ReActorStop.class, this::onStop)
@@ -152,13 +162,15 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         this.backpressurerCtx = raCtx;
         this.backpressuringMbox = raCtx.getMbox();
 
-        Try.TryConsumer<Throwable> onSubscriptionError = error -> { subscriber.onSubscribe(this);
-                                                                    errorTermination(raCtx, error, subscriber); };
+        Consumer<Throwable> onSubscriptionError;
+        onSubscriptionError = error -> { subscriber.onSubscribe(this);
+                                         errorTermination(raCtx, error, subscriber); };
         ifNotDelivered(feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())),
                        onSubscriptionError);
     }
 
-    private void completeTermination(ReActorContext raCtx, Flow.Subscriber<? super PayloadT> localSubscriber) {
+    private void completeTermination(ReActorContext raCtx,
+                                     Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(localSubscriber::onComplete)
            .ifError(error -> raCtx.logError("Error in {} onComplete: ",
@@ -169,6 +181,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                                   Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(() -> localSubscriber.onError(handlingError))
-           .ifError(error -> raCtx.logError("Error in {} onError: ", localSubscriber.getClass().getSimpleName(), error));
+           .ifError(error -> raCtx.logError("Error in {} onError: ",
+                                            localSubscriber.getClass().getSimpleName(), error));
     }
 }

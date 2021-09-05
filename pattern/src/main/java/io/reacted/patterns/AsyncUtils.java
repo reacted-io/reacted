@@ -8,6 +8,9 @@
 
 package io.reacted.patterns;
 
+import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.concurrent.CompletableFuture;
@@ -107,9 +110,29 @@ public final class AsyncUtils {
         if (iterations <= 0) {
             throw new IllegalArgumentException("Iterations must be positive. Provided [" + iterations + "]");
         }
-        AtomicLong counter = new AtomicLong(0);
+        var counter = new AtomicLong(0);
         return asyncLoop(operation, firstArgument, input ->  counter.getAndIncrement() < iterations,
                          onError, asyncExecutor);
+    }
+
+    public static <PayloadT, OutputT> CompletionStage<Void>
+    asyncForeach(Function<PayloadT, CompletionStage<OutputT>> operation, Iterator<PayloadT> source,
+                 Consumer<Throwable> onError, ExecutorService asyncExecutor) {
+        return CompletableFuture.supplyAsync(() -> asyncForeachLoop(operation, source, onError,
+                                                                    asyncExecutor), asyncExecutor)
+                                .thenCompose(looper -> looper);
+    }
+
+    private static <PayloadT, OutputT> CompletionStage<Void> asyncForeachLoop(
+        Function<PayloadT, CompletionStage<OutputT>> operation, Iterator<PayloadT> source,
+        Consumer<Throwable> onError, ExecutorService asyncExecutor) {
+        return source.hasNext() ? operation.apply(source.next())
+                                           .exceptionally(error -> { onError
+                                               .accept(error); return null;})
+                                           .thenComposeAsync(prevStepResponse -> asyncForeach(
+                                               operation, source, onError, asyncExecutor),
+                                                             asyncExecutor)
+                                : CompletableFuture.completedFuture(null);
     }
 
     public static <PayloadT> CompletionStage<PayloadT>

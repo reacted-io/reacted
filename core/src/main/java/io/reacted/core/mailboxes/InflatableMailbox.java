@@ -10,10 +10,11 @@ package io.reacted.core.mailboxes;
 
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.concurrent.atomic.AtomicLong;
+import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class InflatableMailbox extends BasicMbox {
@@ -41,6 +42,7 @@ public class InflatableMailbox extends BasicMbox {
     @Override
     public long getMaxSize() { return mailboxCapacity.get(); }
 
+    @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) {
         if (isFull()) {

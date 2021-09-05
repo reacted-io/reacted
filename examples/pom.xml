@@ -31,7 +31,6 @@
         <dependency>
             <groupId>io.reacted</groupId>
             <artifactId>reacted-framework</artifactId>
-            <version>1.4.8</version>
         </dependency>
         <dependency>
             <groupId>org.awaitility</groupId>

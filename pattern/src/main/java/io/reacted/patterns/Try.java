@@ -34,7 +34,7 @@ public abstract class Try<T> {
      */
     @SuppressWarnings("SameReturnValue")
     public static Void noOp(Object... args) {
-        return null;
+        return ObjectUtils.VOID;
     }
 
     /**

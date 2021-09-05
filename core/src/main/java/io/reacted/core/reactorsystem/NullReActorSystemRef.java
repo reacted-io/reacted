@@ -10,7 +10,7 @@ package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.system.NullDriver;
-import io.reacted.core.drivers.system.NullDriverConfig;
+import io.reacted.core.config.drivers.NullDriverConfig;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
 
+@SuppressWarnings("SameParameterValue")
 @NonNullByDefault
 public final class NullReActorSystemRef extends ReActorSystemRef {
     public static final NullReActorSystemRef NULL_REACTOR_SYSTEM_REF = new NullReActorSystemRef(ReActorSystemId.NO_REACTORSYSTEM_ID,

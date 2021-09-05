@@ -18,8 +18,6 @@ import java.util.concurrent.CompletionStage;
 
 @ParametersAreNonnullByDefault
 public interface MailBox extends AutoCloseable {
-    //TODO generic ring buffer for inboxes
-
     boolean isEmpty();
 
     boolean isFull();

@@ -18,6 +18,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.PriorityBlockingQueue;
+import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class PriorityMailbox implements MailBox {
@@ -44,14 +45,17 @@ public class PriorityMailbox implements MailBox {
     @Override
     public long getMaxSize() { return Integer.MAX_VALUE; }
 
+    @Nonnull
     @Override
     public Message getNextMessage() { return Objects.requireNonNull(mailBox.poll()); }
 
+    @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) {
         return mailBox.add(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.NOT_DELIVERED;
     }
 
+    @Nonnull
     @Override
     public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
         return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));

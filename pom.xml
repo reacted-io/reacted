@@ -6,8 +6,7 @@
   ~ This source code is licensed under the BSD-style license found in the
   ~ LICENSE file in the root directory of this source tree.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.reacted</groupId>
@@ -76,9 +75,9 @@
     <properties>
         <awaitility.version>4.0.3</awaitility.version>
         <chronicle.queue.version>5.19.16</chronicle.queue.version>
-        <google.guava.version>30.0-jre</google.guava.version>
-        <mockito.version>3.2.4</mockito.version>
-        <junit.version>5.6.1</junit.version>
+        <google.guava.version>30.1.1-jre</google.guava.version>
+        <mockito.version>3.10.0</mockito.version>
+        <junit.version>5.7.2</junit.version>
         <commons-io.version>2.8.0</commons-io.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
@@ -92,20 +91,21 @@
         <nexus.staging.plugin.version>1.6.8</nexus.staging.plugin.version>
         <maven.source.plugin.version>3.0.1</maven.source.plugin.version>
         <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
+        <maven.failsafe.plugin.version>3.0.0-M5</maven.failsafe.plugin.version>
         <maven.javadoc.plugin.version>3.2.0</maven.javadoc.plugin.version>
         <asm.version>7.3.1</asm.version>
         <slf4j-api.version>2.0.0-alpha1</slf4j-api.version>
         <slf4j-simple.version>2.0.0-alpha1</slf4j-simple.version>
         <apache-curator.version>5.1.0</apache-curator.version>
         <apache-curator-discovery.version>5.1.0</apache-curator-discovery.version>
-        <jackson.databind.version>2.11.0</jackson.databind.version>
-        <grpc.version>1.32.1</grpc.version>
-        <protobuf.version>3.12.2</protobuf.version>
+        <jackson.databind.version>2.12.3</jackson.databind.version>
+        <grpc.version>1.38.0</grpc.version>
+        <protobuf.version>3.17.1</protobuf.version>
         <protobuf.maven.plugin.version>0.6.1</protobuf.maven.plugin.version>
         <tomcat.annotations.version>6.0.53</tomcat.annotations.version>
         <build.helper.version>3.0.0</build.helper.version>
         <kafka.client.version>2.5.0</kafka.client.version>
-        <apache.commons.lang.version>3.10</apache.commons.lang.version>
+        <apache.commons.lang.version>3.12.0</apache.commons.lang.version>
         <reactive.streams.version>1.0.3</reactive.streams.version>
         <testng.version>7.1.0</testng.version>
     </properties>
@@ -114,6 +114,7 @@
         <module>core</module>
         <module>streams</module>
         <module>drivers</module>
+        <module>flow</module>
         <module>framework</module>
     </modules>
     <dependencyManagement>
@@ -194,6 +195,11 @@
             <dependency>
                 <groupId>io.reacted</groupId>
                 <artifactId>reacted-streams</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.reacted</groupId>
+                <artifactId>reacted-flow</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -336,10 +342,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
                 <configuration>
                     <includes>
                         <include>**/*.java</include>
@@ -354,6 +362,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven.failsafe.plugin.version}</version>
                 <configuration>
                     <argLine>
                         --illegal-access=permit

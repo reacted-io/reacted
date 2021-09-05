@@ -15,7 +15,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
@@ -75,7 +75,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
                        error -> raCtx.stop()
                                      .thenAccept(noVal -> this.completionTrigger.complete(Try.ofFailure(error))));
 
-        this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException()),
+        this.completionTrigger.completeOnTimeout(Try.ofFailure(new TimeoutException(raCtx.getSelf().getReActorId().toString())),
                                                  askTimeout.toMillis(), TimeUnit.MILLISECONDS)
                               .thenAccept(reply -> raCtx.stop());
     }

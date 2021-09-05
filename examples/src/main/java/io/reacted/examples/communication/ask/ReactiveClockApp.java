@@ -9,19 +9,20 @@
 package io.reacted.examples.communication.ask;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.reactors.ReActions;
-import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.Try;
 
+import java.io.FileNotFoundException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 public class ReactiveClockApp {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException {
         var reActorSystem = ExampleUtils.getDefaultInitedReActorSystem(ReactiveClockApp.class.getSimpleName());
 
         var reactiveClockReactions = ReActions.newBuilder()
@@ -38,7 +39,8 @@ public class ReactiveClockApp {
                                                //drop the ones in excess causing the delivery to fail
                                                .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
                                                .setReActorName("Reactive Clock")
-                                               .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                                               .setDispatcherName(
+                                                   Dispatcher.DEFAULT_DISPATCHER_NAME)
                                                .build();
         var reactiveClock = reActorSystem.spawn(reactiveClockReactions, reactiveClockConfig)
                                          .orElseSneakyThrow();

@@ -9,9 +9,16 @@
 package io.reacted.streams.messages;
 
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.patterns.NonNullByDefault;
 
+@NonNullByDefault
 public class SubscriptionRequest extends UnsubscriptionRequest {
     public SubscriptionRequest(ReActorRef subscriptionBackpressuringManager) {
         super(subscriptionBackpressuringManager);
+    }
+
+    @Override
+    public String toString() {
+        return "SubscriptionRequest{ " + super.toString() + " }";
     }
 }

@@ -10,6 +10,7 @@ package io.reacted.examples.replay;
 
 import com.google.common.base.Strings;
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
@@ -53,7 +54,7 @@ public class SystemReplayApp {
                                      .build();
         var echoReActorConfig = ReActorConfig.newBuilder()
                                              .setReActorName("EchoReActor")
-                                             .setDispatcherName(ReActorSystem.DEFAULT_DISPATCHER_NAME)
+                                             .setDispatcherName(Dispatcher.DEFAULT_DISPATCHER_NAME)
                                              .setMailBoxProvider(ctx -> new BasicMbox())
                                              .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                              .build();

@@ -10,11 +10,14 @@ package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.config.reactors.ServiceConfig;
+import io.reacted.core.config.drivers.NullLocalDriverConfig;
+import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
+import io.reacted.core.drivers.system.NullLocalDriver;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
+import io.reacted.core.typedsubscriptions.SubscriptionsManager;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
@@ -84,8 +87,7 @@ import java.util.stream.Stream;
 
 @NonNullByDefault
 public class ReActorSystem {
-    /* Default dispatcher. Used by system internals */
-    public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
+    public static final ReActorSystem NO_REACTOR_SYSTEM = new ReActorSystem();
     private static final int SYSTEM_TASK_SCHEDULER_POOL_SIZE = 2;
     // Service discovery always hits the LOCAL services of the LOCAL service registry driver. There is no reason
     // to wait indefinitely for an answer from local resources
@@ -93,16 +95,19 @@ public class ReActorSystem {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
     private static final Serializable REACTOR_INIT = new ReActorInit();
     private static final DispatcherConfig SYSTEM_DISPATCHER_CONFIG = DispatcherConfig.newBuilder()
-                                                                                     .setDispatcherName(DEFAULT_DISPATCHER_NAME)
-                                                                                     .setBatchSize(10)
-                                                                                     .setDispatcherThreadsNum(4)
+                                                                                     .setDispatcherName(
+                                                                                         Dispatcher.DEFAULT_DISPATCHER_NAME)
+                                                                                     .setBatchSize(
+                                                                                         Dispatcher.DEFAULT_DISPATCHER_BATCH_SIZE)
+                                                                                     .setDispatcherThreadsNum(
+                                                                                         Dispatcher.DEFAULT_DISPATCHER_THREAD_NUM)
                                                                                      .build();
 
     private final Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> reActorSystemDrivers;
     /* All the reactors spawned by a specific reactor system instance */
     private final Map<ReActorId, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
-    private final TypedSubscriptionsManager typedSubscriptionsManager;
+    private final SubscriptionsManager typedSubscriptionsManager;
     private final RegistryGatesCentralizedManager gatesCentralizedManager;
     private final Map<String, Dispatcher> dispatchers;
     private final ReActorSystemConfig systemConfig;
@@ -134,13 +139,34 @@ public class ReActorSystem {
     @Nullable
     private ReActorRef systemMonitor;
 
+    private ReActorSystem() {
+        this.reActorSystemDrivers = Set.of();
+        this.reActors = Map.of();
+        this.localReActorSystemId = ReActorSystemId.NO_REACTORSYSTEM_ID;
+        this.typedSubscriptionsManager = new SubscriptionsManager() { };
+        this.dispatchers = Map.of();
+        this.systemConfig = ReActorSystemConfig.newBuilder()
+                                               .setReactorSystemName(ReActorSystemId.NO_REACTORSYSTEM_ID_NAME)
+                                               .setLocalDriver(new NullLocalDriver(NullLocalDriverConfig.newBuilder()
+                                                                                                        .setChannelName("NO COMMUNICATION DRIVER")
+                                                                                                        .build()))
+                                               .build();
+        systemConfig.getLocalDriver().initDriverCtx(this);
+        this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
+                                                                           new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
+        this.newSeqNum = new AtomicLong(Long.MAX_VALUE);
+        this.reActorStop = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF,
+                                       Long.MIN_VALUE, localReActorSystemId, AckingPolicy.NONE,
+                                       new ReActorStop());
+    }
+
     public ReActorSystem(ReActorSystemConfig config) {
         this.systemConfig = Objects.requireNonNull(config);
         this.localReActorSystemId = new ReActorSystemId(config.getReActorSystemName());
         this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
                                                                            new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
         this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
-        this.reActors = new ConcurrentHashMap<>(10_000_000, 0.5f);
+        this.reActors = new ConcurrentHashMap<>(config.getExpectedReActorsNum() * 2, 0.5f);
         this.typedSubscriptionsManager = new TypedSubscriptionsManager();
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.newSeqNum = new AtomicLong(0);
@@ -243,16 +269,34 @@ public class ReActorSystem {
                                                                                               " info:", error)));
     }
 
-    //XXX Generate a new unique sequence number for messages generated from this reactor system
+    /**
+     * Generates a numeric ID
+     * @return an incremental number guaranteed to be unique for the reactor system
+     */
     public long getNewSeqNum() { return newSeqNum.getAndIncrement(); }
 
-    //XXX Get the identifier for this reactor system
+    /**
+     * Returns the identifier of the local {@link ReActorSystem}
+     * @return {@link ReActorSystemId} of the local {@link ReActorSystem}
+     */
     public ReActorSystemId getLocalReActorSystemId() { return localReActorSystemId; }
 
-    //XXX Get all the typed subscribers. Used as a cache for the propagations
-    public TypedSubscriptionsManager getTypedSubscriptionsManager() { return typedSubscriptionsManager; }
-    public void registerNewRoute(ReActorSystemId reActorSystemId, ChannelId channelId, Properties channelProperties,
-                                 ReActorRef registryDriver) {
+    /**
+     * Returns the {@link SubscriptionsManager} responsible for the typed subscriptions
+     * @return The typed subscriptions manager
+     */
+    public SubscriptionsManager getTypedSubscriptionsManager() { return typedSubscriptionsManager; }
+
+    /**
+     * Register a route towards a specific {@link ReActorSystem}
+     * @param reActorSystemId Identifier of the {@link ReActorSystem}
+     * @param channelId Identifier of the new channel
+     * @param channelProperties Specific properties required for using the specified channel
+     * @param registryDriver Service registry responsible for monitoring the availability of this
+     *                       ReActorSystem on the specified channel
+     */
+    public void registerNewRoute(ReActorSystemId reActorSystemId, ChannelId channelId,
+                                 Properties channelProperties, ReActorRef registryDriver) {
         ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>> driverForChannelId;
         driverForChannelId = getReActorSystemDrivers().stream()
                                                       .filter(driver -> driver.getChannelId().equals(channelId))
@@ -264,8 +308,11 @@ public class ReActorSystem {
                                                  : driverForChannelId, channelId, channelProperties, registryDriver);
     }
 
-    //XXX Forget how to reach a given reactor system through a specific channel. i.e. the remote reactor system
-    //driver is crashed or has been deactivated
+    /**
+     * Forget how to reach a given reactor system through a specific channel.
+     * @param reActorSystemId Destination {@link ReActorSystem}
+     * @param channelId {@link ChannelId} to forget about
+     */
     public void unregisterRoute(ReActorSystemId reActorSystemId, ChannelId channelId) {
         gatesCentralizedManager.unregisterRoute(reActorSystemId, channelId);
     }
@@ -342,7 +389,7 @@ public class ReActorSystem {
         Try.ofRunnable(() -> stop(getSystemRemotingRoot().getReActorId())
                                 .map(CompletionStage::toCompletableFuture)
                                 .ifPresent(CompletableFuture::join))
-           .ifError(error -> LOGGER.error("Error stopping service registy drivers"));
+           .ifError(error -> LOGGER.error("Error stopping service registry drivers"));
 
         Try.of(() -> stopSystemReActors().toCompletableFuture().join())
            .ifError(error -> LOGGER.error("Error stopping system reactors", error));
@@ -373,9 +420,24 @@ public class ReActorSystem {
      */
     public CompletionStage<Try<ServiceDiscoveryReply>>
     serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
+        return serviceDiscovery(searchFilter, "");
+    }
+
+    /**
+     * Request a reactor reference for the specified service.
+     *
+     * @param searchFilter A {@link BasicServiceDiscoverySearchFilter} describing the feature of the services that should be
+     *                     found
+     * @param requestId An extra id that will be used together with {@link ServiceDiscoverySearchFilter::getDiscoveryRequestId}
+     *                  to create a uniquely identified request
+     * @return On success a future containing the result of the request
+     * On failure a future containing the exception that caused the failure
+     */
+    public CompletionStage<Try<ServiceDiscoveryReply>>
+    serviceDiscovery(ServiceDiscoverySearchFilter searchFilter, String requestId) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
                                    ServiceDiscoveryReply.class, SERVICE_DISCOVERY_TIMEOUT,
-                                   searchFilter.getServiceName() + "|" + searchFilter.getSelectionType().name());
+                                   searchFilter.getDiscoveryRequestId() + "-" + requestId);
     }
 
     /**
@@ -412,7 +474,9 @@ public class ReActorSystem {
      * @return A successful Try containing the ReActorRef for the new reactor on success,
      * a failed Try on failure
      */
-    public Try<ReActorRef> spawn(ReActions reActions, ReActiveEntityConfig<?, ?> reActorConfig) {
+    public Try<ReActorRef> spawn(ReActions reActions,
+                                 ReActiveEntityConfig<? extends ReActiveEntityConfig.Builder<?, ?>,
+                                                      ? extends ReActiveEntityConfig<?, ?>> reActorConfig) {
         return spawnChild(Objects.requireNonNull(reActions, "ReActions cannot be null"),
                           Objects.requireNonNull(userReActorsRoot, "System not inited correctly"),
                           Objects.requireNonNull(reActorConfig, "ReActorConfig cannot be null"));
@@ -426,9 +490,13 @@ public class ReActorSystem {
      * @return A successful Try containing the ReActorRef for the new reactor on success,
      * a failed Try on failure
      */
-    public Try<ReActorRef> spawn(ReActiveEntity reActiveEntity, ReActiveEntityConfig<?, ?> reActorConfig) {
-        return spawnChild(Objects.requireNonNull(Objects.requireNonNull(reActiveEntity).getReActions()),
-                          Objects.requireNonNull(userReActorsRoot), Objects.requireNonNull(reActorConfig));
+    public Try<ReActorRef> spawn(ReActiveEntity reActiveEntity,
+                                 ReActiveEntityConfig<? extends ReActiveEntityConfig.Builder<?, ?>,
+                                                      ? extends ReActiveEntityConfig<?, ?>> reActorConfig) {
+        return spawnChild(Objects.requireNonNull(Objects.requireNonNull(reActiveEntity, "ReActor cannot be null")
+                                                        .getReActions(), "ReActions cannot be null"),
+                          Objects.requireNonNull(userReActorsRoot),
+                          Objects.requireNonNull(reActorConfig, "ReActor config cannot be null"));
     }
 
     /**
@@ -443,8 +511,9 @@ public class ReActorSystem {
     public Try<ReActorRef> spawnChild(ReActions reActions, ReActorRef father,
                                       ReActiveEntityConfig<? extends ReActiveEntityConfig.Builder<?, ?>,
                                                            ? extends ReActiveEntityConfig<?, ?>> reActorConfig) {
-        Try<ReActorRef> spawned = spawn(getLoopback(), Objects.requireNonNull(reActions),
-                                        Objects.requireNonNull(father), Objects.requireNonNull(reActorConfig));
+        Try<ReActorRef> spawned = spawn(getLoopback(), Objects.requireNonNull(reActions, "ReActions cannot be null"),
+                                        Objects.requireNonNull(father, "Father ReActor cannot be null"),
+                                        Objects.requireNonNull(reActorConfig, "ReActor config cannot be null"));
         spawned.ifSuccess(initMe -> initMe.tell(getSystemSink(), REACTOR_INIT));
         return spawned;
     }
@@ -455,9 +524,27 @@ public class ReActorSystem {
      * @param serviceConfig service config
      * @return A successful Try containing the ReActorRef for the new service on success, a failed try on failure
      */
-    public Try<ReActorRef> spawnService(ServiceConfig serviceConfig) {
-        return spawn(new Service(Objects.requireNonNull(serviceConfig)).getReActions(), serviceConfig);
+    public <ServiceConfigBuilderT extends ReActorServiceConfig.Builder<ServiceConfigBuilderT, ServiceConfigT>,
+            ServiceConfigT extends ReActorServiceConfig<ServiceConfigBuilderT, ServiceConfigT>>
+    Try<ReActorRef> spawnService(ServiceConfigT serviceConfig) {
+        return spawn(new Service<>(Objects.requireNonNull(serviceConfig)).getReActions(), serviceConfig);
     }
+
+
+    /**
+     * Create a new service. Services are reactors automatically backed up by a router
+     *
+     * @param serviceConfig service config
+     * @param father This service will be created as a child of the specified ReActor
+     * @return A successful Try containing the ReActorRef for the new service on success, a failed try on failure
+     */
+    public <ServiceCfgBuilderT extends ReActorServiceConfig.Builder<ServiceCfgBuilderT, ServiceCfgT>,
+            ServiceCfgT extends ReActorServiceConfig<ServiceCfgBuilderT, ServiceCfgT>>
+    Try<ReActorRef> spawnService(ServiceCfgT serviceConfig, ReActorRef father) {
+        return spawnChild(new Service<>(Objects.requireNonNull(serviceConfig)).getReActions(),
+                                        father, serviceConfig);
+    }
+
     public ReActorSystemRef getLoopback() { return gatesCentralizedManager.getLoopBack(); }
 
     /**
@@ -558,6 +645,16 @@ public class ReActorSystem {
         gatesCentralizedManager.unregisterSource(registryDriver);
     }
 
+    /**
+     * Checks if the {@link ReActor} pointed by a {@link ReActorRef} is local to this
+     * {@link ReActorSystem}
+     * @param reActorRef Any {@link ReActorRef}
+     * @return true is the pointed {@link ReActor} is local, false otherwise
+     */
+    public boolean isLocal(ReActorRef reActorRef) {
+        return reActorRef.getReActorSystemRef() == getLoopback();
+    }
+
     Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> getReActorSystemDrivers() {
         return Set.copyOf(reActorSystemDrivers);
     }
@@ -619,16 +716,19 @@ public class ReActorSystem {
     }
 
     /* SneakyThrows */
-    @SuppressWarnings("RedundantThrows")
+
+    /**
+     * @throws Exception a SneakyThrown exception
+     */
+    @SuppressWarnings("JavaDoc")
     private void initServiceRegistryDrivers(Collection<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
                                                                              ? extends ServiceRegistryConfig<?, ?>>> drivers) {
-        drivers.forEach(driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(),
-                                             driver.getConfig())
+        drivers.forEach(driver -> spawnChild(driver.getReActions(), getSystemRemotingRoot(), driver.getConfig())
                 .orElseSneakyThrow());
     }
 
     /**
-     * @throws ReActorSystemInitException If reactor system cannot start properly
+     * @throws ReActorSystemInitException If unable to deliver reactor init message
      */
     private void initReActorSystemReActors() {
         reActors.values().stream()
@@ -638,7 +738,8 @@ public class ReActorSystem {
     }
 
     /**
-     * @throws RuntimeException If the system reactors cannot be properly created
+     * @throws ReActorSystemStructuralInconsistencyError if no {@link Dispatcher} is found
+     * @throws ReActorRegistrationException if a {@link ReActor} with a duplicated name is found
      */
     private void spawnReActorSystemReActors() {
         this.init = spawnInit();
@@ -737,7 +838,8 @@ public class ReActorSystem {
                                              .setMailBoxProvider(ctx -> new NullMailbox())
                                              .setReActorName(ReActorId.NO_REACTOR_ID.getReActorName())
                                              .build())
-                .filter(reActor -> registerNewReActor(reActor, reActor), ReActorRegistrationException::new)
+                .filter(reActor -> registerNewReActor(reActor, reActor),
+                        () -> new ReActorRegistrationException(ReActorId.NO_REACTOR_ID.getReActorName()))
                 .map(ReActorContext::getSelf)
                 .orElseSneakyThrow();
     }
@@ -828,9 +930,14 @@ public class ReActorSystem {
     private Try<ReActorContext> registerNewReActor(ReActorRef parent, ReActorContext newReActor) {
         return getReActor(parent.getReActorId())
                 .map(parentCtx -> Try.of(() -> registerNewReActor(parentCtx, newReActor))
-                                                .filter(Try::identity, ReActorRegistrationException::new)
-                                                .map(registered -> newReActor))
-                                                .orElseGet(() -> Try.ofFailure(new ReActorRegistrationException()));
+                                     .filter(Try::identity,
+                                             () -> new ReActorRegistrationException(newReActor.getSelf()
+                                                                                              .getReActorId()
+                                                                                              .getReActorName()))
+                                     .map(registered -> newReActor))
+                .orElseGet(() -> Try.ofFailure(new ReActorRegistrationException(newReActor.getSelf()
+                                                                                          .getReActorId()
+                                                                                          .getReActorName())));
     }
 
     private Optional<CompletionStage<Void>> unRegisterReActor(ReActorContext stopMe) {
@@ -913,6 +1020,7 @@ public class ReActorSystem {
                      .map(Dispatcher::new);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static ScheduledExecutorService createSystemScheduleService(String reactorSystemName,
                                                                         int schedulePoolSize) {
         var taskSchedulerProps = new ThreadFactoryBuilder()

@@ -20,4 +20,11 @@ public class ServiceDiscoveryRequest implements Serializable {
         this.searchFilter = searchFilter;
     }
     public ServiceDiscoverySearchFilter getSearchFilter() { return searchFilter; }
+
+    @Override
+    public String toString() {
+        return "ServiceDiscoveryRequest{" +
+               "searchFilter=" + searchFilter +
+               '}';
+    }
 }

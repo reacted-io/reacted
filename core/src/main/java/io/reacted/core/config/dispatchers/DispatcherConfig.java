@@ -9,7 +9,7 @@
 package io.reacted.core.config.dispatchers;
 
 import com.google.common.base.Strings;
-import io.reacted.core.utils.ObjectUtils;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
@@ -18,20 +18,29 @@ import java.util.Objects;
 @Immutable
 @NonNullByDefault
 public class DispatcherConfig {
-
+    public static final int DEFAULT_DISPATCHER_BATCH_SIZE = 10;
+    public static final int DEFAULT_DISPATCHER_THREAD_NUM = 1;
+    public static final String NULL_DISPATCHER_NAME = "NULL_DISPATCHER";
+    public static final DispatcherConfig NULL_DISPATCHER_CFG = new DispatcherConfig();
     private final int batchSize;
     private final int dispatcherThreadsNum;
     private final String dispatcherName;
 
+    private DispatcherConfig() {
+        this.batchSize = 0;
+        this.dispatcherThreadsNum = 0;
+        this.dispatcherName = NULL_DISPATCHER_NAME;
+    }
     private DispatcherConfig(Builder builder) {
         this.batchSize = ObjectUtils.requiredInRange(builder.batchSize, 1, Integer.MAX_VALUE,
-                                                     IllegalArgumentException::new);
+                                                     () -> new IllegalArgumentException("Dispatcher batch size required"));
         this.dispatcherThreadsNum = ObjectUtils.requiredInRange(builder.dispatcherThreadsNum, 1,
                                                                 Integer.MAX_VALUE,
-                                                                IllegalArgumentException::new);
+                                                                () -> new IllegalArgumentException("Dispatcher threads must be greater than 0"));
         this.dispatcherName = Objects.requireNonNull(Strings.isNullOrEmpty(builder.dispatcherName)
                                                      ? null
-                                                     : builder.dispatcherName);
+                                                     : builder.dispatcherName,
+                                                     "Dispatcher name cannot be null or empty");
     }
     public int getBatchSize() { return batchSize; }
 
@@ -42,8 +51,8 @@ public class DispatcherConfig {
     public static Builder newBuilder() { return new Builder(); }
 
     public static class Builder {
-        private int batchSize;
-        private int dispatcherThreadsNum;
+        private int batchSize = DEFAULT_DISPATCHER_BATCH_SIZE;
+        private int dispatcherThreadsNum = DEFAULT_DISPATCHER_THREAD_NUM;
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String dispatcherName;
 
@@ -52,24 +61,25 @@ public class DispatcherConfig {
 
         /**
          * A dispatcher processes messages from a reactor mailbox. How many of them in a row? This
-         * parameter defines that
+         * parameter defines that. Default value: {@link #DEFAULT_DISPATCHER_BATCH_SIZE}
          *
          * @param batchSize Number of messages that should be processed at maximum for a single reactor for a single
          *                  scheduling request
          * @return this builder
          */
-        public Builder setBatchSize(int batchSize) {
+        public final Builder setBatchSize(int batchSize) {
             this.batchSize = batchSize;
             return this;
         }
 
         /**
-         * A dispatcher can process as many reactors in parallel as many thread it has
+         * A dispatcher can process as many reactors in parallel as many thread it has.
+         * Default: {@link #DEFAULT_DISPATCHER_THREAD_NUM}
          *
          * @param dispatcherThreadsNum How many thread should be allocated to this dispatcher
          * @return this builder
          */
-        public Builder setDispatcherThreadsNum(int dispatcherThreadsNum) {
+        public final Builder setDispatcherThreadsNum(int dispatcherThreadsNum) {
             this.dispatcherThreadsNum = dispatcherThreadsNum;
             return this;
         }
@@ -81,7 +91,7 @@ public class DispatcherConfig {
          *                       dispatcher specifying this name
          * @return this builder
          */
-        public Builder setDispatcherName(String dispatcherName) {
+        public final Builder setDispatcherName(String dispatcherName) {
             this.dispatcherName = dispatcherName;
             return this;
         }

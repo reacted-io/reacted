@@ -35,6 +35,11 @@ import java.util.stream.Stream;
 
 @NonNullByDefault
 public class Dispatcher {
+    public static final Dispatcher NULL_DISPATCHER = new Dispatcher(DispatcherConfig.NULL_DISPATCHER_CFG);
+    /* Default dispatcher. Used by system internals */
+    public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
+    public static final int DEFAULT_DISPATCHER_BATCH_SIZE = 10;
+    public static final int DEFAULT_DISPATCHER_THREAD_NUM = 4;
     private static final String UNCAUGHT_EXCEPTION_IN_DISPATCHER = "Uncaught exception in thread [%s] : ";
     private static final String REACTIONS_EXECUTION_ERROR = "Error for ReActor {} processing " +
                                                             "message type {} with seq num {} and value {} ";
@@ -74,11 +79,11 @@ public class Dispatcher {
                                              executorService -> Executors.newFixedThreadPool(1, dispatcherFactory))
                                     .limit(getDispatcherConfig().getDispatcherThreadsNum())
                                     .toArray(ExecutorService[]::new);
-        int lifecyclePoolSize = Integer.max(2, getDispatcherConfig().getDispatcherThreadsNum() >> 2);
+        var lifecyclePoolSize = Integer.max(2, getDispatcherConfig().getDispatcherThreadsNum() >> 2);
 
         this.dispatcherLifeCyclePool = Executors.newFixedThreadPool(lifecyclePoolSize,lifecycleFactory);
 
-        for(int currentDispatcher = 0;
+        for(var currentDispatcher = 0;
             currentDispatcher < getDispatcherConfig().getDispatcherThreadsNum(); currentDispatcher++) {
 
             ExecutorService dispatcherThread = dispatcherPool[currentDispatcher];
@@ -103,7 +108,6 @@ public class Dispatcher {
 
     public void dispatch(ReActorContext reActor) {
         if (reActor.acquireScheduling()) {
-            //TODO ringbuffer
             scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)].addLast(reActor);
         }
     }
@@ -116,7 +120,7 @@ public class Dispatcher {
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
                                 ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
-        int processed = 0;
+        var processed = 0;
         try {
             while (!Thread.currentThread().isInterrupted()) {
                 //TODO a lot of time is wasted awakening/putting the thread to sleep, a more performant approach
@@ -125,10 +129,10 @@ public class Dispatcher {
                 //memory acquire
                 scheduledReActor.acquireCoherence();
 
-                for (int msgNum = 0; msgNum < dispatcherBatchSize &&
+                for (var msgNum = 0; msgNum < dispatcherBatchSize &&
                                      !scheduledReActor.getMbox().isEmpty() &&
                                      !scheduledReActor.isStop(); msgNum++) {
-                    Message newEvent = scheduledReActor.getMbox().getNextMessage();
+                    var newEvent = scheduledReActor.getMbox().getNextMessage();
 
                     if (isExecutionRecorded) {
                         /*
@@ -143,7 +147,7 @@ public class Dispatcher {
                           reactor replicating the same very messages in the same order of when they were executed
                           during the recorded execution. From ReActed perspective, replicating the state of a
                           reactor system is replicating the state of the contained reactors using the strictly
-                          sequentials execution attempts in the execution log
+                          sequential execution attempts in the execution log
                         */
                         devNull.tell(scheduledReActor.getSelf(),
                                      new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
@@ -176,10 +180,10 @@ public class Dispatcher {
         try {
             scheduledReActor.reAct(newEvent);
         } catch (Exception anyExc) {
-            scheduledReActor.logError(REACTIONS_EXECUTION_ERROR, anyExc,
+            scheduledReActor.logError(REACTIONS_EXECUTION_ERROR,
                                       scheduledReActor.getSelf().getReActorId(),
                                       newEvent.getPayload().getClass(),
-                                      newEvent.getSequenceNumber(), newEvent.toString());
+                                      newEvent.getSequenceNumber(), newEvent.toString(), anyExc);
             scheduledReActor.stop();
         }
     }

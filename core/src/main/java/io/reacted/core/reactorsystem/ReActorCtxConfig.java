@@ -40,17 +40,17 @@ public class ReActorCtxConfig {
         private MailBox reactorMailbox;
         private Dispatcher dispatcher;
 
-        public Builder setSubscribedTypes(Set<Class<? extends Serializable>> subscribedTypes) {
+        public final Builder setSubscribedTypes(Set<Class<? extends Serializable>> subscribedTypes) {
             this.subscribedTypes = subscribedTypes;
             return this;
         }
 
-        public Builder setMailBox(MailBox reactorMailbox) {
+        public final Builder setMailBox(MailBox reactorMailbox) {
             this.reactorMailbox = reactorMailbox;
             return this;
         }
 
-        public Builder setDispatcher(Dispatcher actorDispatcher) {
+        public final Builder setDispatcher(Dispatcher actorDispatcher) {
             this.dispatcher = actorDispatcher;
             return this;
         }

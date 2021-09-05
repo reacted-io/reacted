@@ -9,6 +9,7 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.mailboxes.NullMailbox;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.Message;
@@ -41,9 +42,16 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 @NonNullByDefault
-public final class ReActorContext {
-    @Nullable
-    public static final ReActorContext NO_REACTOR_CTX = null;
+public class ReActorContext {
+    public static final ReActorContext NO_REACTOR_CTX = ReActorContext.newBuilder()
+                                                                      .setMbox(raCtx -> new NullMailbox())
+                                                                      .setParentActor(ReActorRef.NO_REACTOR_REF)
+                                                                      .setReactorRef(ReActorRef.NO_REACTOR_REF)
+                                                                      .setReActions(ReActions.NO_REACTIONS)
+                                                                      .setSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
+                                                                      .setDispatcher(Dispatcher.NULL_DISPATCHER)
+                                                                      .setReActorSystem(ReActorSystem.NO_REACTOR_SYSTEM)
+                                                                      .build();
     private final MailBox actorMbox;
     private final ReActorRef reactorRef;
     private final ReActorSystem reActorSystem;
@@ -64,7 +72,8 @@ public final class ReActorContext {
     private ReActorRef lastMsgSender = ReActorRef.NO_REACTOR_REF;
 
     private ReActorContext(Builder reActorCtxBuilder) {
-        this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider).apply(this));
+        this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider)
+                                                       .apply(this));
         this.reactorRef = Objects.requireNonNull(reActorCtxBuilder.reactorRef);
         this.reActorSystem = Objects.requireNonNull(reActorCtxBuilder.reActorSystem);
         this.children = ConcurrentHashMap.newKeySet();
@@ -91,6 +100,7 @@ public final class ReActorContext {
     public ReActorRef getParent() { return parent; }
 
     public Dispatcher getDispatcher() { return dispatcher; }
+
     public MailBox getMbox() { return actorMbox; }
     public CompletionStage<Void> getHierarchyTermination() { return hierarchyTermination; }
 
@@ -128,7 +138,7 @@ public final class ReActorContext {
         return interceptedMsgTypes;
     }
 
-    public final void reschedule() { getDispatcher().dispatch(this); }
+    public void reschedule() { getDispatcher().dispatch(this); }
 
     public CompletionStage<Try<DeliveryStatus>> reply(Serializable anyPayload) { return reply(getSelf(), anyPayload); }
 
@@ -309,37 +319,37 @@ public final class ReActorContext {
         private Dispatcher dispatcher;
         private ReActions reActions;
 
-        public Builder setMbox(Function<ReActorContext, MailBox> actorMboxProvider) {
+        public final Builder setMbox(Function<ReActorContext, MailBox> actorMboxProvider) {
             this.mboxProvider = actorMboxProvider;
             return this;
         }
 
-        public Builder setReactorRef(ReActorRef reactorRef) {
+        public final Builder setReactorRef(ReActorRef reactorRef) {
             this.reactorRef = reactorRef;
             return this;
         }
 
-        public Builder setReActorSystem(ReActorSystem reActorSystem) {
+        public final Builder setReActorSystem(ReActorSystem reActorSystem) {
             this.reActorSystem = reActorSystem;
             return this;
         }
 
-        public Builder setParentActor(ReActorRef parentActor) {
+        public final Builder setParentActor(ReActorRef parentActor) {
             this.parent = parentActor;
             return this;
         }
 
-        public Builder setSubscriptions(TypedSubscription... typedSubscriptions) {
+        public final Builder setSubscriptions(TypedSubscription... typedSubscriptions) {
             this.typedSubscriptions = typedSubscriptions;
             return this;
         }
 
-        public Builder setDispatcher(Dispatcher dispatcher) {
+        public final Builder setDispatcher(Dispatcher dispatcher) {
             this.dispatcher = dispatcher;
             return this;
         }
 
-        public Builder setReActions(ReActions reActions) {
+        public final Builder setReActions(ReActions reActions) {
             this.reActions = reActions;
             return this;
         }

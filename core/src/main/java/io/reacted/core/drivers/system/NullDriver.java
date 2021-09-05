@@ -9,6 +9,7 @@
 package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.config.drivers.NullDriverConfig;
 import io.reacted.core.exceptions.NoRouteToReActorSystem;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -29,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public final class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
+public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     public static final NullDriver NULL_DRIVER = new NullDriver(NullDriverConfig.newBuilder()
                                                                                 .build());
     public static final Properties NULL_DRIVER_PROPERTIES = new Properties();
@@ -50,7 +51,8 @@ public final class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     public ReActorSystem getLocalReActorSystem() {
         //If this is null it means that someone is trying to use the driver
         //before its initialization
-        return Objects.requireNonNull(localReActorSystem);
+        return Objects.requireNonNull(localReActorSystem,
+                                      "Null local reactor system?");
     }
 
     @Override

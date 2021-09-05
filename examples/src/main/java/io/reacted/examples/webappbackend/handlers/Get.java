@@ -17,6 +17,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.examples.webappbackend.Backend;
 import io.reacted.examples.webappbackend.db.StorageMessages;
 import io.reacted.patterns.Try;
@@ -125,9 +126,10 @@ public class Get implements ReActor {
                                                                         response -> sendData(response, message)),
                                                 asyncService);
     }
+    @SuppressWarnings("SameReturnValue")
     private static Void sendData(OutputStream outputStream, String data) throws IOException {
         outputStream.write(data.getBytes());
-        return null;
+        return ObjectUtils.VOID;
     }
     private static class ProcessGet implements Serializable {
         private final String getRequest;

@@ -1,15 +1,16 @@
 /*
- * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * Copyright (c) 2021 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.drivers.system;
+package io.reacted.core.drivers.local;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.drivers.local.LocalDriver;
+import io.reacted.core.config.drivers.DirectCommunicationConfig;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -27,7 +28,7 @@ public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCo
     private final ChannelId channelId;
     public DirectCommunicationDriver(DirectCommunicationConfig config) {
         super(config);
-        this.channelId = ChannelId.DIRECT_COMMUNICATION.forChannelName(config.getChannelName());
+        this.channelId = ChannelId.ChannelType.DIRECT_COMMUNICATION.forChannelName(config.getChannelName());
     }
 
     @Override

@@ -1,14 +1,13 @@
 /*
- * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * Copyright (c) 2021 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.core.drivers.system;
+package io.reacted.core.config.drivers;
 
-import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.util.Objects;
@@ -18,7 +17,8 @@ public class DirectCommunicationLoggerConfig extends ChannelDriverConfig<DirectC
     private final String logFilePath;
     private DirectCommunicationLoggerConfig(Builder builder) {
         super(builder);
-        this.logFilePath = Objects.requireNonNull(builder.logFilePath);
+        this.logFilePath = Objects.requireNonNull(builder.logFilePath,
+                                                  "Log filepath cannot be null");
     }
 
     public String getLogFilePath() { return logFilePath; }
@@ -29,8 +29,7 @@ public class DirectCommunicationLoggerConfig extends ChannelDriverConfig<DirectC
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String logFilePath;
         private Builder() { }
-
-        public Builder setLogFilePath(String logFilePath) {
+        public final Builder setLogFilePath(String logFilePath) {
             this.logFilePath = logFilePath;
             return this;
         }
