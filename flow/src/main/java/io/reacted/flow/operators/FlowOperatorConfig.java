@@ -10,6 +10,7 @@ package io.reacted.flow.operators;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
@@ -17,10 +18,12 @@ import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.UnChecked.TriConsumer;
 import java.io.Serializable;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.concurrent.Immutable;
 
@@ -117,7 +120,13 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
       this.ifPredicate = ifPredicate;
       return getThis();
     }
-
+    public final BuilderT setOutputOperators(String ...operatorsNames) {
+      return setIfOutputFilter(Arrays.stream(operatorsNames)
+                                     .map(operatorName -> BasicServiceDiscoverySearchFilter.newBuilder()
+                                                                                           .setServiceName(operatorName)
+                                                                                           .build())
+                                     .collect(Collectors.toUnmodifiableList()));
+    }
     public final BuilderT setIfOutputFilter(ServiceDiscoverySearchFilter ifPredicateOutputOperator) {
       return setIfOutputFilter(List.of(ifPredicateOutputOperator));
     }

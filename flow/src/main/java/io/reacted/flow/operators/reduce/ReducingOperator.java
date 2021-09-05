@@ -14,12 +14,11 @@ import io.reacted.flow.operators.FlowOperator;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.annotations.unstable.Unstable;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
@@ -27,18 +26,16 @@ import java.util.stream.Collectors;
 
 @NonNullByDefault
 @Unstable
-public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorConfig.Builder<ConfigBuilderT,
-                                                                                      ConfigT>,
-                                ConfigT extends ReducingOperatorConfig<ConfigBuilderT, ConfigT>>
+public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorConfig.Builder<ConfigBuilderT, ConfigT>,
+                                       ConfigT extends ReducingOperatorConfig<ConfigBuilderT, ConfigT>>
     extends FlowOperator<ConfigBuilderT, ConfigT> {
-    private static final List<Serializable> NO_ELEMENTS = List.of();
-    private final Map<Class<? extends Serializable>,
-                      Map<? super ReduceKey, List<Serializable>>> storage;
+    private static final Queue<Serializable> NO_ELEMENTS = new LinkedList<>();
+    private final Map<Class<? extends Serializable>, Queue<Serializable>> storage;
     protected ReducingOperator(ConfigT config) {
         super(config);
-        this.storage = config.getKeyExtractors().keySet().stream()
+        this.storage = config.getReductionRules().keySet().stream()
                              .collect(Collectors.toUnmodifiableMap(Function.identity(),
-                                                                   type -> new HashMap<>()));
+                                                                   msgType -> new LinkedList<>()));
     }
 
     @Override
@@ -47,14 +44,10 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
         Collection<? extends Serializable> result = List.of();
         Class<? extends Serializable> inputType = input.getClass();
         if (storage.containsKey(inputType)) {
-            var keyExtractorForType = getOperatorCfg().getKeyExtractors()
-                                                      .get(input.getClass());
-            var key = keyExtractorForType.apply(input);
-            storage.get(inputType)
-                   .computeIfAbsent(key, newKey -> new LinkedList<>())
+            storage.computeIfAbsent(inputType, newKey -> new LinkedList<>())
                    .add(input);
-            if (canReduce(key)) {
-                var reduceData = getReduceData(key, getOperatorCfg().getReductionRules());
+            if (canReduce(inputType)) {
+                var reduceData = getReduceData(getOperatorCfg().getReductionRules());
                 result = getOperatorCfg().getReducer().apply(reduceData);
             }
         }
@@ -62,34 +55,30 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
     }
 
     private Map<Class<? extends Serializable>, List<? extends Serializable>>
-    getReduceData(ReduceKey key, Map<Class<? extends Serializable>, Long> reductionRules) {
+    getReduceData(Map<Class<? extends Serializable>, Long> reductionRules) {
         ImmutableMap.Builder<Class<? extends Serializable>, List<? extends Serializable>> output;
         output = ImmutableMap.builder();
         for(var entry : storage.entrySet()) {
             Class<? extends Serializable> type = entry.getKey();
-            Map<? super ReduceKey, List<Serializable>> payloads = entry.getValue();
+            var payloads = entry.getValue();
             var required = reductionRules.get(type).intValue();
-            var elements = payloads.get(key).size() == required
-                           ? payloads.remove(key)
-                           : removeNfromInput(payloads.get(key), required);
+            var elements = removeNfromInput(payloads, required);
             output.put(type, elements);
         }
         return output.build();
     }
 
-    private static List<Serializable> removeNfromInput(List<Serializable> input,
+    private static List<Serializable> removeNfromInput(Queue<Serializable> input,
                                                        long howManyToRemove) {
-        List<Serializable> output = new ArrayList<>((int)howManyToRemove);
+        List<Serializable> output = new LinkedList<>();
         for(int iter = 0; iter < howManyToRemove; iter++) {
-            output.add(input.remove(0));
+            output.add(input.poll());
         }
         return output;
     }
-    private boolean canReduce(ReduceKey reduceKey) {
+    private boolean canReduce(Class<? extends Serializable> inputType) {
         return getOperatorCfg().getReductionRules().entrySet().stream()
-                               .allMatch(typeToNum -> storage.getOrDefault(typeToNum.getKey(),
-                                                                           Map.of())
-                                                             .getOrDefault(reduceKey, NO_ELEMENTS)
+                               .allMatch(typeToNum -> storage.getOrDefault(inputType, NO_ELEMENTS)
                                                              .size() >= typeToNum.getValue()
                                                                                  .intValue());
     }

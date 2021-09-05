@@ -9,7 +9,6 @@
 package io.reacted.flow.operators.zip;
 
 import io.reacted.flow.operators.reduce.ReducingOperatorConfig;
-import io.reacted.flow.operators.reduce.ReduceKey;
 import io.reacted.flow.operators.zip.ZipOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
 import java.io.Serializable;
@@ -23,7 +22,6 @@ import java.util.stream.Collectors;
 
 @NonNullByDefault
 public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperatorConfig> {
-  private static final ReduceKey NO_KEY = new ZipKey();
   private final Builder builder;
   private ZipOperatorConfig(Builder builder) {
     super(builder);
@@ -51,9 +49,6 @@ public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperat
 
     public final Builder setZipTypes(Map<Class<? extends Serializable>, Long> setZipTypes) {
       setReductionRules(setZipTypes);
-      setKeyExtractors(setZipTypes.keySet().stream()
-                                  .collect(Collectors.toUnmodifiableMap(Function.identity(),
-                                                                        element -> value -> NO_KEY)));
       return this;
     }
     public final Builder setZipper(Function<Map<Class<? extends Serializable>,
@@ -71,13 +66,5 @@ public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperat
     public ZipOperatorConfig build() {
       return new ZipOperatorConfig(this);
     }
-  }
-
-  private static class ZipKey implements ReduceKey {
-    @Override
-    public int hashCode() { return 0; }
-
-    @Override
-    public boolean equals(Object obj) { return obj instanceof ZipKey; }
   }
 }

@@ -13,7 +13,7 @@ import io.reacted.patterns.NonNullByDefault;
 @NonNullByDefault
 public final class ReActorConfig extends ReActiveEntityConfig<ReActorConfig.Builder, ReActorConfig> {
 
-    protected ReActorConfig(Builder reActorConfig) {
+    private ReActorConfig(Builder reActorConfig) {
         super(reActorConfig);
     }
 
@@ -29,7 +29,7 @@ public final class ReActorConfig extends ReActiveEntityConfig<ReActorConfig.Buil
     public static final class Builder extends ReActiveEntityConfig.Builder<Builder, ReActorConfig> {
         private Builder() { }
         @Override
-        public final ReActorConfig build() {
+        public ReActorConfig build() {
             return new ReActorConfig(this);
         }
     }

@@ -83,7 +83,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
 
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
-        DriverCtx grpcDriverCtx = RemotingDriver.REACTOR_SYSTEM_CTX.get();
+        DriverCtx grpcDriverCtx = REACTOR_SYSTEM_CTX.get();
         this.grpcServerExecutor = Executors.newFixedThreadPool(3, new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> localReActorSystem.logError("Uncaught exception in {}",
                                                                                                 thread.getName(), throwable))
@@ -96,7 +96,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                 .setNameFormat("Grpc-Client-Executor-" + grpcDriverCtx.getLocalReActorSystem().getLocalReActorSystemId()
                                                                       .getReActorSystemName() + "-%d")
                 .build());
-        this.grpcClientExecutor.submit(() -> RemotingDriver.REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
+        this.grpcClientExecutor.submit(() -> REACTOR_SYSTEM_CTX.set(grpcDriverCtx));
         this.workerEventLoopGroup = new NioEventLoopGroup(2);
         this.bossEventLoopGroup = new NioEventLoopGroup(1);
         this.grpcServer = NettyServerBuilder.forAddress(new InetSocketAddress(getDriverConfig().getHostName(),
