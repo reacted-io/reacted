@@ -12,6 +12,7 @@ import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.patterns.NonNullByDefault;
 
+import java.io.Serial;
 import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -23,6 +24,7 @@ import java.util.Objects;
 @NonNullByDefault
 public class EventExecutionAttempt implements Externalizable {
 
+    @Serial
     private static final long serialVersionUID = 1;
     private static final long REACTOR_ID_OFFSET = SerializationUtils.getFieldOffset(EventExecutionAttempt.class,
                                                                           "reActorId")

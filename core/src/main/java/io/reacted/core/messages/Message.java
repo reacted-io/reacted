@@ -12,6 +12,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 
+import java.io.Serial;
 import javax.annotation.Nullable;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.util.Objects;
 
 @NonNullByDefault
 public final class Message implements Externalizable, Comparable<Message> {
+    @Serial
     private static final long serialVersionUID = 1;
     private static final long SENDER_OFFSET = SerializationUtils.getFieldOffset(Message.class, "sender")
                                                                 .orElseSneakyThrow();

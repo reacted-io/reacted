@@ -8,6 +8,7 @@
 
 package io.reacted.core.messages.reactors;
 
+import java.io.Serial;
 import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
 import java.io.ObjectInput;
@@ -15,6 +16,7 @@ import java.io.ObjectOutput;
 
 @Immutable
 public final class ReActorStop implements Externalizable {
+    @Serial
     private static final long serialVersionUID = 1;
 
     @Override

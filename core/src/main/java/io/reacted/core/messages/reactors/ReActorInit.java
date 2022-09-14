@@ -10,6 +10,7 @@ package io.reacted.core.messages.reactors;
 
 import io.reacted.patterns.NonNullByDefault;
 
+import java.io.Serial;
 import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
 import java.io.ObjectInput;
@@ -19,6 +20,7 @@ import java.io.ObjectOutput;
 @NonNullByDefault
 public final class ReActorInit implements Externalizable {
 
+    @Serial
     private static final long serialVersionUID = 1;
 
     @Override

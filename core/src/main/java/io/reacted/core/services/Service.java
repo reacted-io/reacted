@@ -166,7 +166,8 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
                        "enough space for the specified routees number: {} for {} " +
                        "routees. Expanding space to fit the minimum requirement [{}]",
                        serviceConfig.getReActorName(), invalidMbox.getBufferSize(),
-                       serviceConfig.getRouteesNum());
+                       serviceConfig.getRouteesNum(),
+                       (long)serviceConfig.getRouteesNum() - invalidMbox.getRequestOnStartup());
         invalidMbox.request((long)serviceConfig.getRouteesNum() - invalidMbox.getRequestOnStartup());
         return true;
     }

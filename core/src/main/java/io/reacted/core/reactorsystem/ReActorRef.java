@@ -20,6 +20,7 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
@@ -30,6 +31,7 @@ import java.util.concurrent.CompletionStage;
 public final class ReActorRef implements Externalizable {
     public static final ReActorRef NO_REACTOR_REF = new ReActorRef(ReActorId.NO_REACTOR_ID,
                                                                    NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF);
+    @Serial
     private static final long serialVersionUID = 1;
     private static final long REACTOR_ID_OFFSET = SerializationUtils.getFieldOffset(ReActorRef.class, "reActorId")
                                                                     .orElseSneakyThrow();

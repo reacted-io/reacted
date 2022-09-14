@@ -20,6 +20,7 @@ import io.reacted.patterns.UnChecked;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
+import net.openhft.chronicle.wire.DocumentContext;
 import org.apache.log4j.Logger;
 
 import javax.annotation.Nullable;
@@ -83,13 +84,15 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
 
         while(!Thread.currentThread().isInterrupted()) {
 
-            @SuppressWarnings("ConstantConditions")
-            var newMessage = Try.withResources(tailer::readingDocument,
-                                               dCtx -> dCtx.isPresent()
-                                                       ? dCtx.wire().read(getDriverConfig().getTopic())
-                                                                    .object(Message.class)
-                                                       : null)
-                                .orElse(null, error -> LOGGER.error("Unable to decode data", error));
+            Message newMessage = null;
+            try(DocumentContext docCtx = tailer.readingDocument()) {
+                if(docCtx.isPresent()) {
+                    newMessage = docCtx.wire().read(getDriverConfig().getTopic())
+                                       .object(Message.class);
+                }
+            } catch (Exception anyException) {
+                LOGGER.error("Unable to decode data", anyException);
+            }
 
             if (newMessage == null) {
                 waitForNextMsg.pause();

@@ -45,6 +45,8 @@ public class BackpressuringMbox implements MailBox {
     public static final Duration BEST_EFFORT_TIMEOUT = Duration.ZERO;
     public static final Duration RELIABLE_DELIVERY_TIMEOUT = Duration.ofNanos(Long.MAX_VALUE);
     public static final int DEFAULT_MESSAGES_REQUESTED_ON_STARTUP = 1;
+    private static final Try<DeliveryStatus> BACKPRESSURED = Try.ofSuccess(DeliveryStatus.BACKPRESSURED);
+    private static final Try<DeliveryStatus> DELIVERED = Try.ofSuccess(DeliveryStatus.DELIVERED);
     private static final Logger LOGGER = LoggerFactory.getLogger(BackpressuringMbox.class);
     private final Duration backpressureTimeout;
     private final MailBox realMbox;
@@ -213,9 +215,9 @@ public class BackpressuringMbox implements MailBox {
                                                backpressureTimeout.toNanos(), TimeUnit.NANOSECONDS,
                                                BackpressuringMbox::onBackPressure);
             if (waitTime < 0) {
-                trigger.complete(Try.ofSuccess(DeliveryStatus.BACKPRESSURED));
+                trigger.complete(BACKPRESSURED);
             } else {
-                trigger.complete(Try.ofSuccess(DeliveryStatus.DELIVERED));
+                trigger.complete(DELIVERED);
             }
         } catch (Exception anyException) {
            trigger.complete(Try.ofFailure(anyException));

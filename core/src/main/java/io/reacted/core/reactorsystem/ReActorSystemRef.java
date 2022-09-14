@@ -18,6 +18,7 @@ import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.Try;
 
+import java.io.Serial;
 import javax.annotation.Nullable;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -33,6 +34,7 @@ import java.util.concurrent.CompletionStage;
  * regardless if they are local or remote
  */
 public class ReActorSystemRef implements Externalizable {
+    @Serial
     private static final long serialVersionUID = 1;
     private static final long REACTORSYSTEM_ID_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemRef.class,
                                                                                 "reActorSystemId")

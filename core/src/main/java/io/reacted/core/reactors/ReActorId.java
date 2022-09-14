@@ -10,6 +10,7 @@ package io.reacted.core.reactors;
 
 import io.reacted.core.messages.SerializationUtils;
 
+import java.io.Serial;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
@@ -22,6 +23,7 @@ import java.util.UUID;
 
 @Immutable
 public final class ReActorId implements Externalizable {
+    @Serial
     private static final long serialVersionUID = 1;
     private static final long REACTOR_UUID_OFFSET = SerializationUtils.getFieldOffset(ReActorId.class, "reActorUUID")
                                                                       .orElseSneakyThrow();

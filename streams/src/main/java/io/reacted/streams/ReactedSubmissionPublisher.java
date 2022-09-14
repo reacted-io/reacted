@@ -129,7 +129,6 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         /* Required by Externalizable */
         this.subscribers = Set.of();
         this.feedGate = ReActorRef.NO_REACTOR_REF;
-        //noinspection ConstantConditions
         this.localReActorSystem = ReActorSystem.NO_REACTOR_SYSTEM;
     }
 
