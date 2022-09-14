@@ -21,6 +21,7 @@ import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
+import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.WireKey;
 import javax.annotation.Nullable;
 import java.util.Objects;
@@ -90,15 +91,16 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
 
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
 
-            @SuppressWarnings("ConstantConditions")
-            var newMessage = Try.withResources(cqTailer::readingDocument,
-                                               documentCtx -> documentCtx.isPresent()
-                                                              ? documentCtx.wire().read(getDriverConfig().getTopic())
-                                                                                  .object(Message.class)
-                                                              : null)
-                                .orElse(null,
-                                        error -> getLocalReActorSystem().logError("Unable to properly decode message",
-                                                                                  error));
+            Message newMessage = null;
+            try(DocumentContext docCtx = cqTailer.readingDocument()) {
+                if (docCtx.isPresent()) {
+                    newMessage = docCtx.wire().read(getDriverConfig().getTopic())
+                                       .object(Message.class);
+                }
+            } catch (Exception anyException) {
+                getLocalReActorSystem().logError("Unable to properly decode message", anyException);
+            }
+
             if (newMessage == null) {
                 readPauser.pause();
                 readPauser.reset();

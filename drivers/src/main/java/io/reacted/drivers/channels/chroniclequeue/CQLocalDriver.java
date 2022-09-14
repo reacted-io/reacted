@@ -101,7 +101,6 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
             }
             offerMessage(newMessage);
         }
-        Thread.currentThread().interrupt();
     }
     private Try<DeliveryStatus> sendMessage(Message message) {
         return Try.ofRunnable(() -> Objects.requireNonNull(Objects.requireNonNull(chronicle)
