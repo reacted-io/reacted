@@ -10,6 +10,7 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.NullDriverConfig;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.exceptions.NoRouteToReActorSystem;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -91,13 +92,13 @@ public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
         return CompletableFuture.completedFuture(Try.ofFailure(new NoRouteToReActorSystem()));
     }
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return Try.ofFailure(new NoRouteToReActorSystem());
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+        throw new DeliveryException(new NoRouteToReActorSystem());
     }
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(sendMessage(destination, message));
+        return CompletableFuture.completedFuture(Try.of(() -> sendMessage(destination, message)));
     }
 
     @Override

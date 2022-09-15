@@ -60,17 +60,18 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
 
      @Override
      protected final void offerMessage(Message message) {
-          var deliveryAttempt = getLocalReActorSystem().getReActor(Objects.requireNonNull(message,
-                                                                                          "Cannot offer() a null message")
-                                                                          .getDestination()
-                                                                          .getReActorId())
-                                                       .map(raCtx -> forwardMessageToLocalActor(raCtx, message));
+          Objects.requireNonNull(message, "Cannot offer() a null message");
+          ReActorId destinationId = message.getDestination().getReActorId();
+          ReActorContext destinationCtx = getLocalReActorSystem().getReActorCtx(destinationId);
+          CompletionStage<Try<DeliveryStatus>> messageDeliveryAttempt = null;
+          if (destinationCtx != null) {
+               messageDeliveryAttempt = forwardMessageToLocalActor(destinationCtx, message);
+          }
           var ackTrigger = removePendingAckTrigger(message.getSequenceNumber());
 
-          if (deliveryAttempt.isPresent()) {
+          if (messageDeliveryAttempt != null) {
                if (ackTrigger != null) {
-                    var attemptResult = deliveryAttempt.get();
-                    attemptResult.thenAccept(status -> ackTrigger.toCompletableFuture().complete(status));
+                    messageDeliveryAttempt.thenAccept(status -> ackTrigger.toCompletableFuture().complete(status));
                }
           } else {
                if(ackTrigger != null) {
@@ -89,8 +90,8 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
                                                                             "Cannot forward a null message"));
      }
 
-     protected static Try<DeliveryStatus> localDeliver(ReActorContext destination, Message message) {
-          Try<DeliveryStatus> deliverOperation = Try.of(() -> destination.getMbox().deliver(message));
+     protected static DeliveryStatus localDeliver(ReActorContext destination, Message message) {
+          DeliveryStatus deliverOperation = destination.getMbox().deliver(message);
           rescheduleIfSuccess(deliverOperation, destination);
           return deliverOperation;
      }
@@ -98,13 +99,14 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      protected static CompletionStage<Try<DeliveryStatus>> asyncLocalDeliver(ReActorContext destination,
                                                                              Message message) {
           var asyncDeliverResult = destination.getMbox().asyncDeliver(message);
-          asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result, destination));
+          asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result.orElse(DeliveryStatus.NOT_DELIVERED), destination));
           return asyncDeliverResult;
      }
 
-     protected static void rescheduleIfSuccess(Try<DeliveryStatus> deliveryResult, ReActorContext destination) {
-          deliveryResult.filter(DeliveryStatus::isDelivered, DeliveryException::new)
-                        .ifSuccess(deliveryStatus -> destination.reschedule());
+     protected static void rescheduleIfSuccess(DeliveryStatus deliveryStatus, ReActorContext destination) {
+          if (deliveryStatus == DeliveryStatus.DELIVERED) {
+               destination.reschedule();
+          }
      }
 
      private static void propagateToDeadLetters(ReActorRef systemDeadLetters, Message originalMessage) {

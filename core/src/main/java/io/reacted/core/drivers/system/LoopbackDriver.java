@@ -10,6 +10,7 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
@@ -126,8 +127,8 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     public final ChannelId getChannelId() { return localDriver.getChannelId(); }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return Try.ofFailure(new UnsupportedOperationException());
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+        throw new DeliveryException(new UnsupportedOperationException());
     }
 
     @Override

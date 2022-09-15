@@ -13,13 +13,12 @@ import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.services.LoadBalancingPolicies;
-import io.reacted.core.services.LoadBalancingPolicy;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
-import io.reacted.core.services.Service;
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,8 +68,8 @@ class ServiceTest {
     @Test
     void reactorSystemCanSpawnService() {
         ReActorRef router = reActorSystem.spawnService(serviceConfig).orElseSneakyThrow();
-        Assertions.assertEquals(router, reActorSystem.getReActor(router.getReActorId())
-                                                     .map(ReActorContext::getSelf)
-                                                     .orElse(ReActorRef.NO_REACTOR_REF));
+        Assertions.assertEquals(router, Optional.ofNullable(reActorSystem.getReActorCtx(router.getReActorId()))
+                                                .map(ReActorContext::getSelf)
+                                                .orElse(ReActorRef.NO_REACTOR_REF));
     }
 }

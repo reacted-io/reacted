@@ -167,7 +167,7 @@ public class Dispatcher {
                     dispatcherLifeCyclePool.submit(() -> reActorUnregister.apply(scheduledReActor));
                 } else if (!scheduledReActor.getMbox().isEmpty()) {
                     //If there are other messages to be processed, request another schedulation fo the dispatcher
-                    dispatch(scheduledReActor);
+                     dispatch(scheduledReActor);
                 }
             }
         } catch (InterruptedException exc) {

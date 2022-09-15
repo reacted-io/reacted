@@ -10,6 +10,7 @@ package io.reacted.drivers.channels.kafka;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -89,10 +90,14 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return Try.of(() -> Objects.requireNonNull(kafkaProducer)
-                                   .send(new ProducerRecord<>(getDriverConfig().getTopic(), message)).get())
-                  .map(metaData -> DeliveryStatus.DELIVERED);
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+        try {
+            Objects.requireNonNull(kafkaProducer)
+                   .send(new ProducerRecord<>(getDriverConfig().getTopic(), message)).get();
+            return DeliveryStatus.DELIVERED;
+        } catch (Exception anyException) {
+            throw new DeliveryException(anyException);
+        }
     }
 
     @Override

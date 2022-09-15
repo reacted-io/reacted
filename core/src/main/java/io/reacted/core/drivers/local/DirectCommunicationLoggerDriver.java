@@ -73,11 +73,11 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
         logFile.println(message);
         logFile.flush();
         return destination.isStop()
-               ? Try.ofSuccess(DeliveryStatus.NOT_DELIVERED)
+               ? DeliveryStatus.NOT_DELIVERED
                : localDeliver(destination, message);
     }
 

@@ -25,7 +25,6 @@ import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
-import org.apache.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -39,10 +38,12 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @NonNullByDefault
 public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
-    private static final Logger LOGGER = Logger.getLogger(ReplayLocalDriver.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReplayLocalDriver.class);
     private final Set<ReActorId> spawnedReActors;
     @Nullable
     private ChronicleQueue chronicle;
@@ -74,17 +75,17 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
         if (!(message.getPayload() instanceof DeliveryStatusUpdate)) {
             spawnedReActors.add(message.getDestination().getReActorId());
             spawnedReActors.add(message.getSender().getReActorId());
         }
-        return Try.ofSuccess(DeliveryStatus.DELIVERED);
+        return DeliveryStatus.DELIVERED;
     }
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(sendMessage(destination, message));
+        return CompletableFuture.completedFuture(Try.of(() -> sendMessage(destination, message)));
     }
 
     @Override
@@ -113,23 +114,27 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
             }
             Serializable payload = nextMessage.getPayload();
 
-            if (payload instanceof EventExecutionAttempt) {
+            if (payload instanceof EventExecutionAttempt executionAttempt) {
                 while (!isTargetReactorAlreadySpawned(nextMessage)) {
                     pauser.pause();
                     pauser.reset();
                 }
 
-                EventExecutionAttempt executionAttempt = (EventExecutionAttempt) payload;
-
-                var message = dstToMessageBySeqNum.getOrDefault(executionAttempt.getReActorId(), Collections.emptyMap())
+                var message = dstToMessageBySeqNum.getOrDefault(executionAttempt.getReActorId(),
+                                                                Collections.emptyMap())
                                                   .remove(executionAttempt.getMsgSeqNum());
-                localReActorSystem.getReActor(executionAttempt.getReActorId())
-                                  .filter(reActorContext -> Objects.nonNull(message))
-                                  .ifPresentOrElse(dstReActor -> forwardMessageToLocalActor(dstReActor, message),
-                                                   () -> localReActorSystem.logError("Unable to delivery message {} for ReActor {}",
-                                                                                     executionAttempt.getReActorId(),
-                                                                                     message,
-                                                                                     new IllegalStateException()));
+                ReActorContext destinationCtx = localReActorSystem.getReActorCtx(executionAttempt.getReActorId());
+
+                if (destinationCtx == null || message == null) {
+                    LOGGER.error("Unable to delivery message {} for ReActor {}",
+                                 message, executionAttempt.getReActorId(), new IllegalStateException());
+                } else {
+                    forwardMessageToLocalActor(destinationCtx, message)
+                        .toCompletableFuture()
+                        .join()
+                        .ifError(deliveryError -> LOGGER.error("Unable to delivery message {} for ReActor {}",
+                                                               message, executionAttempt.getReActorId(), deliveryError));
+                }
             } else {
                 dstToMessageBySeqNum.computeIfAbsent(nextMessage.getDestination().getReActorId(),
                                                      reActorId -> new HashMap<>())

@@ -81,7 +81,10 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     public abstract UnChecked.CheckedRunnable getDriverLoop();
     public abstract ChannelId getChannelId();
     public abstract Properties getChannelProperties();
-    public abstract Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message);
+    /**
+     * @throws io.reacted.core.exceptions.DeliveryException
+     */
+    public abstract DeliveryStatus sendMessage(ReActorContext destination, Message message);
     public abstract CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message);
     public abstract boolean channelRequiresDeliveryAck();
 

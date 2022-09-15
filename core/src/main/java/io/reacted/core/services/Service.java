@@ -38,10 +38,10 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
@@ -181,24 +181,26 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
             return;
         }
 
-        Optional<ReActorRef> serviceSelection = request.getSearchFilter()
+        ReActorRef serviceSelection = request.getSearchFilter()
                                                        .getSelectionType() == SelectionType.ROUTED
-                                                ? Optional.of(raCtx.getSelf())
+                                                ? raCtx.getSelf()
                                                 : selectRoutee(raCtx, msgReceived, request);
-
-        serviceSelection.map(ServiceDiscoveryReply::new)
-                        .ifPresent(discoveryReply -> raCtx.reply(raCtx.getSelf(), discoveryReply));
+        if (serviceSelection != null) {
+            raCtx.reply(raCtx.getSelf(), new ServiceDiscoveryReply(serviceSelection));
+        }
     }
 
     private CompletionStage<Try<DeliveryStatus>> routeMessage(ReActorContext raCtx,
                                                               Serializable newMessage) {
-        return selectRoutee(raCtx, ++msgReceived, newMessage)
-            .map(routee -> routee.route(raCtx.getSender(), newMessage))
-            .orElse(CompletableFuture.completedStage(Try.ofFailure(new IllegalStateException(String.format(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
-                                                                                                           serviceConfig.getReActorName())))));
+        ReActorRef routee = selectRoutee(raCtx, ++msgReceived, newMessage);
+        return routee != null
+               ? routee.route(raCtx.getSender(), newMessage)
+               : CompletableFuture.completedStage(Try.ofFailure(new IllegalStateException(String.format(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
+                                                                                                        serviceConfig.getReActorName()))));
     }
 
-    private Optional<ReActorRef> selectRoutee(ReActorContext routerCtx, long msgReceived,
+    @Nullable
+    private ReActorRef selectRoutee(ReActorContext routerCtx, long msgReceived,
                                               Serializable message) {
         return serviceConfig.getLoadBalancingPolicy()
                             .selectRoutee(routerCtx, this, msgReceived, message);
@@ -218,8 +220,11 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     private ReActorRef spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions,
                                    ReActorConfig routeeConfig) {
         ReActorRef routee = routerCtx.spawnChild(routeeReActions, routeeConfig).orElseSneakyThrow();
-        ReActorContext routeeCtx = routerCtx.getReActorSystem().getReActor(routee.getReActorId())
-                                            .orElseThrow();
+        ReActorContext routeeCtx = routerCtx.getReActorSystem().getReActorCtx(routee.getReActorId());
+
+        if (routeeCtx == null) {
+            throw new IllegalStateException("Unable to find actor (routee) ctx for a newly spawned actor");
+        }
         //when a routee dies, asks the father to be respawn. If the father is stopped (i.e. on system shutdown)
         //the message will be simply routed to deadletter
         routeeCtx.getHierarchyTermination()

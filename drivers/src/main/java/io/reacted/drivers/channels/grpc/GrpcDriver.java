@@ -34,6 +34,7 @@ import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.exceptions.ChannelUnavailableException;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -146,7 +147,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public ChannelId getChannelId() { return channelId; }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
         Properties dstChannelIdProperties = message.getDestination().getReActorSystemRef().getGateProperties();
         String dstChannelIdName = dstChannelIdProperties.getProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME);
         /*
@@ -192,7 +193,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             that can be done except returning an error
          */
         if (dstChannelIdName == null) {
-            return Try.ofFailure(new ChannelUnavailableException());
+            throw new DeliveryException(new ChannelUnavailableException());
         }
         SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram> grpcLink;
         var peerChannelKey = getChannelPeerKey(dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST),
@@ -215,12 +216,12 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             synchronized (grpcLink) {
                 grpcLink.link.onNext(payload);
             }
-            return Try.ofSuccess(DeliveryStatus.DELIVERED);
+            return DeliveryStatus.DELIVERED;
 
         } catch (Exception error) {
             removeStaleChannel(peerChannelKey);
             getLocalReActorSystem().logError("Error sending message {}", message.toString(), error);
-            return Try.ofFailure(error);
+            throw new DeliveryException(error);
         }
     }
 

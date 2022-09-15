@@ -10,6 +10,7 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.NullLocalDriverConfig;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -72,13 +73,13 @@ public class NullLocalDriver extends LocalDriver<NullLocalDriverConfig> {
         return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
     }
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return Try.ofFailure(new UnsupportedOperationException());
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+        throw new DeliveryException(new UnsupportedOperationException());
     }
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(sendMessage(destination, message));
+        return CompletableFuture.completedFuture(Try.of(() -> sendMessage(destination, message)));
     }
 
     @Override

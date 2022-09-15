@@ -10,6 +10,7 @@ package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -81,7 +82,7 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
         return sendMessage(Objects.requireNonNull(chronicle)
                                   .acquireAppender(), getDriverConfig().getTopic(), message);
     }
@@ -110,8 +111,12 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
             offerMessage(newMessage);
         }
     }
-    private static Try<DeliveryStatus> sendMessage(ExcerptAppender cqAppender, WireKey topic,  Message message) {
-        return Try.ofRunnable(() -> cqAppender.writeMessage(topic, message))
-                  .map(success -> DeliveryStatus.DELIVERED);
+    private static DeliveryStatus sendMessage(ExcerptAppender cqAppender, WireKey topic,  Message message) {
+        try {
+            cqAppender.writeMessage(topic, message);
+            return DeliveryStatus.DELIVERED;
+        } catch (Exception anyException) {
+            throw new DeliveryException(anyException);
+        }
     }
 }

@@ -36,7 +36,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(sendMessage(destination, message));
+        return CompletableFuture.completedFuture(Try.of(() -> sendMessage(destination, message)));
     }
 
     /**
@@ -56,10 +56,10 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         long nextSeqNum = getLocalReActorSystem().getNewSeqNum();
         boolean isAckRequired = isAckRequired(channelRequiresDeliveryAck(), ackingPolicy);
         var pendingAck = isAckRequired ? newPendingAckTrigger(nextSeqNum) : null;
-        var sendResult = sendMessage(ReActorContext.NO_REACTOR_CTX,
-                                     new Message(src, dst, nextSeqNum,
-                                                 getLocalReActorSystem().getLocalReActorSystemId(),
-                                                 ackingPolicy, message));
+        var sendResult = Try.of(() -> sendMessage(ReActorContext.NO_REACTOR_CTX,
+                                                  new Message(src, dst, nextSeqNum,
+                                                  getLocalReActorSystem().getLocalReActorSystemId(),
+                                                  ackingPolicy, message)));
         CompletionStage<Try<DeliveryStatus>> tellResult;
         if (isAckRequired) {
             tellResult = sendResult.filter(DeliveryStatus::isDelivered, DeliveryException::new)

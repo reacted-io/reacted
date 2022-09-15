@@ -10,6 +10,7 @@ package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.system.LocalDriver;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -63,11 +64,11 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
 
     @Override
     public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(sendMessage(destination, message));
+        return CompletableFuture.completedFuture(Try.of(() -> sendMessage(destination, message)));
     }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
         return sendMessage(message);
     }
 
@@ -80,7 +81,7 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     }
 
     private void chronicleMainLoop(ExcerptTailer tailer) {
-        var waitForNextMsg = Pauser.millis(100, 500);
+        var waitForNextMsg = Pauser.millis(10, 500);
 
         while(!Thread.currentThread().isInterrupted()) {
 
@@ -102,10 +103,14 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
             offerMessage(newMessage);
         }
     }
-    private Try<DeliveryStatus> sendMessage(Message message) {
-        return Try.ofRunnable(() -> Objects.requireNonNull(Objects.requireNonNull(chronicle)
-                                                                  .acquireAppender())
-                                           .writeMessage(getDriverConfig().getTopic(), message))
-                  .map(dummy -> DeliveryStatus.DELIVERED);
+    private DeliveryStatus sendMessage(Message message) {
+        try {
+            Objects.requireNonNull(Objects.requireNonNull(chronicle)
+                                          .acquireAppender())
+                   .writeMessage(getDriverConfig().getTopic(), message);
+            return DeliveryStatus.DELIVERED;
+        } catch (Exception anyException) {
+            throw new DeliveryException(anyException);
+        }
     }
 }
