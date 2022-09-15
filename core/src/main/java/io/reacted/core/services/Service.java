@@ -253,7 +253,8 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     private static <PayloadT extends Serializable>
     void requestNextMessage(ReActorContext raCtx, PayloadT payload,
                             BiFunction<ReActorContext, PayloadT, CompletionStage<Try<DeliveryStatus>>> realCall) {
-        ifNotDelivered(realCall.apply(raCtx, payload), error -> raCtx.logError("", error))
+        ifNotDelivered(realCall.apply(raCtx, payload),
+                       error -> raCtx.logError("Service Message delivery failure ", error))
             .thenAccept(delivered -> raCtx.getMbox().request(1));
     }
 
