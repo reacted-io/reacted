@@ -141,9 +141,11 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         ReActorRef gate = new ReActorRef();
         gate.readExternal(in);
-        setFeedGate(gate).setLocalReActorSystem(ReActorSystemDriver.getDriverCtx()
-                                                                   .map(DriverCtx::getLocalReActorSystem)
-                                                                   .orElseThrow());
+        DriverCtx driverCtx = ReActorSystemDriver.getDriverCtx();
+        if (driverCtx == null) {
+            throw new IllegalStateException("No Driver Context For Driver");
+        }
+        setFeedGate(gate).setLocalReActorSystem(driverCtx.getLocalReActorSystem());
     }
 
     /**

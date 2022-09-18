@@ -11,6 +11,7 @@ package io.reacted.core.reactorsystem;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
@@ -138,14 +139,18 @@ public class ReActorSystemRef implements Externalizable {
          */
         ChannelId sourceChannelId = new ChannelId();
         sourceChannelId.readExternal(in);
-        ReActorSystemDriver.getDriverCtx()
-                      .flatMap(driverCtx -> driverCtx.getLocalReActorSystem()
-                                                     .findGate(reActorSystemId,
-                                                               sourceChannelId.equals(ChannelId.INVALID_CHANNEL_ID)
-                                                               ? driverCtx.getDecodingDriver().getChannelId()
-                                                               : sourceChannelId))
-                      .ifPresent(gateRoute -> { setBackingDriver(gateRoute.getBackingDriver());
-                                                setGateProperties(gateRoute.getGateProperties()); });
+        DriverCtx driverCtx = ReActorSystemDriver.getDriverCtx();
+        if (driverCtx != null) {
+            ReActorSystemRef gateForReActor = driverCtx.getLocalReActorSystem()
+                                                       .findGate(reActorSystemId, sourceChannelId.equals(ChannelId.INVALID_CHANNEL_ID)
+                                                                                  ? driverCtx.getDecodingDriver()
+                                                                                             .getChannelId()
+                                                                                  : sourceChannelId);
+            if (gateForReActor != null) {
+                setBackingDriver(gateForReActor.getBackingDriver());
+                setGateProperties(gateForReActor.getGateProperties());
+            }
+        }
         setChannelId(getBackingDriver().getChannelId());
     }
     private void setReActorSystemId(ReActorSystemId reActorSystemId) {

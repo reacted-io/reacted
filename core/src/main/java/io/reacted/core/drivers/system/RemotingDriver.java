@@ -18,6 +18,7 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked.TriConsumer;
@@ -175,10 +176,12 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
 
     private void forwardMessageToSenderDriverInstance(Message message,
                                                       DeliveryStatusUpdate deliveryStatusUpdate) {
-        getLocalReActorSystem().findGate(deliveryStatusUpdate.getAckSourceReActorSystem(),
-                                         deliveryStatusUpdate.getFirstMessageSourceChannelId())
-                               .ifPresent(route -> route.getBackingDriver()
-                                                        .offerMessage(message));
+        ReActorSystemRef gateForDestination = getLocalReActorSystem().findGate(deliveryStatusUpdate.getAckSourceReActorSystem(),
+                                                                               deliveryStatusUpdate.getFirstMessageSourceChannelId());
+        if (gateForDestination != null) {
+            gateForDestination.getBackingDriver()
+                              .offerMessage(message);
+        }
     }
 
     private boolean messageWasNotSentFromThisDriverInstance(DeliveryStatusUpdate deliveryStatusUpdate) {

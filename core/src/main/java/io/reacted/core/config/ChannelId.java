@@ -12,6 +12,11 @@ import io.reacted.core.messages.SerializationUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -109,6 +114,17 @@ public class ChannelId implements Externalizable {
         REMOTING_CHRONICLE_QUEUE,
         KAFKA,
         GRPC;
-        public ChannelId forChannelName(String channelName) { return new ChannelId(this, channelName); }
+
+        private static final Map<ChannelType, Map<String, ChannelId>> CHANNEL_ID_CACHE_BY_CHANNEL_TYPE_BY_CHANNEL_NAME = Arrays.stream(ChannelType.values())
+            .collect(Collectors.toConcurrentMap(Function.identity(), channelTypeDummy -> new ConcurrentHashMap<>()));
+        public ChannelId forChannelName(String channelName) {
+            Map<String, ChannelId> channelCacheByName = CHANNEL_ID_CACHE_BY_CHANNEL_TYPE_BY_CHANNEL_NAME.get(this);
+            ChannelId channelId = channelCacheByName.get(channelName);
+            if (channelId == null) {
+                channelId = new ChannelId(this, channelName);
+                channelCacheByName.putIfAbsent(channelName, channelId);
+            }
+            return channelId;
+        }
     }
 }

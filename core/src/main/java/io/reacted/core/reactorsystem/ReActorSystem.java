@@ -355,7 +355,8 @@ public class ReActorSystem {
      * @param preferredChannelId Preferred {@link ChannelId} to use
      * @return A route/reference towards the requested reactor system
      */
-    public Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId, ChannelId preferredChannelId) {
+    @Nullable
+    public ReActorSystemRef findGate(ReActorSystemId reActorSystemId, ChannelId preferredChannelId) {
         return gatesCentralizedManager.findGate(reActorSystemId, preferredChannelId);
     }
 

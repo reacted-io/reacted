@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -163,8 +162,9 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
         return cleanDriverLoop();
     }
 
-    public static Optional<DriverCtx> getDriverCtx() {
-        return Optional.ofNullable(REACTOR_SYSTEM_CTX.get());
+    @Nullable
+    public static DriverCtx getDriverCtx() {
+        return REACTOR_SYSTEM_CTX.get();
     }
 
     public ReActorSystem getLocalReActorSystem() { return Objects.requireNonNull(localReActorSystem); }
@@ -196,8 +196,10 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
          */
         var destSystem = localReActorSystem.findGate(originalMessage.getDataLink()
                                                                     .getGeneratingReActorSystem(),
-                                                     gateChannelId)
-                             .orElse(NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF);
+                                                     gateChannelId);
+        if (destSystem == null) {
+            destSystem = NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF;
+        }
         var destReActor = new ReActorRef(ReActorId.NO_REACTOR_ID, destSystem);
         return destReActor.tell(ReActorRef.NO_REACTOR_REF, statusUpdatePayload);
     }
