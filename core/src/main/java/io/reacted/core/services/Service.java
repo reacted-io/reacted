@@ -125,15 +125,9 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class));
 
         var backpressuringMbox = BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox());
-        backpressuringMbox.filter(mbox -> !mbox.getNotDelayedMessageTypes().contains(ReActorInit.class))
+        backpressuringMbox.filter(mbox -> !mbox.isBackpressurable(ReActorInit.class))
                           .ifPresent(mbox -> mbox.request(1));
-        boolean isMboxValid =  backpressuringMbox.map(mbox -> mbox.addNonDelayedMessageTypes(getNonDelayedMessageTypes()))
-                                                 .filter(mbox -> routeesCannotBeFedAllTogether(mbox.getRequestOnStartup()))
-                                                 .map(invalidMbox -> fixMbox(raCtx, invalidMbox))
-                                                 .orElse(true);
-        if (!isMboxValid) {
-            return;
-        }
+
         //spawn the minimum number or routees
         for (int currentRoutee = 0; currentRoutee < serviceConfig.getRouteesNum(); currentRoutee++) {
             try {
@@ -156,25 +150,6 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         if (serviceConfig.isRemoteService()) {
             sendPublicationRequest(raCtx, serviceInfo);
         }
-    }
-
-    private boolean fixMbox(ReActorContext raCtx, BackpressuringMbox invalidMbox) {
-        if(invalidMbox.getBufferSize() < serviceConfig.getRouteesNum()) {
-            raCtx.logError("Backpressuring mailbox for service {} does not have " +
-                           "enough space for the specified routees number: {} for {} " +
-                           "routees. Service is HALTING", serviceConfig.getReActorName(),
-                            invalidMbox.getBufferSize(), serviceConfig.getRouteesNum());
-            raCtx.stop();
-            return false;
-        }
-        raCtx.logError("Backpressuring mailbox for service {} does not have " +
-                       "enough space for the specified routees number: {} for {} " +
-                       "routees. Expanding space to fit the minimum requirement [{}]",
-                       serviceConfig.getReActorName(), invalidMbox.getBufferSize(),
-                       serviceConfig.getRouteesNum(),
-                       (long)serviceConfig.getRouteesNum() - invalidMbox.getRequestOnStartup());
-        invalidMbox.request((long)serviceConfig.getRouteesNum() - invalidMbox.getRequestOnStartup());
-        return true;
     }
 
     private boolean routeesCannotBeFedAllTogether(int requestOnStartup) {

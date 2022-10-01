@@ -41,6 +41,6 @@ public class BasicMbox implements MailBox {
     public DeliveryStatus deliver(Message message) {
         return inbox.offerLast(message)
                 ? DeliveryStatus.DELIVERED
-                : DeliveryStatus.BACKPRESSURED;
+                : DeliveryStatus.NOT_DELIVERED;
     }
 }

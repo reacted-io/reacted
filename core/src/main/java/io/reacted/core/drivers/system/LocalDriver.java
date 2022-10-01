@@ -131,20 +131,9 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
 
      protected static DeliveryStatus localDeliver(ReActorContext destination, Message message) {
           DeliveryStatus deliverOperation = destination.getMbox().deliver(message);
-          rescheduleIfSuccess(deliverOperation, destination);
-          return deliverOperation;
-     }
-
-     protected static CompletionStage<DeliveryStatus> asyncLocalDeliver(ReActorContext destination,
-                                                                        Message message) {
-          var asyncDeliverResult = destination.getMbox().asyncDeliver(message);
-          asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result, destination));
-          return asyncDeliverResult;
-     }
-
-     protected static void rescheduleIfSuccess(DeliveryStatus deliveryStatus, ReActorContext destination) {
-          if (deliveryStatus == DeliveryStatus.DELIVERED) {
+          if (deliverOperation.isDelivered()) {
                destination.reschedule();
           }
+          return deliverOperation;
      }
 }

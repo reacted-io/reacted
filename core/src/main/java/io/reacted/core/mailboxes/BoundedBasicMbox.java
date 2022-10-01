@@ -51,6 +51,6 @@ public class BoundedBasicMbox implements MailBox {
     @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) {
-        return inbox.offer(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.BACKPRESSURED;
+        return inbox.offer(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.NOT_DELIVERED;
     }
 }

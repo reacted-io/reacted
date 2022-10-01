@@ -67,8 +67,6 @@ public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCo
 
     @Override
     public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
-        return destination.isStop()
-               ? CompletableFuture.completedFuture(DeliveryStatus.NOT_DELIVERED)
-               : asyncLocalDeliver(destination, message);
+        return CompletableFuture.completedStage(sendMessage(destination, message));
     }
 }

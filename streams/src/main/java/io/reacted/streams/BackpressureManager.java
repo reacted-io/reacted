@@ -72,19 +72,13 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         this.feedGate = Objects.requireNonNull(feedGate);
         this.bpMailboxBuilder = BackpressuringMbox.newBuilder()
                                                   .setRealMbox(new BoundedBasicMbox(subscription.getBufferSize()))
-                                                  .setBackpressureTimeout(subscription.getBackpressureTimeout())
-                                                  .setBufferSize(subscription.getBufferSize())
+                                                  .setBackpressuringThreshold(subscription.getBufferSize())
                                                   .setRequestOnStartup(0)
-                                                  .setAsyncBackpressurer(subscription.getAsyncBackpressurer())
-                                                  .setNonDelayable(Set.of(ReActorInit.class, ReActorStop.class,
-                                                                          SubscriptionRequest.class,
-                                                                          SubscriptionReply.class,
-                                                                          UnsubscriptionRequest.class,
-                                                                          SubscriberError.class,
-                                                                          PublisherInterrupt.class))
-                                                  .setNonBackpressurable(Set.of(PublisherComplete.class,
-                                                                                PublisherShutdown.class))
-                                                  .setSequencer(subscription.getSequencer());
+                                                  .setNonBackpressurable(Set.of(ReActorInit.class, ReActorStop.class,
+                                                                                SubscriptionRequest.class, SubscriptionReply.class,
+                                                                                UnsubscriptionRequest.class, SubscriberError.class,
+                                                                                PublisherInterrupt.class, PublisherComplete.class,
+                                                                                PublisherShutdown.class));
     }
 
     @Override

@@ -18,9 +18,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.concurrent.CompletionStage;
 
 @ParametersAreNonnullByDefault
-public interface MailBox extends AutoCloseable {
-    CompletionStage<DeliveryStatus> DELIVERED = CompletableFuture.completedStage(DeliveryStatus.DELIVERED);
-    CompletionStage<DeliveryStatus> BACKPRESSURED = CompletableFuture.completedStage(DeliveryStatus.BACKPRESSURED);
+public interface MailBox {
     boolean isEmpty();
 
     boolean isFull();
@@ -35,14 +33,5 @@ public interface MailBox extends AutoCloseable {
     @Nonnull
     DeliveryStatus deliver(Message message);
 
-    @Nonnull
-    default CompletionStage<DeliveryStatus> asyncDeliver(Message message) {
-        return deliver(message).isDelivered()
-               ? DELIVERED
-               : BACKPRESSURED;
-    }
-
     default void request(long messagesNum) { }
-    @Override
-    default void close() throws Exception { }
 }

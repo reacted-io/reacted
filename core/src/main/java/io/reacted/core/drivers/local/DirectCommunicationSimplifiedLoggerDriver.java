@@ -94,6 +94,7 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
 
     @Override
     public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
+        return
         synchronized (logFile) {
 
             logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",

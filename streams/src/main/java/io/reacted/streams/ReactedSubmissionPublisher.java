@@ -58,9 +58,6 @@ import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 @NonNullByDefault
 public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
                                                                                   AutoCloseable, Externalizable {
-    public static final Duration RELIABLE_SUBSCRIPTION = BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT;
-    public static final Duration BEST_EFFORT_SUBSCRIPTION = BackpressuringMbox.BEST_EFFORT_TIMEOUT;
-
     private static final String SUBSCRIPTION_NAME_FORMAT = "Backpressure Manager [%s] Subscription [%s]";
     private static final long FEED_GATE_OFFSET = SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class,
                                                                                    "feedGate")
@@ -103,14 +100,11 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                        .setReActorName("Feed Gate: [" + Objects.requireNonNull(feedName, "Feed name cannot be null") + "]")
                                        .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
                                                                                     .setRealMailboxOwner(ctx)
-                                                                                    .setBufferSize(bufferSize)
                                                                                     .setRequestOnStartup(bufferSize)
-                                                                                    .setBackpressureTimeout(BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT)
-                                                                                    .setNonDelayable(Set.of(ReActorInit.class,
-                                                                                                            PublisherInterrupt.class, ReActorStop.class,
-                                                                                                            SubscriptionRequest.class, UnsubscriptionRequest.class))
-                                                                                    .setNonBackpressurable(Set.of(PublisherShutdown.class,
-                                                                                                                  PublisherComplete.class))
+                                                                                    .setNonBackpressurable(Set.of(ReActorInit.class,
+                                                                                                                  PublisherInterrupt.class, ReActorStop.class,
+                                                                                                                  SubscriptionRequest.class, UnsubscriptionRequest.class,
+                                                                                                                  PublisherShutdown.class, PublisherComplete.class))
                                                                                     .build())
                                        .build();
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
@@ -172,7 +166,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      */
     @Override
     public void subscribe(Flow.Subscriber<? super PayloadT> subscriber) {
-        subscribe(subscriber, RELIABLE_SUBSCRIPTION, UUID.randomUUID().toString());
+        subscribe(subscriber, UUID.randomUUID().toString());
     }
 
     /**
@@ -187,36 +181,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
      */
     public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, String subscriptionName) {
-        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
-                                                  .setBufferSize(Flow.defaultBufferSize())
-                                                  .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
-                                                  .setSubscriberName(subscriptionName)
-                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
-                                                  .build(), subscriber);
-    }
-
-    /**
-     * Registers a best effort subscriber. All the updates sent to this subscriber that cannot be
-     * processed will be lost. This subscriber consumption speed will not affect the producer,
-     * but delivery speed to the subscriber could.
-     * For the non lost updates, strict message ordering is guaranteed to be the same of submission
-     *
-     * @param subscriber Java Flow compliant subscriber
-     * @param bufferSize How many elements can be buffered in the best effort subscriber. <b>Positive</b> values only
-     * @throws IllegalArgumentException if {@code bufferSize} is not positive
-     * @throws NullPointerException if any of the arguments is null
-     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
-     * NOTE: this overload generates NON REPLAYABLE subscriptions
-     */
-    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize) {
-        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
-                                                  .setBufferSize(bufferSize)
-                                                  .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
-                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                                                  .setSubscriberName(UUID.randomUUID().toString())
-                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
-                                                  .build(), subscriber);
+        return subscribe(subscriber, Flow.defaultBufferSize(), subscriptionName);
     }
 
     /**
@@ -238,166 +203,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                            String subscriberName) {
         return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
                                                   .setBufferSize(bufferSize)
-                                                  .setBackpressureTimeout(BEST_EFFORT_SUBSCRIPTION)
-                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
                                                   .setSubscriberName(subscriberName)
-                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
-                                                  .build(), subscriber);
-    }
-
-    /**
-     + Registers a producer slowdown subscriber. Submissions towards this subscriber will be marked as completed only
-     * when the message has been actually delivered or on error, allowing the producer to slow down the production rate.
-     * Strict message ordering is guaranteed to be the same of submission
-     *
-     * @param subscriber Java Flow compliant subscriber
-     * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
-     *                                 before signaling an error
-     * @param asyncBackpressurer the executor to use for async delivery, supporting creation of at least one independent
-     *                           thread
-     * @throws IllegalArgumentException if duration is not bigger than zero
-     * @throws NullPointerException if any of the arguments is null
-     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
-     * NOTE: this overload generates NON REPLAYABLE subscriptions
-     */
-    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, Executor asyncBackpressurer,
-                                           Duration backpressureErrorTimeout) {
-        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
-                                                  .setBufferSize(Flow.defaultBufferSize())
-                                                  .setBackpressureTimeout(backpressureErrorTimeout)
-                                                  .setAsyncBackpressurer(asyncBackpressurer)
-                                                  .setSubscriberName(UUID.randomUUID().toString())
-                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
-                                                  .build(), subscriber);
-    }
-
-    /**
-     + Registers a producer slowdown subscriber. Submissions towards this subscriber will be marked as completed only
-     * when the message has been actually delivered or on error, allowing the producer to slow down the production rate.
-     * Strict message ordering is guaranteed to be the same of submission
-     *
-     * @param subscriber Java Flow compliant subscriber
-     * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
-     *                                 before signaling an error
-     * @throws IllegalArgumentException if duration is not bigger than zero
-     * @throws NullPointerException if any of the arguments is null
-     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
-     * NOTE: this overload generates NON REPLAYABLE subscriptions
-     */
-    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
-                                           Duration backpressureErrorTimeout) {
-        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
-                                                  .setBufferSize(Flow.defaultBufferSize())
-                                                  .setBackpressureTimeout(backpressureErrorTimeout)
-                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                                                  .setSubscriberName(UUID.randomUUID().toString())
-                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
-                                                  .build(), subscriber);
-    }
-
-    /**
-     + Registers a producer slowdown subscriber. Submissions towards this subscriber will be marked as completed only
-     * when the message has been actually delivered or on error, allowing the producer to slow down the production rate.
-     * Strict message ordering is guaranteed to be the same of submission
-     *
-     * @param subscriber     Java Flow compliant subscriber
-     * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
-     *                                 before signaling an error
-     * @param subscriberName This name must be unique and if deterministic it allows cold replay
-     * @throws IllegalArgumentException if duration is not bigger than zero
-     * @throws NullPointerException if any of the arguments is null
-     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
-     */
-    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
-                                           Duration backpressureErrorTimeout, String subscriberName) {
-        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
-                                                  .setBufferSize(Flow.defaultBufferSize())
-                                                  .setBackpressureTimeout(backpressureErrorTimeout)
-                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                                                  .setSubscriberName(subscriberName)
-                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
-                                                  .build(), subscriber);
-    }
-
-    /**
-     + Registers a producer slowdown subscriber. Submissions towards this subscriber will be marked as completed only
-     * when the message has been actually delivered or on error, allowing the producer to slow down the production rate.
-     * Strict message ordering is guaranteed to be the same of submission
-     *
-     * @param subscriber     Java Flow compliant subscriber
-     * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
-     *                                 before signaling an error
-     * @param asyncBackpressurer the executor to use for async delivery, supporting creation of at least one independent
-     *                           thread
-     * @param subscriberName This name must be unique and if deterministic it allows cold replay
-     * @throws IllegalArgumentException if duration is not bigger than zero
-     * @throws NullPointerException if any of the arguments is null
-     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
-     */
-    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber,
-                                           Duration backpressureErrorTimeout, Executor asyncBackpressurer,
-                                           String subscriberName) {
-        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
-                                                  .setBufferSize(Flow.defaultBufferSize())
-                                                  .setBackpressureTimeout(backpressureErrorTimeout)
-                                                  .setAsyncBackpressurer(asyncBackpressurer)
-                                                  .setSubscriberName(subscriberName)
-                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
-                                                  .build(), subscriber);
-    }
-
-    /**
-     + Registers a producer slowdown subscriber. Submissions towards this subscriber will be marked as completed only
-     * when the message has been actually delivered or on error, allowing the producer to slow down the production rate.
-     * Strict message ordering is guaranteed to be the same of submission
-     *
-     * @param subscriber Java Flow compliant subscriber
-     * @param bufferSize How many elements can be buffered in the best
-     *                   effort subscriber
-     * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
-     *                                 before signaling an error
-     * @throws IllegalArgumentException if duration is not bigger than zero
-     * @throws IllegalArgumentException if {@code bufferSize} is not positive
-     * @throws NullPointerException if any of the arguments is null
-     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
-     * NOTE: this overload generates NON REPLAYABLE subscriptions
-     */
-    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
-                                           Duration backpressureErrorTimeout) {
-        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
-                                                  .setBufferSize(bufferSize)
-                                                  .setBackpressureTimeout(backpressureErrorTimeout)
-                                                  .setAsyncBackpressurer(ForkJoinPool.commonPool())
-                                                  .setSubscriberName(UUID.randomUUID().toString())
-                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
-                                                  .build(), subscriber);
-    }
-
-    /**
-     + Registers a producer slowdown subscriber. Submissions towards this subscriber will be marked as completed only
-     * when the message has been actually delivered or on error, allowing the producer to slow down the production rate.
-     * Strict message ordering is guaranteed to be the same of submission
-     *
-     * @param subscriber Java {@link Flow} compliant subscriber
-     * @param bufferSize How many elements can be buffered in the best effort subscriber. <b>Positive</b> values only
-     * @param asyncBackpressurer the executor to use for async delivery, supporting creation of at least one independent
-     *                           thread
-     * @param backpressureErrorTimeout the subscriber will try to deliver the message for at max this amount of time
-     *                                 before signaling an error
-     * @throws IllegalArgumentException if duration is not bigger than zero
-     * @throws IllegalArgumentException if {@code bufferSize} is not positive
-     * @throws NullPointerException if any of the arguments is null
-     * @return A {@link CompletionStage} that is going to be complete when the subscription is complete
-     * NOTE: this overload generates NON REPLAYABLE subscriptions
-     */
-    public CompletionStage<Void> subscribe(Flow.Subscriber<? super PayloadT> subscriber, int bufferSize,
-                                           Executor asyncBackpressurer, Duration backpressureErrorTimeout) {
-        return subscribe(ReActedSubscriptionConfig.<PayloadT>newBuilder()
-                                                  .setBufferSize(bufferSize)
-                                                  .setBackpressureTimeout(backpressureErrorTimeout)
-                                                  .setAsyncBackpressurer(asyncBackpressurer)
-                                                  .setSubscriberName(UUID.randomUUID().toString())
-                                                  .setSequencer(ReActedSubscriptionConfig.NO_CUSTOM_SEQUENCER)
                                                   .build(), subscriber);
     }
 
@@ -506,55 +312,27 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     public static final class ReActedSubscriptionConfig<PayloadT> {
-        @Nullable
-        public static final ThreadPoolExecutor NO_CUSTOM_SEQUENCER = null;
         private final int bufferSize;
-        private final Duration backpressureTimeout;
-        private final Executor asyncBackpressurer;
         private final String subscriberName;
-        @Nullable
-        private final ThreadPoolExecutor sequencer;
 
         private ReActedSubscriptionConfig(Builder<PayloadT> builder) {
             this.bufferSize = ObjectUtils.requiredInRange(builder.bufferSize, 1, Integer.MAX_VALUE,
                                                           () -> new IllegalArgumentException("Invalid subscription buffer size"));
-            this.backpressureTimeout = ObjectUtils.requiredCondition(Objects.requireNonNull(builder.backpressureTimeout),
-                                                                     timeout -> timeout.compareTo(RELIABLE_SUBSCRIPTION) <= 0 &&
-                                                                                !timeout.isNegative(),
-                                                                     () -> new IllegalArgumentException("Invalid backpressure timeout"));
-            this.asyncBackpressurer = Objects.requireNonNull(builder.asyncBackpressurer,
-                                                             "Async backpressurer cannot be null");
+
             this.subscriberName = Objects.requireNonNull(builder.subscriberName,
                                                          "Subscriber name cannot be null");
-            this.sequencer = builder.sequencer != null
-                             ? ObjectUtils.requiredCondition(builder.sequencer,
-                                                             sequencePool -> sequencePool.getMaximumPoolSize() == 1,
-                                                             () -> new IllegalArgumentException("Invalid sequencer pool size"))
-                             : null;
         }
 
         public int getBufferSize() { return bufferSize; }
 
-        public Duration getBackpressureTimeout() { return backpressureTimeout; }
-
-        public Executor getAsyncBackpressurer() { return asyncBackpressurer; }
-
         public String getSubscriberName() { return subscriberName; }
-
-        @Nullable
-        public ThreadPoolExecutor getSequencer() { return sequencer; }
 
         public static <PayloadT> Builder<PayloadT> newBuilder() { return new Builder<>(); }
 
         @SuppressWarnings("NotNullFieldNotInitialized")
         public static class Builder<PayloadT> {
             private int bufferSize = Flow.defaultBufferSize();
-            private Duration backpressureTimeout = BEST_EFFORT_SUBSCRIPTION;
-            private Executor asyncBackpressurer = ForkJoinPool.commonPool();
             private String subscriberName;
-            @Nullable
-            private ThreadPoolExecutor sequencer = NO_CUSTOM_SEQUENCER;
-
             private Builder() { }
 
             /**
@@ -568,33 +346,6 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                 this.bufferSize = bufferSize;
                 return this;
             }
-
-            /**
-             *
-             * @param backpressureTimeout At most this timeout will be waited while attempting a delivery. Once this
-             *                            timeout is expired, the message is dropped.
-             *                            {@link ReactedSubmissionPublisher#BEST_EFFORT_SUBSCRIPTION} for best effort subscriptions.
-             *                            If the submission buffer is full, the new messages will be discarded
-             *                            {@link ReactedSubmissionPublisher#RELIABLE_SUBSCRIPTION} for subscriptions where
-             *                            no message can be lost. Publisher will wait indefinitely.
-             * @return this builder
-             */
-            public final Builder<PayloadT> setBackpressureTimeout(Duration backpressureTimeout) {
-                this.backpressureTimeout = backpressureTimeout;
-                return this;
-            }
-
-            /**
-             *
-             * @param asyncBackpressurer the executor to use for async delivery, supporting creation of at least one
-             *                           independent thread
-             * @return this builder
-             */
-            public final Builder<PayloadT> setAsyncBackpressurer(Executor asyncBackpressurer) {
-                this.asyncBackpressurer = asyncBackpressurer;
-                return this;
-            }
-
             /**
              *
              * @param subscriberName This name must be unique and if deterministic it allows <b>replay</b>
@@ -602,17 +353,6 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
              */
             public final Builder<PayloadT> setSubscriberName(String subscriberName) {
                 this.subscriberName = subscriberName;
-                return this;
-            }
-
-            /**
-             *
-             * @param sequencer An optional *single* thread for asynchronously attempting the submission tasks. If not specified
-             *                  a new thread will be automatically created for this
-             * @return this builder
-             */
-            public final Builder<PayloadT> setSequencer(@Nullable ThreadPoolExecutor sequencer) {
-                this.sequencer = sequencer;
                 return this;
             }
 

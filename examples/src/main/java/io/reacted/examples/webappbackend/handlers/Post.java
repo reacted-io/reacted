@@ -21,7 +21,6 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.examples.webappbackend.Backend;
 import io.reacted.examples.webappbackend.db.StorageMessages;
-import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
@@ -31,8 +30,6 @@ import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
@@ -68,12 +65,8 @@ public class Post implements ReActor {
                             .setReActorName(requestId)
                             .setMailBoxProvider(raCtx -> BackpressuringMbox.newBuilder()
                                                                            .setRealMailboxOwner(raCtx)
-                                                                           .setAsyncBackpressurer(ioAsyncExecutor)
-                                                                           .setBufferSize(1)
                                                                            .setRequestOnStartup(1)
                                                                            .setRealMbox(new BasicMbox())
-                                                                           .setBackpressureTimeout(BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT)
-                                                                           .setNonDelayable(Set.of(ReActorInit.class))
                                                                            .build())
                             .build();
     }
@@ -151,7 +144,7 @@ public class Post implements ReActor {
         var nextSend = raCtx.selfTell(nextMsg);
         return nextMsg.getClass() != DataChunksCompleted.class
                 ? nextSend
-                : DeliveryStatus.BACKPRESSURED;
+                : DeliveryStatus.BACKPRESSURE_REQUIRED;
     }
     private static Serializable getNextDataChunk(BufferedReader requestStream) {
         return Try.of(requestStream::readLine)

@@ -85,7 +85,6 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      * @throws io.reacted.core.exceptions.DeliveryException
      */
     public abstract DeliveryStatus sendMessage(ReActorContext destination, Message message);
-    public abstract CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message);
     public ConfigT getDriverConfig() { return driverConfig; }
 
     /**
