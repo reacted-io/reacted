@@ -103,9 +103,10 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
         // Constantly refresh the gates. The idea is to automatically discover new available operators
         this.operatorsRefreshTask = raCtx.getReActorSystem()
             .getSystemSchedulingService()
-            .scheduleWithFixedDelay(() -> ReActedUtils.ifNotDelivered(raCtx.selfTell(new RefreshOperatorRequest()),
-                                                                      error -> raCtx.logError("Unable to request refresh of operator outputs",
-                                                                                              error)),
+            .scheduleWithFixedDelay(() -> {
+                if (!raCtx.selfTell(new RefreshOperatorRequest()).isSent()) {
+                    raCtx.logError("Unable to request refresh of operator outputs");
+                }},
                                     0, operatorCfg.getOutputOperatorsRefreshPeriod()
                                                   .toNanos(), TimeUnit.NANOSECONDS);
     }
@@ -162,7 +163,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
             .thenAccept(lastDelivery -> raCtx.getMbox().request(1));
     }
 
-    protected CompletionStage<Try<DeliveryStatus>>
+    protected CompletionStage<DeliveryStatus>
     propagate(CompletionStage<Collection<? extends Serializable>> operatorOutput,
               Serializable inputMessage, ReActorContext raCtx) {
         Consumer<Throwable> onDeliveryError = error -> onFailedDelivery(error, raCtx, inputMessage);
@@ -171,7 +172,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                                                                                                                                     msgToDst.getValue(),
                                                                                                                                     raCtx, msgToDst.getKey()))
                                                                                                 .reduce((first, second) -> ReActedUtils.composeDeliveries(first, second, onDeliveryError))
-                                                                                                .orElse(CompletableFuture.completedStage(Try.ofSuccess(DeliveryStatus.DELIVERED))));
+                                                                                                .orElse(CompletableFuture.completedStage(DeliveryStatus.DELIVERED)));
     }
     protected Map<Collection<ReActorRef>, ? extends Collection<? extends Serializable>>
     routeOutputMessageAfterFiltering(Collection<? extends Serializable> outputMessages) {
@@ -181,7 +182,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                                                                 ? ifPredicateOutputOperatorsRefs
                                                                 : thenElseOutputOperatorsRefs));
     }
-    protected CompletionStage<Try<DeliveryStatus>>
+    protected CompletionStage<DeliveryStatus>
     forwardToOperators(Consumer<Throwable> onDeliveryError,
                        Collection<? extends Serializable> messages,
                        ReActorContext raCtx, Collection<ReActorRef> nextStages) {
@@ -189,7 +190,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                        .flatMap(output -> nextStages.stream()
                                                     .map(dst -> dst.atell(raCtx.getSelf(), output)))
                        .reduce((first, second) -> composeDeliveries(first, second, onDeliveryError))
-                       .orElseGet(() -> CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED)));
+                       .orElseGet(() -> CompletableFuture.completedFuture(DeliveryStatus.DELIVERED));
     }
     @SuppressWarnings("SameReturnValue")
     protected  <InputT extends Serializable>

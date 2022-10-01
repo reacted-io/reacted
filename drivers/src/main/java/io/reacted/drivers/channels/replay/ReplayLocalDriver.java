@@ -80,12 +80,12 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
             spawnedReActors.add(message.getDestination().getReActorId());
             spawnedReActors.add(message.getSender().getReActorId());
         }
-        return DeliveryStatus.DELIVERED;
+        return DeliveryStatus.SENT;
     }
 
     @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(Try.of(() -> sendMessage(destination, message)));
+    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
+        return CompletableFuture.completedFuture(sendMessage(destination, message));
     }
 
     @Override
@@ -106,9 +106,9 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
                                                 .orElse(null);
             if (nextMessage == null) {
                 pauser.pause();
-                pauser.reset();
                 continue;
             }
+            pauser.reset();
             if (!isForLocalReActorSystem(localReActorSystem, nextMessage)) {
                 continue;
             }
@@ -117,7 +117,6 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
             if (payload instanceof EventExecutionAttempt executionAttempt) {
                 while (!isTargetReactorAlreadySpawned(nextMessage)) {
                     pauser.pause();
-                    pauser.reset();
                 }
 
                 var message = dstToMessageBySeqNum.getOrDefault(executionAttempt.getReActorId(),
@@ -129,11 +128,10 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
                     LOGGER.error("Unable to delivery message {} for ReActor {}",
                                  message, executionAttempt.getReActorId(), new IllegalStateException());
                 } else {
-                    forwardMessageToLocalActor(destinationCtx, message)
-                        .toCompletableFuture()
-                        .join()
-                        .ifError(deliveryError -> LOGGER.error("Unable to delivery message {} for ReActor {}",
-                                                               message, executionAttempt.getReActorId(), deliveryError));
+                    if ( !syncForwardMessageToLocalActor(destinationCtx, message).isDelivered()) {
+                         LOGGER.error("Unable to delivery message {} for ReActor {}",
+                                     message, executionAttempt.getReActorId());
+                    }
                 }
             } else {
                 dstToMessageBySeqNum.computeIfAbsent(nextMessage.getDestination().getReActorId(),

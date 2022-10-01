@@ -107,8 +107,7 @@ public class Get implements ReActor {
 
     private void retrieveEntry(ReActorContext raCtx, String key, ReActorRef dbGate) {
         dbGate.ask(new StorageMessages.QueryRequest(key), StorageMessages.QueryReply.class, raCtx.getSelf().getReActorId().toString())
-              .thenComposeAsync(queryReply -> sendReplyMessage(queryReply.map(StorageMessages.QueryReply::getPayload)
-                                                                         .orElseGet(Throwable::getMessage)),
+              .thenComposeAsync(queryReply -> sendReplyMessage(queryReply.getPayload()),
                                 asyncService)
               .thenAccept(sendReturn -> { sendReturn.ifError(error -> raCtx.logError("Unable to send back reply", error));
                                           raCtx.stop(); });

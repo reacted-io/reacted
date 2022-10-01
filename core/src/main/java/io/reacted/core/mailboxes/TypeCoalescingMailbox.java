@@ -32,7 +32,7 @@ public class TypeCoalescingMailbox implements MailBox {
     private final Deque<Class<? extends Serializable>> lastAdded;
 
     public TypeCoalescingMailbox() {
-        this.latestByPayloadType = new HashMap<>(100, 0.5f);
+        this.latestByPayloadType = new HashMap<>();
         this.pendingUpdatedTypes = ConcurrentHashMap.newKeySet(100);
         this.lastAdded = new LinkedBlockingDeque<>();
     }
@@ -72,11 +72,5 @@ public class TypeCoalescingMailbox implements MailBox {
             }
         }
         return DeliveryStatus.DELIVERED;
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
-        return CompletableFuture.completedFuture(Try.of(() -> deliver(message)));
     }
 }

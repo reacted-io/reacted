@@ -10,6 +10,7 @@ package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -42,6 +43,8 @@ import java.util.Properties;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
@@ -49,6 +52,8 @@ import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<ServiceCfgBuilderT, ServiceCfgT>,
                      ServiceCfgT extends ReActorServiceConfig<ServiceCfgBuilderT, ServiceCfgT>>
     implements ReActiveEntity {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Service.class);
     private static final String ROUTEE_SPAWN_ERROR = "Unable to spawn routee";
     private static final String NO_ROUTEE_FOR_SPECIFIED_ROUTER = "No routee found for router %s";
     private static final String REACTOR_SERVICE_NAME_FORMAT = "[%s-%s-%d]";
@@ -190,13 +195,12 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         }
     }
 
-    private CompletionStage<Try<DeliveryStatus>> routeMessage(ReActorContext raCtx,
-                                                              Serializable newMessage) {
+    private DeliveryStatus routeMessage(ReActorContext raCtx,
+                                        Serializable newMessage) {
         ReActorRef routee = selectRoutee(raCtx, ++msgReceived, newMessage);
         return routee != null
                ? routee.route(raCtx.getSender(), newMessage)
-               : CompletableFuture.completedStage(Try.ofFailure(new IllegalStateException(String.format(NO_ROUTEE_FOR_SPECIFIED_ROUTER,
-                                                                                                        serviceConfig.getReActorName()))));
+               : DeliveryStatus.NOT_DELIVERED;
     }
 
     @Nullable
@@ -242,14 +246,14 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
             return;
         }
 
-        ifNotDelivered(sendPublicationRequest(raCtx, serviceInfo),
-                       error -> raCtx.logError("Unable to refresh service info {}",
-                                               serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME),
-                                               error));
+        if (!sendPublicationRequest(raCtx, serviceInfo).isSent()) {
+            raCtx.logError("Unable to refresh service info {}",
+                           serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME));
+        }
     }
 
-    private static CompletionStage<Try<DeliveryStatus>> sendPublicationRequest(ReActorContext raCtx,
-                                                                               Properties serviceInfo) {
+    private static DeliveryStatus sendPublicationRequest(ReActorContext raCtx,
+                                                         Properties serviceInfo) {
         return raCtx.getReActorSystem()
                     .getSystemRemotingRoot()
                     .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), serviceInfo));
@@ -257,10 +261,9 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
 
     private static <PayloadT extends Serializable>
     void requestNextMessage(ReActorContext raCtx, PayloadT payload,
-                            BiFunction<ReActorContext, PayloadT, CompletionStage<Try<DeliveryStatus>>> realCall) {
-        ifNotDelivered(realCall.apply(raCtx, payload),
-                       error -> raCtx.logError("Service Message delivery failure ", error))
-            .thenAccept(delivered -> raCtx.getMbox().request(1));
+                            BiFunction<ReActorContext, PayloadT, DeliveryStatus> realCall) {
+        realCall.apply(raCtx, payload);
+        raCtx.getMbox().request(1);
     }
 
     //Messages required for the Service management logic cannot be backpressured

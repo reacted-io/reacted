@@ -76,19 +76,17 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     }
 
     @Override
-    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
-
-    @Override
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
     public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
-        return sendMessage(Objects.requireNonNull(chronicle)
+        return sendMessage(getLocalReActorSystem(),
+                           Objects.requireNonNull(chronicle)
                                   .acquireAppender(), getDriverConfig().getTopic(), message);
     }
 
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {
-        Pauser readPauser = Pauser.millis(100, 500);
+        Pauser readPauser = Pauser.balanced();
 
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
 
@@ -97,6 +95,7 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
                 if (docCtx.isPresent()) {
                     newMessage = docCtx.wire().read(getDriverConfig().getTopic())
                                        .object(Message.class);
+                    readPauser.reset();
                 }
             } catch (Exception anyException) {
                 getLocalReActorSystem().logError("Unable to properly decode message", anyException);
@@ -104,19 +103,21 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
 
             if (newMessage == null) {
                 readPauser.pause();
-                readPauser.reset();
                 continue;
             }
 
             offerMessage(newMessage);
         }
     }
-    private static DeliveryStatus sendMessage(ExcerptAppender cqAppender, WireKey topic,  Message message) {
+    private static DeliveryStatus sendMessage(ReActorSystem localReActorSystem,
+                                              ExcerptAppender cqAppender, WireKey topic,  Message message) {
         try {
             cqAppender.writeMessage(topic, message);
-            return DeliveryStatus.DELIVERED;
-        } catch (Exception anyException) {
-            throw new DeliveryException(anyException);
+            return DeliveryStatus.SENT;
+        } catch (Exception sendErrpr) {
+            localReActorSystem.logError("Error sending message {}", message.toString(),
+                                        sendErrpr);
+            return DeliveryStatus.NOT_SENT;
         }
     }
 }

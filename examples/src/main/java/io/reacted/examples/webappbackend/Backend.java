@@ -35,7 +35,6 @@ public class Backend {
                                                   .setChronicleFilesDir("/tmp/replayable_server")
                                                   .setChannelName("LocalChannel")
                                                   .setTopicName("TestSession")
-                                                  .setChannelRequiresDeliveryAck(true)
                                                   .build();
         var localDriver = IS_REPLAY
                           ? new ReplayLocalDriver(chronicleDriverConfig)

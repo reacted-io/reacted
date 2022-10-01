@@ -23,7 +23,7 @@ public final class SerializationUtils {
 
     private SerializationUtils() { /* No Implementation required */ }
 
-    public static Try<Long> getFieldOffset(Class<? extends Serializable> messageClass, String fieldName) {
+    public static Try<Long> getFieldOffset(Class<?> messageClass, String fieldName) {
         return Try.of(() -> UNSAFE.objectFieldOffset(messageClass.getDeclaredField(fieldName)));
     }
 

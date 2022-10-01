@@ -45,8 +45,6 @@ public class BackpressuringMbox implements MailBox {
     public static final Duration BEST_EFFORT_TIMEOUT = Duration.ZERO;
     public static final Duration RELIABLE_DELIVERY_TIMEOUT = Duration.ofNanos(Long.MAX_VALUE);
     public static final int DEFAULT_MESSAGES_REQUESTED_ON_STARTUP = 1;
-    private static final Try<DeliveryStatus> BACKPRESSURED = Try.ofSuccess(DeliveryStatus.BACKPRESSURED);
-    private static final Try<DeliveryStatus> DELIVERED = Try.ofSuccess(DeliveryStatus.DELIVERED);
     private static final Logger LOGGER = LoggerFactory.getLogger(BackpressuringMbox.class);
     private final Duration backpressureTimeout;
     private final MailBox realMbox;
@@ -156,16 +154,23 @@ public class BackpressuringMbox implements MailBox {
 
     @Nonnull
     @Override
-    public DeliveryStatus deliver(Message message) { return realMbox.deliver(message); }
+    public DeliveryStatus deliver(Message message) {
+        return realMbox.deliver(message);
+    }
 
     @Nonnull
     @Override
-    public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
+    public CompletionStage<DeliveryStatus> asyncDeliver(Message message) {
         var payloadType = message.getPayload().getClass();
         if (shouldNotBeDelayed(payloadType)) {
-            return CompletableFuture.completedFuture(Try.of(() -> deliver(message)));
+            try {
+                DeliveryStatus deliveryStatus = deliver(message);
+                return CompletableFuture.completedStage(deliveryStatus);
+            } catch (Exception anyError) {
+                return CompletableFuture.failedStage(anyError);
+            }
         }
-        CompletableFuture<Try<DeliveryStatus>> trigger = new CompletableFuture<>();
+        CompletableFuture<DeliveryStatus> trigger = new CompletableFuture<>();
         if (isBestEffort(backpressureTimeout) && canBeBackPressured(payloadType)) {
             //It's never going to stop this one
             reliableDelivery(message, backpressureTimeout, trigger);
@@ -176,7 +181,7 @@ public class BackpressuringMbox implements MailBox {
                                                                   ? RELIABLE_DELIVERY_TIMEOUT
                                                                   : backpressureTimeout, trigger));
             } catch (Exception anyException) {
-                trigger.complete(Try.ofFailure(anyException));
+                trigger.completeExceptionally(anyException);
             }
         }
         return trigger;
@@ -209,18 +214,18 @@ public class BackpressuringMbox implements MailBox {
      * in the mailbox
      */
     private void reliableDelivery(Message message, Duration backpressureTimeout,
-                                  CompletableFuture<Try<DeliveryStatus>> trigger) {
+                                  CompletableFuture<DeliveryStatus> trigger) {
         try {
             var waitTime = backpressurer.offer(new DeliveryRequest(message, trigger),
                                                backpressureTimeout.toNanos(), TimeUnit.NANOSECONDS,
                                                BackpressuringMbox::onBackPressure);
             if (waitTime < 0) {
-                trigger.complete(BACKPRESSURED);
+                trigger.complete(DeliveryStatus.BACKPRESSURED);
             } else {
-                trigger.complete(DELIVERED);
+                trigger.complete(DeliveryStatus.DELIVERED);
             }
         } catch (Exception anyException) {
-           trigger.complete(Try.ofFailure(anyException));
+           trigger.completeExceptionally(anyException);
         }
     }
 
@@ -243,15 +248,15 @@ public class BackpressuringMbox implements MailBox {
     @SuppressWarnings("SameReturnValue")
     private static boolean onBackPressure(Flow.Subscriber<? super DeliveryRequest> subscriber,
                                           DeliveryRequest request) {
-        request.pendingTrigger.complete(Try.ofSuccess(DeliveryStatus.BACKPRESSURED));
+        request.pendingTrigger.complete(DeliveryStatus.BACKPRESSURED);
         return false;
     }
 
     static class DeliveryRequest {
         final Message deliveryPayload;
-        final CompletableFuture<Try<DeliveryStatus>> pendingTrigger;
+        final CompletableFuture<DeliveryStatus> pendingTrigger;
 
-        private DeliveryRequest(Message deliveryPayload, CompletableFuture<Try<DeliveryStatus>> pendingTrigger) {
+        private DeliveryRequest(Message deliveryPayload, CompletableFuture<DeliveryStatus> pendingTrigger) {
             this.deliveryPayload = deliveryPayload;
             this.pendingTrigger = pendingTrigger;
         }

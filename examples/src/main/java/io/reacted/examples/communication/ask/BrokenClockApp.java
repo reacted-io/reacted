@@ -32,8 +32,7 @@ public class BrokenClockApp {
                                                            .orElseSneakyThrow();
         //Note: we do not need another reactor to intercept the answer
         brokenReactiveClock.ask(new TimeRequest(), Instant.class, Duration.ofSeconds(2), "What's the time?")
-                           .thenApply(timeReply -> timeReply.map(instant -> "Wow, unexpected")
-                                                            .orElse("Clock did not reply as expected"))
+                           .handle((timeReply,error) -> error == null ? "Wow, unexpected" : "Clock did not reply as expected")
                            .thenAccept(System.out::println)
                            .thenAccept(nullValue -> reActorSystem.shutDown());
     }

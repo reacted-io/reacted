@@ -38,8 +38,8 @@ final class MongoSubscribers {
         @Override
         public void onNext(Document item) {
             requester.tell(mongoGate, new StorageMessages.QueryReply(item.get(DatabaseService.PAYLOAD_FIELD)
-                                                                         .toString()))
-                     .thenAccept(delivery -> subscription.request(1));
+                                                                         .toString()));
+            subscription.request(1);
         }
 
         @Override

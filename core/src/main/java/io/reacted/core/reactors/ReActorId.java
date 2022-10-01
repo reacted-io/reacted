@@ -84,15 +84,14 @@ public final class ReActorId implements Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeLong(getReActorUUID().getMostSignificantBits());
-        out.writeLong(getReActorUUID().getLeastSignificantBits());
+        out.writeObject(getReActorUUID());
         out.writeObject(reActorName);
         out.writeInt(hashCode);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        setReActorUUID(new UUID(in.readLong(), in.readLong()));
+        setReActorUUID((UUID)in.readObject());
         setReActorName((String)in.readObject());
         setHashCode(in.readInt());
     }

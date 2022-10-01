@@ -88,8 +88,11 @@ public class ServiceOperator extends FlowOperator<Builder,
                       .ifPresent(mbox -> mbox.addNonDelayedMessageTypes(Set.of(RefreshServiceRequest.class)));
     this.serviceRefreshTask = raCtx.getReActorSystem()
          .getSystemSchedulingService()
-         .scheduleWithFixedDelay(() -> ReActedUtils.ifNotDelivered(raCtx.selfTell(new RefreshServiceRequest()),
-                                                                   error -> raCtx.logError("Unable to request refresh of service operators")),
+         .scheduleWithFixedDelay(() -> {
+                                   if (!raCtx.selfTell(new RefreshServiceRequest()).isSent()) {
+                                       raCtx.logError("Unable to request refresh of service operators");
+                                   }
+                                 },
                                  0, getOperatorCfg().getServiceRefreshPeriod()
                                                     .toNanos(), TimeUnit.NANOSECONDS);
   }

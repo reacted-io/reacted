@@ -294,11 +294,10 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                 ? createPathIfRequired(asyncClient, CreateMode.PERSISTENT,
                                                                        REACTOR_SYSTEMS_GATES_PATH, NO_PAYLOAD)
                                                 : CompletableFuture.completedFuture(false))
-                  .thenCompose(isPathCreated -> (isPathCreated
+                  .thenApply(isPathCreated -> (isPathCreated
                                                  ?  raCtx.selfTell(new ZooKeeperRootPathsCreated())
                                                  :  CompletableFuture.completedStage(raCtx.rescheduleMessage(init,
-                                                                                                             getConfig().getReconnectionDelay())))
-                                                                     .thenAccept(n -> {}));
+                                                                                                             getConfig().getReconnectionDelay()))));
     }
 
     private void onRootPathsCreated(ReActorContext raCtx, ZooKeeperRootPathsCreated created) {
@@ -350,17 +349,17 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                   .map(reActorSystemInstanceMarker::equals)
                   .orElse(false);
     }
-    private CompletionStage<Try<DeliveryStatus>> setupServiceDiscovery(ReActorContext raCtx) {
+    private CompletionStage<DeliveryStatus> setupServiceDiscovery(ReActorContext raCtx) {
         return runAsync(() -> ServiceDiscoveryBuilder.builder(ServicePublicationRequest.class)
                                                      .basePath(SERVICES_PATH)
                                                      .client(Objects.requireNonNull(asyncClient).unwrap())
                                                      .build())
                         .thenAccept(serviceDiscovery -> this.serviceDiscovery = serviceDiscovery)
-                        .thenCompose(noVal -> raCtx.getReActorSystem()
-                                                   .getSystemRemotingRoot()
-                                                   .tell(raCtx.getSelf(), new RegistryDriverInitComplete()));
+                        .thenApply(noVal -> raCtx.getReActorSystem()
+                                                 .getSystemRemotingRoot()
+                                                 .tell(raCtx.getSelf(), new RegistryDriverInitComplete()));
     }
-    private static CompletionStage<Try<DeliveryStatus>> onDuplicateReactorSystem(ReActorContext raCtx) {
+    private static DeliveryStatus onDuplicateReactorSystem(ReActorContext raCtx) {
         return raCtx.getReActorSystem()
                     .getSystemRemotingRoot()
                     .tell(raCtx.getSelf(), new DuplicatedPublicationError());
@@ -419,74 +418,73 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                           .exceptionally(error -> false);
     }
     private static TreeCacheListener getTreeListener(ReActorSystem reActorSystem, ReActorRef driverReActor) {
-        return (curatorFramework, treeCacheEvent) ->
-                ifNotDelivered(cacheEventsRouter(curatorFramework, treeCacheEvent, reActorSystem, driverReActor),
-                              error -> reActorSystem.logError("Error handling zookeeper event {}",
-                                                              treeCacheEvent.toString(), error));
+        return (curatorFramework, treeCacheEvent) -> {
+            DeliveryStatus deliveryStatus = cacheEventsRouter(curatorFramework, treeCacheEvent, reActorSystem, driverReActor);
+            if (!deliveryStatus.isSent()) {
+                reActorSystem.logError("Error handling zookeeper event {} {}" ,
+                                       treeCacheEvent.toString(), deliveryStatus);
+            }
+        };
     }
 
-    private static CompletionStage<Try<DeliveryStatus>>
+    private static DeliveryStatus
     cacheEventsRouter(CuratorFramework curatorFramework, TreeCacheEvent treeCacheEvent, ReActorSystem reActorSystem,
                       ReActorRef driverReActor) {
         //Lack of data? Ignore the update
         if (treeCacheEvent.getData() == null || treeCacheEvent.getData().getPath() == null) {
-            return CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
+            return DeliveryStatus.DELIVERED;
         }
 
-        CompletionStage<Try<DeliveryStatus>> handlingAction = CompletableFuture.failedFuture(new UnsupportedOperationException());
+        DeliveryStatus deliveryStatus = DeliveryStatus.NOT_DELIVERED;
         switch (treeCacheEvent.getType()) {
             case CONNECTION_SUSPENDED:
             case CONNECTION_LOST:
-            case INITIALIZED: handlingAction = CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
+            case INITIALIZED: deliveryStatus = DeliveryStatus.DELIVERED;
                               break;
-            case CONNECTION_RECONNECTED:  handlingAction = reActorSystem.getSystemRemotingRoot()
+            case CONNECTION_RECONNECTED:  deliveryStatus = reActorSystem.getSystemRemotingRoot()
                                                                         .tell(driverReActor, new RegistryDriverInitComplete());
                                           break;
             case NODE_ADDED:
-            case NODE_UPDATED: handlingAction = ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
+            case NODE_UPDATED: deliveryStatus = ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
                                                                ? ZooKeeperDriver.upsertGate(reActorSystem,
                                                                                             driverReActor,
                                                                                             treeCacheEvent.getData())
-                                                               : CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
+                                                               : DeliveryStatus.DELIVERED;
                                break;
-            case NODE_REMOVED: handlingAction = ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
+            case NODE_REMOVED: deliveryStatus = ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
                                                 ? ZooKeeperDriver.removeGate(reActorSystem, driverReActor,
                                                                              treeCacheEvent.getData())
-                                                : CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED));
+                                                : DeliveryStatus.DELIVERED;
         }
-        return handlingAction;
+        return deliveryStatus;
     }
 
-    private static CompletionStage<Try<DeliveryStatus>> removeGate(ReActorSystem reActorSystem, ReActorRef driverReActor,
-                                                                   ChildData childData) {
+    private static DeliveryStatus removeGate(ReActorSystem reActorSystem, ReActorRef driverReActor,
+                                             ChildData childData) {
         ZKPaths.PathAndNode reActorSystemNameAndChannelId = ZooKeeperDriver.getGateUpsertPath(childData.getPath());
         Optional<ChannelId> channelId = ChannelId.fromToString(reActorSystemNameAndChannelId.getNode());
-        CompletionStage<Try<DeliveryStatus>> onError;
-        onError = CompletableFuture.completedFuture(Try.ofFailure(new IllegalArgumentException("Unable to decode channel id from " +
-                                                                                               reActorSystemNameAndChannelId)));
+
         return channelId.map(channel -> reActorSystem.getSystemRemotingRoot()
                                                      .tell(driverReActor,
                                                            new RegistryGateRemoved(reActorSystemNameAndChannelId.getPath().substring(1),
                                                                                    channel)))
-                        .orElse(onError);
+                        .orElse(DeliveryStatus.NOT_DELIVERED);
     }
 
-    private static CompletionStage<Try<DeliveryStatus>> upsertGate(ReActorSystem reActorSystem, ReActorRef driverReActor,
-                                                                   ChildData nodeData) {
+    private static DeliveryStatus upsertGate(ReActorSystem reActorSystem, ReActorRef driverReActor,
+                                                              ChildData nodeData) {
         ZKPaths.PathAndNode reActorSystemNameAndChannelId = ZooKeeperDriver.getGateUpsertPath(nodeData.getPath());
         String reActorSystemName = reActorSystemNameAndChannelId.getPath().substring(1);
         Optional<ChannelId> channelId = ChannelId.fromToString(reActorSystemNameAndChannelId.getNode());
         Try<Properties> properties = Try.of(() -> ObjectUtils.fromBytes(nodeData.getData()));
-        CompletionStage<Try<DeliveryStatus>> onError;
-        onError = CompletableFuture.completedFuture(Try.ofFailure(new IllegalArgumentException("Unable to decode channel id from " +
-                                                                                               reActorSystemNameAndChannelId)));
+
         return channelId.map(channel -> properties.map(props -> reActorSystem.getSystemRemotingRoot()
                                                                              .tell(driverReActor,
                                                                                    new RegistryGateUpserted(reActorSystemName,
                                                                                                             channel,
                                                                                                             props)))
-                                                  .orElseGet(err -> CompletableFuture.completedFuture(Try.ofFailure(err))))
-                        .orElse(onError);
+                                                  .orElse(DeliveryStatus.NOT_DELIVERED))
+                        .orElse(DeliveryStatus.NOT_DELIVERED);
     }
 
     private static void onConnectionStateChange(ReActorContext raCtx, CuratorFramework curator,

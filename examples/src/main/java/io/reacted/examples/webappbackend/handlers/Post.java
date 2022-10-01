@@ -87,15 +87,16 @@ public class Post implements ReActor {
              .thenAccept(serviceDiscovery -> onDbServiceReply(raCtx, serviceDiscovery));
     }
 
-    private void onDbServiceReply(ReActorContext raCtx, Try<ServiceDiscoveryReply> reply) {
+    private void onDbServiceReply(ReActorContext raCtx, ServiceDiscoveryReply services) {
         raCtx.getMbox().request(1);
-        reply.filter(services -> !services.getServiceGates().isEmpty())
-             .map(services -> services.getServiceGates().iterator().next())
-             .mapOrElse(dbGate -> dbGate.tell(raCtx.getSelf(),
-                                              new StorageMessages.StoreRequest(String.valueOf(Instant.now()
-                                                                                                     .toEpochMilli()),
-                                                                               payloadBuilder.toString())),
-                        error -> raCtx.selfTell(new StorageMessages.StoreError(new RuntimeException("No database found"))));
+        if (!services.getServiceGates().isEmpty()) {
+            services.getServiceGates().iterator().next()
+                    .tell(raCtx.getSelf(),
+                          new StorageMessages.StoreRequest(String.valueOf(Instant.now().toEpochMilli()),
+                                                           payloadBuilder.toString()));
+        } else {
+            raCtx.selfTell(new StorageMessages.StoreError(new RuntimeException("No database found")));
+        }
     }
 
     private void onStoreReply(ReActorContext raCtx, StorageMessages.StoreReply storeReply) {
@@ -136,23 +137,21 @@ public class Post implements ReActor {
     private void readPostDataStream(ReActorContext raCtx) {
         var requestStream = Objects.requireNonNull(httpExchange).getRequestBody();
         var reader = new BufferedReader(new InputStreamReader(requestStream));
-        CompletionStage<Try<DeliveryStatus>> whileLoop;
-        whileLoop = AsyncUtils.asyncLoop(deliveryStatus -> sendTillAvailable(raCtx, reader),
-                                         Try.ofSuccess(DeliveryStatus.DELIVERED), Objects::nonNull, Try::ofFailure,
-                                         ioAsyncExecutor);
-        whileLoop.thenAccept(result -> Try.ofRunnable(reader::close)
-                                          .ifSuccessOrElse(noVal -> raCtx.logInfo("Stream closed"),
-                                                           error -> raCtx.logError("Error closing stream", error)));
+        CompletionStage<DeliveryStatus> whileLoop;
+        while (sendTillAvailable(raCtx, reader).isDelivered());
+        Try.ofRunnable(reader::close)
+           .ifSuccessOrElse(noVal -> raCtx.logInfo("Stream closed"),
+                            error -> raCtx.logError("Error closing stream", error));
     }
 
    @Nullable
-   private static CompletionStage<Try<DeliveryStatus>> sendTillAvailable(ReActorContext raCtx,
+   private static DeliveryStatus sendTillAvailable(ReActorContext raCtx,
                                                                          BufferedReader inputStream) {
         var nextMsg = getNextDataChunk(inputStream);
         var nextSend = raCtx.selfTell(nextMsg);
         return nextMsg.getClass() != DataChunksCompleted.class
                 ? nextSend
-                : nextSend.thenCompose(result -> CompletableFuture.completedFuture(null));
+                : DeliveryStatus.BACKPRESSURED;
     }
     private static Serializable getNextDataChunk(BufferedReader requestStream) {
         return Try.of(requestStream::readLine)

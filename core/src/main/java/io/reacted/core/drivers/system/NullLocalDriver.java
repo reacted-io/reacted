@@ -68,22 +68,19 @@ public class NullLocalDriver extends LocalDriver<NullLocalDriverConfig> {
 
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
-        return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
+    public <PayloadT extends Serializable> DeliveryStatus
+    route(ReActorRef src, ReActorRef dst, PayloadT message) {
+        return DeliveryStatus.NOT_DELIVERED;
     }
     @Override
     public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
-        throw new DeliveryException(new UnsupportedOperationException());
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(Try.of(() -> sendMessage(destination, message)));
+    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
+        return CompletableFuture.failedStage(new UnsupportedOperationException());
     }
-
-    @Override
-    public boolean channelRequiresDeliveryAck() { return false; }
 
     @Override
     public ChannelId getChannelId() { return channelId; }

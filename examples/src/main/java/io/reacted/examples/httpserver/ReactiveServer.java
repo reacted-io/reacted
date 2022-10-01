@@ -7,6 +7,7 @@ import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
@@ -291,8 +292,9 @@ public class ReactiveServer {
                 dataPublisher.close();
                 return;
             }
-            ifNotDelivered(raCtx.getParent().tell(raCtx.getSelf(), dataPublisher),
-                           error -> raCtx.getParent().tell(raCtx.getSelf(), new InternalError(error)));
+            if (!raCtx.getParent().tell(raCtx.getSelf(), dataPublisher).isDelivered()) {
+                raCtx.getParent().tell(raCtx.getSelf(), new InternalError(new DeliveryException()));
+            }
         }
 
         private void onStop(ReActorContext raCtx) {

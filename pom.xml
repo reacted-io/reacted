@@ -74,7 +74,7 @@
 
     <properties>
         <awaitility.version>4.0.3</awaitility.version>
-        <chronicle.queue.version>5.23ea33</chronicle.queue.version>
+        <chronicle.queue.version>5.23.35</chronicle.queue.version>
         <google.guava.version>31.1-jre</google.guava.version>
         <mockito.version>4.8.0</mockito.version>
         <junit.version>5.7.2</junit.version>

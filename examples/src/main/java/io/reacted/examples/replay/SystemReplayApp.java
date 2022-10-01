@@ -30,10 +30,6 @@ public class SystemReplayApp {
         String dumpDirectory = args.length == 0 || Strings.isNullOrEmpty(args[0]) ? "/tmp" : args[0];
         var dumpingLocalDriverCfg = CQDriverConfig.newBuilder()
                                                   .setChronicleFilesDir(dumpDirectory)
-                                                  //We are asserting that the channel is so reliable that we do not
-                                                  // need to send
-                                                  //acks even if requested
-                                                  .setChannelRequiresDeliveryAck(true)
                                                   .setTopicName("ReplayTest")
                                                   .setChannelName("ReplayableChannel")
                                                   .build();

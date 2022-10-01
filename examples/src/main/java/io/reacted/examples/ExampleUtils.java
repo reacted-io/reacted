@@ -72,7 +72,6 @@ public final class ExampleUtils {
                                .setHostName("localhost")
                                .setPort(gatePort)
                                .setChannelName("TestGrpcChannel")
-                               .setChannelRequiresDeliveryAck(false)
                                .build();
     }
 }

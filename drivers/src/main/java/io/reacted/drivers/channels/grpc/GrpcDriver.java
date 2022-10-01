@@ -152,7 +152,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
         String dstChannelIdName = dstChannelIdProperties.getProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME);
         /*
             Fact 1: GRPC links are not bidirectional.
-            Fact 2: Every couple Channel Type - Channel Name (Aka channel id) has a dedicate driver instance.
+            Fact 2: Every couple Channel Type - Channel Name (Aka channel id) has a dedicated driver instance.
                     To communicate with another reacted node, you need to know the channel id and the channel properties.
                     If some nodes communicate on a channel using the same setup that can be safely stored within
                     the driver instance (i.e. think about a kafka channel:  all the nodes will use the same kafka
@@ -163,7 +163,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                     reactor system the information about how to reach a given peer. These information include the
                     channel properties for the remote peer
 
-            Scenario: a message that requires an ACK arrives on this GRPC driver, but a network failure triggered
+            Scenario: a message that requires an ACK arrives at this GRPC driver, but a network failure triggered
             the route cancellation before we can send back the ACK.
 
             ACKs has to be sent using the same driver that processed the incoming message and have to be sent to the
@@ -193,7 +193,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             that can be done except returning an error
          */
         if (dstChannelIdName == null) {
-            throw new DeliveryException(new ChannelUnavailableException());
+            throw new ChannelUnavailableException();
         }
         SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram> grpcLink;
         var peerChannelKey = getChannelPeerKey(dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST),
@@ -216,17 +216,14 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             synchronized (grpcLink) {
                 grpcLink.link.onNext(payload);
             }
-            return DeliveryStatus.DELIVERED;
+            return DeliveryStatus.SENT;
 
         } catch (Exception error) {
             removeStaleChannel(peerChannelKey);
             getLocalReActorSystem().logError("Error sending message {}", message.toString(), error);
-            throw new DeliveryException(error);
+            return DeliveryStatus.NOT_SENT;
         }
     }
-
-    @Override
-    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
 
     @Override
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }

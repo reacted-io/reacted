@@ -8,6 +8,7 @@
 
 package io.reacted.streams;
 
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.mailboxes.MailBox;
@@ -29,6 +30,7 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
+import java.time.Instant;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.function.Consumer;
 import javax.annotation.Nonnull;
@@ -107,10 +109,6 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         }
     }
 
-    Function<ReActorContext, MailBox> getManagerMailbox() {
-        return mboxOwner -> bpMailboxBuilder.setRealMailboxOwner(mboxOwner).build();
-    }
-
     @Nonnull
     @Override
     public ReActions getReActions() {
@@ -125,8 +123,12 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                         .build();
     }
 
+    Function<ReActorContext, MailBox> getManagerMailbox() {
+        return mboxOwner -> bpMailboxBuilder.setRealMailboxOwner(mboxOwner).build();
+    }
+
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(raCtx.getSelf()));
+        feedGate.route(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(raCtx.getSelf()));
     }
 
     private void forwarder(ReActorContext raCtx, Object anyPayload) {
@@ -167,8 +169,9 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         Consumer<Throwable> onSubscriptionError;
         onSubscriptionError = error -> { subscriber.onSubscribe(this);
                                          errorTermination(raCtx, error, subscriber); };
-        ifNotDelivered(feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())),
-                       onSubscriptionError);
+        if (feedGate.route(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())).isNotSent()) {
+            onSubscriptionError.accept(new DeliveryException());
+        }
     }
 
     private void completeTermination(ReActorContext raCtx,

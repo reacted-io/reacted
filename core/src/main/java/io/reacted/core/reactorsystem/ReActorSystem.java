@@ -16,6 +16,7 @@ import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.drivers.system.NullLocalDriver;
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
+import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.typedsubscriptions.SubscriptionsManager;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
@@ -186,13 +187,6 @@ public class ReActorSystem {
     }
 
     /**
-     * @return A reference to the system deadletters
-     */
-    public ReActorRef getSystemDeadLetters() {
-        return Objects.requireNonNull(systemDeadLetters);
-    }
-
-    /**
      * @return A reference to the root of all the reactors created by a user
      */
     public ReActorRef getUserReActorsRoot() {
@@ -232,15 +226,26 @@ public class ReActorSystem {
     public ReActorRef getSystemMonitor() { return Objects.requireNonNull(systemMonitor); }
 
     /**
+     *
+     * @param anyRef Any {@link ReActorRef}
+     * @return True is the specified argument is a system Dead Letters
+     */
+    public boolean isSystemDeadLetters(ReActorRef anyRef) {
+        return Objects.requireNonNull(anyRef).equals(systemDeadLetters);
+    }
+
+    /**
      * Log an error using the centralized logging system
      *
      * @param errorDescription Sl4j Format error description
      * @param args             Arguments for Sl4j
      */
     public void logError(String errorDescription, Serializable ...args) {
-        getSystemLogger().tell(getSystemSink(), new ReActedError(errorDescription, args))
-                         .thenAccept(tryDelivery -> tryDelivery.ifError(error -> LOGGER.error("Unable to log error: ",
-                                                                                              error)));
+        if (getSystemLogger().tell(getSystemSink(), new ReActedError(errorDescription, args))
+                             .isNotSent()) {
+                LOGGER.error("Unable to log error: {}", errorDescription);
+                LOGGER.error(errorDescription, (Object) args);
+        }
     }
 
     /**
@@ -250,10 +255,12 @@ public class ReActorSystem {
      * @param args   Arguments for Sl4j
      */
     public void logDebug(String format, Serializable ...args) {
-        getSystemLogger().tell(getSystemSink(), new ReActedDebug(Objects.requireNonNull(format),
-                                                                 Objects.requireNonNull(args)))
-                         .thenAccept(tryDelivery -> tryDelivery.ifError(error -> LOGGER.error("Unable to log debug" +
-                                                                                              " info:", error)));
+        if (getSystemLogger().tell(getSystemSink(),
+                                   new ReActedDebug(Objects.requireNonNull(format),
+                                                    Objects.requireNonNull(args))).isNotSent()) {
+            LOGGER.error("Unable to log {}", format);
+            LOGGER.debug(format, (Object) args);
+        }
     }
 
     /**
@@ -263,10 +270,31 @@ public class ReActorSystem {
      * @param args   Arguments for Sl4j
      */
     public void logInfo(String format, Serializable ...args) {
-        getSystemLogger().tell(getSystemSink(), new ReActedInfo(Objects.requireNonNull(format),
-                                                                Objects.requireNonNull(args)))
-                         .thenAccept(tryDelivery -> tryDelivery.ifError(error -> LOGGER.error("Unable to log debug" +
-                                                                                              " info:", error)));
+        if (getSystemLogger().tell(getSystemSink(),
+                                   new ReActedInfo(Objects.requireNonNull(format),
+                                                   Objects.requireNonNull(args))).isNotSent()) {
+                LOGGER.error("Unable to log {}", format);
+                LOGGER.info(format, (Object) args);
+            }
+    }
+
+    public DeliveryStatus toDeadLetters(Serializable payload) {
+        return toDeadLetters(ReActorRef.NO_REACTOR_REF, payload);
+    }
+
+    public DeliveryStatus toDeadLetters(Message message) {
+        return isSystemDeadLetters(message.getSender())
+               ? DeliveryStatus.NOT_SENT
+               : toDeadLetters(message.getSender(), message.getPayload());
+    }
+    public DeliveryStatus toDeadLetters(ReActorRef sender, Serializable payload) {
+        DeliveryStatus deliveryStatus = Objects.requireNonNull(systemDeadLetters)
+                                               .route(sender, new DeadMessage(payload));
+        if (deliveryStatus.isNotSent()) {
+            LOGGER.error("Unable to send from {} to DeadLetters payload {}",
+                         sender, payload);
+        }
+        return deliveryStatus;
     }
 
     /**
@@ -419,7 +447,7 @@ public class ReActorSystem {
      * @return On success a future containing the result of the request
      * On failure a future containing the exception that caused the failure
      */
-    public CompletionStage<Try<ServiceDiscoveryReply>>
+    public CompletionStage<ServiceDiscoveryReply>
     serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
         return serviceDiscovery(searchFilter, "");
     }
@@ -434,7 +462,7 @@ public class ReActorSystem {
      * @return On success a future containing the result of the request
      * On failure a future containing the exception that caused the failure
      */
-    public CompletionStage<Try<ServiceDiscoveryReply>>
+    public CompletionStage<ServiceDiscoveryReply>
     serviceDiscovery(ServiceDiscoverySearchFilter searchFilter, String requestId) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
                                    ServiceDiscoveryReply.class, SERVICE_DISCOVERY_TIMEOUT,
@@ -450,8 +478,8 @@ public class ReActorSystem {
      * @return The outcome of the request
      */
     @SuppressWarnings("UnusedReturnValue")
-    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(ServiceDiscoverySearchFilter searchFilter,
-                                                                 ReActorRef requester) {
+    public DeliveryStatus serviceDiscovery(ServiceDiscoverySearchFilter searchFilter,
+                                           ReActorRef requester) {
         return broadcastToLocalSubscribers(Objects.requireNonNull(requester),
                                            new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)));
     }
@@ -555,7 +583,7 @@ public class ReActorSystem {
      * @param <PayLoadT> Any {@link Serializable} object
      * @return A {@link CompletionStage} that is going to be completed when the message is sent
      */
-    public <PayLoadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    public <PayLoadT extends Serializable> DeliveryStatus
     broadcastToLocalSubscribers(ReActorRef msgSender, PayLoadT payload) {
         return getSystemSink().tell(Objects.requireNonNull(msgSender), Objects.requireNonNull(payload));
     }
@@ -732,10 +760,12 @@ public class ReActorSystem {
      * @throws ReActorSystemInitException If unable to deliver reactor init message
      */
     private void initReActorSystemReActors() {
-        reActors.values().stream()
+        if (reActors.values().stream()
                 .map(ReActorContext::getSelf)
-                .forEach(reactor -> throwOnFailedDelivery(reactor.tell(getSystemSink(), REACTOR_INIT),
-                                                          ReActorSystemInitException::new));
+                .map(reactor -> reactor.tell(getSystemSink(), REACTOR_INIT))
+                .anyMatch(Predicate.not(DeliveryStatus::isSent))) {
+            throw new ReActorSystemInitException("Unable to init all system reactors");
+        }
     }
 
     /**
@@ -1014,7 +1044,6 @@ public class ReActorSystem {
     private Optional<Dispatcher> getDispatcher(String dispatcherName) {
         return Optional.ofNullable(dispatchers.get(dispatcherName));
     }
-
     private static void initAllDispatchers(Collection<Dispatcher> dispatchers, ReActorRef systemSink,
                                            boolean recordedExecution,
                                            Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
@@ -1044,14 +1073,5 @@ public class ReActorSystem {
                 .setUncaughtExceptionHandler((thread, error) -> LOGGER.error("Critic! FanOut Thread Terminated", error))
                 .build();
         return Executors.newFixedThreadPool(poolSize, fanOutThreads);
-    }
-
-    private static <ExceptionT extends Exception>
-    void throwOnFailedDelivery(CompletionStage<Try<DeliveryStatus>> deliveryAttempt,
-                               Function<? super Throwable, ExceptionT> exceptionMapper) throws ExceptionT {
-        Try.of(() -> deliveryAttempt.toCompletableFuture().join())
-           .flatMap(Try::identity)
-           .filter(DeliveryStatus::isDelivered, DeliveryException::new)
-           .orElseThrow(exceptionMapper::apply);
     }
 }

@@ -39,10 +39,4 @@ public class NullMailbox implements MailBox {
     @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) { return DeliveryStatus.DELIVERED; }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
-        return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
-    }
 }

@@ -30,10 +30,6 @@ public class SystemReplayAskApp {
         String dumpDirectory = args.length == 0 || Strings.isNullOrEmpty(args[0]) ? "/tmp" : args[0];
         var dumpingLocalDriverCfg = CQDriverConfig.newBuilder()
                                                   .setChronicleFilesDir(dumpDirectory)
-                                                  //We are asserting that the channel is so reliable that we do not
-                                                  // need to send
-                                                  //acks even if requested
-                                                  .setChannelRequiresDeliveryAck(true)
                                                   .setTopicName("ReplayTest")
                                                   .setChannelName("ReplayableChannel")
                                                   .build();
@@ -68,8 +64,7 @@ public class SystemReplayAskApp {
                                                  .orElseSneakyThrow();
 
         echoReference.ask("I am an ask", String.class, "AskRequest")
-                     .thenAccept(reply -> reply.ifSuccessOrElse(System.out::println,
-                                                                Throwable::printStackTrace))
+                     .thenAccept(System.out::println)
                      .toCompletableFuture()
                      .join();
         recordedReactorSystem.shutDown();
@@ -85,8 +80,7 @@ public class SystemReplayAskApp {
         //Once the reactor will be created, the system will notify that and will begin its replay
         echoReference = replayedReActorSystem.spawn(echoReActions, echoReActorConfig).orElseSneakyThrow();
         echoReference.ask("I am an ask", String.class, "AskRequest")
-                     .thenAccept(reply -> reply.ifSuccessOrElse(System.out::println,
-                                                                Throwable::printStackTrace))
+                     .thenAccept(System.out::println)
                      .toCompletableFuture()
                      .join();
         replayedReActorSystem.shutDown();

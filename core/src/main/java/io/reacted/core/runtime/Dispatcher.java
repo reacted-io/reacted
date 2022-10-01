@@ -16,6 +16,8 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import java.util.NoSuchElementException;
+import java.util.concurrent.ArrayBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +41,7 @@ public class Dispatcher {
     /* Default dispatcher. Used by system internals */
     public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
     public static final int DEFAULT_DISPATCHER_BATCH_SIZE = 10;
-    public static final int DEFAULT_DISPATCHER_THREAD_NUM = 4;
+    public static final int DEFAULT_DISPATCHER_THREAD_NUM = 2;
     private static final String UNCAUGHT_EXCEPTION_IN_DISPATCHER = "Uncaught exception in thread [%s] : ";
     private static final String REACTIONS_EXECUTION_ERROR = "Error for ReActor {} processing " +
                                                             "message type {} with seq num {} and value {} ";
@@ -49,16 +51,16 @@ public class Dispatcher {
     private ExecutorService dispatcherLifeCyclePool;
     @Nullable
     private ExecutorService[] dispatcherPool;
-    private final BlockingDeque<ReActorContext>[] scheduledQueues;
+    private final ArrayBlockingQueue<ReActorContext>[] scheduledQueues;
     private final AtomicLong nextDispatchIdx = new AtomicLong(0);
 
     @SuppressWarnings("unchecked")
     public Dispatcher(DispatcherConfig config) {
         this.dispatcherConfig = config;
-        this.scheduledQueues = Stream.iterate(new LinkedBlockingDeque<ReActorContext>(),
-                                              scheduleQueue -> new LinkedBlockingDeque<>())
+        this.scheduledQueues =  Stream.iterate(new ArrayBlockingQueue<ReActorContext>(1_000_000),
+                                              scheduleQueue -> new ArrayBlockingQueue<>(1_000_000))
                                      .limit(getDispatcherConfig().getDispatcherThreadsNum())
-                                     .toArray(LinkedBlockingDeque[]::new);
+                                     .toArray(ArrayBlockingQueue[]::new);
     }
 
     public String getName() { return dispatcherConfig.getDispatcherName(); }
@@ -87,7 +89,7 @@ public class Dispatcher {
             currentDispatcher < getDispatcherConfig().getDispatcherThreadsNum(); currentDispatcher++) {
 
             ExecutorService dispatcherThread = dispatcherPool[currentDispatcher];
-            BlockingDeque<ReActorContext> threadLocalSchedulingQueue = scheduledQueues[currentDispatcher];
+            ArrayBlockingQueue<ReActorContext> threadLocalSchedulingQueue = scheduledQueues[currentDispatcher];
             dispatcherThread.submit(() -> Try.ofRunnable(() -> dispatcherLoop(threadLocalSchedulingQueue,
                                                                               dispatcherConfig.getBatchSize(),
                                                                               dispatcherLifeCyclePool,
@@ -106,17 +108,18 @@ public class Dispatcher {
         return dispatcherConfig;
     }
 
-    public void dispatch(ReActorContext reActor) {
+    public boolean dispatch(ReActorContext reActor) {
         if (reActor.acquireScheduling()) {
-            scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)].addLast(reActor);
+            return scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)].offer(reActor);
         }
+        return true;
     }
 
     private ExecutorService getDispatcherLifeCyclePool() {
         return Objects.requireNonNull(dispatcherLifeCyclePool);
     }
 
-    private void dispatcherLoop(BlockingDeque<ReActorContext> scheduledList, int dispatcherBatchSize,
+    private void dispatcherLoop(ArrayBlockingQueue<ReActorContext> scheduledList, int dispatcherBatchSize,
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
                                 ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
@@ -125,7 +128,7 @@ public class Dispatcher {
             while (!Thread.currentThread().isInterrupted()) {
                 //TODO a lot of time is wasted awakening/putting the thread to sleep, a more performant approach
                 //should be used
-                ReActorContext scheduledReActor = scheduledList.takeFirst();
+                ReActorContext scheduledReActor = scheduledList.take();
                 //memory acquire
                 scheduledReActor.acquireCoherence();
 
@@ -134,25 +137,27 @@ public class Dispatcher {
                                      !scheduledReActor.isStop(); msgNum++) {
                     var newEvent = scheduledReActor.getMbox().getNextMessage();
 
-                    if (isExecutionRecorded) {
-                        /*
-                          Register the execution attempt within the local driver log. In this way regardless of the
-                          tell order of the messages, we will always have a strictly ordered execution order per
-                          reactor because a reactor is scheduled on exactly one dispatcher when it has messages to
-                          process
+                    /*
+                      Register the execution attempt within the local driver log. In this way regardless of the
+                      tell order of the messages, we will always have a strictly ordered execution order per
+                      reactor because a reactor is scheduled on exactly one dispatcher when it has messages to
+                      process
 
-                          --- NOTE ----:
+                      --- NOTE ----:
 
-                          This is the core of the cold replay engine: ReActed can replicate the state of a single
-                          reactor replicating the same very messages in the same order of when they were executed
-                          during the recorded execution. From ReActed perspective, replicating the state of a
-                          reactor system is replicating the state of the contained reactors using the strictly
-                          sequential execution attempts in the execution log
-                        */
-                        devNull.tell(scheduledReActor.getSelf(),
-                                     new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
-                                                               scheduledReActor.getNextMsgExecutionId(),
-                                                               newEvent.getSequenceNumber()));
+                      This is the core of the cold replay engine: ReActed can replicate the state of a single
+                      reactor replicating the same very messages in the same order of when they were executed
+                      during the recorded execution. From ReActed perspective, replicating the state of a
+                      reactor system is replicating the state of the contained reactors using the strictly
+                      sequential execution attempts in the execution log
+                    */
+                    if (isExecutionRecorded &&
+                        devNull.route(scheduledReActor.getSelf(),
+                                      new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
+                                                                scheduledReActor.getNextMsgExecutionId(),
+                                                                newEvent.getSequenceNumber())).isNotSent()) {
+                        LOGGER.error("CRITIC! Unable to send an Execution Attempt for message {} Replay will NOT be possible",
+                                     newEvent);
                     }
 
                     executeReactionForMessage(scheduledReActor, newEvent);

@@ -53,7 +53,6 @@ class MessageStormApp {
                                                                    List.of(new GrpcDriver(GrpcDriverConfig.newBuilder()
                                                                                                           .setHostName("localhost")
                                                                                                           .setPort(12345)
-                                                                                                          .setChannelRequiresDeliveryAck(true)
                                                                                                           .setChannelName("TestChannel")
                                                                                                           .build())));
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Server",
@@ -69,7 +68,6 @@ class MessageStormApp {
                                                                    List.of(new GrpcDriver(GrpcDriverConfig.newBuilder()
                                                                                                           .setHostName("localhost")
                                                                                                           .setPort(54321)
-                                                                                                          .setChannelRequiresDeliveryAck(true)
                                                                                                           .setChannelName("TestChannel")
                                                                                                           .build())));
         var clientSystem = new ReActorSystem(clientSystemCfg).initReActorSystem();
@@ -89,9 +87,7 @@ class MessageStormApp {
                                                                                            .setServiceName("ServerService")
                                                                                            .build())
                                         .toCompletableFuture().join();
-        var serviceGate = remoteService.filter(gates -> !gates.getServiceGates().isEmpty())
-                                       .orElseSneakyThrow()
-                                       .getServiceGates()
+        var serviceGate = remoteService.getServiceGates()
                                        .iterator().next();
 
         var clientReActor = clientSystem.spawn(new ClientReActor(serviceGate)).orElseSneakyThrow();
@@ -142,8 +138,8 @@ class MessageStormApp {
         private void onInit(ReActorContext raCtx) {
             long start = System.nanoTime();
             AsyncUtils.asyncLoop(noval -> serverReference.atell("Not received"),
-                                 Try.of(() -> DeliveryStatus.DELIVERED),
-                                 (Try<DeliveryStatus>) null, 1_000_000L)
+                                 DeliveryStatus.DELIVERED,
+                                 DeliveryStatus.DELIVERED, 1_000_000L)
                       .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
                                                               Duration.ofNanos(System.nanoTime() - start)
                                                                       .toString(),

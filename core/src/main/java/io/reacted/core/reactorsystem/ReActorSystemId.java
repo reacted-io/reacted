@@ -54,17 +54,12 @@ public class ReActorSystemId implements Externalizable  {
     }
 
     public String getReActorSystemName() { return reActorSystemName; }
-
-    public UUID getReActorSystemUUID() { return reActorSystemUUID; }
-
     public int getHashCode() { return hashCode(); }
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeLong(reActorSystemUUID.getMostSignificantBits());
-        out.writeLong(reActorSystemUUID.getLeastSignificantBits());
+        out.writeObject(reActorSystemUUID);
         out.writeObject(reActorSystemName);
-        out.writeInt(hashCode);
     }
 
     @Override
@@ -92,9 +87,9 @@ public class ReActorSystemId implements Externalizable  {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        setReActorSystemUUID(new UUID(in.readLong(), in.readLong()))
-                .setReActorSystemName((String)(in.readObject()))
-                .setHashCode(in.readInt());
+        setReActorSystemUUID((UUID)in.readObject())
+                .setReActorSystemName((String)(in.readObject()));
+        setHashCode(Objects.hash(reActorSystemUUID, reActorSystemName));
     }
 
     private ReActorSystemId setReActorSystemUUID(UUID uuid) {

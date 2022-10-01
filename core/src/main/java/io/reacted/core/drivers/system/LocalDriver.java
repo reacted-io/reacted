@@ -19,11 +19,9 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
 import java.io.Serializable;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -36,26 +34,41 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      }
 
      @Override
-     public boolean channelRequiresDeliveryAck() { return false; }
-
-     @Override
      public final <PayloadT extends Serializable>
-     CompletionStage<Try<DeliveryStatus>> tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                               PayloadT message) {
-          return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
+     DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
+          throw new UnsupportedOperationException();
      }
 
      @Override
-     public final <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-     tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+     public final <PayloadT extends Serializable> DeliveryStatus
+     tell(ReActorRef src, ReActorRef dst,
           TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
-          return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
+          throw new UnsupportedOperationException();
      }
 
      @Override
-     public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-     route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
-          return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
+     public <PayloadT extends Serializable> DeliveryStatus
+     route(ReActorRef src, ReActorRef dst, PayloadT message) {
+          throw new UnsupportedOperationException();
+     }
+
+     @Override
+     public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+     atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+          return CompletableFuture.failedStage(new UnsupportedOperationException());
+     }
+
+     @Override
+     public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+     atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+           TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+          return CompletableFuture.failedStage(new UnsupportedOperationException());
+     }
+
+     @Override
+     public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+     aroute(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+          return CompletableFuture.failedStage(new UnsupportedOperationException());
      }
 
      @Override
@@ -63,31 +76,57 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           Objects.requireNonNull(message, "Cannot offer() a null message");
           ReActorId destinationId = message.getDestination().getReActorId();
           ReActorContext destinationCtx = getLocalReActorSystem().getReActorCtx(destinationId);
-          CompletionStage<Try<DeliveryStatus>> messageDeliveryAttempt = null;
-          if (destinationCtx != null) {
-               messageDeliveryAttempt = forwardMessageToLocalActor(destinationCtx, message);
-          }
-          var ackTrigger = removePendingAckTrigger(message.getSequenceNumber());
+          CompletionStage<DeliveryStatus> asyncMessageDeliveryAttempt = null;
 
-          if (messageDeliveryAttempt != null) {
-               if (ackTrigger != null) {
-                    messageDeliveryAttempt.thenAccept(status -> ackTrigger.toCompletableFuture().complete(status));
+          if (destinationCtx != null) {
+               if (message.getDataLink().getAckingPolicy().isAckRequired()) {
+                    asyncMessageDeliveryAttempt = asyncForwardMessageToLocalActor(destinationCtx,
+                                                                                  message);
+               } else {
+                    try {
+                         syncForwardMessageToLocalActor(destinationCtx, message);
+                    } catch (DeliveryException deliveryException) {
+                         getLocalReActorSystem().toDeadLetters(message);
+                    }
                }
           } else {
-               if(ackTrigger != null) {
-                    ackTrigger.toCompletableFuture()
-                              .complete(Try.ofFailure(new NoSuchElementException()));
+               getLocalReActorSystem().toDeadLetters(message);
+          }
+
+          if (message.getDataLink().getAckingPolicy().isAckRequired()) {
+               CompletionStage<DeliveryStatus> ackTrigger;
+               ackTrigger = removePendingAckTrigger(message.getSequenceNumber());
+
+               if (ackTrigger != null) {
+                    asyncMessageDeliveryAttempt.handle(((deliveryStatus, error) -> {
+                         if (error == null) {
+                              ackTrigger.toCompletableFuture().complete(deliveryStatus);
+                         } else {
+                              ackTrigger.toCompletableFuture().completeExceptionally(error);
+                         }
+                         if (destinationCtx != null &&
+                             deliveryStatus == null || !deliveryStatus.isDelivered()) {
+                              getLocalReActorSystem().toDeadLetters(message);
+                         }
+                         return null;
+                    }));
                }
-               propagateToDeadLetters(getLocalReActorSystem().getSystemDeadLetters(), message);
           }
      }
 
-     protected static CompletionStage<Try<DeliveryStatus>> forwardMessageToLocalActor(ReActorContext destination,
-                                                                                      Message message) {
+     protected static DeliveryStatus syncForwardMessageToLocalActor(ReActorContext destination,
+                                                                    Message message) {
           return SystemLocalDrivers.DIRECT_COMMUNICATION
-                                   .sendAsyncMessage(destination,
+                                   .sendMessage(destination,
                                                      Objects.requireNonNull(message,
                                                                             "Cannot forward a null message"));
+     }
+
+     protected static CompletionStage<DeliveryStatus>
+     asyncForwardMessageToLocalActor(ReActorContext destination, Message message) {
+          return SystemLocalDrivers.DIRECT_COMMUNICATION
+              .sendAsyncMessage(destination,
+                           Objects.requireNonNull(message, "Cannot forward a null message"));
      }
 
      protected static DeliveryStatus localDeliver(ReActorContext destination, Message message) {
@@ -96,10 +135,10 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           return deliverOperation;
      }
 
-     protected static CompletionStage<Try<DeliveryStatus>> asyncLocalDeliver(ReActorContext destination,
-                                                                             Message message) {
+     protected static CompletionStage<DeliveryStatus> asyncLocalDeliver(ReActorContext destination,
+                                                                        Message message) {
           var asyncDeliverResult = destination.getMbox().asyncDeliver(message);
-          asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result.orElse(DeliveryStatus.NOT_DELIVERED), destination));
+          asyncDeliverResult.thenAccept(result -> rescheduleIfSuccess(result, destination));
           return asyncDeliverResult;
      }
 
@@ -107,9 +146,5 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           if (deliveryStatus == DeliveryStatus.DELIVERED) {
                destination.reschedule();
           }
-     }
-
-     private static void propagateToDeadLetters(ReActorRef systemDeadLetters, Message originalMessage) {
-          systemDeadLetters.tell(originalMessage.getSender(), new DeadMessage(originalMessage.getPayload()));
      }
 }

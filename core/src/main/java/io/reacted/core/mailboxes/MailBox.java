@@ -12,12 +12,15 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.Try;
 
+import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nonnull;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.concurrent.CompletionStage;
 
 @ParametersAreNonnullByDefault
 public interface MailBox extends AutoCloseable {
+    CompletionStage<DeliveryStatus> DELIVERED = CompletableFuture.completedStage(DeliveryStatus.DELIVERED);
+    CompletionStage<DeliveryStatus> BACKPRESSURED = CompletableFuture.completedStage(DeliveryStatus.BACKPRESSURED);
     boolean isEmpty();
 
     boolean isFull();
@@ -33,7 +36,11 @@ public interface MailBox extends AutoCloseable {
     DeliveryStatus deliver(Message message);
 
     @Nonnull
-    CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message);
+    default CompletionStage<DeliveryStatus> asyncDeliver(Message message) {
+        return deliver(message).isDelivered()
+               ? DELIVERED
+               : BACKPRESSURED;
+    }
 
     default void request(long messagesNum) { }
     @Override

@@ -22,11 +22,10 @@ import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class PriorityMailbox implements MailBox {
-
     private final PriorityBlockingQueue<Message> mailBox;
 
     public PriorityMailbox() {
-        this.mailBox = new PriorityBlockingQueue<>();
+        this(Comparator.comparingLong(Message::getSequenceNumber));
     }
 
     public PriorityMailbox(Comparator<? super Message> msgComparator) {
@@ -53,11 +52,5 @@ public class PriorityMailbox implements MailBox {
     @Override
     public DeliveryStatus deliver(Message message) {
         return mailBox.add(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.NOT_DELIVERED;
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
-        return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
     }
 }

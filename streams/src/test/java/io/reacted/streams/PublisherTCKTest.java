@@ -12,6 +12,8 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.Try;
+import io.reacted.patterns.UnChecked;
+import java.io.FileNotFoundException;
 import org.reactivestreams.tck.TestEnvironment;
 import org.reactivestreams.tck.flow.FlowPublisherVerification;
 import org.slf4j.Logger;
@@ -38,10 +40,10 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     private final BlockingQueue<ReactedSubmissionPublisher<Long>> generatedFlows = new LinkedBlockingDeque<>();
     private volatile ExecutorService submitterThread;
 
-    public PublisherTCKTest() {
+    public PublisherTCKTest() throws FileNotFoundException {
         super(new TestEnvironment(250, 250, false));
         var rasCfg = ReActorSystemConfig.newBuilder()
-                .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
+                .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/dl"))
                 .setRecordExecution(false)
                 .setMsgFanOutPoolSize(1)
                 .setReactorSystemName("TckValidationRAS")
@@ -100,16 +102,12 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     private void asyncPublishMessages(ReactedSubmissionPublisher<Long> publisher,
                                       long messagesNum) {
         submitterThread.submit(() -> {
-            Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(150));
-            for(long cycle = 0; cycle < messagesNum && !Thread.currentThread().isInterrupted(); cycle++) {
-                publisher.submit(cycle)
-                         .toCompletableFuture()
-                         .exceptionally(error -> { LOGGER.error("Error on submit", error);
-                                                   return null; })
-                         .join();
-            }
             Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(50));
-            publisher.close();
+            for(long cycle = 0; cycle < messagesNum && !Thread.currentThread().isInterrupted(); cycle++) {
+                if (publisher.backpressurableSubmit(cycle).toCompletableFuture().join().isNotSent()) {
+                    LOGGER.error("Critic! Message {} not sent!", cycle);
+                }
+            }
         });
     }
 }

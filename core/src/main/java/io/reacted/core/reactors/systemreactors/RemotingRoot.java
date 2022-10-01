@@ -10,6 +10,7 @@ package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.serviceregistry.DuplicatedPublicationError;
@@ -32,6 +33,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 
+import java.util.function.Predicate;
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.util.Collection;
@@ -86,16 +88,18 @@ public class RemotingRoot {
 
     private static void onPublishService(ReActorContext raCtx, ServicePublicationRequest publishService) {
         if (raCtx.getChildren().isEmpty()) {
-             ifNotDelivered(raCtx.reply(new ServiceRegistryNotAvailable()),
-                            error -> raCtx.logError("Unable to make a service discoverable {}",
-                                                    publishService.getServiceProperties(), error));
+             if (!raCtx.reply(new ServiceRegistryNotAvailable()).isSent()) {
+                 raCtx.logError("Unable to make a service discoverable {}",
+                                publishService.getServiceProperties());
+             }
              return;
         }
 
-        raCtx.getChildren()
-             .forEach(registryDriver -> ifNotDelivered(registryDriver.tell(raCtx.getSelf(), publishService),
-                                                       error -> raCtx.logError("Unable to deliver service publication request {}",
-                                                                               publishService.getServiceProperties(), error)));
+        raCtx.getChildren().stream()
+             .map(registryDriver -> registryDriver.tell(raCtx.getSelf(), publishService))
+             .filter(Predicate.not(DeliveryStatus::isSent))
+             .forEach(registryDriver -> raCtx.logError("Unable to deliver service publication request {}",
+                                                       publishService.getServiceProperties()));
     }
 
     private static void onInitComplete(ReActorContext raCtx,
@@ -114,9 +118,8 @@ public class RemotingRoot {
                                                                                            remotingDriver.getChannelId(),
                                                                                            remotingDriver.getChannelProperties()))
                        .map(raCtx::reply)
-                       .forEach(pubRequest -> ifNotDelivered(pubRequest,
-                                                             error -> raCtx.logError("Unable to publish channel:",
-                                                                                     error)));
+                       .filter(Predicate.not(DeliveryStatus::isSent))
+                       .forEach(pubRequest -> raCtx.logError("Unable to publish channel"));
     }
 
     private static void onRegistryServicePublicationFailure(ReActorContext raCtx,
@@ -163,8 +166,9 @@ public class RemotingRoot {
                                                                                      filterItem.getServiceGate()))
                   .map(FilterItem::getServiceGate)
                   .collect(Collectors.toUnmodifiableSet());
-        ifNotDelivered(raCtx.reply(new ServiceDiscoveryReply(foundServices)),
-                       error -> raCtx.logError("Unable to answer with a {}",
-                                               ServiceDiscoveryReply.class.getSimpleName(), error));
+        if (!raCtx.reply(new ServiceDiscoveryReply(foundServices)).isSent()) {
+            raCtx.logError("Unable to answer with a {}",
+                           ServiceDiscoveryReply.class.getSimpleName());
+        }
     }
 }

@@ -82,9 +82,9 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
     }
 
     @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        CompletionStage<Try<DeliveryStatus>> delivery = destination.isStop()
-                       ? CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.NOT_DELIVERED))
+    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
+        CompletionStage<DeliveryStatus> delivery = destination.isStop()
+                       ? CompletableFuture.completedFuture(DeliveryStatus.NOT_DELIVERED)
                        : asyncLocalDeliver(destination, message);
         delivery.thenAccept(deliveryAttempt -> {
             synchronized (logFile) {

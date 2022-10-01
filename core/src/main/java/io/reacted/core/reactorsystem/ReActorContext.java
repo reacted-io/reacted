@@ -138,19 +138,15 @@ public class ReActorContext {
         return interceptedMsgTypes;
     }
 
-    public void reschedule() { getDispatcher().dispatch(this); }
+    public boolean reschedule() { return getDispatcher().dispatch(this); }
 
-    public CompletionStage<Try<DeliveryStatus>> reply(Serializable anyPayload) { return reply(getSelf(), anyPayload); }
+    public DeliveryStatus reply(Serializable anyPayload) { return reply(getSelf(), anyPayload); }
 
-    public CompletionStage<Try<DeliveryStatus>> areply(Serializable anyPayload) {
-        return areply(getSelf(), anyPayload);
-    }
-
-    public CompletionStage<Try<DeliveryStatus>> reply(ReActorRef sender, Serializable anyPayload) {
+    public DeliveryStatus reply(ReActorRef sender, Serializable anyPayload) {
         return getSender().tell(sender, anyPayload);
     }
 
-    public Try<ScheduledFuture<CompletionStage<Try<DeliveryStatus>>>>
+    public Try<ScheduledFuture<DeliveryStatus>>
     rescheduleMessage(Serializable messageToBeRescheduled, Duration inHowLong) {
         ReActorRef sender = getSender();
         return Try.of(() -> getReActorSystem().getSystemSchedulingService()
@@ -164,8 +160,8 @@ public class ReActorContext {
      * @param anyPayload payload to be sent
      * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#atell(ReActorRef, Serializable)}
      */
-    public CompletionStage<Try<DeliveryStatus>> areply(ReActorRef sender, Serializable anyPayload) {
-        return getSender().atell(sender, anyPayload);
+    public CompletionStage<DeliveryStatus> areply(Serializable anyPayload) {
+        return getSender().atell(anyPayload);
     }
 
     /**
@@ -174,7 +170,7 @@ public class ReActorContext {
      * @return A {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#tell(Serializable)}
      * complete
      */
-    public CompletionStage<Try<DeliveryStatus>> selfTell(Serializable anyPayload) {
+    public DeliveryStatus selfTell(Serializable anyPayload) {
         return getSelf().tell(getSelf(), anyPayload);
     }
 

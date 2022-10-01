@@ -26,7 +26,6 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
     public static final int DEFAULT_ACK_CACHE_SIZE = 10_000_000;
     public static final String CHANNEL_ID_PROPERTY_NAME = "channelName";
     private final String channelName;
-    private final boolean deliveryAckRequiredByChannel;
     private final Duration atellAutomaticFailureTimeout;
     private final Duration ackCacheCleanupInterval;
     private final int ackCacheSize;
@@ -35,7 +34,6 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         super(builder);
         this.channelName = Objects.requireNonNull(builder.channelName,
                                                   "Channel name cannot be null");
-        this.deliveryAckRequiredByChannel = builder.deliveryAckRequiredByChannel;
         this.atellAutomaticFailureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.atellFailureTimeout,
                                                                                                   Long.MAX_VALUE,
                                                                                                   TimeUnit.NANOSECONDS);
@@ -52,8 +50,6 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
 
     public String getChannelName() { return channelName; }
 
-    public boolean isDeliveryAckRequiredByChannel() { return deliveryAckRequiredByChannel; }
-
     public Duration getAtellAutomaticFailureTimeout() { return atellAutomaticFailureTimeout; }
 
     public Properties getChannelProperties() { return new Properties(); }
@@ -68,24 +64,10 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         private String channelName;
         private Duration atellFailureTimeout = DEFAULT_MSG_LOST_TIMEOUT;
         private Duration ackCacheCleanupInterval = DEFAULT_MSG_LOST_TIMEOUT;
-        private boolean deliveryAckRequiredByChannel;
         private int ackCacheSize = DEFAULT_ACK_CACHE_SIZE;
 
         public final BuilderT setChannelName(String channelName) {
             this.channelName = channelName;
-            return getThis();
-        }
-
-        /**
-         *
-         * @param isDeliveryAckRequiredByChannel specify if the {@link io.reacted.core.config.ChannelId} provided
-         *                                       by the driver is not reliable enough and it may require an ack.
-         *                                       If this is set to false, all the messages sent through {@link io.reacted.core.reactorsystem.ReActorRef#atell}
-         *                                       will behave like {@link io.reacted.core.reactorsystem.ReActorRef#tell}
-         * @return this builder
-         */
-        public final BuilderT setChannelRequiresDeliveryAck(boolean isDeliveryAckRequiredByChannel) {
-            this.deliveryAckRequiredByChannel = isDeliveryAckRequiredByChannel;
             return getThis();
         }
 

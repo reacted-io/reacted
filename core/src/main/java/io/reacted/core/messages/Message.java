@@ -22,7 +22,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 @NonNullByDefault
-public final class Message implements Externalizable, Comparable<Message> {
+public final class Message implements Externalizable {
     @Serial
     private static final long serialVersionUID = 1;
     private static final long SENDER_OFFSET = SerializationUtils.getFieldOffset(Message.class, "sender")
@@ -78,11 +78,6 @@ public final class Message implements Externalizable, Comparable<Message> {
         return Objects.equals(getSender(), message.getSender()) &&
                Objects.equals(getDestination(), message.getDestination()) &&
                Objects.equals(getPayload(), message.getPayload());
-    }
-
-    @Override
-    public int compareTo(Message otherMsg) {
-        return Long.compare(getSequenceNumber(), otherMsg.getSequenceNumber());
     }
 
     @Override

@@ -13,7 +13,6 @@ import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.BasicMbox;
@@ -89,7 +88,7 @@ class LocalDriverTest {
 
     @Test
     void localDriverDeliversMessagesInMailBox() {
-        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isSuccess());
+        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isDelivered());
 
         Assertions.assertEquals(1, basicMbox.getMsgNum());
         Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
@@ -98,14 +97,14 @@ class LocalDriverTest {
 
     @Test
     void localDriverForwardsMessageToLocalActor() {
-        Assertions.assertTrue(LocalDriver.forwardMessageToLocalActor(reActorContext, originalMsg)
-                                         .toCompletableFuture().join().isSuccess());
+        Assertions.assertTrue(LocalDriver.syncForwardMessageToLocalActor(reActorContext, originalMsg)
+                                         .isDelivered());
         Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
     }
 
     @Test
     void localDriverCanSendMessage() {
-        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isSuccess());
+        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isDelivered());
         Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
     }
 }

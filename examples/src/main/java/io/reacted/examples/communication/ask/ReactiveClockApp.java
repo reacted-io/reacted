@@ -47,7 +47,6 @@ public class ReactiveClockApp {
         //Note: we do not need another reactor to intercept the answer
         reactiveClock.ask(new TimeRequest(), Instant.class, "What's the time?")
                      //Ignore the exception, it's just an example
-                     .thenApply(Try::orElseSneakyThrow)
                      .thenAccept(time -> System.out.printf("It's %s%n",
                                                            ZonedDateTime.ofInstant(time, ZoneId.systemDefault())))
                      .thenAcceptAsync(nullValue -> reActorSystem.shutDown());

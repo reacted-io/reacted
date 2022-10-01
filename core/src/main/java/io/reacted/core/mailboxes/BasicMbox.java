@@ -11,9 +11,7 @@ package io.reacted.core.mailboxes;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
-
-import java.util.Deque;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -21,11 +19,7 @@ import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class BasicMbox implements MailBox {
-
-    private final Deque<Message> inbox;
-
-    public BasicMbox() { this.inbox = new LinkedBlockingDeque<>(); }
-
+    private final BlockingDeque<Message> inbox = new LinkedBlockingDeque<>(1000);
     @Override
     public boolean isEmpty() { return inbox.isEmpty(); }
 
@@ -48,11 +42,5 @@ public class BasicMbox implements MailBox {
         return inbox.offerLast(message)
                 ? DeliveryStatus.DELIVERED
                 : DeliveryStatus.BACKPRESSURED;
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
-        return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
     }
 }

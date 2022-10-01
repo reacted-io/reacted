@@ -93,7 +93,7 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
     }
 
     @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
+    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
         synchronized (logFile) {
 
             logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
@@ -106,7 +106,7 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
             logFile.flush();
         }
         return destination.isStop()
-               ? CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.NOT_DELIVERED))
+               ? CompletableFuture.completedFuture(DeliveryStatus.NOT_DELIVERED)
                : asyncLocalDeliver(destination, message);
     }
 }

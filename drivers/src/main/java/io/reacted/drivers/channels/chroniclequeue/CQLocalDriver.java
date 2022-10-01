@@ -19,9 +19,13 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import net.openhft.chronicle.queue.ChronicleQueue;
+import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
+import net.openhft.chronicle.queue.RollCycle;
+import net.openhft.chronicle.queue.RollCycles;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
+import net.openhft.chronicle.wire.WireType;
 import org.apache.log4j.Logger;
 
 import javax.annotation.Nullable;
@@ -45,6 +49,7 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
         this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir())
+                                       .rollCycle(RollCycles.MINUTELY)
                                        .build();
         this.cqTailer = chronicle.createTailer().toEnd();
     }
@@ -63,17 +68,32 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(Try.of(() -> sendMessage(destination, message)));
+    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
+        if (!message.getDataLink().getAckingPolicy().isAckRequired()) {
+            return CompletableFuture.completedStage(sendMessage(destination, message));
+        }
+        CompletionStage<DeliveryStatus> pendingAck = newPendingAckTrigger(message.getSequenceNumber());
+
+        DeliveryStatus localDeliveryStatus = sendMessage(destination, message);
+        if (localDeliveryStatus == DeliveryStatus.SENT) {
+            return pendingAck;
+        }
+        pendingAck.toCompletableFuture().complete(localDeliveryStatus);
+        removePendingAckTrigger(message.getSequenceNumber());
+        return pendingAck;
     }
 
     @Override
     public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
-        return sendMessage(message);
+        try {
+            Objects.requireNonNull(chronicle).acquireAppender()
+                   .writeMessage(getDriverConfig().getTopic(), message);
+            return DeliveryStatus.SENT;
+        } catch (Exception anyException) {
+            getLocalReActorSystem().logError("Unable to send message {}", message, anyException);
+            return DeliveryStatus.NOT_SENT;
+        }
     }
-
-    @Override
-    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
 
     @Override
     public CompletionStage<Try<Void>> cleanDriverLoop() {
@@ -81,36 +101,24 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     }
 
     private void chronicleMainLoop(ExcerptTailer tailer) {
-        var waitForNextMsg = Pauser.millis(10, 500);
+        var waitForNextMsg = Pauser.balanced();
 
         while(!Thread.currentThread().isInterrupted()) {
-
-            Message newMessage = null;
             try(DocumentContext docCtx = tailer.readingDocument()) {
                 if(docCtx.isPresent()) {
-                    newMessage = docCtx.wire().read(getDriverConfig().getTopic())
+                    Message newMessage = docCtx.wire().read(getDriverConfig().getTopic())
+
                                        .object(Message.class);
+                    if (newMessage != null) {
+                        waitForNextMsg.reset();
+                        offerMessage(newMessage);
+                    } else {
+                        waitForNextMsg.pause();
+                    }
                 }
             } catch (Exception anyException) {
                 LOGGER.error("Unable to decode data", anyException);
             }
-
-            if (newMessage == null) {
-                waitForNextMsg.pause();
-                waitForNextMsg.reset();
-                continue;
-            }
-            offerMessage(newMessage);
-        }
-    }
-    private DeliveryStatus sendMessage(Message message) {
-        try {
-            Objects.requireNonNull(Objects.requireNonNull(chronicle)
-                                          .acquireAppender())
-                   .writeMessage(getDriverConfig().getTopic(), message);
-            return DeliveryStatus.DELIVERED;
-        } catch (Exception anyException) {
-            throw new DeliveryException(anyException);
         }
     }
 }

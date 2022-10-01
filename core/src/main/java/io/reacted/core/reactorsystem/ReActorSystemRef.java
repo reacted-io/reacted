@@ -14,6 +14,7 @@ import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
+import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -76,16 +77,27 @@ public class ReActorSystemRef implements Externalizable {
     }
 
     <PayloadT extends Serializable>
-    CompletionStage<Try<DeliveryStatus>> tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                              PayloadT message) {
-        return backingDriver.tell(src, dst, ackingPolicy, message);
+    DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
+        return backingDriver.tell(src, dst, message);
     }
 
     <PayloadT extends Serializable>
-    CompletionStage<Try<DeliveryStatus>> route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                              PayloadT message) {
-        return backingDriver.route(src, dst, ackingPolicy, message);
+    DeliveryStatus route(ReActorRef src, ReActorRef dst, PayloadT message) {
+        return backingDriver.route(src, dst, message);
     }
+
+    <PayloadT extends Serializable>
+    CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                          PayloadT message) {
+        return backingDriver.atell(src, dst, ackingPolicy, message);
+    }
+
+    <PayloadT extends Serializable>
+    CompletionStage<DeliveryStatus> aroute(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                           PayloadT message) {
+        return backingDriver.aroute(src, dst, ackingPolicy, message);
+    }
+
 
     public ReActorSystemId getReActorSystemId() {
         return reActorSystemId;

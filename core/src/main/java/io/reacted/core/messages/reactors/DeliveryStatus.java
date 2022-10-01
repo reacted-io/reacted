@@ -9,6 +9,8 @@
 package io.reacted.core.messages.reactors;
 
 public enum DeliveryStatus {
+    SENT,
+    NOT_SENT,
     DELIVERED,
     NOT_DELIVERED,
     BACKPRESSURED;
@@ -17,11 +19,7 @@ public enum DeliveryStatus {
         return this == DELIVERED;
     }
 
-    public boolean isNotDelivered() {
-        return !isDelivered();
-    }
-
-    public boolean isBackPressured() {
-        return this == BACKPRESSURED;
-    }
+    public boolean isNotDelivered() { return !isDelivered(); }
+    public boolean isSent() { return this != NOT_SENT; }
+    public boolean isNotSent() { return !isSent(); }
 }

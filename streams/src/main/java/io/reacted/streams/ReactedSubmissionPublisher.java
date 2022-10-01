@@ -10,6 +10,7 @@ package io.reacted.streams;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.DriverCtx;
@@ -32,6 +33,7 @@ import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
 import java.util.concurrent.Flow.Subscriber;
+import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -59,7 +61,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     public static final Duration RELIABLE_SUBSCRIPTION = BackpressuringMbox.RELIABLE_DELIVERY_TIMEOUT;
     public static final Duration BEST_EFFORT_SUBSCRIPTION = BackpressuringMbox.BEST_EFFORT_TIMEOUT;
 
-    private static final String SUBSCRIPTION_NAME_FORMAT = "Backpressure Manager [%s] Subscription [%s] Unique Id [%s]";
+    private static final String SUBSCRIPTION_NAME_FORMAT = "Backpressure Manager [%s] Subscription [%s]";
     private static final long FEED_GATE_OFFSET = SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class,
                                                                                    "feedGate")
                                                                    .orElseSneakyThrow();
@@ -69,7 +71,6 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     private final transient Set<ReActorRef> subscribers;
     private final transient ReActorSystem localReActorSystem;
     private final ReActorRef feedGate;
-
     /**
      * Creates a location oblivious data publisher with backpressure. Subscribers can slowdown
      * the producer or just drop data if they are best effort subscribers. Publisher is Serializable,
@@ -171,7 +172,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      */
     @Override
     public void subscribe(Flow.Subscriber<? super PayloadT> subscriber) {
-        subscribe(subscriber, UUID.randomUUID().toString());
+        subscribe(subscriber, RELIABLE_SUBSCRIPTION, UUID.randomUUID().toString());
     }
 
     /**
@@ -419,8 +420,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         var subscriberConfig = ReActorConfig.newBuilder()
                                             .setReActorName(String.format(SUBSCRIPTION_NAME_FORMAT,
                                                                           feedGate.getReActorId().getReActorName(),
-                                                                          subscriptionConfig.getSubscriberName(),
-                                                                          feedGate.getReActorId().getReActorUUID().toString()))
+                                                                          subscriptionConfig.getSubscriberName()))
                                             .setDispatcherName(Dispatcher.DEFAULT_DISPATCHER_NAME)
                                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                             .setMailBoxProvider(backpressureManager.getManagerMailbox())
@@ -444,14 +444,12 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @return a CompletionsStage that will be marked ad complete when the message has been
      * delivered to all the subscribers
      */
-    public CompletionStage<Void> backpressurableSubmit(PayloadT message) {
-        return feedGate.atell(message).thenAccept(delivery -> {});
+    public CompletionStage<DeliveryStatus> backpressurableSubmit(PayloadT message) {
+        return feedGate.atell(message);
     }
 
-    public CompletionStage<Void> submit(PayloadT message) {
-        return feedGate.tell(message)
-                       .toCompletableFuture()
-                       .thenAccept(Try::orElseSneakyThrow);
+    public DeliveryStatus submit(PayloadT message) {
+        return feedGate.tell(message);
     }
 
     private void forwardToSubscribers(ReActorContext raCtx, Serializable payload) {
@@ -459,8 +457,15 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                     .map(subscribed -> subscribed.atell(subscribed, payload))
                                     .collect(Collectors.toUnmodifiableList());
         deliveries.stream()
-                  .reduce((first, second) -> first.thenCompose(delivery -> second))
-                  .ifPresent(lastDelivery -> lastDelivery.thenAccept(lastRetVal -> raCtx.getMbox().request(1)));
+                  .reduce(this::combineStages)
+                  .ifPresent(lastDelivery -> lastDelivery.handle((dStatus, error) -> DeliveryStatus.SENT)
+                                                         .thenAccept(lastRetVal -> raCtx.getMbox().request(1)));
+    }
+
+    private CompletionStage<DeliveryStatus> combineStages(CompletionStage<DeliveryStatus> first,
+                                                          CompletionStage<DeliveryStatus> second) {
+        return first.handle((dStatus, error) -> DeliveryStatus.SENT)
+                    .thenCompose(dStatus -> second.handle((sDStatus, error) -> DeliveryStatus.SENT));
     }
 
     private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
@@ -470,9 +475,11 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        subscribers.forEach(subscriber -> ifNotDelivered(subscriber.tell(raCtx.getSelf(), new PublisherComplete()),
-                                                         error -> raCtx.logError("Unable to stop subscriber {}",
-                                                                                 subscriber, error)));
+        subscribers.forEach(subscriber -> {
+                       if(subscriber.route(raCtx.getSelf(), new PublisherComplete()).isNotSent()) {
+                           raCtx.logError("Unable to stop subscriber {}", subscriber);
+                       }
+                   });
         subscribers.clear();
     }
 

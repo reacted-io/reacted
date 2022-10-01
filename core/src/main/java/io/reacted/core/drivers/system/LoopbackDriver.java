@@ -19,7 +19,6 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -27,6 +26,7 @@ import io.reacted.patterns.UnChecked.TriConsumer;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -49,49 +49,84 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
-        return tell(src, dst, ackingPolicy, propagateToSubscribers, payload);
+    public <PayloadT extends Serializable> DeliveryStatus
+    tell(ReActorRef src, ReActorRef dst, PayloadT payload) {
+        return tell(src, dst, propagateToSubscribers, payload);
     }
-
     @Override
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
-        return tell(src, dst, ackingPolicy, DO_NOT_PROPAGATE, payload);
-    }
-
-    @Override
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-         TriConsumer<ReActorId, Serializable, ReActorRef> toSubscribers, PayloadT payload) {
+    public <PayloadT extends Serializable> DeliveryStatus
+    tell(ReActorRef src, ReActorRef dst,
+         TriConsumer<ReActorId, Serializable, ReActorRef> toSubscribers, PayloadT payload){
         ReActorContext dstCtx = localReActorSystem.getNullableReActorCtx(dst.getReActorId());
-        CompletionStage<Try<DeliveryStatus>> tellResult;
-        boolean isAckRequired = isAckRequired(localDriver.channelRequiresDeliveryAck(), ackingPolicy);
+        DeliveryStatus tellResult;
         long seqNum = localReActorSystem.getNewSeqNum();
         if (dstCtx != null) {
-            var pendingAck = isAckRequired
-                             ? localDriver.newPendingAckTrigger(seqNum)
-                             : null;
-            tellResult = localDriver.sendAsyncMessage(dstCtx, new Message(src, dstCtx.getSelf(), seqNum,
-                                                                          localReActorSystem.getLocalReActorSystemId(),
-                                                                          ackingPolicy, payload));
-            if (isAckRequired) {
-                tellResult.thenAccept(deliveryResult -> ObjectUtils.ifNotNull(localDriver.removePendingAckTrigger(seqNum),
-                                                                              deliveryAttempt -> deliveryAttempt.toCompletableFuture()
-                                                                                                                .complete(deliveryResult)));
-                tellResult = pendingAck;
+
+            tellResult = localDriver.sendMessage(dstCtx, new Message(src, dstCtx.getSelf(), seqNum,
+                                                                     localReActorSystem.getLocalReActorSystemId(),
+                                                                     AckingPolicy.NONE, payload));
+            toSubscribers.accept(dst.getReActorId(), payload, src);
+
+        } else {
+            tellResult = DeliveryStatus.NOT_SENT;
+
+            if (localReActorSystem.isSystemDeadLetters(dst)) {
+                //if here we are trying to deliver a message to deadletter because we did not find deadletter
+                LOGGER.error("Critic! Deadletters not found!? Source {} Destination {} Message {}",
+                             src, dst, payload);
+            } else {
+                localReActorSystem.toDeadLetters(src, payload);
+            }
+        }
+        return tellResult;
+    }
+
+    @Override
+    public <PayloadT extends Serializable> DeliveryStatus
+    route(ReActorRef src, ReActorRef dst, PayloadT payload) {
+        return tell(src, dst, DO_NOT_PROPAGATE, payload);
+    }
+
+    @Override
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
+        return atell(src, dst, ackingPolicy, propagateToSubscribers, payload);
+    }
+
+    @Override
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    aroute(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
+        return atell(src, dst, ackingPolicy, DO_NOT_PROPAGATE, payload);
+    }
+
+    @Override
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+          TriConsumer<ReActorId, Serializable, ReActorRef> toSubscribers, PayloadT payload) {
+        ReActorContext dstCtx = localReActorSystem.getNullableReActorCtx(dst.getReActorId());
+        CompletionStage<DeliveryStatus> tellResult;
+        long seqNum = localReActorSystem.getNewSeqNum();
+        if (dstCtx != null) {
+            Message messageToSend = new Message(src, dstCtx.getSelf(), seqNum,
+                                                localReActorSystem.getLocalReActorSystemId(),
+                                                ackingPolicy, payload);
+            if (ackingPolicy.isAckRequired()) {
+                tellResult = localDriver.sendAsyncMessage(dstCtx, messageToSend);
+
+            } else {
+                tellResult = CompletableFuture.completedStage(localDriver.sendMessage(dstCtx, messageToSend));
             }
 
             toSubscribers.accept(dst.getReActorId(), payload, src);
 
         } else {
-            tellResult = CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.NOT_DELIVERED));
-            if (!dst.equals(localReActorSystem.getSystemDeadLetters())) {
-                localReActorSystem.getSystemDeadLetters().tell(src, new DeadMessage(payload));
-            } else {
+            tellResult = CompletableFuture.completedFuture(DeliveryStatus.NOT_DELIVERED);
+            if (localReActorSystem.isSystemDeadLetters(dst)) {
                 //if here we are trying to deliver a message to deadletter because we did not find deadletter
                 LOGGER.error("Critic! Deadletters not found!? Source {} Destination {} Message {}",
                              src, dst, payload);
+            } else {
+                localReActorSystem.toDeadLetters(src, payload);
             }
         }
         return tellResult;
@@ -128,17 +163,13 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
 
     @Override
     public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
-        throw new DeliveryException(new UnsupportedOperationException());
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
+    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
+        return CompletableFuture.failedStage(new UnsupportedOperationException());
     }
-
-    @Override
-    public boolean channelRequiresDeliveryAck() { return localDriver.channelRequiresDeliveryAck(); }
-
     @Override
     public Properties getChannelProperties() { return localDriver.getChannelProperties(); }
 
@@ -157,15 +188,16 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
         }
     }
 
-    private void propagateToSubscribers(LocalDriver<ConfigT> localDriver, Collection<ReActorContext> subscribers,
+    private void propagateToSubscribers(LocalDriver<ConfigT> localDriver, List<ReActorContext> subscribers,
                                         ReActorId originalDestination, ReActorSystem localReActorSystem,
                                         ReActorRef src, Serializable payload) {
-        subscribers.stream()
-                   .filter(reActorCtx -> !reActorCtx.getSelf().getReActorId().equals(originalDestination))
-                   .forEach(dstCtx -> localDriver.sendMessage(dstCtx,
-                                                              new Message(src, dstCtx.getSelf(),
-                                                                          localReActorSystem.getNewSeqNum(),
-                                                                          localReActorSystem.getLocalReActorSystemId(),
-                                                                          AckingPolicy.NONE, payload)));
+        for (ReActorContext ctx : subscribers) {
+            if (!ctx.getSelf().getReActorId().equals(originalDestination)) {
+                localDriver.sendMessage(ctx, new Message(src, ctx.getSelf(),
+                                                         localReActorSystem.getNewSeqNum(),
+                                                         localReActorSystem.getLocalReActorSystemId(),
+                                                         AckingPolicy.NONE, payload));
+            }
+        }
     }
 }
