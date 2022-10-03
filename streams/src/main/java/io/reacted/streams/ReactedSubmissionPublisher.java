@@ -31,6 +31,8 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
+import java.time.Duration;
+import java.util.Iterator;
 import java.util.concurrent.Flow.Subscriber;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -44,12 +46,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
 
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
                                                                                   AutoCloseable, Externalizable {
+    private static final Duration BACKPRESSURE_DELAY_BASE = Duration.ofMillis(10);
     private static final String SUBSCRIPTION_NAME_FORMAT = "Backpressure Manager [%s] Subscription [%s]";
     private static final long FEED_GATE_OFFSET = SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class,
                                                                                    "feedGate")
@@ -60,6 +64,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     private final transient Set<ReActorRef> subscribers;
     private final transient ReActorSystem localReActorSystem;
     private final ReActorRef feedGate;
+    private Duration streamBackpressureTimeout = BACKPRESSURE_DELAY_BASE;
 
     /**
      * Creates a location oblivious data publisher with backpressure. Subscribers can slowdown
@@ -69,7 +74,6 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @param localReActorSystem ReActorSystem used to manage and control the data flow
      * @param feedName           Name of this feed. Feed name must be unique and if deterministic it allows
      *                           cold replay
-     * @param bufferSize         Size of the buffer that holds the messages waiting to be sent
      */
     public ReactedSubmissionPublisher(ReActorSystem localReActorSystem, String feedName) {
         this.localReActorSystem = Objects.requireNonNull(localReActorSystem);
@@ -238,19 +242,58 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     private void forwardToSubscribers(ReActorContext raCtx, Serializable payload) {
-        var deliveries = subscribers.stream()
-                                    .map(subscribed -> subscribed.atell(raCtx.getSelf(), payload))
-                                    .toList();
-        deliveries.stream()
-                  .reduce(this::combineStages)
-                  .ifPresent(lastDelivery -> lastDelivery.handle((dStatus, error) -> DeliveryStatus.SENT)
-                                                         .thenAccept(lastRetVal -> raCtx.getMbox().request(1)));
+        if (subscribers.isEmpty()) {
+            return;
+        }
+
+        CompletionStage<DeliveryStatus>[] deliveries = new CompletionStage[subscribers.size()];
+        ReActorRef[] subscribersRefs = new ReActorRef[subscribers.size()];
+        Iterator<ReActorRef> subscribersIterator = subscribers.iterator();
+        for (int subscriberIdx = 0; subscribersIterator.hasNext(); subscriberIdx++) {
+            subscribersRefs[subscriberIdx] = subscribersIterator.next();
+            deliveries[subscriberIdx] = subscribersRefs[subscriberIdx].atell(raCtx.getSelf(), payload);
+        }
+        CompletionStage<DeliveryStatus> result = deliveries[0];
+        for(int subscriberIdx = 1; subscriberIdx < deliveries.length; subscriberIdx++) {
+            result = combineStages(raCtx.getSelf(),
+                                   result, subscribersRefs[subscriberIdx - 1],
+                                   deliveries[subscriberIdx], subscribersRefs[subscriberIdx]);
+        }
+        result.handle((deliveryStatus, error) -> {
+            if (deliveryStatus != DeliveryStatus.BACKPRESSURE_REQUIRED) {
+                raCtx.getMbox().request(1);
+                this.streamBackpressureTimeout = BACKPRESSURE_DELAY_BASE;
+            } else {
+                raCtx.getReActorSystem().getSystemSchedulingService()
+                     .schedule(() -> raCtx.getMbox().request(1),
+                               streamBackpressureTimeout.toMillis(),
+                               TimeUnit.MILLISECONDS);
+                streamBackpressureTimeout = streamBackpressureTimeout.multipliedBy(2);
+            }
+            return null;
+        });
     }
 
-    private CompletionStage<DeliveryStatus> combineStages(CompletionStage<DeliveryStatus> first,
-                                                          CompletionStage<DeliveryStatus> second) {
-        return first.handle((dStatus, error) -> DeliveryStatus.SENT)
-                    .thenCompose(dStatus -> second.handle((sDStatus, error) -> DeliveryStatus.SENT));
+    private CompletionStage<DeliveryStatus> combineStages(ReActorRef feedGate,
+                                                          CompletionStage<DeliveryStatus> first,
+                                                          ReActorRef firstRef,
+                                                          CompletionStage<DeliveryStatus> second,
+                                                          ReActorRef secondRef) {
+        return first.handle((dStatus, error) -> {
+            if (error != null) {
+                feedGate.tell(feedGate, new UnsubscriptionRequest(firstRef));
+                return DeliveryStatus.NOT_DELIVERED;
+            }
+            return dStatus;
+        }).thenCompose(fStatus -> second.handle((sStatus, error) -> {
+            if (error != null) {
+                feedGate.tell(feedGate, new UnsubscriptionRequest(secondRef));
+                sStatus = DeliveryStatus.NOT_DELIVERED;
+            }
+            return fStatus == DeliveryStatus.BACKPRESSURE_REQUIRED
+                   ? fStatus
+                   : sStatus;
+        }));
     }
 
     private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {

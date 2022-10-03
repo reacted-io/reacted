@@ -19,7 +19,7 @@ import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class BasicMbox implements MailBox {
-    private final BlockingDeque<Message> inbox = new LinkedBlockingDeque<>(1000);
+    private final BlockingDeque<Message> inbox = new LinkedBlockingDeque<>();
     @Override
     public boolean isEmpty() { return inbox.isEmpty(); }
 

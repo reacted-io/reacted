@@ -98,8 +98,8 @@ public class BackpressuringMbox implements MailBox {
                     }
                     return realMbox.deliver(message);
                 }
+                bufferQueue.addLast(message);
             }
-            bufferQueue.addLast(message);
             if (bufferQueue.size() >= backpressuringThreshold) {
                 deliveryAttempt = DeliveryStatus.BACKPRESSURE_REQUIRED;
             }
@@ -113,14 +113,11 @@ public class BackpressuringMbox implements MailBox {
     public void request(long messagesNum) {
         synchronized (this) {
             this.available += messagesNum;
-            long msgToSend = Math.min(available, bufferQueue.size());
-            for(long msgnum = 0; msgnum < msgToSend && !bufferQueue.isEmpty(); msgnum++) {
+            while(available != 0 && !bufferQueue.isEmpty()) {
                 Message payload = bufferQueue.removeFirst();
                 realMbox.deliver(payload);
                 if (!outOfStreamControl.contains(payload.getPayload().getClass())) {
                     available--;
-                } else {
-                    msgnum--;
                 }
             }
         }
