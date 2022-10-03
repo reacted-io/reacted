@@ -311,8 +311,8 @@ public class ReactiveServer {
                     dataPublisher.close();
                     return;
                 }
-                dataPublisher.distributedSubmit(new String(buffer, 0, read))
-                             .thenAccept(noVal -> readFileLine(raCtx, Objects.requireNonNull(fileLines)));
+                dataPublisher.submit(new String(buffer, 0, read));
+                readFileLine(raCtx, Objects.requireNonNull(fileLines));
             } catch (Exception exc) {
                 raCtx.getParent().tell(raCtx.getSelf(), new InternalError(exc));
             }

@@ -55,9 +55,7 @@ public class DistributedPublisherTest {
                                  .orElseSneakyThrow();
     remoteSubscriber.tell(publisher);
     TimeUnit.SECONDS.sleep(2);
-    publisher.distributedSubmit("First Message")
-             .toCompletableFuture()
-             .join();
+    publisher.submit("First Message");
     TimeUnit.SECONDS.sleep(2);
     Assertions.assertEquals(2L, testSubscriber.getMessagesCount());
   }
@@ -111,8 +109,8 @@ public class DistributedPublisherTest {
     }
 
     private void onMessage(ReActorContext raCtx, Serializable message) {
-      publisher.distributedSubmit(message)
-               .thenAccept(noVal -> subscription.request(1));
+      publisher.submit(message);
+      subscription.request(1);
     }
     private void onPublisher(ReActorContext raCtx,ReactedSubmissionPublisher<Serializable> publisher) {
       this.publisher = publisher;

@@ -226,16 +226,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * Submit a new message to the feed. The delivery order among the subscribers is not predictable
      * or consistent. If producer wants to regulate the production rate according to the consumers
      * speed (flow regulation backpressuring) the next message has to be sent when the previous one
-     * has been delivered. Strict message ordering is guaranteed to be the same of submission.
+     * is not requesting for backpressure. Strict message ordering is guaranteed to be the same of submission.
      * This call is never blocking.
      *
      * @param message the message that should be propagated to the subscribers
      * @return a CompletionsStage that will be marked ad complete when the message has been
      * delivered to all the subscribers
      */
-    public CompletionStage<DeliveryStatus> distributedSubmit(PayloadT message) {
-        return feedGate.atell(message);
-    }
 
     public DeliveryStatus submit(PayloadT message) {
         return feedGate.tell(message);

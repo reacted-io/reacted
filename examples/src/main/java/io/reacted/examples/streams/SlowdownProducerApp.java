@@ -47,10 +47,7 @@ class SlowdownProducerApp {
         //Produce a stream of updates
         IntStream.range(0, msgNum)
                  //Propagate them to every consumer, regardless of the location
-                 .mapToObj(streamPublisher::distributedSubmit)
-                 .map(CompletionStage::toCompletableFuture)
-                 //Slowdown if any reliable subscriber cannot keep up with the speed
-                 .forEachOrdered(CompletableFuture::join);
+                 .forEachOrdered(streamPublisher::submit);
         //NOTE: you can join or triggering the new update once the previous one has been delivered
         Awaitility.await()
                   .atMost(Duration.ofSeconds(10))
