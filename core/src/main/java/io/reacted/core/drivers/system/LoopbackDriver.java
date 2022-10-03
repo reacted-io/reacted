@@ -114,13 +114,13 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
                 tellResult = localDriver.sendAsyncMessage(dstCtx, messageToSend);
 
             } else {
-                tellResult = CompletableFuture.completedStage(localDriver.sendMessage(dstCtx, messageToSend));
+                tellResult = DELIVERY_RESULT_CACHE[localDriver.sendMessage(dstCtx, messageToSend).ordinal()];
             }
 
             toSubscribers.accept(dst.getReActorId(), payload, src);
 
         } else {
-            tellResult = CompletableFuture.completedFuture(DeliveryStatus.NOT_DELIVERED);
+            tellResult = DELIVERY_RESULT_CACHE[DeliveryStatus.NOT_DELIVERED.ordinal()];
             if (localReActorSystem.isSystemDeadLetters(dst)) {
                 //if here we are trying to deliver a message to deadletter because we did not find deadletter
                 LOGGER.error("Critic! Deadletters not found!? Source {} Destination {} Message {}",
@@ -164,11 +164,6 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     @Override
     public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.failedStage(new UnsupportedOperationException());
     }
     @Override
     public Properties getChannelProperties() { return localDriver.getChannelProperties(); }

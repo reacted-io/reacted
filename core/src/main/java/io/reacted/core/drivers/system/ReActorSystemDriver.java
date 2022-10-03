@@ -33,6 +33,7 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
+import java.util.Arrays;
 import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,9 @@ import java.util.concurrent.TimeoutException;
 public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> {
     public static final ThreadLocal<DriverCtx> REACTOR_SYSTEM_CTX = new InheritableThreadLocal<>();
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystemDriver.class);
+    protected static final CompletionStage<DeliveryStatus>[] DELIVERY_RESULT_CACHE = Arrays.stream(DeliveryStatus.values())
+                                                                                           .map(CompletableFuture::completedStage)
+                                                                                           .toArray(CompletionStage[]::new);
     private final ConfigT driverConfig;
     private final Cache<Long, CompletableFuture<DeliveryStatus>> pendingAcksTriggers;
     @Nullable
@@ -85,6 +89,10 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      * @throws io.reacted.core.exceptions.DeliveryException
      */
     public abstract DeliveryStatus sendMessage(ReActorContext destination, Message message);
+    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
+        return DELIVERY_RESULT_CACHE[sendMessage(destination, message).ordinal()];
+    }
+
     public ConfigT getDriverConfig() { return driverConfig; }
 
     /**

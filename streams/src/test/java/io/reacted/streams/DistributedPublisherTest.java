@@ -55,7 +55,7 @@ public class DistributedPublisherTest {
                                  .orElseSneakyThrow();
     remoteSubscriber.tell(publisher);
     TimeUnit.SECONDS.sleep(2);
-    publisher.backpressurableSubmit("First Message")
+    publisher.distributedSubmit("First Message")
              .toCompletableFuture()
              .join();
     TimeUnit.SECONDS.sleep(2);
@@ -111,7 +111,7 @@ public class DistributedPublisherTest {
     }
 
     private void onMessage(ReActorContext raCtx, Serializable message) {
-      publisher.backpressurableSubmit(message)
+      publisher.distributedSubmit(message)
                .thenAccept(noVal -> subscription.request(1));
     }
     private void onPublisher(ReActorContext raCtx,ReactedSubmissionPublisher<Serializable> publisher) {

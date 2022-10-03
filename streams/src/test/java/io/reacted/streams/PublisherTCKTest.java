@@ -12,7 +12,6 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.Try;
-import io.reacted.patterns.UnChecked;
 import java.io.FileNotFoundException;
 import org.reactivestreams.tck.TestEnvironment;
 import org.reactivestreams.tck.flow.FlowPublisherVerification;
@@ -44,7 +43,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
         super(new TestEnvironment(250, 250, false));
         var rasCfg = ReActorSystemConfig.newBuilder()
                 .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/dl"))
-                .setRecordExecution(false)
+                .setRecordExecution(true)
                 .setMsgFanOutPoolSize(1)
                 .setReactorSystemName("TckValidationRAS")
                 .build();
@@ -102,12 +101,15 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     private void asyncPublishMessages(ReactedSubmissionPublisher<Long> publisher,
                                       long messagesNum) {
         submitterThread.submit(() -> {
+            //The subscription handshake needs some time to complete
             Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(50));
             for(long cycle = 0; cycle < messagesNum && !Thread.currentThread().isInterrupted(); cycle++) {
-                if (publisher.backpressurableSubmit(cycle).toCompletableFuture().join().isNotSent()) {
+                if (publisher.submit(cycle).isNotSent()) {
                     LOGGER.error("Critic! Message {} not sent!", cycle);
                 }
             }
+            Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(50));
+            publisher.close();
         });
     }
 }

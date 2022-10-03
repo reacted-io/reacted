@@ -24,7 +24,6 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 import io.reacted.streams.messages.PublisherInterrupt;
 import io.reacted.streams.messages.PublisherShutdown;
 import io.reacted.streams.messages.PublisherComplete;
@@ -33,25 +32,18 @@ import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
 import java.util.concurrent.Flow.Subscriber;
-import java.util.function.Predicate;
-import javax.annotation.Nullable;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.stream.Collectors;
 
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
@@ -68,19 +60,6 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     private final transient Set<ReActorRef> subscribers;
     private final transient ReActorSystem localReActorSystem;
     private final ReActorRef feedGate;
-    /**
-     * Creates a location oblivious data publisher with backpressure. Subscribers can slowdown
-     * the producer or just drop data if they are best effort subscribers. Publisher is Serializable,
-     * so it can be sent to any reactor over any gate and subscribers can simply join the stream.
-     *
-     * @param localReActorSystem ReActorSystem used to manage and control the data flow
-     * @param feedName           Name of this feed. Feed name must be unique and if deterministic it allows
-     *                           cold replay
-     */
-
-    public ReactedSubmissionPublisher(ReActorSystem localReActorSystem, String feedName) {
-        this(localReActorSystem, feedName, Flow.defaultBufferSize());
-    }
 
     /**
      * Creates a location oblivious data publisher with backpressure. Subscribers can slowdown
@@ -92,19 +71,19 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *                           cold replay
      * @param bufferSize         Size of the buffer that holds the messages waiting to be sent
      */
-    public ReactedSubmissionPublisher(ReActorSystem localReActorSystem, String feedName,
-                                      int bufferSize) {
+    public ReactedSubmissionPublisher(ReActorSystem localReActorSystem, String feedName) {
         this.localReActorSystem = Objects.requireNonNull(localReActorSystem);
         this.subscribers = ConcurrentHashMap.newKeySet(10);
         var feedGateConfig = ReActorConfig.newBuilder()
                                        .setReActorName("Feed Gate: [" + Objects.requireNonNull(feedName, "Feed name cannot be null") + "]")
                                        .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
                                                                                     .setRealMailboxOwner(ctx)
-                                                                                    .setRequestOnStartup(bufferSize)
-                                                                                    .setNonBackpressurable(Set.of(ReActorInit.class,
-                                                                                                                  PublisherInterrupt.class, ReActorStop.class,
-                                                                                                                  SubscriptionRequest.class, UnsubscriptionRequest.class,
-                                                                                                                  PublisherShutdown.class, PublisherComplete.class))
+                                                                                    .setBackpressuringThreshold(1000)
+                                                                                    .setOutOfStreamControl(PublisherComplete.class,
+                                                                                                           PublisherShutdown.class)
+                                                                                    .setNonDelayable(ReActorInit.class,
+                                                                                                     PublisherInterrupt.class, ReActorStop.class,
+                                                                                                     SubscriptionRequest.class, UnsubscriptionRequest.class)
                                                                                     .build())
                                        .build();
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
@@ -250,7 +229,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      * @return a CompletionsStage that will be marked ad complete when the message has been
      * delivered to all the subscribers
      */
-    public CompletionStage<DeliveryStatus> backpressurableSubmit(PayloadT message) {
+    public CompletionStage<DeliveryStatus> distributedSubmit(PayloadT message) {
         return feedGate.atell(message);
     }
 
@@ -260,8 +239,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     private void forwardToSubscribers(ReActorContext raCtx, Serializable payload) {
         var deliveries = subscribers.stream()
-                                    .map(subscribed -> subscribed.atell(subscribed, payload))
-                                    .collect(Collectors.toUnmodifiableList());
+                                    .map(subscribed -> subscribed.atell(raCtx.getSelf(), payload))
+                                    .toList();
         deliveries.stream()
                   .reduce(this::combineStages)
                   .ifPresent(lastDelivery -> lastDelivery.handle((dStatus, error) -> DeliveryStatus.SENT)

@@ -76,20 +76,12 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           Objects.requireNonNull(message, "Cannot offer() a null message");
           ReActorId destinationId = message.getDestination().getReActorId();
           ReActorContext destinationCtx = getLocalReActorSystem().getReActorCtx(destinationId);
-          CompletionStage<DeliveryStatus> asyncMessageDeliveryAttempt = null;
+          DeliveryStatus deliveryStatus;
 
           if (destinationCtx != null) {
-               if (message.getDataLink().getAckingPolicy().isAckRequired()) {
-                    asyncMessageDeliveryAttempt = asyncForwardMessageToLocalActor(destinationCtx,
-                                                                                  message);
-               } else {
-                    try {
-                         syncForwardMessageToLocalActor(destinationCtx, message);
-                    } catch (DeliveryException deliveryException) {
-                         getLocalReActorSystem().toDeadLetters(message);
-                    }
-               }
+               deliveryStatus = syncForwardMessageToLocalActor(destinationCtx, message);
           } else {
+               deliveryStatus = DeliveryStatus.NOT_DELIVERED;
                getLocalReActorSystem().toDeadLetters(message);
           }
 
@@ -98,18 +90,7 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
                ackTrigger = removePendingAckTrigger(message.getSequenceNumber());
 
                if (ackTrigger != null) {
-                    asyncMessageDeliveryAttempt.handle(((deliveryStatus, error) -> {
-                         if (error == null) {
-                              ackTrigger.toCompletableFuture().complete(deliveryStatus);
-                         } else {
-                              ackTrigger.toCompletableFuture().completeExceptionally(error);
-                         }
-                         if (destinationCtx != null &&
-                             deliveryStatus == null || !deliveryStatus.isDelivered()) {
-                              getLocalReActorSystem().toDeadLetters(message);
-                         }
-                         return null;
-                    }));
+                    ackTrigger.toCompletableFuture().complete(deliveryStatus);
                }
           }
      }
@@ -121,14 +102,6 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
                                                      Objects.requireNonNull(message,
                                                                             "Cannot forward a null message"));
      }
-
-     protected static CompletionStage<DeliveryStatus>
-     asyncForwardMessageToLocalActor(ReActorContext destination, Message message) {
-          return SystemLocalDrivers.DIRECT_COMMUNICATION
-              .sendAsyncMessage(destination,
-                           Objects.requireNonNull(message, "Cannot forward a null message"));
-     }
-
      protected static DeliveryStatus localDeliver(ReActorContext destination, Message message) {
           DeliveryStatus deliverOperation = destination.getMbox().deliver(message);
           if (deliverOperation.isDelivered()) {

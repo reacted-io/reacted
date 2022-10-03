@@ -78,11 +78,6 @@ public class NullLocalDriver extends LocalDriver<NullLocalDriverConfig> {
     }
 
     @Override
-    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.failedStage(new UnsupportedOperationException());
-    }
-
-    @Override
     public ChannelId getChannelId() { return channelId; }
 
     @Override

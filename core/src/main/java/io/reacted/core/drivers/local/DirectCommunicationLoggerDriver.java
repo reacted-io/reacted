@@ -80,16 +80,4 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
                ? DeliveryStatus.NOT_DELIVERED
                : localDeliver(destination, message);
     }
-
-    @Override
-    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
-        CompletionStage<DeliveryStatus> delivery = CompletableFuture.completedStage(destination.isStop()
-                                                                                    ? DeliveryStatus.NOT_DELIVERED
-                                                                                    : sendMessage(destination, message));
-        synchronized (logFile) {
-            logFile.println(message);
-            logFile.flush();
-        }
-        return delivery;
-    }
 }

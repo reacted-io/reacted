@@ -34,9 +34,9 @@ class StreamToMultipleSubscribersApp {
         var subscriber2 = new TestSubscriber<>(-1, Integer::compareTo);
         var subscriber3 = new TestSubscriber<>(-1, Integer::compareTo);
         //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber, ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION);
+        streamPublisher.subscribe(subscriber);
         //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber2, ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION);
+        streamPublisher.subscribe(subscriber2);
         //Best effort subscriber. Updates from this may be lost
         streamPublisher.subscribe(subscriber3);
         //We need to give the time to the subscription to propagate till the producer

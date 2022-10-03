@@ -91,23 +91,4 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
                ? DeliveryStatus.NOT_DELIVERED
                : localDeliver(destination, message);
     }
-
-    @Override
-    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
-        return
-        synchronized (logFile) {
-
-            logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
-                           Instant.now(),
-                           message.getSender().getReActorId().getReActorName(),
-                           message.getDestination().getReActorId().getReActorName(),
-                           message.getSequenceNumber(),
-                           message.getPayload().getClass().toString(),
-                           message.getPayload());
-            logFile.flush();
-        }
-        return destination.isStop()
-               ? CompletableFuture.completedFuture(DeliveryStatus.NOT_DELIVERED)
-               : asyncLocalDeliver(destination, message);
-    }
 }

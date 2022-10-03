@@ -70,7 +70,7 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     @Override
     public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
         if (!message.getDataLink().getAckingPolicy().isAckRequired()) {
-            return CompletableFuture.completedStage(sendMessage(destination, message));
+            return super.sendAsyncMessage(destination, message);
         }
         CompletionStage<DeliveryStatus> pendingAck = newPendingAckTrigger(message.getSequenceNumber());
 
@@ -78,9 +78,8 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
         if (localDeliveryStatus == DeliveryStatus.SENT) {
             return pendingAck;
         }
-        pendingAck.toCompletableFuture().complete(localDeliveryStatus);
         removePendingAckTrigger(message.getSequenceNumber());
-        return pendingAck;
+        return DELIVERY_RESULT_CACHE[localDeliveryStatus.ordinal()];
     }
 
     @Override

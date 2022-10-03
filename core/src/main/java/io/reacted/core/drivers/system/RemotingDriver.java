@@ -34,16 +34,6 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     protected RemotingDriver(ConfigT config) { super(config); }
 
     @Override
-    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
-        try {
-            DeliveryStatus deliveryStatus = sendMessage(destination, message);
-            return CompletableFuture.completedStage(deliveryStatus);
-        } catch (Exception deliveryError) {
-            return CompletableFuture.failedStage(deliveryError);
-        }
-    }
-
-    @Override
     public final <PayloadT extends Serializable>
     DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
         return tell(src, dst, DO_NOT_PROPAGATE, message);
@@ -82,23 +72,17 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                                           PayloadT message) {
         long nextSeqNum = getLocalReActorSystem().getNewSeqNum();
         var pendingAck = ackingPolicy.isAckRequired() ? newPendingAckTrigger(nextSeqNum) : null;
-        DeliveryStatus sendResult;
-        try {
-            sendResult = sendMessage(ReActorContext.NO_REACTOR_CTX,
-                                     new Message(src, dst, nextSeqNum,
-                                                 getLocalReActorSystem().getLocalReActorSystemId(),
-                                                 ackingPolicy, message));
-        } catch (Exception deliveryError) {
-            removePendingAckTrigger(nextSeqNum);
-            return CompletableFuture.failedStage(deliveryError);
-        }
-        CompletionStage<DeliveryStatus> tellResult;
+        DeliveryStatus sendResult = sendMessage(ReActorContext.NO_REACTOR_CTX,
+                                                new Message(src, dst, nextSeqNum,
+                                                            getLocalReActorSystem().getLocalReActorSystemId(),
+                                                            ackingPolicy, message));
+        CompletionStage<DeliveryStatus> tellResult = DELIVERY_RESULT_CACHE[sendResult.ordinal()];
         if (ackingPolicy.isAckRequired()) {
-            tellResult = sendResult.isDelivered()
-                         ? pendingAck
-                         : CompletableFuture.completedStage(sendResult);
-        } else {
-            tellResult = CompletableFuture.completedStage(sendResult);
+            if (sendResult.isSent()) {
+                tellResult = pendingAck;
+            } else {
+                removePendingAckTrigger(nextSeqNum);
+            }
         }
         return tellResult;
     }

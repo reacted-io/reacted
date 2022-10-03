@@ -36,9 +36,9 @@ class SlowdownProducerApp {
         var subscriber2 = new TestSubscriber<>(-1, Integer::compareTo);
         var subscriber3 = new TestSubscriber<>(-1, Integer::compareTo);
         //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber, ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION);
+        streamPublisher.subscribe(subscriber);
         //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber2, ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION);
+        streamPublisher.subscribe(subscriber2);
         //Best effort subscriber. Updates from this may be lost
         streamPublisher.subscribe(subscriber3);
         //We need to give the time to the subscription to propagate till the producer
@@ -47,7 +47,7 @@ class SlowdownProducerApp {
         //Produce a stream of updates
         IntStream.range(0, msgNum)
                  //Propagate them to every consumer, regardless of the location
-                 .mapToObj(streamPublisher::backpressurableSubmit)
+                 .mapToObj(streamPublisher::distributedSubmit)
                  .map(CompletionStage::toCompletableFuture)
                  //Slowdown if any reliable subscriber cannot keep up with the speed
                  .forEachOrdered(CompletableFuture::join);

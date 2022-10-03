@@ -48,8 +48,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
-
 @NonNullByDefault
 public class ReactiveServer {
     private static final Logger SERVER_LOGGER = LoggerFactory.getLogger(ReactiveServer.class);
@@ -173,11 +171,8 @@ public class ReactiveServer {
         private void onDataPublisher(ReActorContext raCtx, ReactedSubmissionPublisher<String> publisher) {
             var sender = raCtx.getSender();
             publisher.subscribe(ReActedSubscriptionConfig.<String>newBuilder()
-                                                         .setAsyncBackpressurer(asyncBackpressureExecutor)
                                                          .setSubscriberName("sub_" + raCtx.getSender().getReActorId().getReActorName())
                                                          .setBufferSize(ReactiveServer.BACKPRESSURING_BUFFER_SIZE)
-                                                         .setBackpressureTimeout(ReactedSubmissionPublisher.RELIABLE_SUBSCRIPTION)
-                                                         .setSequencer(sequencer)
                                                          .build(),
                                 getNexDataConsumer(raCtx, outputExecutor))
                      .thenAccept(noVal -> sender.tell(raCtx.getSelf(), new StartPublishing()));
@@ -316,7 +311,7 @@ public class ReactiveServer {
                     dataPublisher.close();
                     return;
                 }
-                dataPublisher.backpressurableSubmit(new String(buffer, 0, read))
+                dataPublisher.distributedSubmit(new String(buffer, 0, read))
                              .thenAccept(noVal -> readFileLine(raCtx, Objects.requireNonNull(fileLines)));
             } catch (Exception exc) {
                 raCtx.getParent().tell(raCtx.getSelf(), new InternalError(exc));

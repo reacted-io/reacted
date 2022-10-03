@@ -10,7 +10,6 @@ package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -32,7 +31,6 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -40,13 +38,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<ServiceCfgBuilderT, ServiceCfgT>,
@@ -125,7 +120,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class));
 
         var backpressuringMbox = BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox());
-        backpressuringMbox.filter(mbox -> !mbox.isBackpressurable(ReActorInit.class))
+        backpressuringMbox.filter(mbox -> !mbox.isDelayable(ReActorInit.class))
                           .ifPresent(mbox -> mbox.request(1));
 
         //spawn the minimum number or routees

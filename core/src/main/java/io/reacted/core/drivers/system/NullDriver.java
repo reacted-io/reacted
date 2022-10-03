@@ -116,11 +116,6 @@ public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
         throw new NoRouteToReActorSystem();
     }
-
-    @Override
-    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.failedStage(new NoRouteToReActorSystem());
-    }
     @Override
     public ChannelId getChannelId() { return channelId; }
 

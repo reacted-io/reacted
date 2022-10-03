@@ -30,19 +30,15 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
-import java.time.Instant;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.function.Consumer;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
-
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription,
@@ -74,11 +70,12 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
                                                   .setRealMbox(new BoundedBasicMbox(subscription.getBufferSize()))
                                                   .setBackpressuringThreshold(subscription.getBufferSize())
                                                   .setRequestOnStartup(0)
-                                                  .setNonBackpressurable(Set.of(ReActorInit.class, ReActorStop.class,
-                                                                                SubscriptionRequest.class, SubscriptionReply.class,
-                                                                                UnsubscriptionRequest.class, SubscriberError.class,
-                                                                                PublisherInterrupt.class, PublisherComplete.class,
-                                                                                PublisherShutdown.class));
+                                                  .setOutOfStreamControl(PublisherComplete.class,
+                                                                         PublisherShutdown.class)
+                                                  .setNonDelayable(ReActorInit.class, ReActorStop.class,
+                                                                   SubscriptionRequest.class, SubscriptionReply.class,
+                                                                   UnsubscriptionRequest.class, SubscriberError.class,
+                                                                   PublisherInterrupt.class);
     }
 
     @Override

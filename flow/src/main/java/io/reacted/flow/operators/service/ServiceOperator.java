@@ -85,7 +85,7 @@ public class ServiceOperator extends FlowOperator<Builder,
   private void onServiceOperatorInit(ReActorContext raCtx, ReActorInit init) {
     super.onInit(raCtx, init);
     BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
-                      .ifPresent(mbox -> mbox.addNonDelayedMessageTypes(Set.of(RefreshServiceRequest.class)));
+                      .ifPresent(mbox -> mbox.addNonDelayableTypes(Set.of(RefreshServiceRequest.class)));
     this.serviceRefreshTask = raCtx.getReActorSystem()
          .getSystemSchedulingService()
          .scheduleWithFixedDelay(() -> {

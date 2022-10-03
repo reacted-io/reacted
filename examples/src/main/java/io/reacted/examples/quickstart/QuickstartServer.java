@@ -44,7 +44,9 @@ public class QuickstartServer {
         try {
             String serviceName = "Greetings";
             showOffServerSystem.spawnService(ServiceConfig.newBuilder()
-                                                          .setMailBoxProvider(BackpressuringMbox::newDefaultMailBox)
+                                                          .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
+                                                                                                       .setRealMailboxOwner(ctx)
+                                                                                                       .build())
                                                           .setReActorName(serviceName)
                                                           .setRouteesNum(2)
                                                           .setRouteeProvider(GreeterService::new)
