@@ -189,18 +189,14 @@ public class Dispatcher {
     private static ReActorContext getNextScheduledReActor(AbstractConcurrentArrayQueue<Long> scheduledList,
                                                           ReActorSystem reActorSystem) throws InterruptedException {
         ReActorContext scheduledReActor = null;
-        long emptyCycles = 0;
-        long msecToWait = 1;
+        long nsecToWait = 1;
         while (scheduledReActor == null) {
             Long scheduledReActorId = scheduledList.poll();
             if (scheduledReActorId == null) {
-                if (++emptyCycles >= 1000000) {
-                    TimeUnit.MILLISECONDS.sleep(msecToWait);
-                    msecToWait = Math.min(100, msecToWait << 1);
-                }
+                TimeUnit.NANOSECONDS.sleep(nsecToWait);
+                nsecToWait = Math.min(10000000, nsecToWait << 1);
             } else {
-                msecToWait = 1;
-                emptyCycles = 0;
+                nsecToWait = 1;
                 scheduledReActor = reActorSystem.getNullableReActorCtx(scheduledReActorId);
             }
         }
