@@ -14,10 +14,13 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.EventExecutionAttempt;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import java.util.NoSuchElementException;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
+import org.agrona.concurrent.AbstractConcurrentArrayQueue;
+import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,11 +28,9 @@ import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -37,7 +38,8 @@ import java.util.stream.Stream;
 
 @NonNullByDefault
 public class Dispatcher {
-    public static final Dispatcher NULL_DISPATCHER = new Dispatcher(DispatcherConfig.NULL_DISPATCHER_CFG);
+    public static final Dispatcher NULL_DISPATCHER = new Dispatcher(DispatcherConfig.NULL_DISPATCHER_CFG,
+                                                                    ReActorSystem.NO_REACTOR_SYSTEM);
     /* Default dispatcher. Used by system internals */
     public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
     public static final int DEFAULT_DISPATCHER_BATCH_SIZE = 10;
@@ -51,16 +53,18 @@ public class Dispatcher {
     private ExecutorService dispatcherLifeCyclePool;
     @Nullable
     private ExecutorService[] dispatcherPool;
-    private final ArrayBlockingQueue<ReActorContext>[] scheduledQueues;
+    private final AbstractConcurrentArrayQueue<Long>[] scheduledQueues;
     private final AtomicLong nextDispatchIdx = new AtomicLong(0);
+    private final ReActorSystem reActorSystem;
 
     @SuppressWarnings("unchecked")
-    public Dispatcher(DispatcherConfig config) {
+    public Dispatcher(DispatcherConfig config, ReActorSystem reActorSystem) {
+        this.reActorSystem = reActorSystem;
         this.dispatcherConfig = config;
-        this.scheduledQueues =  Stream.iterate(new ArrayBlockingQueue<ReActorContext>(1_000_000),
-                                              scheduleQueue -> new ArrayBlockingQueue<>(1_000_000))
-                                     .limit(getDispatcherConfig().getDispatcherThreadsNum())
-                                     .toArray(ArrayBlockingQueue[]::new);
+        this.scheduledQueues =  Stream.iterate(new ManyToOneConcurrentArrayQueue<Long>(reActorSystem.getSystemConfig().getMaximumReActorsNum()),
+                                               scheduleQueue -> new ManyToOneConcurrentArrayQueue<>(reActorSystem.getSystemConfig().getMaximumReActorsNum()))
+                                      .limit(getDispatcherConfig().getDispatcherThreadsNum())
+                                      .toArray(AbstractConcurrentArrayQueue[]::new);
     }
 
     public String getName() { return dispatcherConfig.getDispatcherName(); }
@@ -89,11 +93,12 @@ public class Dispatcher {
             currentDispatcher < getDispatcherConfig().getDispatcherThreadsNum(); currentDispatcher++) {
 
             ExecutorService dispatcherThread = dispatcherPool[currentDispatcher];
-            ArrayBlockingQueue<ReActorContext> threadLocalSchedulingQueue = scheduledQueues[currentDispatcher];
+            AbstractConcurrentArrayQueue<Long> threadLocalSchedulingQueue = scheduledQueues[currentDispatcher];
             dispatcherThread.submit(() -> Try.ofRunnable(() -> dispatcherLoop(threadLocalSchedulingQueue,
                                                                               dispatcherConfig.getBatchSize(),
                                                                               dispatcherLifeCyclePool,
-                                                                              isExecutionRecorded, devNull,
+                                                                              isExecutionRecorded,
+                                                                              reActorSystem, devNull,
                                                                               reActorUnregister))
                                              .ifError(error -> LOGGER.error("Error running dispatcher: ", error)));
         }
@@ -110,7 +115,7 @@ public class Dispatcher {
 
     public boolean dispatch(ReActorContext reActor) {
         if (reActor.acquireScheduling()) {
-            return scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)].offer(reActor);
+            return scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)].offer(reActor.getSelf().getReActorId().getReActorRawId());
         }
         return true;
     }
@@ -119,16 +124,15 @@ public class Dispatcher {
         return Objects.requireNonNull(dispatcherLifeCyclePool);
     }
 
-    private void dispatcherLoop(ArrayBlockingQueue<ReActorContext> scheduledList, int dispatcherBatchSize,
+    private void dispatcherLoop(AbstractConcurrentArrayQueue<Long> scheduledList, int dispatcherBatchSize,
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
-                                ReActorRef devNull,
+                                ReActorSystem reActorSystem, ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
         var processed = 0;
         try {
             while (!Thread.currentThread().isInterrupted()) {
-                //TODO a lot of time is wasted awakening/putting the thread to sleep, a more performant approach
-                //should be used
-                ReActorContext scheduledReActor = scheduledList.take();
+                ReActorContext scheduledReActor = getNextScheduledReActor(scheduledList,
+                                                                          reActorSystem);
                 //memory acquire
                 scheduledReActor.acquireCoherence();
 
@@ -179,6 +183,28 @@ public class Dispatcher {
             Thread.currentThread().interrupt();
         }
         LOGGER.debug("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
+    }
+
+    @Nonnull
+    private static ReActorContext getNextScheduledReActor(AbstractConcurrentArrayQueue<Long> scheduledList,
+                                                          ReActorSystem reActorSystem) throws InterruptedException {
+        ReActorContext scheduledReActor = null;
+        long emptyCycles = 0;
+        long msecToWait = 1;
+        while (scheduledReActor == null) {
+            Long scheduledReActorId = scheduledList.poll();
+            if (scheduledReActorId == null) {
+                if (++emptyCycles >= 1000000) {
+                    TimeUnit.MILLISECONDS.sleep(msecToWait);
+                    msecToWait = Math.min(100, msecToWait << 1);
+                }
+            } else {
+                msecToWait = 1;
+                emptyCycles = 0;
+                scheduledReActor = reActorSystem.getNullableReActorCtx(scheduledReActorId);
+            }
+        }
+        return scheduledReActor;
     }
 
     private void executeReactionForMessage(ReActorContext scheduledReActor, Message newEvent) {

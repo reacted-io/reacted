@@ -14,7 +14,6 @@ import io.reacted.core.config.drivers.NullLocalDriverConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.drivers.system.NullLocalDriver;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
@@ -57,6 +56,7 @@ import io.reacted.core.services.Service;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,7 +106,7 @@ public class ReActorSystem {
 
     private final Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> reActorSystemDrivers;
     /* All the reactors spawned by a specific reactor system instance */
-    private final Map<ReActorId, ReActorContext> reActors;
+    private final Map<Long, ReActorContext> reActors;
     /* All the reactors that listen for a specific message type are saved here */
     private final SubscriptionsManager typedSubscriptionsManager;
     private final RegistryGatesCentralizedManager gatesCentralizedManager;
@@ -115,6 +115,7 @@ public class ReActorSystem {
     private final AtomicLong newSeqNum;
     private final Message reActorStop;
     private final ReActorSystemId localReActorSystemId;
+    private final int maximumReActorsNumForThisSystem;
 
     /**
      * The fields below can be null only before a successful init completion
@@ -141,6 +142,7 @@ public class ReActorSystem {
     private ReActorRef systemMonitor;
 
     private ReActorSystem() {
+        this.maximumReActorsNumForThisSystem = 0;
         this.reActorSystemDrivers = Set.of();
         this.reActors = Map.of();
         this.localReActorSystemId = ReActorSystemId.NO_REACTORSYSTEM_ID;
@@ -162,12 +164,13 @@ public class ReActorSystem {
     }
 
     public ReActorSystem(ReActorSystemConfig config) {
+        this.maximumReActorsNumForThisSystem = config.getMaximumReActorsNum();
         this.systemConfig = Objects.requireNonNull(config);
         this.localReActorSystemId = new ReActorSystemId(config.getReActorSystemName());
         this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
                                                                            new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
         this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
-        this.reActors = new ConcurrentHashMap<>(config.getExpectedReActorsNum() * 2, 0.5f);
+        this.reActors = new ConcurrentHashMap<>(maximumReActorsNumForThisSystem, 0.1f);
         this.typedSubscriptionsManager = new TypedSubscriptionsManager();
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.newSeqNum = new AtomicLong(0);
@@ -638,13 +641,18 @@ public class ReActorSystem {
 
     @Nullable
     public ReActorContext getReActorCtx(ReActorId reference) {
-        return getNullableReActorCtx(Objects.requireNonNull(reference));
+        return getNullableReActorCtx(Objects.requireNonNull(reference).getReActorRawId());
+    }
+
+    @Nullable
+    public ReActorContext getNullableReActorCtx(ReActorId reActorId) {
+        return getNullableReActorCtx(Objects.requireNonNull(reActorId).getReActorRawId());
     }
 
     //XXX Get a reactor context given the reactor id without the Optional overhead
     @Nullable
-    public ReActorContext getNullableReActorCtx(ReActorId reActorId) {
-        return reActors.get(Objects.requireNonNull(reActorId));
+    public ReActorContext getNullableReActorCtx(Long reActorRawId) {
+        return reActors.get(Objects.requireNonNull(reActorRawId));
     }
 
     //Create a ReActorRef with the appropriate driver attached for the specified reactor system / channel id
@@ -713,7 +721,7 @@ public class ReActorSystem {
      */
     private void initSystem() {
 
-        if (getAllDispatchers(getSystemConfig().getDispatchersConfigs())
+        if (createAllDispatchers(getSystemConfig().getDispatchersConfigs(), this)
                 .anyMatch(Predicate.not(this::registerDispatcher))) {
             throw new ReActorSystemInitException("Unable to register system dispatcher");
         }
@@ -1024,8 +1032,8 @@ public class ReActorSystem {
         parentReActorCtx.getStructuralLock().writeLock().lock();
 
         try {
-            if ((isSelfAdd || reActors.containsKey(parentReActorCtx.getSelf().getReActorId())) &&
-                reActors.putIfAbsent(newActor.getSelf().getReActorId(), newActor) == null) {
+            if ((isSelfAdd || reActors.containsKey(parentReActorCtx.getSelf().getReActorId().getReActorRawId())) &&
+                reActors.putIfAbsent(newActor.getSelf().getReActorId().getReActorRawId(), newActor) == null) {
                 //Do not add an actor to its own children
                 if (!isSelfAdd) {
                     parentReActorCtx.registerChild(newActor.getSelf());
@@ -1049,9 +1057,10 @@ public class ReActorSystem {
                                                                     reActorUnregister));
     }
 
-    private static Stream<Dispatcher> getAllDispatchers(Collection<DispatcherConfig> configuredDispatchers) {
+    private static Stream<Dispatcher> createAllDispatchers(Collection<DispatcherConfig> configuredDispatchers,
+                                                           ReActorSystem reActorSystem) {
         return Stream.concat(Stream.of(SYSTEM_DISPATCHER_CONFIG), configuredDispatchers.stream())
-                     .map(Dispatcher::new);
+                     .map(dispatcherCfg -> new Dispatcher(dispatcherCfg, reActorSystem));
     }
 
     @SuppressWarnings("SameParameterValue")

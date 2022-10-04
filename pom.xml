@@ -93,6 +93,7 @@
         <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
         <maven.failsafe.plugin.version>3.0.0-M5</maven.failsafe.plugin.version>
         <maven.javadoc.plugin.version>3.2.0</maven.javadoc.plugin.version>
+        <agrona.version>1.17.1</agrona.version>
         <asm.version>7.3.1</asm.version>
         <slf4j-api.version>2.0.0</slf4j-api.version>
         <slf4j-simple.version>2.0.0</slf4j-simple.version>
@@ -176,6 +177,11 @@
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-x-async</artifactId>
                 <version>${apache-curator.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.agrona</groupId>
+                <artifactId>agrona</artifactId>
+                <version>${agrona.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.reacted</groupId>

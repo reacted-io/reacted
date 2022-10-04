@@ -18,7 +18,6 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -27,8 +26,6 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class Ask<ReplyT extends Serializable> implements ReActor {
@@ -65,7 +62,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                             .setReActorName(Ask.class.getSimpleName() + "|" + requestName + "|" +
-                                            target.getReActorId().getReActorUUID() + "|" +
+                                            target.getReActorId().getReActorRawId() + "|" +
                                             request.getClass().getSimpleName() + "|" +
                                             expectedReplyType.getSimpleName())
                             .build();
