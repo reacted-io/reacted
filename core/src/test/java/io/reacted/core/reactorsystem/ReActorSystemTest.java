@@ -106,8 +106,8 @@ class ReActorSystemTest {
 
         Assertions.assertTrue(reActorRef.isSuccess());
         ReActorId reActorId = reActorRef.get().getReActorId();
-        Assertions.assertNotNull(reActorSystem.getNullableReActorCtx(reActorId));
-        Assertions.assertNotNull(reActorSystem.getNullableReActorCtx(reActorId));
+        Assertions.assertNotNull(reActorSystem.getReActorCtx(reActorId));
+        Assertions.assertNotNull(reActorSystem.getReActorCtx(reActorId));
     }
 
     @Test
@@ -116,11 +116,11 @@ class ReActorSystemTest {
         Try<ReActorRef> childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor.get(),
                                                                 childReActorConfig);
         childReActor.map(ReActorRef::getReActorId)
-                    .map(reActorSystem::getNullableReActorCtx)
+                    .map(reActorSystem::getReActorCtx)
                     .ifSuccessOrElse(Assertions::assertNotNull, Assertions::fail);
 
         Optional<ReActorContext> reActor = fatherActor.map(ReActorRef::getReActorId)
-                                                      .map(reActorSystem::getNullableReActorCtx)
+                                                      .map(reActorSystem::getReActorCtx)
                                                       .map(Optional::ofNullable)
                                                       .orElseSneakyThrow();
         childReActor.ifSuccessOrElse(child -> reActor.map(ReActorContext::getChildren)
@@ -152,7 +152,7 @@ class ReActorSystemTest {
                                                            childReActorConfig)
                                                .orElseSneakyThrow();
 
-        Optional<ReActorContext> fatherCtx = Optional.ofNullable(reActorSystem.getNullableReActorCtx(fatherActor.getReActorId()));
+        Optional<ReActorContext> fatherCtx = Optional.ofNullable(reActorSystem.getReActorCtx(fatherActor.getReActorId()));
 
         Set<ReActorRef> children = fatherCtx.map(ReActorContext::getChildren)
                                              .orElse(Set.of());

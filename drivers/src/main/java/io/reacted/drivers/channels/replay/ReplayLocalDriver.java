@@ -116,7 +116,7 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
                 var message = dstToMessageBySeqNum.getOrDefault(executionAttempt.getReActorId(),
                                                                 Collections.emptyMap())
                                                   .remove(executionAttempt.getMsgSeqNum());
-                ReActorContext destinationCtx = localReActorSystem.getNullableReActorCtx(executionAttempt.getReActorId());
+                ReActorContext destinationCtx = localReActorSystem.getReActorCtx(executionAttempt.getReActorId());
 
                 if (destinationCtx == null || message == null) {
                     LOGGER.error("Unable to delivery message {} for ReActor {}",

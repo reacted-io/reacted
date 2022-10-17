@@ -28,14 +28,16 @@ import org.agrona.concurrent.ringbuffer.RingBufferDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -141,7 +143,7 @@ public class Dispatcher {
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
         var processed = 0L;
         MessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) ->
-            onMessage(msgTypeId, buffer, index, length, dispatcherBatchSize, dispatcherLifeCyclePool,
+            onMessage(buffer, index, dispatcherBatchSize, dispatcherLifeCyclePool,
                       isExecutionRecorded, reActorSystem, devNull, reActorUnregister));
 
         while (!Thread.currentThread().isInterrupted()) {
@@ -149,77 +151,58 @@ public class Dispatcher {
         }
         LOGGER.debug("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
     }
-    public void onMessage(int msgTypeId, MutableDirectBuffer buffer, int index,
-                          int length, int dispatcherBatchSize, ExecutorService dispatcherLifeCyclePool,
+    public void onMessage(MutableDirectBuffer buffer, int index, int dispatcherBatchSize,
+                          ExecutorService dispatcherLifeCyclePool,
                           boolean isExecutionRecorded, ReActorSystem reActorSystem, ReActorRef devNull,
                           Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
-        ReActorContext scheduledReActor = reActorSystem.getNullableReActorCtx(buffer.getLong(index,
-                                                                                             ByteOrder.BIG_ENDIAN));
+        ReActorContext scheduledReActor = reActorSystem.getReActorCtx(buffer.getLong(index, ByteOrder.BIG_ENDIAN));
 
         if (scheduledReActor == null) {
             return;
         }
-            //memory acquire
-            scheduledReActor.acquireCoherence();
+        //memory acquire
+        scheduledReActor.acquireCoherence();
 
-            for (var msgNum = 0; msgNum < dispatcherBatchSize &&
-                                 !scheduledReActor.getMbox().isEmpty() &&
-                                 !scheduledReActor.isStop(); msgNum++) {
-                var newEvent = scheduledReActor.getMbox().getNextMessage();
+        for (var msgNum = 0; msgNum < dispatcherBatchSize &&
+                             !scheduledReActor.getMbox().isEmpty() &&
+                             !scheduledReActor.isStop(); msgNum++) {
+            var newEvent = scheduledReActor.getMbox().getNextMessage();
 
-                /*
-                  Register the execution attempt within the local driver log. In this way regardless of the
-                  tell order of the messages, we will always have a strictly ordered execution order per
-                  reactor because a reactor is scheduled on exactly one dispatcher when it has messages to
-                  process
+            /*
+              Register the execution attempt within the local driver log. In this way regardless of the
+              tell order of the messages, we will always have a strictly ordered execution order per
+              reactor because a reactor is scheduled on exactly one dispatcher when it has messages to
+              process
 
-                  --- NOTE ----:
+              --- NOTE ----:
 
-                  This is the core of the cold replay engine: ReActed can replicate the state of a single
-                  reactor replicating the same very messages in the same order of when they were executed
-                  during the recorded execution. From ReActed perspective, replicating the state of a
-                  reactor system is replicating the state of the contained reactors using the strictly
-                  sequential execution attempts in the execution log
-                */
-                if (isExecutionRecorded &&
-                    devNull.route(scheduledReActor.getSelf(),
-                                  new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
-                                                            scheduledReActor.getNextMsgExecutionId(),
-                                                            newEvent.getSequenceNumber())).isNotSent()) {
-                    LOGGER.error("CRITIC! Unable to send an Execution Attempt for message {} Replay will NOT be possible",
-                                 newEvent);
-                }
-
-                executeReactionForMessage(scheduledReActor, newEvent);
+              This is the core of the cold replay engine: ReActed can replicate the state of a single
+              reactor replicating the same very messages in the same order of when they were executed
+              during the recorded execution. From ReActed perspective, replicating the state of a
+              reactor system is replicating the state of the contained reactors using the strictly
+              sequential execution attempts in the execution log
+            */
+            if (isExecutionRecorded &&
+                devNull.route(scheduledReActor.getSelf(),
+                              new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
+                                                        scheduledReActor.getNextMsgExecutionId(),
+                                                        newEvent.getSequenceNumber())).isNotSent()) {
+                LOGGER.error("CRITIC! Unable to send an Execution Attempt for message {} Replay will NOT be possible",
+                             newEvent);
             }
-            //memory release
-            scheduledReActor.releaseCoherence();
-            //now this reactor can be scheduled by some other thread if required
-            scheduledReActor.releaseScheduling();
-            if (scheduledReActor.isStop()) {
-                dispatcherLifeCyclePool.submit(() -> reActorUnregister.apply(scheduledReActor));
-            } else if (!scheduledReActor.getMbox().isEmpty()) {
-                //If there are other messages to be processed, request another schedulation fo the dispatcher
-                 dispatch(scheduledReActor);
-            }
-    }
 
-    @Nonnull
-    private static ReActorContext getNextScheduledReActor(RingBuffer scheduledList,
-                                                          ReActorSystem reActorSystem) throws InterruptedException {
-        ReActorContext scheduledReActor = null;
-        long nsecToWait = 1;
-        while (scheduledReActor == null) {
-            Long scheduledReActorId = null; //scheduledList.read() poll();
-            if (scheduledReActorId == null) {
-                TimeUnit.NANOSECONDS.sleep(nsecToWait);
-                nsecToWait = Math.min(10000000, nsecToWait << 1);
-            } else {
-                nsecToWait = 1;
-                scheduledReActor = reActorSystem.getNullableReActorCtx(scheduledReActorId);
-            }
+            executeReactionForMessage(scheduledReActor, newEvent);
         }
-        return scheduledReActor;
+        //memory release
+        scheduledReActor.releaseCoherence();
+        //now this reactor can be scheduled by some other thread if required
+        scheduledReActor.releaseScheduling();
+        if (scheduledReActor.isStop()) {
+            dispatcherLifeCyclePool.submit(() -> reActorUnregister.apply(scheduledReActor));
+        } else if (!scheduledReActor.getMbox().isEmpty()) {
+            //If there are other messages to be processed, request another schedulation fo the dispatcher
+             dispatch(scheduledReActor);
+        }
     }
 
     private void executeReactionForMessage(ReActorContext scheduledReActor, Message newEvent) {

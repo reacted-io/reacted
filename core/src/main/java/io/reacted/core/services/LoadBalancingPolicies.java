@@ -52,7 +52,7 @@ public final class LoadBalancingPolicies {
       ReActorRef minLoadRoutee = null;
       long minLoad = Long.MAX_VALUE;
       for (ReActorRef routee : routerCtx.getChildren()) {
-        ReActorContext ctx = routerCtx.getReActorSystem().getNullableReActorCtx(routee.getReActorId());
+        ReActorContext ctx = routerCtx.getReActorSystem().getReActorCtx(routee.getReActorId());
         if (ctx != null && ctx.getMbox().getMsgNum() < minLoad) {
           minLoadRoutee = routee;
           minLoad = ctx.getMbox().getMsgNum();

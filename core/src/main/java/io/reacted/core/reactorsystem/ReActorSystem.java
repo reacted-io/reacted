@@ -622,12 +622,12 @@ public class ReActorSystem {
     }
 
     @Nullable
-    public ReActorContext getNullableReActorCtx(ReActorId reActorId) {
+    public ReActorContext getReActorCtx(ReActorId reActorId) {
         return reactorsByReactorId.get(Objects.requireNonNull(reActorId));
     }
 
     @Nullable
-    public ReActorContext getNullableReActorCtx(long schedulationId) {
+    public ReActorContext getReActorCtx(long schedulationId) {
         return reactorsBySchedulationId.get(schedulationId);
     }
 
@@ -647,7 +647,7 @@ public class ReActorSystem {
      * terminated. An empty optional otherwise
      */
     public Optional<CompletionStage<Void>> stop(ReActorId reActorToStop) {
-        return Optional.ofNullable(getNullableReActorCtx(reActorToStop)).map(ReActorContext::stop);
+        return Optional.ofNullable(getReActorCtx(reActorToStop)).map(ReActorContext::stop);
     }
 
     public ScheduledExecutorService getSystemSchedulingService() {
@@ -817,7 +817,7 @@ public class ReActorSystem {
 
     private CompletionStage<Void> stopSystemRoot(ReActorRef reActorRoot) {
         //Kill all the user actors hierarchy
-        ReActorContext rootCtx = getNullableReActorCtx(reActorRoot.getReActorId());
+        ReActorContext rootCtx = getReActorCtx(reActorRoot.getReActorId());
         return rootCtx != null
                ? rootCtx.stop()
                : CompletableFuture.completedFuture(null);
@@ -945,7 +945,7 @@ public class ReActorSystem {
     }
 
     private Try<ReActorContext> registerNewReActor(ReActorRef parent, ReActorContext newReActor) {
-        ReActorContext parentCtx = getNullableReActorCtx(parent.getReActorId());
+        ReActorContext parentCtx = getReActorCtx(parent.getReActorId());
         if (parentCtx == null) {
             return Try.ofFailure(new ReActorRegistrationException(newReActor.getSelf()
                                                                             .getReActorId()
@@ -960,7 +960,7 @@ public class ReActorSystem {
 
     private Optional<CompletionStage<Void>> unRegisterReActor(ReActorContext stopMe) {
         Optional<CompletionStage<Void>> stopHook = Optional.empty();
-        ReActorContext parentCtx = getNullableReActorCtx(stopMe.getParent().getReActorId());
+        ReActorContext parentCtx = getReActorCtx(stopMe.getParent().getReActorId());
         if (parentCtx != null) {
             parentCtx.unregisterChild(stopMe.getSelf());
         }
@@ -993,7 +993,7 @@ public class ReActorSystem {
 
         return children.stream()
                        .map(ReActorRef::getReActorId)
-                       .map(reActorSystem::getNullableReActorCtx)
+                       .map(reActorSystem::getReActorCtx)
                        .filter(Objects::nonNull)
                        //exploit the dispatcher for stopping the actor
                        .map(ReActorContext::stop)

@@ -69,7 +69,7 @@ class ServiceTest {
     @Test
     void reactorSystemCanSpawnService() {
         ReActorRef router = reActorSystem.spawnService(serviceConfig).orElseSneakyThrow();
-        Assertions.assertEquals(router, Optional.ofNullable(reActorSystem.getNullableReActorCtx(router.getReActorId()))
+        Assertions.assertEquals(router, Optional.ofNullable(reActorSystem.getReActorCtx(router.getReActorId()))
                                                 .map(ReActorContext::getSelf)
                                                 .orElse(ReActorRef.NO_REACTOR_REF));
     }

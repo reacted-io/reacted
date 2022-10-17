@@ -191,7 +191,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     private ReActorRef spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions,
                                    ReActorConfig routeeConfig) {
         ReActorRef routee = routerCtx.spawnChild(routeeReActions, routeeConfig).orElseSneakyThrow();
-        ReActorContext routeeCtx = routerCtx.getReActorSystem().getNullableReActorCtx(routee.getReActorId());
+        ReActorContext routeeCtx = routerCtx.getReActorSystem().getReActorCtx(routee.getReActorId());
 
         if (routeeCtx == null) {
             throw new IllegalStateException("Unable to find actor (routee) ctx for a newly spawned actor");

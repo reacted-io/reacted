@@ -53,7 +53,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     public <PayloadT extends Serializable> DeliveryStatus
     tell(ReActorRef src, ReActorRef dst,
          TriConsumer<ReActorId, Serializable, ReActorRef> toSubscribers, PayloadT payload){
-        ReActorContext dstCtx = localReActorSystem.getNullableReActorCtx(dst.getReActorId());
+        ReActorContext dstCtx = localReActorSystem.getReActorCtx(dst.getReActorId());
         DeliveryStatus tellResult;
         long seqNum = localReActorSystem.getNewSeqNum();
         if (dstCtx != null) {
@@ -99,7 +99,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
     atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
           TriConsumer<ReActorId, Serializable, ReActorRef> toSubscribers, PayloadT payload) {
-        ReActorContext dstCtx = localReActorSystem.getNullableReActorCtx(dst.getReActorId());
+        ReActorContext dstCtx = localReActorSystem.getReActorCtx(dst.getReActorId());
         CompletionStage<DeliveryStatus> tellResult;
         long seqNum = localReActorSystem.getNewSeqNum();
         if (dstCtx != null) {
