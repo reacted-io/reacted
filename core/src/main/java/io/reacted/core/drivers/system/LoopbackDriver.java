@@ -10,10 +10,8 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
-import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -25,11 +23,9 @@ import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
 import java.io.Serializable;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.RejectedExecutionException;
 

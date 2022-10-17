@@ -13,12 +13,13 @@ import io.reacted.core.config.reactors.ReActorServiceConfig.Builder;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
-import java.io.Serializable;
-import java.util.List;
-import java.util.function.ToIntFunction;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
+import java.io.Serializable;
+import java.util.List;
+import java.util.function.ToIntFunction;
 
 @Immutable
 @NonNullByDefault
@@ -51,7 +52,7 @@ public final class LoadBalancingPolicies {
       ReActorRef minLoadRoutee = null;
       long minLoad = Long.MAX_VALUE;
       for (ReActorRef routee : routerCtx.getChildren()) {
-        ReActorContext ctx = routerCtx.getReActorSystem().getReActorCtx(routee.getReActorId());
+        ReActorContext ctx = routerCtx.getReActorSystem().getNullableReActorCtx(routee.getReActorId());
         if (ctx != null && ctx.getMbox().getMsgNum() < minLoad) {
           minLoadRoutee = routee;
           minLoad = ctx.getMbox().getMsgNum();

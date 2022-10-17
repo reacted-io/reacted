@@ -25,20 +25,15 @@ import io.reacted.flow.operators.messages.OperatorInitComplete;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
 
 import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 @NonNullByDefault
@@ -214,21 +209,14 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
         }
     }
 
-    private static class OperatorOutputGatesUpdate implements Serializable {
-        private final Collection<ReActorRef> ifPredicateServices;
-        private final Collection<ReActorRef> thenElseServices;
-
-        public OperatorOutputGatesUpdate(Collection<ReActorRef> ifPredicateServices,
-                                         Collection<ReActorRef> thenElseServices) {
-            this.ifPredicateServices = ifPredicateServices;
-            this.thenElseServices = thenElseServices;
-        }
+    private record OperatorOutputGatesUpdate(Collection<ReActorRef> ifPredicateServices,
+                                             Collection<ReActorRef> thenElseServices) implements Serializable {
         @Override
-        public String toString() {
-            return "OperatorOutputGatesUpdate{" +
-                   "ifPredicateServices=" + ifPredicateServices +
-                   ", thenElseServices=" + thenElseServices +
-                   '}';
+            public String toString() {
+                return "OperatorOutputGatesUpdate{" +
+                        "ifPredicateServices=" + ifPredicateServices +
+                        ", thenElseServices=" + thenElseServices +
+                        '}';
+            }
         }
-    }
 }

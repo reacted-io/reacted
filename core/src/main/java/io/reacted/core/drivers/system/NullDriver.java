@@ -10,7 +10,6 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.NullDriverConfig;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.exceptions.NoRouteToReActorSystem;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;

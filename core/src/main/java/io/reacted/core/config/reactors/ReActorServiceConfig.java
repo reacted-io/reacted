@@ -13,15 +13,15 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.core.services.LoadBalancingPolicy;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.UnChecked;
 
+import javax.annotation.concurrent.Immutable;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.stream.Stream;
-import javax.annotation.concurrent.Immutable;
 
 @NonNullByDefault
 @Immutable
@@ -131,7 +131,7 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
          * A service automatically try to publish itself to the connected service registries. If an error should occur,
          * the service would not be discoverable. This parameter defines in how long the service should reattempt to
          * publish itself on the service registries
-         *
+         * <p>
          * Default value: {@link ReActorServiceConfig#DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY}
          *
          * @param republicationReattemptDelayOnError delay after than the republication should be reattempted

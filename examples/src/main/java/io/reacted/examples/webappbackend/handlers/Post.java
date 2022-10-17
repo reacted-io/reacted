@@ -153,11 +153,7 @@ public class Post implements ReActor {
                   .orElse(new DataChunksCompleted());
     }
 
-    private static final class DataChunkPush implements Serializable {
-        private final String lineRead;
-        private DataChunkPush(String lineRead) {
-            this.lineRead = lineRead;
-        }
+    private record DataChunkPush(String lineRead) implements Serializable {
     }
 
     private static final class DataChunksCompleted implements Serializable {}

@@ -11,14 +11,12 @@ package io.reacted.examples.streams;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
-import java.io.FileNotFoundException;
 import org.awaitility.Awaitility;
 
+import java.io.FileNotFoundException;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;

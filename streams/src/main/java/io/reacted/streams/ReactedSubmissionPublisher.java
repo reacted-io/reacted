@@ -9,44 +9,31 @@
 package io.reacted.streams;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.drivers.system.ReActorSystemDriver;
-import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.runtime.Dispatcher;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.drivers.DriverCtx;
+import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.SerializationUtils;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.patterns.ObjectUtils;
+import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.streams.messages.PublisherInterrupt;
-import io.reacted.streams.messages.PublisherShutdown;
-import io.reacted.streams.messages.PublisherComplete;
-import io.reacted.streams.messages.SubscriptionReply;
-import io.reacted.streams.messages.SubscriptionRequest;
-import io.reacted.streams.messages.UnsubscriptionRequest;
+import io.reacted.patterns.ObjectUtils;
+import io.reacted.streams.messages.*;
 
+import java.io.*;
 import java.time.Duration;
 import java.util.Iterator;
-import java.util.concurrent.Flow.Subscriber;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.Serializable;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.Flow.Subscriber;
 
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
@@ -309,15 +296,15 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     private void onSubscriptionRequest(ReActorContext raCtx, SubscriptionRequest subscription) {
-        var backpressuringManager = subscription.getSubscriptionBackpressuringManager();
+        var backpressuringManager = subscription.subscriptionBackpressuringManager();
         ifNotDelivered(backpressuringManager.atell(raCtx.getSelf(),
                                                    new SubscriptionReply(subscribers.add(backpressuringManager))),
                     error -> raCtx.logError("Unable to deliver subscription confirmation to {}",
-                                            subscription.getSubscriptionBackpressuringManager(), error));
+                                            subscription.subscriptionBackpressuringManager(), error));
     }
 
     private void onUnSubscriptionRequest(ReActorContext raCtx, UnsubscriptionRequest unsubscriptionRequest) {
-        subscribers.remove(unsubscriptionRequest.getSubscriptionBackpressuringManager());
+        subscribers.remove(unsubscriptionRequest.subscriptionBackpressuringManager());
     }
 
     private ReactedSubmissionPublisher<PayloadT> setFeedGate(ReActorRef feedGate) {

@@ -19,18 +19,14 @@ import io.reacted.flow.operators.FlowOperator;
 import io.reacted.flow.operators.service.ServiceOperatorConfig.Builder;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import java.util.concurrent.*;
 
 @NonNullByDefault
 public class ServiceOperator extends FlowOperator<Builder,
@@ -143,10 +139,6 @@ public class ServiceOperator extends FlowOperator<Builder,
     }
   }
 
-  private static class RefreshServiceUpdate implements Serializable {
-    private final Collection<ReActorRef> serviceGates;
-    private RefreshServiceUpdate(Collection<ReActorRef> serviceGates) {
-      this.serviceGates = serviceGates;
-    }
+  private record RefreshServiceUpdate(Collection<ReActorRef> serviceGates) implements Serializable {
   }
 }

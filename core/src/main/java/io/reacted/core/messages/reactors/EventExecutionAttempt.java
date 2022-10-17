@@ -12,12 +12,8 @@ import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serial;
 import javax.annotation.concurrent.Immutable;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import java.io.*;
 import java.util.Objects;
 
 @Immutable
@@ -61,8 +57,7 @@ public class EventExecutionAttempt implements Externalizable {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof EventExecutionAttempt)) return false;
-        EventExecutionAttempt that = (EventExecutionAttempt) o;
+        if (!(o instanceof EventExecutionAttempt that)) return false;
         return getExecutionSeqNum() == that.getExecutionSeqNum() &&
                getMsgSeqNum() == that.getMsgSeqNum() &&
                Objects.equals(getReActorId(), that.getReActorId());

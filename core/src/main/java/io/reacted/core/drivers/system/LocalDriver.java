@@ -10,10 +10,8 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
-import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -75,7 +73,7 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      protected final void offerMessage(Message message) {
           Objects.requireNonNull(message, "Cannot offer() a null message");
           ReActorId destinationId = message.getDestination().getReActorId();
-          ReActorContext destinationCtx = getLocalReActorSystem().getReActorCtx(destinationId);
+          ReActorContext destinationCtx = getLocalReActorSystem().getNullableReActorCtx(destinationId);
           DeliveryStatus deliveryStatus;
 
           if (destinationCtx != null) {

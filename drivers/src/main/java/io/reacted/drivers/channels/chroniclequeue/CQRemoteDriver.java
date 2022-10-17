@@ -10,7 +10,6 @@ package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.system.RemotingDriver;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -24,6 +23,7 @@ import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.WireKey;
+
 import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.Properties;

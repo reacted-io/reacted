@@ -9,30 +9,29 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.mailboxes.NullMailbox;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.MailBox;
+import io.reacted.core.mailboxes.NullMailbox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import org.agrona.DirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -63,6 +62,7 @@ public class ReActorContext {
     private final CompletionStage<Void> hierarchyTermination;
     private final AtomicLong msgExecutionId;
     private final ReActions reActions;
+    private final long reActorSchedulationId;
 
     private TypedSubscription[] typedSubscriptions;
 
@@ -70,6 +70,7 @@ public class ReActorContext {
     private volatile boolean isAcquired = false;
 
     private ReActorRef lastMsgSender = ReActorRef.NO_REACTOR_REF;
+    private DirectBuffer schedulationIdBuffer;
 
     private ReActorContext(Builder reActorCtxBuilder) {
         this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider)
@@ -87,8 +88,18 @@ public class ReActorContext {
         this.hierarchyTermination = new CompletableFuture<>();
         this.msgExecutionId = new AtomicLong();
         this.reActions = Objects.requireNonNull(reActorCtxBuilder.reActions);
+        this.reActorSchedulationId = ReActorCounter.INSTANCE.nextSchedulationId();
     }
 
+    public void setSchedulationId() {
+       var direct = ByteBuffer.allocateDirect(8);
+       direct.putLong(getReActorSchedulationId());
+       this.schedulationIdBuffer = new UnsafeBuffer(direct);
+    }
+    public DirectBuffer getSchedulationIdBuffer() {
+        schedulationIdBuffer.byteBuffer().rewind();
+        return schedulationIdBuffer;
+    }
     public static Builder newBuilder() { return new Builder(); }
 
     public ReActorRef getSelf() { return reactorRef; }
@@ -156,7 +167,6 @@ public class ReActorContext {
 
     /**
      * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#atell(Serializable)}
-     * @param sender {@link ReActorRef} identifying the sender of this reply
      * @param anyPayload payload to be sent
      * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#atell(ReActorRef, Serializable)}
      */
@@ -280,11 +290,12 @@ public class ReActorContext {
         return lastMsgSender;
     }
 
+    public long getReActorSchedulationId() { return reActorSchedulationId; }
+
     @Override
     public boolean equals(@Nullable Object o) {
         if (this == o) return true;
-        if (!(o instanceof ReActorContext)) return false;
-        ReActorContext that = (ReActorContext) o;
+        if (!(o instanceof ReActorContext that)) return false;
         return getSelf().equals(that.getSelf());
     }
 

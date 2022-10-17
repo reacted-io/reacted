@@ -10,7 +10,6 @@ package io.reacted.drivers.channels.kafka;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.system.RemotingDriver;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;

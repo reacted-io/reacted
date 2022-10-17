@@ -16,8 +16,8 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -62,7 +62,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                             .setReActorName(Ask.class.getSimpleName() + "|" + requestName + "|" +
-                                            target.getReActorId().getReActorRawId() + "|" +
+                                            target.getReActorId() + "|" +
                                             request.getClass().getSimpleName() + "|" +
                                             expectedReplyType.getSimpleName())
                             .build();

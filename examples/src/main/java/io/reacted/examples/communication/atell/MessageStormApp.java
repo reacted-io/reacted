@@ -9,8 +9,7 @@
 package io.reacted.examples.communication.atell;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.services.LoadBalancingPolicies;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -20,15 +19,15 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.services.LoadBalancingPolicies;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.AsyncUtils;
-import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
 import java.time.Duration;
@@ -113,39 +112,39 @@ class MessageStormApp {
         }
     }
 
-    private static class ClientReActor implements ReActor {
-        private final ReActorRef serverReference;
-        public ClientReActor(ReActorRef serverReference) {
-            this.serverReference = Objects.requireNonNull(serverReference);
-        }
-        @Nonnull
-        @Override
-        public ReActorConfig getConfig() {
-            return ReActorConfig.newBuilder()
-                                .setReActorName(ClientReActor.class.getSimpleName())
-                                .build();
-        }
+    private record ClientReActor(ReActorRef serverReference) implements ReActor {
+            private ClientReActor(ReActorRef serverReference) {
+                this.serverReference = Objects.requireNonNull(serverReference);
+            }
 
         @Nonnull
-        @Override
-        public ReActions getReActions() {
-            return ReActions.newBuilder()
-                            .reAct(ReActorInit.class, (ctx, init) -> onInit(ctx))
-                            .reAct(ReActions::noReAction)
-                            .build();
-        }
+            @Override
+            public ReActorConfig getConfig() {
+                return ReActorConfig.newBuilder()
+                        .setReActorName(ClientReActor.class.getSimpleName())
+                        .build();
+            }
 
-        private void onInit(ReActorContext raCtx) {
-            long start = System.nanoTime();
-            AsyncUtils.asyncLoop(noval -> serverReference.atell("Not received"),
-                                 DeliveryStatus.DELIVERED,
-                                 DeliveryStatus.DELIVERED, 1_000_000L)
-                      .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
-                                                              Duration.ofNanos(System.nanoTime() - start)
-                                                                      .toString(),
-                                                              Thread.currentThread().getName()));
-            long end = System.nanoTime();
-            System.out.println("Finished storm: " + Duration.ofNanos(end - start).toString());
+            @Nonnull
+            @Override
+            public ReActions getReActions() {
+                return ReActions.newBuilder()
+                        .reAct(ReActorInit.class, (ctx, init) -> onInit(ctx))
+                        .reAct(ReActions::noReAction)
+                        .build();
+            }
+
+            private void onInit(ReActorContext raCtx) {
+                long start = System.nanoTime();
+                AsyncUtils.asyncLoop(noval -> serverReference.atell("Not received"),
+                                DeliveryStatus.DELIVERED,
+                                DeliveryStatus.DELIVERED, 1_000_000L)
+                        .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
+                                Duration.ofNanos(System.nanoTime() - start)
+                                        .toString(),
+                                Thread.currentThread().getName()));
+                long end = System.nanoTime();
+                System.out.println("Finished storm: " + Duration.ofNanos(end - start).toString());
+            }
         }
-    }
 }

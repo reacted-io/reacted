@@ -9,16 +9,16 @@
 package io.reacted.examples.typedsubscription;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.runtime.Dispatcher;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.examples.ExampleUtils;
 
-import java.io.FileNotFoundException;
 import javax.annotation.Nonnull;
+import java.io.FileNotFoundException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
@@ -34,7 +34,7 @@ public class UpdateGeneratorApp {
                 return ReActions.newBuilder()
                                 .reAct(Update.class,
                                        (ctx, update) -> System.out.printf("Updates received %d%n",
-                                                                          update.getUpdateId()))
+                                                                          update.updateId()))
                                 .reAct(ReActions::noReAction)
                                 .build();
             }

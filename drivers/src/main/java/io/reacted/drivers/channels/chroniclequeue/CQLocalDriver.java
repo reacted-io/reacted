@@ -10,7 +10,6 @@ package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.system.LocalDriver;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -19,13 +18,10 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import net.openhft.chronicle.queue.ChronicleQueue;
-import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
-import net.openhft.chronicle.queue.RollCycle;
 import net.openhft.chronicle.queue.RollCycles;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
-import net.openhft.chronicle.wire.WireType;
 import org.apache.log4j.Logger;
 
 import javax.annotation.Nullable;

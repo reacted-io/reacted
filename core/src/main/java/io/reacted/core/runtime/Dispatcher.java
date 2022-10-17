@@ -12,26 +12,30 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.EventExecutionAttempt;
+import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import java.util.concurrent.TimeUnit;
-import javax.annotation.Nonnull;
-import org.agrona.concurrent.AbstractConcurrentArrayQueue;
-import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
+import org.agrona.BitUtil;
+import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.MessageHandler;
+import org.agrona.concurrent.UnsafeBuffer;
+import org.agrona.concurrent.ringbuffer.ManyToOneRingBuffer;
+import org.agrona.concurrent.ringbuffer.RingBuffer;
+import org.agrona.concurrent.ringbuffer.RingBufferDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -53,18 +57,24 @@ public class Dispatcher {
     private ExecutorService dispatcherLifeCyclePool;
     @Nullable
     private ExecutorService[] dispatcherPool;
-    private final AbstractConcurrentArrayQueue<Long>[] scheduledQueues;
+    private final RingBuffer[] scheduledQueues;
     private final AtomicLong nextDispatchIdx = new AtomicLong(0);
     private final ReActorSystem reActorSystem;
 
-    @SuppressWarnings("unchecked")
     public Dispatcher(DispatcherConfig config, ReActorSystem reActorSystem) {
         this.reActorSystem = reActorSystem;
+        int ringBufferSize = RingBufferDescriptor.TRAILER_LENGTH +
+                             BitUtil.findNextPositivePowerOfTwo(
+                                 ReActorId.NO_REACTOR_ID.getRawIdSize() * reActorSystem.getSystemConfig()
+                                                                                       .getMaximumReActorsNum());
         this.dispatcherConfig = config;
-        this.scheduledQueues =  Stream.iterate(new ManyToOneConcurrentArrayQueue<Long>(reActorSystem.getSystemConfig().getMaximumReActorsNum()),
-                                               scheduleQueue -> new ManyToOneConcurrentArrayQueue<>(reActorSystem.getSystemConfig().getMaximumReActorsNum()))
-                                      .limit(getDispatcherConfig().getDispatcherThreadsNum())
-                                      .toArray(AbstractConcurrentArrayQueue[]::new);
+
+        this.scheduledQueues =  Stream.iterate(new ManyToOneRingBuffer(new UnsafeBuffer(
+                                                   ByteBuffer.allocateDirect(ringBufferSize))),
+                                              scheduleQueue -> new ManyToOneRingBuffer(new UnsafeBuffer(ByteBuffer.allocateDirect(ringBufferSize))))
+                                     .limit(getDispatcherConfig().getDispatcherThreadsNum())
+                                     .toArray(ManyToOneRingBuffer[]::new);
+
     }
 
     public String getName() { return dispatcherConfig.getDispatcherName(); }
@@ -93,7 +103,7 @@ public class Dispatcher {
             currentDispatcher < getDispatcherConfig().getDispatcherThreadsNum(); currentDispatcher++) {
 
             ExecutorService dispatcherThread = dispatcherPool[currentDispatcher];
-            AbstractConcurrentArrayQueue<Long> threadLocalSchedulingQueue = scheduledQueues[currentDispatcher];
+            RingBuffer threadLocalSchedulingQueue = scheduledQueues[currentDispatcher];
             dispatcherThread.submit(() -> Try.ofRunnable(() -> dispatcherLoop(threadLocalSchedulingQueue,
                                                                               dispatcherConfig.getBatchSize(),
                                                                               dispatcherLifeCyclePool,
@@ -115,7 +125,8 @@ public class Dispatcher {
 
     public boolean dispatch(ReActorContext reActor) {
         if (reActor.acquireScheduling()) {
-            return scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)].offer(reActor.getSelf().getReActorId().getReActorRawId());
+            var rb = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)];
+            return rb.write(1,reActor.getSchedulationIdBuffer(),0,Long.BYTES);
         }
         return true;
     }
@@ -124,74 +135,82 @@ public class Dispatcher {
         return Objects.requireNonNull(dispatcherLifeCyclePool);
     }
 
-    private void dispatcherLoop(AbstractConcurrentArrayQueue<Long> scheduledList, int dispatcherBatchSize,
+    private void dispatcherLoop(RingBuffer scheduledList, int dispatcherBatchSize,
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
                                 ReActorSystem reActorSystem, ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
-        var processed = 0;
-        try {
-            while (!Thread.currentThread().isInterrupted()) {
-                ReActorContext scheduledReActor = getNextScheduledReActor(scheduledList,
-                                                                          reActorSystem);
-                //memory acquire
-                scheduledReActor.acquireCoherence();
+        var processed = 0L;
+        MessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) ->
+            onMessage(msgTypeId, buffer, index, length, dispatcherBatchSize, dispatcherLifeCyclePool,
+                      isExecutionRecorded, reActorSystem, devNull, reActorUnregister));
 
-                for (var msgNum = 0; msgNum < dispatcherBatchSize &&
-                                     !scheduledReActor.getMbox().isEmpty() &&
-                                     !scheduledReActor.isStop(); msgNum++) {
-                    var newEvent = scheduledReActor.getMbox().getNextMessage();
-
-                    /*
-                      Register the execution attempt within the local driver log. In this way regardless of the
-                      tell order of the messages, we will always have a strictly ordered execution order per
-                      reactor because a reactor is scheduled on exactly one dispatcher when it has messages to
-                      process
-
-                      --- NOTE ----:
-
-                      This is the core of the cold replay engine: ReActed can replicate the state of a single
-                      reactor replicating the same very messages in the same order of when they were executed
-                      during the recorded execution. From ReActed perspective, replicating the state of a
-                      reactor system is replicating the state of the contained reactors using the strictly
-                      sequential execution attempts in the execution log
-                    */
-                    if (isExecutionRecorded &&
-                        devNull.route(scheduledReActor.getSelf(),
-                                      new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
-                                                                scheduledReActor.getNextMsgExecutionId(),
-                                                                newEvent.getSequenceNumber())).isNotSent()) {
-                        LOGGER.error("CRITIC! Unable to send an Execution Attempt for message {} Replay will NOT be possible",
-                                     newEvent);
-                    }
-
-                    executeReactionForMessage(scheduledReActor, newEvent);
-
-                    processed++;
-                }
-                //memory release
-                scheduledReActor.releaseCoherence();
-                //now this reactor can be scheduled by some other thread if required
-                scheduledReActor.releaseScheduling();
-                if (scheduledReActor.isStop()) {
-                    dispatcherLifeCyclePool.submit(() -> reActorUnregister.apply(scheduledReActor));
-                } else if (!scheduledReActor.getMbox().isEmpty()) {
-                    //If there are other messages to be processed, request another schedulation fo the dispatcher
-                     dispatch(scheduledReActor);
-                }
-            }
-        } catch (InterruptedException exc) {
-            Thread.currentThread().interrupt();
+        while (!Thread.currentThread().isInterrupted()) {
+            processed += scheduledList.read(ringBufferMessageProcessor);
         }
         LOGGER.debug("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
     }
+    public void onMessage(int msgTypeId, MutableDirectBuffer buffer, int index,
+                          int length, int dispatcherBatchSize, ExecutorService dispatcherLifeCyclePool,
+                          boolean isExecutionRecorded, ReActorSystem reActorSystem, ReActorRef devNull,
+                          Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
+        ReActorContext scheduledReActor = reActorSystem.getNullableReActorCtx(buffer.getLong(index,
+                                                                                             ByteOrder.BIG_ENDIAN));
+
+        if (scheduledReActor == null) {
+            return;
+        }
+            //memory acquire
+            scheduledReActor.acquireCoherence();
+
+            for (var msgNum = 0; msgNum < dispatcherBatchSize &&
+                                 !scheduledReActor.getMbox().isEmpty() &&
+                                 !scheduledReActor.isStop(); msgNum++) {
+                var newEvent = scheduledReActor.getMbox().getNextMessage();
+
+                /*
+                  Register the execution attempt within the local driver log. In this way regardless of the
+                  tell order of the messages, we will always have a strictly ordered execution order per
+                  reactor because a reactor is scheduled on exactly one dispatcher when it has messages to
+                  process
+
+                  --- NOTE ----:
+
+                  This is the core of the cold replay engine: ReActed can replicate the state of a single
+                  reactor replicating the same very messages in the same order of when they were executed
+                  during the recorded execution. From ReActed perspective, replicating the state of a
+                  reactor system is replicating the state of the contained reactors using the strictly
+                  sequential execution attempts in the execution log
+                */
+                if (isExecutionRecorded &&
+                    devNull.route(scheduledReActor.getSelf(),
+                                  new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
+                                                            scheduledReActor.getNextMsgExecutionId(),
+                                                            newEvent.getSequenceNumber())).isNotSent()) {
+                    LOGGER.error("CRITIC! Unable to send an Execution Attempt for message {} Replay will NOT be possible",
+                                 newEvent);
+                }
+
+                executeReactionForMessage(scheduledReActor, newEvent);
+            }
+            //memory release
+            scheduledReActor.releaseCoherence();
+            //now this reactor can be scheduled by some other thread if required
+            scheduledReActor.releaseScheduling();
+            if (scheduledReActor.isStop()) {
+                dispatcherLifeCyclePool.submit(() -> reActorUnregister.apply(scheduledReActor));
+            } else if (!scheduledReActor.getMbox().isEmpty()) {
+                //If there are other messages to be processed, request another schedulation fo the dispatcher
+                 dispatch(scheduledReActor);
+            }
+    }
 
     @Nonnull
-    private static ReActorContext getNextScheduledReActor(AbstractConcurrentArrayQueue<Long> scheduledList,
+    private static ReActorContext getNextScheduledReActor(RingBuffer scheduledList,
                                                           ReActorSystem reActorSystem) throws InterruptedException {
         ReActorContext scheduledReActor = null;
         long nsecToWait = 1;
         while (scheduledReActor == null) {
-            Long scheduledReActorId = scheduledList.poll();
+            Long scheduledReActorId = null; //scheduledList.read() poll();
             if (scheduledReActorId == null) {
                 TimeUnit.NANOSECONDS.sleep(nsecToWait);
                 nsecToWait = Math.min(10000000, nsecToWait << 1);

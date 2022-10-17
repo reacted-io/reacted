@@ -10,8 +10,6 @@ package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
-import java.lang.reflect.Type;
-import javax.annotation.Nonnull;
 import net.openhft.chronicle.wire.WireKey;
 
 import java.util.Objects;

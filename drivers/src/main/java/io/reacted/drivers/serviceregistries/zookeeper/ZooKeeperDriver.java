@@ -13,19 +13,7 @@ import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
-import io.reacted.core.messages.serviceregistry.DuplicatedPublicationError;
-import io.reacted.core.messages.serviceregistry.FilterServiceDiscoveryRequest;
-import io.reacted.core.messages.serviceregistry.RegistryConnectionLost;
-import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
-import io.reacted.core.messages.serviceregistry.RegistryGateRemoved;
-import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
-import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicationRequest;
-import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
-import io.reacted.core.messages.serviceregistry.RegistryServicePublicationFailed;
-import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
-import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryComplete;
-import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
-import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdCancellationRequest;
+import io.reacted.core.messages.serviceregistry.*;
 import io.reacted.core.messages.services.FilterItem;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
@@ -34,19 +22,14 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.core.utils.ReActedUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
-import javax.annotation.Nonnull;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.framework.recipes.cache.ChildData;
-import org.apache.curator.framework.recipes.cache.CuratorCache;
-import org.apache.curator.framework.recipes.cache.CuratorCacheListener;
-import org.apache.curator.framework.recipes.cache.TreeCacheEvent;
-import org.apache.curator.framework.recipes.cache.TreeCacheListener;
+import org.apache.curator.framework.recipes.cache.*;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.utils.ZKPaths;
@@ -59,20 +42,14 @@ import org.apache.curator.x.discovery.ServiceInstance;
 import org.apache.curator.x.discovery.ServiceType;
 import org.apache.zookeeper.CreateMode;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig.Builder, ZooKeeperDriverConfig> {
@@ -435,28 +412,20 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
             return DeliveryStatus.DELIVERED;
         }
 
-        DeliveryStatus deliveryStatus = DeliveryStatus.NOT_DELIVERED;
-        switch (treeCacheEvent.getType()) {
-            case CONNECTION_SUSPENDED:
-            case CONNECTION_LOST:
-            case INITIALIZED: deliveryStatus = DeliveryStatus.DELIVERED;
-                              break;
-            case CONNECTION_RECONNECTED:  deliveryStatus = reActorSystem.getSystemRemotingRoot()
-                                                                        .tell(driverReActor, new RegistryDriverInitComplete());
-                                          break;
-            case NODE_ADDED:
-            case NODE_UPDATED: deliveryStatus = ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
-                                                               ? ZooKeeperDriver.upsertGate(reActorSystem,
-                                                                                            driverReActor,
-                                                                                            treeCacheEvent.getData())
-                                                               : DeliveryStatus.DELIVERED;
-                               break;
-            case NODE_REMOVED: deliveryStatus = ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
-                                                ? ZooKeeperDriver.removeGate(reActorSystem, driverReActor,
-                                                                             treeCacheEvent.getData())
-                                                : DeliveryStatus.DELIVERED;
-        }
-        return deliveryStatus;
+        return switch (treeCacheEvent.getType()) {
+            case CONNECTION_SUSPENDED, CONNECTION_LOST, INITIALIZED -> DeliveryStatus.DELIVERED;
+            case CONNECTION_RECONNECTED -> reActorSystem.getSystemRemotingRoot()
+                    .tell(driverReActor, new RegistryDriverInitComplete());
+            case NODE_ADDED, NODE_UPDATED -> ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
+                    ? ZooKeeperDriver.upsertGate(reActorSystem,
+                    driverReActor,
+                    treeCacheEvent.getData())
+                    : DeliveryStatus.DELIVERED;
+            case NODE_REMOVED -> ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
+                    ? ZooKeeperDriver.removeGate(reActorSystem, driverReActor,
+                    treeCacheEvent.getData())
+                    : DeliveryStatus.DELIVERED;
+        };
     }
 
     private static DeliveryStatus removeGate(ReActorSystem reActorSystem, ReActorRef driverReActor,
@@ -492,20 +461,18 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                 UUID reActorSystemInstanceMarker) {
 
         switch (newState) {
-            case LOST:
-            case SUSPENDED: raCtx.getReActorSystem().getSystemRemotingRoot().tell(raCtx.getSelf(),
-                                                                                  new RegistryConnectionLost());
-                            break;
-            case RECONNECTED: isReActorSystemUnique(raCtx.getReActorSystem().getLocalReActorSystemId(),
-                                                    AsyncCuratorFramework.wrap(curator),
-                                                    reActorSystemInstanceMarker)
-                                .thenAccept(isUnique -> { if (isUnique) {
-                                                            refreshDriverStatus(curatorCache, curator, raCtx);
-                                                          } else {
-                                                            onDuplicateReactorSystem(raCtx);
-                                                          }
-                                                        });
-                              break;
+            case LOST, SUSPENDED -> raCtx.getReActorSystem().getSystemRemotingRoot().tell(raCtx.getSelf(),
+                    new RegistryConnectionLost());
+            case RECONNECTED -> isReActorSystemUnique(raCtx.getReActorSystem().getLocalReActorSystemId(),
+                    AsyncCuratorFramework.wrap(curator),
+                    reActorSystemInstanceMarker)
+                    .thenAccept(isUnique -> {
+                        if (isUnique) {
+                            refreshDriverStatus(curatorCache, curator, raCtx);
+                        } else {
+                            onDuplicateReactorSystem(raCtx);
+                        }
+                    });
         }
     }
 

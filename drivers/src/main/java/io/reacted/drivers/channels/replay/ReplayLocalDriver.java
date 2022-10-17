@@ -25,21 +25,15 @@ import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @NonNullByDefault
 public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
@@ -122,7 +116,7 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
                 var message = dstToMessageBySeqNum.getOrDefault(executionAttempt.getReActorId(),
                                                                 Collections.emptyMap())
                                                   .remove(executionAttempt.getMsgSeqNum());
-                ReActorContext destinationCtx = localReActorSystem.getReActorCtx(executionAttempt.getReActorId());
+                ReActorContext destinationCtx = localReActorSystem.getNullableReActorCtx(executionAttempt.getReActorId());
 
                 if (destinationCtx == null || message == null) {
                     LOGGER.error("Unable to delivery message {} for ReActor {}",

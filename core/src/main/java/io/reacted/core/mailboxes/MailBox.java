@@ -10,12 +10,9 @@ package io.reacted.core.mailboxes;
 
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.patterns.Try;
 
-import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nonnull;
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.concurrent.CompletionStage;
 
 @ParametersAreNonnullByDefault
 public interface MailBox {

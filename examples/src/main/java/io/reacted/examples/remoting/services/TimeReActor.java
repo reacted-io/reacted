@@ -9,22 +9,20 @@
 package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.runtime.Dispatcher;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.services.SelectionType;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 
 import javax.annotation.Nonnull;
 import java.time.ZonedDateTime;
-
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 public class TimeReActor implements ReActor {
     private final String serviceToQuery;

@@ -13,19 +13,7 @@ import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
-import io.reacted.core.messages.serviceregistry.DuplicatedPublicationError;
-import io.reacted.core.messages.serviceregistry.FilterServiceDiscoveryRequest;
-import io.reacted.core.messages.serviceregistry.RegistryConnectionLost;
-import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
-import io.reacted.core.messages.serviceregistry.RegistryGateRemoved;
-import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
-import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicationRequest;
-import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
-import io.reacted.core.messages.serviceregistry.RegistryServicePublicationFailed;
-import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
-import io.reacted.core.messages.serviceregistry.ServiceRegistryNotAvailable;
-import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryComplete;
-import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
+import io.reacted.core.messages.serviceregistry.*;
 import io.reacted.core.messages.services.FilterItem;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.reactors.ReActions;
@@ -33,13 +21,11 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 
-import java.util.function.Predicate;
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
-
-import static io.reacted.core.utils.ReActedUtils.*;
 
 @Immutable
 public class RemotingRoot {
@@ -158,13 +144,13 @@ public class RemotingRoot {
     private static void onFilterServiceDiscoveryRequest(ReActorContext raCtx,
                                                         FilterServiceDiscoveryRequest filterThis) {
         var foundServices = filterThis.getServiceDiscoveryResult().stream()
-                  .flatMap(filterItem -> ReActorSystem.getRoutedReference(filterItem.getServiceGate(),
+                  .flatMap(filterItem -> ReActorSystem.getRoutedReference(filterItem.serviceGate(),
                                                                           raCtx.getReActorSystem()).stream()
                                                       .map(routedGate -> new FilterItem(routedGate,
-                                                                                        filterItem.getServiceProperties())))
-                  .filter(filterItem -> filterThis.getFilteringRuleToApply().matches(filterItem.getServiceProperties(),
-                                                                                     filterItem.getServiceGate()))
-                  .map(FilterItem::getServiceGate)
+                                                                                        filterItem.serviceProperties())))
+                  .filter(filterItem -> filterThis.getFilteringRuleToApply().matches(filterItem.serviceProperties(),
+                                                                                     filterItem.serviceGate()))
+                  .map(FilterItem::serviceGate)
                   .collect(Collectors.toUnmodifiableSet());
         if (!raCtx.reply(new ServiceDiscoveryReply(foundServices)).isSent()) {
             raCtx.logError("Unable to answer with a {}",

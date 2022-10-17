@@ -8,7 +8,6 @@
 
 package io.reacted.examples.communication.tell.ping;
 
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.examples.ExampleUtils;
 

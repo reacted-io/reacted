@@ -15,18 +15,18 @@ import java.util.Objects;
 @NonNullByDefault
 public final class StorageMessages {
     private StorageMessages() { /* No implementation required*/ }
-    public static class QueryReply implements Serializable {
-        private final String payload;
-        public QueryReply(String payload) {
-            this.payload = Objects.requireNonNull(payload);
+
+    public record QueryReply(String payload) implements Serializable {
+            public QueryReply(String payload) {
+                this.payload = Objects.requireNonNull(payload);
+            }
         }
-        public String getPayload() { return payload; }
-    }
-    public static class QueryRequest implements Serializable {
-        private final String key;
-        public QueryRequest(String key) { this.key = Objects.requireNonNull(key); }
-        public String getKey() { return key; }
-    }
+
+    public record QueryRequest(String key) implements Serializable {
+            public QueryRequest(String key) {
+                this.key = Objects.requireNonNull(key);
+            }
+        }
 
     public static class StoreError extends Throwable {
         public StoreError(Throwable anyError) { super(anyError); }

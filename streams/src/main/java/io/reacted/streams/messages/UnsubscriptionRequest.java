@@ -12,19 +12,12 @@ import io.reacted.core.reactorsystem.ReActorRef;
 
 import java.io.Serializable;
 
-public class UnsubscriptionRequest implements Serializable {
-    private final ReActorRef subscriptionBackpressuringManager;
-    public UnsubscriptionRequest(ReActorRef subscriptionBackpressuringManager) {
-        this.subscriptionBackpressuringManager = subscriptionBackpressuringManager;
-    }
-    public ReActorRef getSubscriptionBackpressuringManager() {
-        return subscriptionBackpressuringManager;
-    }
+public record UnsubscriptionRequest(ReActorRef subscriptionBackpressuringManager) implements Serializable {
 
     @Override
     public String toString() {
         return "UnsubscriptionRequest{" +
-               "subscriptionBackpressuringManager=" + subscriptionBackpressuringManager +
-               '}';
+                "subscriptionBackpressuringManager=" + subscriptionBackpressuringManager +
+                '}';
     }
 }

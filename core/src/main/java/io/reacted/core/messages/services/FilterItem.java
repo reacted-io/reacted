@@ -16,31 +16,24 @@ import java.io.Serializable;
 import java.util.Properties;
 
 @NonNullByDefault
-public class FilterItem implements Serializable {
-    private final Properties serviceProperties;
-    private final ReActorRef serviceGate;
-
-    public FilterItem(ReActorRef serviceGate, Properties serviceProperties) {
-        this.serviceGate = serviceGate;
-        this.serviceProperties = serviceProperties;
-    }
-
-    public Properties getServiceProperties() { return serviceProperties; }
-
-    public ReActorRef getServiceGate() { return serviceGate; }
+public record FilterItem(ReActorRef serviceGate, Properties serviceProperties) implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) { return true; }
-        if (o == null || getClass() != o.getClass()) { return false; }
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         FilterItem that = (FilterItem) o;
-        return Objects.equal(getServiceProperties(), that.getServiceProperties()) &&
-               Objects.equal(getServiceGate(), that.getServiceGate());
+        return Objects.equal(serviceProperties(), that.serviceProperties()) &&
+                Objects.equal(serviceGate(), that.serviceGate());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(getServiceProperties(), getServiceGate());
+        return Objects.hashCode(serviceProperties(), serviceGate());
     }
 
     @Override

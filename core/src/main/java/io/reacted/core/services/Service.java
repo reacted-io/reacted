@@ -10,7 +10,6 @@ package io.reacted.core.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
@@ -28,20 +27,18 @@ import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import java.util.Set;
-import java.util.function.BiFunction;
-import javax.annotation.Nonnull;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
-import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.Serializable;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 
 @NonNullByDefault
 public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<ServiceCfgBuilderT, ServiceCfgT>,
@@ -194,7 +191,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     private ReActorRef spawnRoutee(ReActorContext routerCtx, ReActions routeeReActions,
                                    ReActorConfig routeeConfig) {
         ReActorRef routee = routerCtx.spawnChild(routeeReActions, routeeConfig).orElseSneakyThrow();
-        ReActorContext routeeCtx = routerCtx.getReActorSystem().getReActorCtx(routee.getReActorId());
+        ReActorContext routeeCtx = routerCtx.getReActorSystem().getNullableReActorCtx(routee.getReActorId());
 
         if (routeeCtx == null) {
             throw new IllegalStateException("Unable to find actor (routee) ctx for a newly spawned actor");

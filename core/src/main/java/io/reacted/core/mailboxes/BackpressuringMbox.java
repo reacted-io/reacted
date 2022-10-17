@@ -13,22 +13,22 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
+import java.io.Serializable;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.Flow;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nonnull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.Serializable;
-import java.util.Objects;
-import java.util.Set;
 
 @NonNullByDefault
 public class BackpressuringMbox implements MailBox {
@@ -162,6 +162,7 @@ public class BackpressuringMbox implements MailBox {
 
         private Builder() { }
 
+        @SafeVarargs
         public final Builder setOutOfStreamControl(Class<? extends Serializable> ...notRegulatedByStreamControl) {
             this.outOfStreamControl = Set.of(notRegulatedByStreamControl);
             return this;
@@ -205,6 +206,7 @@ public class BackpressuringMbox implements MailBox {
          *                     of the requested messages
          * @return this builder
          */
+        @SafeVarargs
         public final Builder setNonDelayable(Class<? extends Serializable> ...notDelayable) {
             this.notDelayable = Set.of(notDelayable);
             return this;

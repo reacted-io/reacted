@@ -9,37 +9,29 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.config.drivers.NullLocalDriverConfig;
-import io.reacted.core.config.reactors.ReActorServiceConfig;
-import io.reacted.core.config.reactors.ServiceRegistryConfig;
-import io.reacted.core.drivers.system.NullLocalDriver;
-import io.reacted.core.mailboxes.BoundedBasicMbox;
-import io.reacted.core.messages.reactors.DeadMessage;
-import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.typedsubscriptions.SubscriptionsManager;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.config.drivers.NullLocalDriverConfig;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.ReActorServiceConfig;
+import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.LoopbackDriver;
 import io.reacted.core.drivers.system.NullDriver;
+import io.reacted.core.drivers.system.NullLocalDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.exceptions.ReActorRegistrationException;
 import io.reacted.core.exceptions.ReActorSystemInitException;
 import io.reacted.core.exceptions.ReActorSystemStructuralInconsistencyError;
+import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.mailboxes.NullMailbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
-import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.messages.reactors.ReActedDebug;
-import io.reacted.core.messages.reactors.ReActedError;
-import io.reacted.core.messages.reactors.ReActedInfo;
-import io.reacted.core.messages.reactors.ReActorInit;
-import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.reactors.*;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
@@ -49,36 +41,23 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.DeadLetter;
 import io.reacted.core.reactors.systemreactors.RemotingRoot;
-import io.reacted.core.reactors.systemreactors.SystemMonitor;
 import io.reacted.core.reactors.systemreactors.SystemLogger;
+import io.reacted.core.reactors.systemreactors.SystemMonitor;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.services.Service;
+import io.reacted.core.typedsubscriptions.SubscriptionsManager;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -106,7 +85,8 @@ public class ReActorSystem {
 
     private final Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> reActorSystemDrivers;
     /* All the reactors spawned by a specific reactor system instance */
-    private final Map<Long, ReActorContext> reActors;
+    private final Map<ReActorId, ReActorContext> reactorsByReactorId;
+    private final Map<Long, ReActorContext> reactorsBySchedulationId;
     /* All the reactors that listen for a specific message type are saved here */
     private final SubscriptionsManager typedSubscriptionsManager;
     private final RegistryGatesCentralizedManager gatesCentralizedManager;
@@ -144,7 +124,8 @@ public class ReActorSystem {
     private ReActorSystem() {
         this.maximumReActorsNumForThisSystem = 0;
         this.reActorSystemDrivers = Set.of();
-        this.reActors = Map.of();
+        this.reactorsByReactorId = Map.of();
+        this.reactorsBySchedulationId = Map.of();
         this.localReActorSystemId = ReActorSystemId.NO_REACTORSYSTEM_ID;
         this.typedSubscriptionsManager = new SubscriptionsManager() { };
         this.dispatchers = Map.of();
@@ -170,7 +151,8 @@ public class ReActorSystem {
         this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
                                                                            new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
         this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
-        this.reActors = new ConcurrentHashMap<>(maximumReActorsNumForThisSystem, 0.1f);
+        this.reactorsByReactorId = new ConcurrentHashMap<>(maximumReActorsNumForThisSystem, 0.1f);
+        this.reactorsBySchedulationId = new ConcurrentHashMap<>(maximumReActorsNumForThisSystem, 0.1f);
         this.typedSubscriptionsManager = new TypedSubscriptionsManager();
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.newSeqNum = new AtomicLong(0);
@@ -640,19 +622,13 @@ public class ReActorSystem {
     }
 
     @Nullable
-    public ReActorContext getReActorCtx(ReActorId reference) {
-        return getNullableReActorCtx(Objects.requireNonNull(reference).getReActorRawId());
-    }
-
-    @Nullable
     public ReActorContext getNullableReActorCtx(ReActorId reActorId) {
-        return getNullableReActorCtx(Objects.requireNonNull(reActorId).getReActorRawId());
+        return reactorsByReactorId.get(Objects.requireNonNull(reActorId));
     }
 
-    //XXX Get a reactor context given the reactor id without the Optional overhead
     @Nullable
-    public ReActorContext getNullableReActorCtx(Long reActorRawId) {
-        return reActors.get(Objects.requireNonNull(reActorRawId));
+    public ReActorContext getNullableReActorCtx(long schedulationId) {
+        return reactorsBySchedulationId.get(schedulationId);
     }
 
     //Create a ReActorRef with the appropriate driver attached for the specified reactor system / channel id
@@ -671,7 +647,7 @@ public class ReActorSystem {
      * terminated. An empty optional otherwise
      */
     public Optional<CompletionStage<Void>> stop(ReActorId reActorToStop) {
-        return Optional.ofNullable(getReActorCtx(reActorToStop)).map(ReActorContext::stop);
+        return Optional.ofNullable(getNullableReActorCtx(reActorToStop)).map(ReActorContext::stop);
     }
 
     public ScheduledExecutorService getSystemSchedulingService() {
@@ -768,10 +744,10 @@ public class ReActorSystem {
      * @throws ReActorSystemInitException If unable to deliver reactor init message
      */
     private void initReActorSystemReActors() {
-        if (reActors.values().stream()
-                .map(ReActorContext::getSelf)
-                .map(reactor -> reactor.tell(getSystemSink(), REACTOR_INIT))
-                .anyMatch(Predicate.not(DeliveryStatus::isSent))) {
+        if (reactorsByReactorId.values().stream()
+                               .map(ReActorContext::getSelf)
+                               .map(reactor -> reactor.tell(getSystemSink(), REACTOR_INIT))
+                               .anyMatch(Predicate.not(DeliveryStatus::isSent))) {
             throw new ReActorSystemInitException("Unable to init all system reactors");
         }
     }
@@ -841,7 +817,7 @@ public class ReActorSystem {
 
     private CompletionStage<Void> stopSystemRoot(ReActorRef reActorRoot) {
         //Kill all the user actors hierarchy
-        ReActorContext rootCtx = getReActorCtx(reActorRoot.getReActorId());
+        ReActorContext rootCtx = getNullableReActorCtx(reActorRoot.getReActorId());
         return rootCtx != null
                ? rootCtx.stop()
                : CompletableFuture.completedFuture(null);
@@ -969,7 +945,7 @@ public class ReActorSystem {
     }
 
     private Try<ReActorContext> registerNewReActor(ReActorRef parent, ReActorContext newReActor) {
-        ReActorContext parentCtx = getReActorCtx(parent.getReActorId());
+        ReActorContext parentCtx = getNullableReActorCtx(parent.getReActorId());
         if (parentCtx == null) {
             return Try.ofFailure(new ReActorRegistrationException(newReActor.getSelf()
                                                                             .getReActorId()
@@ -984,7 +960,7 @@ public class ReActorSystem {
 
     private Optional<CompletionStage<Void>> unRegisterReActor(ReActorContext stopMe) {
         Optional<CompletionStage<Void>> stopHook = Optional.empty();
-        ReActorContext parentCtx = getReActorCtx(stopMe.getParent().getReActorId());
+        ReActorContext parentCtx = getNullableReActorCtx(stopMe.getParent().getReActorId());
         if (parentCtx != null) {
             parentCtx.unregisterChild(stopMe.getSelf());
         }
@@ -994,7 +970,8 @@ public class ReActorSystem {
             //If it is already stopped don't process further, otherwise the remove could remove the name
             //of a new reactor with the same name that has just been spawned
             if (!stopMe.getHierarchyTermination().toCompletableFuture().isDone() &&
-                reActors.remove(stopMe.getSelf().getReActorId()) != null) {
+                reactorsByReactorId.remove(stopMe.getSelf().getReActorId()) != null) {
+                reactorsBySchedulationId.remove(stopMe.getReActorSchedulationId());
                 updateMessageInterceptors(stopMe, stopMe.getTypedSubscriptions(),
                                           TypedSubscription.NO_SUBSCRIPTIONS);
                 Try.ofRunnable(() -> stopMe.reAct(reActorStop))
@@ -1016,7 +993,7 @@ public class ReActorSystem {
 
         return children.stream()
                        .map(ReActorRef::getReActorId)
-                       .map(reActorSystem::getReActorCtx)
+                       .map(reActorSystem::getNullableReActorCtx)
                        .filter(Objects::nonNull)
                        //exploit the dispatcher for stopping the actor
                        .map(ReActorContext::stop)
@@ -1032,8 +1009,10 @@ public class ReActorSystem {
         parentReActorCtx.getStructuralLock().writeLock().lock();
 
         try {
-            if ((isSelfAdd || reActors.containsKey(parentReActorCtx.getSelf().getReActorId().getReActorRawId())) &&
-                reActors.putIfAbsent(newActor.getSelf().getReActorId().getReActorRawId(), newActor) == null) {
+            if ((isSelfAdd || reactorsByReactorId.containsKey(parentReActorCtx.getSelf().getReActorId())) &&
+                reactorsByReactorId.putIfAbsent(newActor.getSelf().getReActorId(), newActor) == null) {
+                newActor.setSchedulationId();
+                reactorsBySchedulationId.put(newActor.getReActorSchedulationId(), newActor);
                 //Do not add an actor to its own children
                 if (!isSelfAdd) {
                     parentReActorCtx.registerChild(newActor.getSelf());

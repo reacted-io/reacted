@@ -10,22 +10,16 @@ package io.reacted.streams.messages;
 
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
+
 import java.io.Serializable;
 
 @NonNullByDefault
-public class SubscriptionRequest implements Serializable {
-    private final ReActorRef subscriptionBackpressuringManager;
-    public SubscriptionRequest(ReActorRef subscriptionBackpressuringManager) {
-        this.subscriptionBackpressuringManager = subscriptionBackpressuringManager;
-    }
-    public ReActorRef getSubscriptionBackpressuringManager() {
-        return subscriptionBackpressuringManager;
-    }
+public record SubscriptionRequest(ReActorRef subscriptionBackpressuringManager) implements Serializable {
 
     @Override
     public String toString() {
         return "SubscriptionRequest{" +
-               "subscriptionBackpressuringManager=" + subscriptionBackpressuringManager +
-               '}';
+                "subscriptionBackpressuringManager=" + subscriptionBackpressuringManager +
+                '}';
     }
 }

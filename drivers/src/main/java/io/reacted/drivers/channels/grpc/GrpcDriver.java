@@ -11,18 +11,7 @@ package io.reacted.drivers.channels.grpc;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
-import io.grpc.CallOptions;
-import io.grpc.Channel;
-import io.grpc.ClientCall;
-import io.grpc.ClientInterceptor;
-import io.grpc.ForwardingClientCall;
-import io.grpc.ForwardingClientCallListener;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.Metadata;
-import io.grpc.MethodDescriptor;
-import io.grpc.Server;
-import io.grpc.Status;
+import io.grpc.*;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
@@ -34,15 +23,15 @@ import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.exceptions.ChannelUnavailableException;
-import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -52,12 +41,7 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 @NonNullByDefault
@@ -315,17 +299,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
         };
     }
 
-    private static final class SystemLinkContainer<InputTypeT> {
-        private final ManagedChannel channel;
-        private final StreamObserver<InputTypeT> link;
-        private SystemLinkContainer(ManagedChannel channel, StreamObserver<InputTypeT> link) {
-            this.channel = channel;
-            this.link = link;
-        }
+    private record SystemLinkContainer<InputTypeT>(ManagedChannel channel, StreamObserver<InputTypeT> link) {
         private static <StubT, InputTypeT>
-        SystemLinkContainer<InputTypeT> ofChannel(ManagedChannel channel, Function<ManagedChannel, StubT> toStub,
-                                                  Function<StubT, StreamObserver<InputTypeT>> toLink) {
-            return new SystemLinkContainer<>(channel, toLink.apply(toStub.apply(channel)));
+            SystemLinkContainer<InputTypeT> ofChannel(ManagedChannel channel, Function<ManagedChannel, StubT> toStub,
+                                                      Function<StubT, StreamObserver<InputTypeT>> toLink) {
+                return new SystemLinkContainer<>(channel, toLink.apply(toStub.apply(channel)));
+            }
         }
-    }
 }
