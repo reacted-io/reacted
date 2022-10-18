@@ -919,6 +919,7 @@ public class ReActorSystem {
 
     private Try<ReActorRef> spawn(ReActorSystemRef spawnerAs, ReActions reActions,
                                   ReActorRef parent, ReActiveEntityConfig<?, ?> reActorConfig) {
+
         var reActorCtx = createReActorCtx(spawnerAs, reActions, parent,
                                           new ReActorId(parent.getReActorId(), reActorConfig.getReActorName()),
                                           reActorConfig);

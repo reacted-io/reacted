@@ -18,6 +18,7 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import net.openhft.chronicle.threads.Pauser;
 import org.agrona.BitUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.MessageHandler;
@@ -99,13 +100,13 @@ public class Dispatcher {
                                     .toArray(ExecutorService[]::new);
         var lifecyclePoolSize = Integer.max(2, getDispatcherConfig().getDispatcherThreadsNum() >> 2);
 
-        this.dispatcherLifeCyclePool = Executors.newFixedThreadPool(lifecyclePoolSize,lifecycleFactory);
+        this.dispatcherLifeCyclePool = Executors.newFixedThreadPool(lifecyclePoolSize, lifecycleFactory);
 
-        for(var currentDispatcher = 0;
-            currentDispatcher < getDispatcherConfig().getDispatcherThreadsNum(); currentDispatcher++) {
+        for(var currentDispatcherThread = 0;
+            currentDispatcherThread < getDispatcherConfig().getDispatcherThreadsNum(); currentDispatcherThread++) {
 
-            ExecutorService dispatcherThread = dispatcherPool[currentDispatcher];
-            RingBuffer threadLocalSchedulingQueue = scheduledQueues[currentDispatcher];
+            ExecutorService dispatcherThread = dispatcherPool[currentDispatcherThread];
+            RingBuffer threadLocalSchedulingQueue = scheduledQueues[currentDispatcherThread];
             dispatcherThread.submit(() -> Try.ofRunnable(() -> dispatcherLoop(threadLocalSchedulingQueue,
                                                                               dispatcherConfig.getBatchSize(),
                                                                               dispatcherLifeCyclePool,
@@ -142,12 +143,19 @@ public class Dispatcher {
                                 ReActorSystem reActorSystem, ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
         var processed = 0L;
+        Pauser ringBufferConsumerPauser = Pauser.balanced();
         MessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) ->
             onMessage(buffer, index, dispatcherBatchSize, dispatcherLifeCyclePool,
                       isExecutionRecorded, reActorSystem, devNull, reActorUnregister));
-
+        var processedInRound = 0L;
         while (!Thread.currentThread().isInterrupted()) {
-            processed += scheduledList.read(ringBufferMessageProcessor);
+            processedInRound = scheduledList.read(ringBufferMessageProcessor);
+            if (processedInRound == 0) {
+                ringBufferConsumerPauser.pause();
+            } else {
+                ringBufferConsumerPauser.reset();
+                processed += processedInRound;
+            }
         }
         LOGGER.debug("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
     }

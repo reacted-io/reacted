@@ -44,6 +44,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>chronicle-queue</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.agrona</groupId>
             <artifactId>agrona</artifactId>
         </dependency>
