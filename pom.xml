@@ -97,15 +97,15 @@
         <asm.version>7.3.1</asm.version>
         <slf4j-api.version>2.0.0</slf4j-api.version>
         <slf4j-simple.version>2.0.0</slf4j-simple.version>
-        <apache-curator.version>5.1.0</apache-curator.version>
-        <apache-curator-discovery.version>5.1.0</apache-curator-discovery.version>
+        <apache-curator.version>5.3.0</apache-curator.version>
+        <apache-curator-discovery.version>5.3.0</apache-curator-discovery.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
         <grpc.version>1.49.0</grpc.version>
         <protobuf.version>3.21.5</protobuf.version>
         <protobuf.maven.plugin.version>0.6.1</protobuf.maven.plugin.version>
         <tomcat.annotations.version>6.0.53</tomcat.annotations.version>
         <build.helper.version>3.0.0</build.helper.version>
-        <kafka.client.version>2.5.0</kafka.client.version>
+        <kafka.client.version>2.6.3</kafka.client.version>
         <apache.commons.lang.version>3.12.0</apache.commons.lang.version>
         <reactive.streams.version>1.0.4</reactive.streams.version>
         <testng.version>7.1.0</testng.version>

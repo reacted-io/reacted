@@ -8,18 +8,14 @@
 
 package io.reacted.patterns.annotations.unstable;
 
-import java.util.Set;
-import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.annotation.processing.SupportedSourceVersion;
+import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
+import java.util.Set;
 
 @SupportedAnnotationTypes("io.reacted.patterns.annotations.unstable.Unstable")
-@SupportedSourceVersion(SourceVersion.RELEASE_11)
+@SupportedSourceVersion(SourceVersion.RELEASE_17)
 public class UnstableProcessor extends AbstractProcessor {
   private ProcessingEnvironment env;
   @Override
