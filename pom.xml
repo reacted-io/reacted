@@ -74,7 +74,7 @@
 
     <properties>
         <awaitility.version>4.0.3</awaitility.version>
-        <chronicle.queue.version>5.23.35</chronicle.queue.version>
+        <chronicle.queue.version>5.24ea0</chronicle.queue.version>
         <google.guava.version>31.1-jre</google.guava.version>
         <mockito.version>4.8.0</mockito.version>
         <junit.version>5.7.2</junit.version>
@@ -359,9 +359,16 @@
                         <include>**/*.java</include>
                     </includes>
                     <argLine>
+                        --add-exports=java.base/jdk.internal.ref=ALL-UNNAMED
+                        --add-exports=java.base/sun.nio.ch=ALL-UNNAMED
+                        --add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+                        --add-opens=jdk.compiler/com.sun.tools.javac=ALL-UNNAMED
+                        --add-opens=java.base/java.lang=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+                        --add-opens=java.base/java.io=ALL-UNNAMED
+                        --add-opens=java.base/java.util=ALL-UNNAMED
                         --illegal-access=permit
-                        --add-exports
-                        java.base/jdk.internal.ref=ALL-UNNAMED
                     </argLine>
                 </configuration>
             </plugin>
@@ -371,6 +378,15 @@
                 <version>${maven.failsafe.plugin.version}</version>
                 <configuration>
                     <argLine>
+                        --add-exports=java.base/jdk.internal.ref=ALL-UNNAMED
+                        --add-exports=java.base/sun.nio.ch=ALL-UNNAMED
+                        --add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+                        --add-opens=jdk.compiler/com.sun.tools.javac=ALL-UNNAMED
+                        --add-opens=java.base/java.lang=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+                        --add-opens=java.base/java.io=ALL-UNNAMED
+                        --add-opens=java.base/java.util=ALL-UNNAMED
                         --illegal-access=permit
                     </argLine>
                 </configuration>
