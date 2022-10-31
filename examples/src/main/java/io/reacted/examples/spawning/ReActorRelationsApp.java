@@ -10,8 +10,8 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.Immutable;
@@ -66,14 +66,14 @@ public class ReActorRelationsApp {
         public ReActions getReActions() { return fatherReactions; }
 
         private void onBreedRequest(ReActorContext raCtx, BreedRequest breedRequest) {
-            this.requestedChildren = breedRequest.getRequestedChildren();
+            this.requestedChildren = breedRequest.requestedChildren();
 
             raCtx.logInfo("{} received a {} for {} from {}",
                            raCtx.getSelf().getReActorId().getReActorName(),
-                           breedRequest.getClass().getSimpleName(), breedRequest.getRequestedChildren(),
+                           breedRequest.getClass().getSimpleName(), breedRequest.requestedChildren(),
                            raCtx.getSender().getReActorId().getReActorName());
 
-            LongStream.range(0, breedRequest.getRequestedChildren())
+            LongStream.range(0, breedRequest.requestedChildren())
                       .forEachOrdered(childNum -> raCtx.spawnChild(new Child(childNum, raCtx.getSender())));
         }
 
@@ -99,7 +99,7 @@ public class ReActorRelationsApp {
 
         private static void onGreetingsFromChild(ReActorContext raCtx, Greetings greetingsMessage) {
             raCtx.logInfo("{} received {}. Sending thank you to {}", raCtx.getSelf().getReActorId().getReActorName(),
-                          greetingsMessage.getGreetingsMessage(), raCtx.getSender().getReActorId().getReActorName());
+                          greetingsMessage.greetingsMessage(), raCtx.getSender().getReActorId().getReActorName());
             raCtx.reply(new ThankYouFather());
         }
 
@@ -138,21 +138,16 @@ public class ReActorRelationsApp {
     }
 
     @Immutable
-    private static final class BreedRequest implements Serializable {
-        private final long requestedChildren;
-        private BreedRequest(long requestedChildren) {
-            this.requestedChildren = ObjectUtils.requiredInRange(requestedChildren, 1L, Long.MAX_VALUE,
-                                                                 IllegalArgumentException::new);
+        private record BreedRequest(long requestedChildren) implements Serializable {
+            private BreedRequest(long requestedChildren) {
+                this.requestedChildren = ObjectUtils.requiredInRange(requestedChildren, 1L, Long.MAX_VALUE,
+                        IllegalArgumentException::new);
+            }
         }
-        private long getRequestedChildren() { return requestedChildren; }
-    }
 
     @NonNullByDefault
-    @Immutable
-    private static final class Greetings implements Serializable {
-        private final String greetingsMessage;
-        private Greetings(String greetingsMessage) { this.greetingsMessage = greetingsMessage; }
-        private String getGreetingsMessage() { return greetingsMessage; }
+        @Immutable
+        private record Greetings(String greetingsMessage) implements Serializable {
     }
 
     @Immutable

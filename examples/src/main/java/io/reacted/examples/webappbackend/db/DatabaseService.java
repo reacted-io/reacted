@@ -33,7 +33,6 @@ public class DatabaseService implements ReActor {
     static final String PAYLOAD_FIELD = "payload";
     @Nullable
     private final MongoClient mongoClient;
-    @SuppressWarnings("NotNullFieldNotInitialized")
     private MongoCollection<Document> mongoCollection;
     public DatabaseService(@Nullable MongoClient mongoClient) {
         this.mongoClient = mongoClient;

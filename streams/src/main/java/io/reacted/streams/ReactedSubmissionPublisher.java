@@ -230,6 +230,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
             return;
         }
 
+        @SuppressWarnings("unchecked")
         CompletionStage<DeliveryStatus>[] deliveries = new CompletionStage[subscribers.size()];
         ReActorRef[] subscribersRefs = new ReActorRef[subscribers.size()];
         Iterator<ReActorRef> subscribersIterator = subscribers.iterator();

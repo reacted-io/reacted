@@ -11,9 +11,9 @@ package io.reacted.examples.streams;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
-import java.io.FileNotFoundException;
 import org.awaitility.Awaitility;
 
+import java.io.FileNotFoundException;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.Objects;
@@ -63,7 +63,6 @@ class StreamToMultipleSubscribersApp {
         private final Comparator<PayloadT> payloadTComparator;
         private final LongAdder updatesReceived;
         private boolean isTerminated = false;
-        @SuppressWarnings("NotNullFieldNotInitialized")
         private Flow.Subscription subscription;
         private PayloadT lastItem;
 

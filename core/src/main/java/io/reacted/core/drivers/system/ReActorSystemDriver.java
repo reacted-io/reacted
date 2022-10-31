@@ -39,6 +39,7 @@ import java.util.concurrent.*;
 public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> {
     public static final ThreadLocal<DriverCtx> REACTOR_SYSTEM_CTX = new InheritableThreadLocal<>();
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystemDriver.class);
+    @SuppressWarnings("unchecked")
     protected static final CompletionStage<DeliveryStatus>[] DELIVERY_RESULT_CACHE = Arrays.stream(DeliveryStatus.values())
                                                                                            .map(CompletableFuture::completedStage)
                                                                                            .toArray(CompletionStage[]::new);

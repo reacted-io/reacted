@@ -60,7 +60,6 @@ class SlowdownProducerApp {
         private final Comparator<PayloadT> payloadTComparator;
         private final LongAdder updatesReceived;
         private boolean isTerminated = false;
-        @SuppressWarnings("NotNullFieldNotInitialized")
         private Flow.Subscription subscription;
         private PayloadT lastItem;
 

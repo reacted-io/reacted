@@ -25,24 +25,12 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -71,10 +59,7 @@ public class ReactiveServer {
         ExecutorService serverPool = Executors.newSingleThreadExecutor();
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 8001), 10);
         server.createContext("/read", new ReactiveHttpHandler(serverReactorSystem,
-                                                              Executors.newFixedThreadPool(5),
-                                                              new ThreadPoolExecutor(0, 1, 10, TimeUnit.SECONDS,
-                                                                                     new LinkedBlockingDeque<>()),
-                                                              Executors.newSingleThreadExecutor()));
+                                                              Executors.newFixedThreadPool(5)));
         server.setExecutor(serverPool);
         server.start();
     }
@@ -82,17 +67,11 @@ public class ReactiveServer {
     private static class ReactiveHttpHandler implements HttpHandler {
         private final ReActorSystem reactiveServerSystem;
         private final AtomicLong requestCounter;
-        private final Executor backpressureExecutor;
         private final Executor outputExecutor;
-        private final ThreadPoolExecutor singleThreadedSequencer;
-
-        private ReactiveHttpHandler(ReActorSystem reactiveServerSystem, Executor backpressureExecutor,
-                                    ThreadPoolExecutor singleThreadedSequencer, Executor outputExecutor) {
+        private ReactiveHttpHandler(ReActorSystem reactiveServerSystem, Executor outputExecutor) {
             this.reactiveServerSystem = Objects.requireNonNull(reactiveServerSystem);
             this.requestCounter = new AtomicLong();
-            this.backpressureExecutor = Objects.requireNonNull(backpressureExecutor);
             this.outputExecutor = Objects.requireNonNull(outputExecutor);
-            this.singleThreadedSequencer = Objects.requireNonNull(singleThreadedSequencer);
         }
 
         @Override
@@ -104,9 +83,7 @@ public class ReactiveServer {
 
         private void handleResponse(HttpExchange exchange, List<String> filenames, long requestId) {
             if (!filenames.isEmpty()) {
-                reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId,
-                                                                outputExecutor, backpressureExecutor,
-                                                                singleThreadedSequencer),
+                reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId, outputExecutor),
                                            ReActorConfig.newBuilder()
                                                         .setReActorName("Request " + requestId)
                                                         .setDispatcherName(RESPONSE_DISPATCHER)
@@ -128,21 +105,16 @@ public class ReactiveServer {
         private final List<String> filePaths;
         private final OutputStream outputStream;
         private final Executor outputExecutor;
-        private final Executor asyncBackpressureExecutor;
-        private final ThreadPoolExecutor sequencer;
         private final long requestId;
         private final AtomicInteger processed;
 
         public ReactiveResponse(HttpExchange httpCtx, List<String> filePaths, long reqId,
-                                Executor outputExecutor, Executor asyncBackpressureExecutor,
-                                ThreadPoolExecutor sequencer) {
+                                Executor outputExecutor) {
             this.httpCtx = Objects.requireNonNull(httpCtx);
             this.filePaths = Objects.requireNonNull(filePaths).stream()
                                     .sorted()
                                     .collect(Collectors.toUnmodifiableList());
             this.outputExecutor = Objects.requireNonNull(outputExecutor);
-            this.asyncBackpressureExecutor = Objects.requireNonNull(asyncBackpressureExecutor);
-            this.sequencer = Objects.requireNonNull(sequencer);
             this.outputStream = httpCtx.getResponseBody();
             this.requestId = reqId;
             this.processed = new AtomicInteger(filePaths.size());
@@ -323,12 +295,6 @@ public class ReactiveServer {
         raCtx.logInfo("Stopping {}", raCtx.getSelf().getReActorId().getReActorName());
     }
 
-    @Immutable
     private static class StartPublishing implements Serializable { }
-
-    @Immutable
-    private static class InternalError implements Serializable {
-        private final Throwable anyError;
-        private InternalError(Throwable anyError) { this.anyError = anyError; }
-    }
+    private record InternalError(Throwable anyError) implements Serializable { }
 }

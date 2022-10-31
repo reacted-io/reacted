@@ -24,7 +24,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.Flow;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -153,7 +152,6 @@ public class BackpressuringMbox implements MailBox {
         private long backpressuringThreshold = DEFAULT_MESSAGES_REQUESTED_ON_STARTUP;
         private long requestOnStartup = DEFAULT_MESSAGES_REQUESTED_ON_STARTUP;
 
-        private int bufferSize = Flow.defaultBufferSize();
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActorContext realMailboxOwner;
         private Set<Class<? extends Serializable>> notDelayable = Set.of(ReActorInit.class,
@@ -167,11 +165,6 @@ public class BackpressuringMbox implements MailBox {
             this.outOfStreamControl = Set.of(notRegulatedByStreamControl);
             return this;
         }
-        public final Builder setBufferSize(int bufferSize) {
-            this.bufferSize = bufferSize;
-            return this;
-        }
-
         public final Builder setBackpressuringThreshold(long threshold) {
             this.backpressuringThreshold = threshold;
             return this;

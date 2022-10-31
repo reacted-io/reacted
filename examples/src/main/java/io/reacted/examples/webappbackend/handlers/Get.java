@@ -130,10 +130,7 @@ public class Get implements ReActor {
         outputStream.write(data.getBytes());
         return ObjectUtils.VOID;
     }
-    private static class ProcessGet implements Serializable {
-        private final String getRequest;
-        private ProcessGet(String getRequest) {
-            this.getRequest = getRequest;
-        }
+
+    private record ProcessGet(String getRequest) implements Serializable {
     }
 }

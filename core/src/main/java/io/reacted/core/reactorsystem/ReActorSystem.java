@@ -1012,7 +1012,6 @@ public class ReActorSystem {
         try {
             if ((isSelfAdd || reactorsByReactorId.containsKey(parentReActorCtx.getSelf().getReActorId())) &&
                 reactorsByReactorId.putIfAbsent(newActor.getSelf().getReActorId(), newActor) == null) {
-                newActor.setSchedulationId();
                 reactorsBySchedulationId.put(newActor.getReActorSchedulationId(), newActor);
                 //Do not add an actor to its own children
                 if (!isSelfAdd) {

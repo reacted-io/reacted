@@ -63,14 +63,13 @@ public class ReActorContext {
     private final AtomicLong msgExecutionId;
     private final ReActions reActions;
     private final long reActorSchedulationId;
-
+    private final DirectBuffer schedulationIdBuffer;
     private TypedSubscription[] typedSubscriptions;
 
     private volatile boolean stop = false;
     private volatile boolean isAcquired = false;
 
     private ReActorRef lastMsgSender = ReActorRef.NO_REACTOR_REF;
-    private DirectBuffer schedulationIdBuffer;
 
     private ReActorContext(Builder reActorCtxBuilder) {
         this.actorMbox = Objects.requireNonNull(Objects.requireNonNull(reActorCtxBuilder.mboxProvider)
@@ -89,12 +88,9 @@ public class ReActorContext {
         this.msgExecutionId = new AtomicLong();
         this.reActions = Objects.requireNonNull(reActorCtxBuilder.reActions);
         this.reActorSchedulationId = ReActorCounter.INSTANCE.nextSchedulationId();
-    }
-
-    public void setSchedulationId() {
-       var direct = ByteBuffer.allocateDirect(8);
-       direct.putLong(getReActorSchedulationId());
-       this.schedulationIdBuffer = new UnsafeBuffer(direct);
+        var direct = ByteBuffer.allocateDirect(8);
+        direct.putLong(getReActorSchedulationId());
+        this.schedulationIdBuffer = new UnsafeBuffer(direct);
     }
     public DirectBuffer getSchedulationIdBuffer() {
         schedulationIdBuffer.byteBuffer().rewind();
