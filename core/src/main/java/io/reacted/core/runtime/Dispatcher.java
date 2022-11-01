@@ -18,9 +18,10 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import net.openhft.chronicle.threads.Pauser;
 import org.agrona.BitUtil;
 import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.BackoffIdleStrategy;
+import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.MessageHandler;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.agrona.concurrent.ringbuffer.ManyToOneRingBuffer;
@@ -143,19 +144,16 @@ public class Dispatcher {
                                 ReActorSystem reActorSystem, ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
         var processed = 0L;
-        Pauser ringBufferConsumerPauser = Pauser.balanced();
+        IdleStrategy ringBufferConsumerPauser = new BackoffIdleStrategy();
+
         MessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) ->
             onMessage(buffer, index, dispatcherBatchSize, dispatcherLifeCyclePool,
                       isExecutionRecorded, reActorSystem, devNull, reActorUnregister));
-        var processedInRound = 0L;
+        var processedInRound = 0;
         while (!Thread.currentThread().isInterrupted()) {
             processedInRound = scheduledList.read(ringBufferMessageProcessor);
-            if (processedInRound == 0) {
-                ringBufferConsumerPauser.pause();
-            } else {
-                ringBufferConsumerPauser.reset();
-                processed += processedInRound;
-            }
+            ringBufferConsumerPauser.idle(processedInRound);
+            processed += processedInRound;
         }
         LOGGER.debug("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
     }
