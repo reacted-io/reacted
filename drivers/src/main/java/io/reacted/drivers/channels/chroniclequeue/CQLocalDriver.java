@@ -17,22 +17,22 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import javax.annotation.Nullable;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.RollCycles;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
-import org.apache.log4j.Logger;
-
-import javax.annotation.Nullable;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @NonNullByDefault
 public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
-    private static final Logger LOGGER = Logger.getLogger(CQLocalDriver.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CQLocalDriver.class);
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
