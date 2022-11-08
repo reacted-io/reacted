@@ -17,17 +17,16 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import javax.annotation.Nullable;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.WireKey;
-
-import javax.annotation.Nullable;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
 
 @NonNullByDefault
 public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
@@ -114,9 +113,9 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
         try {
             cqAppender.writeMessage(topic, message);
             return DeliveryStatus.SENT;
-        } catch (Exception sendErrpr) {
+        } catch (Exception sendError) {
             localReActorSystem.logError("Error sending message {}", message.toString(),
-                                        sendErrpr);
+                                        sendError);
             return DeliveryStatus.NOT_SENT;
         }
     }

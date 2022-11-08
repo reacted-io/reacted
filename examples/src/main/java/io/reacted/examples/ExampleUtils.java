@@ -35,10 +35,8 @@ public final class ExampleUtils {
         return new ReActorSystem(getDefaultReActorSystemCfg(reActorSystemName)).initReActorSystem();
     }
 
-    public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName)
-        throws FileNotFoundException {
+    public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName) {
         return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.DIRECT_COMMUNICATION,
-                                                            //SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
                                           NO_SERVICE_REGISTRIES, NO_REMOTING_DRIVERS);
     }
 

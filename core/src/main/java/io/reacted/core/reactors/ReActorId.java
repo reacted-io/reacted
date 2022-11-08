@@ -24,6 +24,7 @@ import javax.annotation.concurrent.Immutable;
 public final class ReActorId implements Externalizable {
     @Serial
     private static final long serialVersionUID = 1;
+    private static final int UUID_BYTES_SIZE = 16;
     private static final long REACTOR_UUID_OFFSET = SerializationUtils.getFieldOffset(ReActorId.class, "reActorUUID")
                                                                       .orElseSneakyThrow();
     private static final long REACTOR_NAME_OFFSET = SerializationUtils.getFieldOffset(ReActorId.class, "reActorName")
@@ -68,7 +69,8 @@ public final class ReActorId implements Externalizable {
                                                                                                reActorId1.getReActorName());
     }
 
-    public int getRawIdSize() { return 16; }
+    @SuppressWarnings("SameReturnValue")
+    public int getRawIdSize() { return UUID_BYTES_SIZE; }
 
     @Override
     public int hashCode() { return hashCode; }
