@@ -30,7 +30,13 @@ import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.mailboxes.NullMailbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
-import io.reacted.core.messages.reactors.*;
+import io.reacted.core.messages.reactors.DeadMessage;
+import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.messages.reactors.ReActedDebug;
+import io.reacted.core.messages.reactors.ReActedError;
+import io.reacted.core.messages.reactors.ReActedInfo;
+import io.reacted.core.messages.reactors.ReActorInit;
+import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
@@ -50,19 +56,32 @@ import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @NonNullByDefault
@@ -947,7 +966,7 @@ public class ReActorSystem {
 
     private Try<ReActorContext> registerNewReActor(ReActorRef parent, ReActorContext newReActor) {
         ReActorContext parentCtx = getReActorCtx(parent.getReActorId());
-        if (parentCtx == null) {
+        if (parentCtx == null || reactorsByReactorId.size() >= getSystemConfig().getMaximumReActorsNum()) {
             return Try.ofFailure(new ReActorRegistrationException(newReActor.getSelf()
                                                                             .getReActorId()
                                                                             .getReActorName()));

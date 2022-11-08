@@ -9,13 +9,16 @@
 package io.reacted.core.reactors;
 
 import io.reacted.core.messages.SerializationUtils;
-
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
-import java.io.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
 
 @Immutable
 public final class ReActorId implements Externalizable {
@@ -29,7 +32,7 @@ public final class ReActorId implements Externalizable {
                                                                   .orElseSneakyThrow();
     public static final ReActorId NO_REACTOR_ID = new ReActorId().setReActorName("Init")
                                                                  .setReActorUUID(new UUID(0, 0))
-                                                                 .setHashCode(Objects.hash("Init", new UUID(0, 0)));
+                                                                 .setHashCode(Objects.hash(new UUID(0, 0), "Init"));
 
     private final UUID reActorUUID;
     private final String reActorName;
@@ -66,6 +69,7 @@ public final class ReActorId implements Externalizable {
     }
 
     public int getRawIdSize() { return 16; }
+
     @Override
     public int hashCode() { return hashCode; }
 

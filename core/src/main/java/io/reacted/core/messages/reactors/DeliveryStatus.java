@@ -20,5 +20,6 @@ public enum DeliveryStatus {
     public boolean isNotDelivered() { return this == NOT_SENT || this == NOT_DELIVERED; }
 
     public boolean isSent() { return this == SENT || isDelivered(); }
+    public boolean isBackpressureRequired() { return this == BACKPRESSURE_REQUIRED; }
 
 }

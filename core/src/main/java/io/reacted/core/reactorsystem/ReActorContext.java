@@ -21,17 +21,17 @@ import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import org.agrona.DirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
-
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -39,6 +39,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
+import org.agrona.DirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 
 @NonNullByDefault
 public class ReActorContext {
@@ -157,8 +160,8 @@ public class ReActorContext {
     rescheduleMessage(Serializable messageToBeRescheduled, Duration inHowLong) {
         ReActorRef sender = getSender();
         return Try.of(() -> getReActorSystem().getSystemSchedulingService()
-                                              .schedule(() -> getSelf().tell(sender, messageToBeRescheduled),
-                                                              inHowLong.toMillis(), TimeUnit.MILLISECONDS));
+                                              .schedule(() -> getSelf().route(sender, messageToBeRescheduled),
+                                                       inHowLong.toMillis(), TimeUnit.MILLISECONDS));
     }
 
     /**

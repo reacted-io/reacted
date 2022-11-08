@@ -18,7 +18,6 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked.TriConsumer;
-
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -97,8 +96,7 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
                                                                     Message message) {
           return SystemLocalDrivers.DIRECT_COMMUNICATION
                                    .sendMessage(destination,
-                                                     Objects.requireNonNull(message,
-                                                                            "Cannot forward a null message"));
+                                                Objects.requireNonNull(message, "Cannot forward a null message"));
      }
      protected static DeliveryStatus localDeliver(ReActorContext destination, Message message) {
           DeliveryStatus deliverOperation = destination.getMbox().deliver(message);

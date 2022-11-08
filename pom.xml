@@ -109,6 +109,7 @@
         <apache.commons.lang.version>3.12.0</apache.commons.lang.version>
         <reactive.streams.version>1.0.4</reactive.streams.version>
         <testng.version>7.1.0</testng.version>
+        <jmh.version>1.35</jmh.version>
     </properties>
     <modules>
         <module>pattern</module>
@@ -289,6 +290,20 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-core</artifactId>
+            <version>${jmh.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-generator-annprocess</artifactId>
+            <version>${jmh.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
     <build>
         <pluginManagement>
             <plugins>

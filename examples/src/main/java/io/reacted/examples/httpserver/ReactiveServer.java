@@ -20,33 +20,41 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher;
 import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @NonNullByDefault
 public class ReactiveServer {
     private static final Logger SERVER_LOGGER = LoggerFactory.getLogger(ReactiveServer.class);
     private static final String LOG_PATH = "/tmp/log";
     private static final String RESPONSE_DISPATCHER = "ResponseDispatcher";
+    private static final String READER_DISPATCHER = "ReaderDispatcher";
     private static final int READ_CHUNK_SIZE = 65535;
-    private static final int BACKPRESSURING_BUFFER_SIZE = 8;
+    private static final int BATCH_BUFFER_SIZE = 100;
 
     public static void main(String[] args) throws IOException {
         var serverReactorSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
-                                                                       /* Use chronicle driver and record execution property for replay */
+                                                                       /* You can use chronicle driver and record execution property for replay */
                                                                        .setLocalDriver(
                                                                            SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(LOG_PATH))
                                                                        .setReactorSystemName("ReactiveServer")
@@ -55,11 +63,15 @@ public class ReactiveServer {
                                                                                                             .setDispatcherThreadsNum(1)
                                                                                                             .setBatchSize(100)
                                                                                                             .build())
+                                                                       .addDispatcherConfig(DispatcherConfig.newBuilder()
+                                                                               .setDispatcherName(READER_DISPATCHER)
+                                                                               .setDispatcherThreadsNum(1)
+                                                                               .setBatchSize(100)
+                                                                               .build())
                                                                        .build()).initReActorSystem();
         ExecutorService serverPool = Executors.newSingleThreadExecutor();
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 8001), 10);
-        server.createContext("/read", new ReactiveHttpHandler(serverReactorSystem,
-                                                              Executors.newFixedThreadPool(5)));
+        server.createContext("/read", new ReactiveHttpHandler(serverReactorSystem));
         server.setExecutor(serverPool);
         server.start();
     }
@@ -67,11 +79,9 @@ public class ReactiveServer {
     private static class ReactiveHttpHandler implements HttpHandler {
         private final ReActorSystem reactiveServerSystem;
         private final AtomicLong requestCounter;
-        private final Executor outputExecutor;
-        private ReactiveHttpHandler(ReActorSystem reactiveServerSystem, Executor outputExecutor) {
+        private ReactiveHttpHandler(ReActorSystem reactiveServerSystem) {
             this.reactiveServerSystem = Objects.requireNonNull(reactiveServerSystem);
             this.requestCounter = new AtomicLong();
-            this.outputExecutor = Objects.requireNonNull(outputExecutor);
         }
 
         @Override
@@ -83,7 +93,7 @@ public class ReactiveServer {
 
         private void handleResponse(HttpExchange exchange, List<String> filenames, long requestId) {
             if (!filenames.isEmpty()) {
-                reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId, outputExecutor),
+                reactiveServerSystem.spawn(new ReactiveResponse(exchange, filenames, requestId),
                                            ReActorConfig.newBuilder()
                                                         .setReActorName("Request " + requestId)
                                                         .setDispatcherName(RESPONSE_DISPATCHER)
@@ -104,17 +114,14 @@ public class ReactiveServer {
         private final HttpExchange httpCtx;
         private final List<String> filePaths;
         private final OutputStream outputStream;
-        private final Executor outputExecutor;
         private final long requestId;
         private final AtomicInteger processed;
 
-        public ReactiveResponse(HttpExchange httpCtx, List<String> filePaths, long reqId,
-                                Executor outputExecutor) {
+        public ReactiveResponse(HttpExchange httpCtx, List<String> filePaths, long reqId) {
             this.httpCtx = Objects.requireNonNull(httpCtx);
             this.filePaths = Objects.requireNonNull(filePaths).stream()
                                     .sorted()
                                     .collect(Collectors.toUnmodifiableList());
-            this.outputExecutor = Objects.requireNonNull(outputExecutor);
             this.outputStream = httpCtx.getResponseBody();
             this.requestId = reqId;
             this.processed = new AtomicInteger(filePaths.size());
@@ -141,16 +148,14 @@ public class ReactiveServer {
         }
 
         private void onDataPublisher(ReActorContext raCtx, ReactedSubmissionPublisher<String> publisher) {
-            var sender = raCtx.getSender();
             publisher.subscribe(ReActedSubscriptionConfig.<String>newBuilder()
                                                          .setSubscriberName("sub_" + raCtx.getSender().getReActorId().getReActorName())
-                                                         .setBufferSize(ReactiveServer.BACKPRESSURING_BUFFER_SIZE)
-                                                         .build(),
-                                getNexDataConsumer(raCtx, outputExecutor))
-                     .thenAccept(noVal -> sender.tell(raCtx.getSelf(), new StartPublishing()));
+                                                         .setBufferSize(ReactiveServer.BATCH_BUFFER_SIZE)
+                                                         .build(), getNexDataConsumer(raCtx))
+                     .thenAccept(noVal -> raCtx.reply(new PublishRequest(Duration.ofNanos(1))));
         }
 
-        private Flow.Subscriber<String> getNexDataConsumer(ReActorContext raCtx, Executor outputExecutor) {
+        private Flow.Subscriber<String> getNexDataConsumer(ReActorContext raCtx) {
             return new Flow.Subscriber<>() {
                 @Nullable
                 private Flow.Subscription subscription;
@@ -162,14 +167,12 @@ public class ReactiveServer {
 
                 @Override
                 public void onNext(String item) {
-                    outputExecutor.execute(() -> {
-                        try {
-                            sendData(item + "<br>");
-                            Objects.requireNonNull(subscription).request(1);
-                        } catch (Exception exc) {
+                    try {
+                        sendData(item);
+                        Objects.requireNonNull(subscription).request(1);
+                    } catch (Exception exc) {
                             onError(exc);
-                        }
-                    });
+                    }
                 }
 
                 @Override
@@ -193,11 +196,11 @@ public class ReactiveServer {
 
         private void handleError(ReActorContext raCtx, Throwable anyError) {
             raCtx.stop();
-            raCtx.logError("Error detected", anyError);
+            raCtx.logError("Error detected ", anyError);
         }
 
         private void sendData(String htmlResponse) throws IOException {
-            outputStream.write(htmlResponse.getBytes());
+            outputStream.write(htmlResponse.getBytes(StandardCharsets.UTF_8));
         }
 
         private Try<ReActorRef> spawnPathReaders(List<String> filePaths,
@@ -228,15 +231,14 @@ public class ReactiveServer {
                                                           ((raCtx, init) -> onInit(raCtx, filePath)))
                                                    .reAct(ReActorStop.class,
                                                           (raCtx, stop) -> onStop(raCtx))
-                                                   .reAct(StartPublishing.class,
-                                                          (raCtx, pubStart) ->
-                                                          CompletableFuture.runAsync(() -> readFileLine(raCtx,
-                                                                                                        fileLines)))
+                                                   .reAct(PublishRequest.class,
+                                                          (raCtx, pubStart) -> readFileLine(raCtx, fileLines,
+                                                                                            pubStart.backpressureDelay))
                                                    .reAct(ReActions::noReAction)
                                                    .build();
             this.readFileWorkerCfg = ReActorConfig.newBuilder()
                                                   .setReActorName(filePath + "|" + requestId + "|" + workerId)
-                                                  .setDispatcherName(RESPONSE_DISPATCHER)
+                                                  .setDispatcherName(READER_DISPATCHER)
                                                   .build();
             this.dataPublisher = new ReactedSubmissionPublisher<>(reActorSystem, "publisher" + "|" + filePath + "|" +
                                                                                  requestId + "|" + workerId);
@@ -252,14 +254,13 @@ public class ReactiveServer {
 
         private void onInit(ReActorContext raCtx, String filePath) {
             this.fileLines = Try.of(() -> new InputStreamReader(new FileInputStream(filePath)))
-                                .orElse(null, error -> raCtx.getParent().tell(raCtx.getSelf(),
-                                                                              new InternalError(error)));
+                                .orElse(null, error -> raCtx.getParent().tell(new InternalError(error)));
 
             if (fileLines == null) {
                 dataPublisher.close();
                 return;
             }
-            if (!raCtx.getParent().tell(raCtx.getSelf(), dataPublisher).isDelivered()) {
+            if (raCtx.getParent().tell(raCtx.getSelf(), dataPublisher).isNotSent()) {
                 raCtx.getParent().tell(raCtx.getSelf(), new InternalError(new DeliveryException()));
             }
         }
@@ -272,7 +273,7 @@ public class ReactiveServer {
             }
         }
 
-        private void readFileLine(ReActorContext raCtx, InputStreamReader file) {
+        private void readFileLine(ReActorContext raCtx, InputStreamReader file, Duration backpressureDelay) {
             if (raCtx.isStop()) {
                 return;
             }
@@ -283,10 +284,14 @@ public class ReactiveServer {
                     dataPublisher.close();
                     return;
                 }
-                dataPublisher.submit(new String(buffer, 0, read));
-                readFileLine(raCtx, Objects.requireNonNull(fileLines));
+                if (dataPublisher.submit(new String(buffer, 0, read)).isBackpressureRequired()) {
+                    raCtx.rescheduleMessage(new PublishRequest(backpressureDelay.multipliedBy(2)),
+                                            backpressureDelay.multipliedBy(2));
+                } else {
+                    raCtx.getSelf().route(raCtx.getSelf(), new PublishRequest(Duration.ofNanos(1)));
+                }
             } catch (Exception exc) {
-                raCtx.getParent().tell(raCtx.getSelf(), new InternalError(exc));
+                raCtx.getParent().tell(new InternalError(exc));
             }
         }
     }
@@ -295,6 +300,6 @@ public class ReactiveServer {
         raCtx.logInfo("Stopping {}", raCtx.getSelf().getReActorId().getReActorName());
     }
 
-    private static class StartPublishing implements Serializable { }
+    private record PublishRequest(Duration backpressureDelay) implements Serializable { }
     private record InternalError(Throwable anyError) implements Serializable { }
 }
