@@ -17,12 +17,16 @@ import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-
-import javax.annotation.Nullable;
-import java.io.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
+import javax.annotation.Nullable;
 
 /**
  * ReActorSystem abstraction. Through this interface we can perform operations on the contained reactors,
@@ -123,8 +127,12 @@ public class ReActorSystemRef implements Externalizable {
 
     @Override
     public String toString() {
-        return "ReActorSystemRef{" + "reActorSystemId=" + reActorSystemId + ", channelId=" + channelId + ", " +
-               "backingDriver=" + backingDriver + ", gateProperties=" + gateProperties + '}';
+        return "ReActorSystemRef{" +
+               "reActorSystemId=" + reActorSystemId +
+               ", channelId=" + channelId +
+               ", backingDriver=" + backingDriver +
+               ", gateProperties=" + gateProperties +
+               '}';
     }
 
     @Override

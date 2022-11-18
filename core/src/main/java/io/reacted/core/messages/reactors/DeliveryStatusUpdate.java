@@ -12,9 +12,8 @@ import com.google.common.base.Objects;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
-
-import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
+import javax.annotation.concurrent.Immutable;
 
 @Immutable
 @NonNullByDefault
@@ -68,5 +67,15 @@ public class DeliveryStatusUpdate implements Serializable {
         return Objects
             .hashCode(getMsgSeqNum(), getDeliveryStatus(), getFirstMessageSourceChannelId(),
                       getAckSourceReActorSystem());
+    }
+
+    @Override
+    public String toString() {
+        return "DeliveryStatusUpdate{" +
+               "msgSeqNum=" + msgSeqNum +
+               ", deliveryStatus=" + deliveryStatus +
+               ", firstMessageSourceChannelId=" + firstMessageSourceChannelId +
+               ", ackSourceReActorSystem=" + ackSourceReActorSystem +
+               '}';
     }
 }

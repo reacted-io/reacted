@@ -11,10 +11,9 @@ package io.reacted.core.messages.serviceregistry;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
-
-import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.util.Properties;
+import javax.annotation.concurrent.Immutable;
 
 @Immutable
 @NonNullByDefault
@@ -33,4 +32,12 @@ public class ReActorSystemChannelIdPublicationRequest implements Serializable {
     public ReActorSystemId getReActorSystemId() { return reActorSystemId; }
     public ChannelId getChannelId() { return channelId; }
     public Properties getChannelIdData() { return channelIdData; }
+    @Override
+    public String toString() {
+        return "ReActorSystemChannelIdPublicationRequest{" +
+               "reActorSystemId=" + reActorSystemId +
+               ", channelId=" + channelId +
+               ", channelIdData=" + channelIdData +
+               '}';
+    }
 }

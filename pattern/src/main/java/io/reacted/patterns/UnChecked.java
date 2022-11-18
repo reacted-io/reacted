@@ -62,6 +62,10 @@ public final class UnChecked {
         return arg -> unchecker(() -> checkedPredicate.test(arg)).get();
     }
 
+    public static Runnable runnable(CheckedRunnable checkedRunnable) {
+        return () -> unchecker( () -> { checkedRunnable.run(); return null; }).get();
+    }
+
     @FunctionalInterface
     public interface TriConsumer<T, U, D> {
         void accept(T arg1, U arg2, D arg3);

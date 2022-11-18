@@ -9,16 +9,15 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.messages.SerializationUtils;
-
-import java.io.Serial;
-import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.concurrent.Immutable;
 
 @Immutable
 public class ReActorSystemId implements Externalizable  {
@@ -56,6 +55,7 @@ public class ReActorSystemId implements Externalizable  {
     public String getReActorSystemName() { return reActorSystemName; }
     public int getHashCode() { return hashCode(); }
 
+    public UUID getReActorSystemUUID() { return reActorSystemUUID; }
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         out.writeObject(reActorSystemUUID);
@@ -79,7 +79,7 @@ public class ReActorSystemId implements Externalizable  {
     @Override
     public String toString() {
         return "ReActorSystemId{" +
-               "reActorSysUUID=" + reActorSystemUUID +
+               "reActorSystemUUID=" + reActorSystemUUID +
                ", reActorSystemName='" + reActorSystemName + '\'' +
                ", hashCode=" + hashCode +
                '}';

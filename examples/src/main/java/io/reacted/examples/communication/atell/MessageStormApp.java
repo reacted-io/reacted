@@ -28,20 +28,20 @@ import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.AsyncUtils;
-
-import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
 
 class MessageStormApp {
     public static void main(String[] args) throws InterruptedException {
         Properties zooKeeperProps = new Properties();
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Client",
-                                                                   SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                                   //SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                                   SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
                                                                                                                     .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                     .setSessionTimeout(Duration.ofSeconds(10))
@@ -55,7 +55,6 @@ class MessageStormApp {
                                                                                                           .setChannelName("TestChannel")
                                                                                                           .build())));
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Server",
-                                                                   //SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver("/tmp/server"),
                                                                    SystemLocalDrivers.DIRECT_COMMUNICATION,
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
                                                                                                                     .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
@@ -81,18 +80,24 @@ class MessageStormApp {
                                                                    .setRouteesNum(1)
                                                                    .setIsRemoteService(true)
                                                                    .build()).orElseSneakyThrow();
-        TimeUnit.SECONDS.sleep(5);
+        TimeUnit.SECONDS.sleep(10);
         var remoteService = clientSystem.serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                            .setServiceName("ServerService")
                                                                                            .build())
                                         .toCompletableFuture().join();
-        var serviceGate = remoteService.getServiceGates()
-                                       .iterator().next();
 
-        var clientReActor = clientSystem.spawn(new ClientReActor(serviceGate)).orElseSneakyThrow();
+        if (!remoteService.getServiceGates().isEmpty()) {
+            var serviceGate = remoteService.getServiceGates()
+                                           .iterator().next();
 
-        //The reactors are executing now
-        TimeUnit.SECONDS.sleep(350);
+            var clientReActor = clientSystem.spawn(new ClientReActor(serviceGate))
+                                            .orElseSneakyThrow();
+
+            //The reactors are executing now
+            TimeUnit.SECONDS.sleep(350);
+        } else {
+            System.err.println("Unable to discover service, exiting");
+        }
         //The game is finished, shut down
         clientSystem.shutDown();
         serverSystem.shutDown();

@@ -16,12 +16,11 @@ import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.UnChecked;
-
-import javax.annotation.concurrent.Immutable;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.stream.Stream;
+import javax.annotation.concurrent.Immutable;
 
 @NonNullByDefault
 @Immutable
@@ -154,9 +153,12 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
          */
         public final BuilderT setIsRemoteService(boolean remoteService) {
             this.remoteService = remoteService;
-            if (!remoteService) {
+            var serviceSubscription = remoteService
+                                      ? TypedSubscription.FULL.forType(ServiceDiscoveryRequest.class)
+                                      : TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class);
+            if (remoteService) {
                 setTypedSubscriptions(Stream.concat(Arrays.stream(super.typedSubscriptions),
-                                                    Stream.of(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class)))
+                                                    Stream.of(serviceSubscription))
                                             .distinct()
                                             .toArray(TypedSubscription[]::new));
             }
