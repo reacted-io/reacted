@@ -20,12 +20,11 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked.TriConsumer;
-
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import javax.annotation.Nullable;
 
 @NonNullByDefault
 public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>>
@@ -190,7 +189,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                               return sendDeliveryAck(getLocalReActorSystem(), getChannelId(), result, message);
                           })
                           .handle((ackDeliveryStatus, ackDeliveryError) -> {
-                              if (ackDeliveryError != null || !ackDeliveryStatus.isDelivered()) {
+                              if (ackDeliveryError != null || ackDeliveryStatus.isNotSent()) {
                                   getLocalReActorSystem().logError("Unable to send ack for {}",
                                                                    message, ackDeliveryError);
                               }
@@ -203,8 +202,6 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                                                 message, deliveryAttempt);
             }
         }
-
-
     }
 
     private void forwardMessageToSenderDriverInstance(Message message,

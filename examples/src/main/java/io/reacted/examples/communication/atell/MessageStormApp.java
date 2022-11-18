@@ -11,7 +11,6 @@ package io.reacted.examples.communication.atell;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
@@ -27,7 +26,6 @@ import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
-import io.reacted.patterns.AsyncUtils;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -40,8 +38,8 @@ class MessageStormApp {
     public static void main(String[] args) throws InterruptedException {
         Properties zooKeeperProps = new Properties();
         var clientSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Client",
-                                                                   //SystemLocalDrivers.DIRECT_COMMUNICATION,
-                                                                   SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
+                                                                   SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                                   //SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
                                                                                                                     .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                     .setSessionTimeout(Duration.ofSeconds(10))
@@ -55,7 +53,8 @@ class MessageStormApp {
                                                                                                           .setChannelName("TestChannel")
                                                                                                           .build())));
         var serverSystemCfg = ExampleUtils.getDefaultReActorSystemCfg("Server",
-                                                                   SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                                   //SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                                                      SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err),
                                                                    List.of(new ZooKeeperDriver(ZooKeeperDriverConfig.newBuilder()
                                                                                                                     .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))
                                                                                                                     .setSessionTimeout(Duration.ofSeconds(10))
@@ -70,8 +69,6 @@ class MessageStormApp {
                                                                                                           .build())));
         var clientSystem = new ReActorSystem(clientSystemCfg).initReActorSystem();
         var serverSystem = new ReActorSystem(serverSystemCfg).initReActorSystem();
-
-        TimeUnit.SECONDS.sleep(10);
 
         var serverReActor = serverSystem.spawnService(ServiceConfig.newBuilder()
                                                                    .setRouteeProvider(ServerReActor::new)
@@ -90,11 +87,12 @@ class MessageStormApp {
             var serviceGate = remoteService.getServiceGates()
                                            .iterator().next();
 
-            var clientReActor = clientSystem.spawn(new ClientReActor(serviceGate))
+            var clientReActor = clientSystem.spawn(new ClientReActor(serviceGate, 10))
                                             .orElseSneakyThrow();
-
-            //The reactors are executing now
-            TimeUnit.SECONDS.sleep(350);
+            clientSystem.getReActorCtx(clientReActor.getReActorId())
+                        .getHierarchyTermination()
+                        .toCompletableFuture()
+                        .join();
         } else {
             System.err.println("Unable to discover service, exiting");
         }
@@ -117,39 +115,63 @@ class MessageStormApp {
         }
     }
 
-    private record ClientReActor(ReActorRef serverReference) implements ReActor {
-            private ClientReActor(ReActorRef serverReference) {
-                this.serverReference = Objects.requireNonNull(serverReference);
-            }
+    private static class ClientReActor implements ReActor {
+        private final ReActorRef serverReference;
+        private int missingCycles;
+        private long testStart;
+        private ClientReActor(ReActorRef serverReference, int cycles) {
+            this.serverReference = Objects.requireNonNull(serverReference);
+            this.missingCycles = cycles;
+        }
 
         @Nonnull
-            @Override
-            public ReActorConfig getConfig() {
-                return ReActorConfig.newBuilder()
-                        .setReActorName(ClientReActor.class.getSimpleName())
-                        .build();
-            }
+        @Override
+        public ReActorConfig getConfig() {
+            return ReActorConfig.newBuilder()
+                    .setReActorName(ClientReActor.class.getSimpleName())
+                    .build();
+        }
 
-            @Nonnull
-            @Override
-            public ReActions getReActions() {
-                return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, (ctx, init) -> onInit(ctx))
-                        .reAct(ReActions::noReAction)
-                        .build();
-            }
+        @Nonnull
+        @Override
+        public ReActions getReActions() {
+            return ReActions.newBuilder()
+                    .reAct(ReActorInit.class, (ctx, init) -> onInit(ctx))
+                    .reAct(NextRecord.class, (ctx, nextRecord) -> onNextRecord(ctx))
+                    .reAct(ReActions::noReAction)
+                    .build();
+        }
 
-            private void onInit(ReActorContext raCtx) {
-                long start = System.nanoTime();
-                AsyncUtils.asyncLoop(noval -> serverReference.atell("Not received"),
-                                DeliveryStatus.DELIVERED,
-                                DeliveryStatus.DELIVERED, 1_000_000L)
-                        .thenAccept(status -> System.err.printf("Async loop finished. Time %s Thread %s%n",
-                                Duration.ofNanos(System.nanoTime() - start)
-                                        .toString(),
-                                Thread.currentThread().getName()));
-                long end = System.nanoTime();
-                System.out.println("Finished storm: " + Duration.ofNanos(end - start).toString());
+        private void onInit(ReActorContext raCtx) {
+            this.testStart = System.nanoTime();
+            raCtx.selfTell(NextRecord.INSTANCE);
+        }
+
+        private void onNextRecord(ReActorContext raCtx) {
+            if (missingCycles == 0) {
+                System.err.printf("Finished Storm. Time %s%n",
+                                  Duration.ofNanos(System.nanoTime() - testStart));
+                raCtx.stop();
+            } else {
+                serverReference.atell(String.format("Async Message %d", missingCycles--))
+                               .toCompletableFuture()
+                               .handle((deliveryStatus, error) -> {
+                                   if (error != null) {
+                                       raCtx.stop();
+                                       error.printStackTrace();
+                                   } else {
+                                       if (deliveryStatus.isDelivered()) {
+                                           raCtx.selfTell(NextRecord.INSTANCE);
+                                       } else {
+                                           System.err.printf("Unable to deliver loop message: %s%n",
+                                                             deliveryStatus);
+                                           raCtx.stop();
+                                       }
+                                   }
+                                   return null;
+                               });
             }
         }
+        private enum NextRecord { INSTANCE; }
+    }
 }
