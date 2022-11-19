@@ -11,8 +11,6 @@ package io.reacted.examples.streams;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
-import org.awaitility.Awaitility;
-
 import java.io.FileNotFoundException;
 import java.time.Duration;
 import java.util.Comparator;
@@ -21,6 +19,7 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.IntStream;
+import org.awaitility.Awaitility;
 
 @NonNullByDefault
 class StreamToMultipleSubscribersApp {
@@ -28,16 +27,13 @@ class StreamToMultipleSubscribersApp {
     public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         var reactorSystem =
                 ExampleUtils.getDefaultInitedReActorSystem(StreamToMultipleSubscribersApp.class.getSimpleName());
-        var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem,
+        var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem, 10_000,
                                                                       StreamToMultipleSubscribersApp.class.getSimpleName() + "-Publisher");
         var subscriber = new TestSubscriber<>(-1, Integer::compareTo);
         var subscriber2 = new TestSubscriber<>(-1, Integer::compareTo);
         var subscriber3 = new TestSubscriber<>(-1, Integer::compareTo);
-        //Reliable (no messages lost) subscription
         streamPublisher.subscribe(subscriber);
-        //Reliable (no messages lost) subscription
         streamPublisher.subscribe(subscriber2);
-        //Best effort subscriber. Updates from this may be lost
         streamPublisher.subscribe(subscriber3);
         //We need to give the time to the subscription to propagate till the producer
         TimeUnit.SECONDS.sleep(1);
@@ -45,7 +41,6 @@ class StreamToMultipleSubscribersApp {
         //Produce a stream of updates
         IntStream.range(0, msgNum)
                  //Propagate them to every consumer, regardless of the location
-                 //Reliable subscribers will receive all the updates, best effort may loose something
                  //NOTE: in this example we are not slowing down the producer if a consumer cannot
                  //keep up with the update speed. Delivery guarantee is still valid, but pending
                  //updates will keep stacking in memory

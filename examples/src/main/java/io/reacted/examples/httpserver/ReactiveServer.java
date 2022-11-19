@@ -240,8 +240,8 @@ public class ReactiveServer {
                                                   .setReActorName(filePath + "|" + requestId + "|" + workerId)
                                                   .setDispatcherName(READER_DISPATCHER)
                                                   .build();
-            this.dataPublisher = new ReactedSubmissionPublisher<>(reActorSystem, "publisher" + "|" + filePath + "|" +
-                                                                                 requestId + "|" + workerId);
+            this.dataPublisher = new ReactedSubmissionPublisher<>(reActorSystem, 10_000,
+                                                                  String.format("publisher|%s|%s|%s", filePath, requestId, workerId));
         }
 
         @Nonnull

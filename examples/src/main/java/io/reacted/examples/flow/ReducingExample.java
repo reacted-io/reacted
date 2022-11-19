@@ -10,6 +10,7 @@ package io.reacted.examples.flow;
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
+import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.flow.ReActedGraph;
@@ -27,6 +28,7 @@ public class ReducingExample {
     var inputData = List.of(1, 2, 3, 4);
     var graphDispatcher = "FlowProcessor";
     var system = new ReActorSystem(ReActorSystemConfig.newBuilder()
+                                       .setLocalDriver(SystemLocalDrivers.getDirectCommunicationSimplifiedLoggerDriver(System.err))
                                                       .setReactorSystemName("ReducingSystem")
                                                       .addDispatcherConfig(
                                                           DispatcherConfig.newBuilder()

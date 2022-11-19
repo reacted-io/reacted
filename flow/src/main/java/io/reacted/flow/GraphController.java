@@ -159,7 +159,7 @@ class GraphController implements ReActiveEntity {
     return Executors.newSingleThreadExecutor(inputStreamThreadFactory.build());
   }
 
-  private static final class InitInputStreams implements Serializable {
+  private record InitInputStreams() implements Serializable {
     @Override
     public String toString() {
       return "InitInputStreams{}";

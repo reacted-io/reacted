@@ -8,6 +8,8 @@
 
 package io.reacted.streams;
 
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
+
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
@@ -24,23 +26,33 @@ import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
-import io.reacted.streams.messages.*;
-
-import java.io.*;
+import io.reacted.streams.messages.PublisherComplete;
+import io.reacted.streams.messages.PublisherInterrupt;
+import io.reacted.streams.messages.PublisherShutdown;
+import io.reacted.streams.messages.SubscriptionReply;
+import io.reacted.streams.messages.SubscriptionRequest;
+import io.reacted.streams.messages.UnsubscriptionRequest;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serializable;
 import java.time.Duration;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Flow;
 import java.util.concurrent.Flow.Subscriber;
-
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
+import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
 public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
                                                                                   AutoCloseable, Externalizable {
-    private static final Duration BACKPRESSURE_DELAY_BASE = Duration.ofMillis(10);
+    private static final Duration BACKPRESSURE_DELAY_BASE = Duration.ofMillis(1);
     private static final String SUBSCRIPTION_NAME_FORMAT = "Backpressure Manager [%s] Subscription [%s]";
     private static final long FEED_GATE_OFFSET = SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class,
                                                                                    "feedGate")
@@ -54,22 +66,26 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     private Duration streamBackpressureTimeout = BACKPRESSURE_DELAY_BASE;
 
     /**
-     * Creates a location oblivious data publisher with backpressure. Subscribers can slowdown
-     * the producer or just drop data if they are best effort subscribers. Publisher is Serializable,
-     * so it can be sent to any reactor over any gate and subscribers can simply join the stream.
+     * Creates a location oblivious data publisher with backpressure. Subscribers can slow down
+     * the producer. Publisher is Serializable, so it can be sent to any reactor over any gate
+     * and subscribers can simply join the stream.
      *
      * @param localReActorSystem ReActorSystem used to manage and control the data flow
+     * @param producerBackpressuringThreshold Number of messages that can be buffered in the producer
+     *                                        before raising backpressure requests
      * @param feedName           Name of this feed. Feed name must be unique and if deterministic it allows
      *                           cold replay
      */
-    public ReactedSubmissionPublisher(ReActorSystem localReActorSystem, String feedName) {
+    public ReactedSubmissionPublisher(ReActorSystem localReActorSystem,
+                                      int producerBackpressuringThreshold,
+                                      String feedName) {
         this.localReActorSystem = Objects.requireNonNull(localReActorSystem);
         this.subscribers = ConcurrentHashMap.newKeySet(10);
         var feedGateConfig = ReActorConfig.newBuilder()
                                        .setReActorName("Feed Gate: [" + Objects.requireNonNull(feedName, "Feed name cannot be null") + "]")
                                        .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
                                                                                     .setRealMailboxOwner(ctx)
-                                                                                    .setBackpressuringThreshold(1000)
+                                                                                    .setBackpressuringThreshold(producerBackpressuringThreshold)
                                                                                     .setOutOfStreamControl(PublisherComplete.class,
                                                                                                            PublisherShutdown.class)
                                                                                     .setNonDelayable(ReActorInit.class,
@@ -245,15 +261,18 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                    deliveries[subscriberIdx], subscribersRefs[subscriberIdx]);
         }
         result.handle((deliveryStatus, error) -> {
-            if (deliveryStatus != DeliveryStatus.BACKPRESSURE_REQUIRED) {
-                raCtx.getMbox().request(1);
-                this.streamBackpressureTimeout = BACKPRESSURE_DELAY_BASE;
-            } else {
+            if (deliveryStatus.isBackpressureRequired()) {
                 raCtx.getReActorSystem().getSystemSchedulingService()
                      .schedule(() -> raCtx.getMbox().request(1),
                                streamBackpressureTimeout.toMillis(),
                                TimeUnit.MILLISECONDS);
                 streamBackpressureTimeout = streamBackpressureTimeout.multipliedBy(2);
+            } else {
+                raCtx.getMbox().request(1);
+                if (streamBackpressureTimeout.compareTo(BACKPRESSURE_DELAY_BASE) > 0) {
+                    this.streamBackpressureTimeout = Duration.ofMillis(Math.max(BACKPRESSURE_DELAY_BASE.toMillis(),
+                                                                                streamBackpressureTimeout.toMillis()/2));
+                }
             }
             return null;
         });

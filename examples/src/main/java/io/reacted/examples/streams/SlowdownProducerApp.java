@@ -11,63 +11,58 @@ package io.reacted.examples.streams;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
-import org.awaitility.Awaitility;
-
 import java.io.FileNotFoundException;
 import java.time.Duration;
-import java.util.Comparator;
-import java.util.Objects;
+import java.util.List;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.stream.IntStream;
+import org.awaitility.Awaitility;
 
 @NonNullByDefault
 class SlowdownProducerApp {
 
     public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         var reactorSystem = ExampleUtils.getDefaultInitedReActorSystem(SlowdownProducerApp.class.getSimpleName());
-        var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem,
-                                                                      SlowdownProducerApp.class.getSimpleName() +
-                                                                      "-Publisher");
-        var subscriber = new TestSubscriber<>(-1, Integer::compareTo);
-        var subscriber2 = new TestSubscriber<>(-1, Integer::compareTo);
-        var subscriber3 = new TestSubscriber<>(-1, Integer::compareTo);
-        //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber);
-        //Reliable (no messages lost) subscription
-        streamPublisher.subscribe(subscriber2);
-        //Best effort subscriber. Updates from this may be lost
-        streamPublisher.subscribe(subscriber3);
-        //We need to give the time to the subscription to propagate till the producer
-        TimeUnit.SECONDS.sleep(1);
-        var msgNum = 1_000_000;
-        //Produce a stream of updates
-        IntStream.range(0, msgNum)
-                 //Propagate them to every consumer, regardless of the location
-                 .forEachOrdered(streamPublisher::submit);
-        //NOTE: you can join or triggering the new update once the previous one has been delivered
-        Awaitility.await()
-                  .atMost(Duration.ofSeconds(10))
-                  .until(() -> subscriber.getReceivedUpdates() == msgNum && subscriber2.getReceivedUpdates() == msgNum);
-        TimeUnit.SECONDS.sleep(10);
-        System.out.printf("Best effort subscriber received %d/%d updates%n", subscriber3.getReceivedUpdates(), msgNum);
-        streamPublisher.close();
+        try(var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem, 1_000,
+                                                                          SlowdownProducerApp.class.getSimpleName() + "-Publisher")) {
+            var subscribers = List.of(new TestSubscriber(), new TestSubscriber(), new TestSubscriber());
+            int subId = 0;
+            for (var subscriber : subscribers) {
+                streamPublisher.subscribe(subscriber, 100, subId+++"")
+                               .toCompletableFuture()
+                               .join();
+            }
+            var msgNum = 1_000_000;
+            Duration delay = Duration.ofNanos(1);
+            //Produce a stream of updates
+            for(int updateNum = 0; updateNum < msgNum; updateNum++) {
+                if (streamPublisher.submit(updateNum).isBackpressureRequired()) {
+                    TimeUnit.NANOSECONDS.sleep(delay.toNanos());
+                    delay = delay.multipliedBy(2);
+                } else {
+                    if (delay.toNanos() > 1) {
+                        delay = Duration.ofNanos(Math.max(1, delay.toNanos() / 2));
+                    }
+                }
+            }
+            //NOTE: you can join or triggering the new update once the previous one has been delivered
+            Awaitility.await()
+                      .atMost(Duration.ofSeconds(10))
+                      .until(() -> subscribers.stream()
+                                              .map(TestSubscriber::getReceivedUpdates)
+                                              .allMatch(updates -> updates == msgNum));
+            System.out.printf("Subscribers received %d/%d updates%n",
+                              subscribers.get(0).getReceivedUpdates(), msgNum);
+        }
         reactorSystem.shutDown();
     }
 
-    private static class TestSubscriber<PayloadT> implements Flow.Subscriber<PayloadT> {
-        private final Comparator<PayloadT> payloadTComparator;
-        private final LongAdder updatesReceived;
+    private static class TestSubscriber implements Flow.Subscriber<Integer> {
+        private final LongAdder updatesReceived = new LongAdder();
         private boolean isTerminated = false;
         private Flow.Subscription subscription;
-        private PayloadT lastItem;
-
-        private TestSubscriber(PayloadT baseItem, Comparator<PayloadT> payloadComparator) {
-            this.payloadTComparator = Objects.requireNonNull(payloadComparator);
-            this.lastItem = Objects.requireNonNull(baseItem);
-            this.updatesReceived = new LongAdder();
-        }
+        private int lastItem = -1;
 
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
@@ -76,10 +71,10 @@ class SlowdownProducerApp {
         }
 
         @Override
-        public void onNext(PayloadT item) {
+        public void onNext(Integer item) {
             updatesReceived.increment();
             if (!isTerminated) {
-                if (payloadTComparator.compare(lastItem, item) >= 0) {
+                if (lastItem >= item) {
                     throw new IllegalStateException("Unordered sequence detected");
                 }
                 this.lastItem = item;
@@ -99,7 +94,7 @@ class SlowdownProducerApp {
         public void onComplete() {
             if (!isTerminated) {
                 this.isTerminated = true;
-                System.out.println("Feed is complete");
+                System.err.println("Feed is complete");
             }
         }
 

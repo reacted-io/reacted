@@ -156,12 +156,12 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
             var serviceSubscription = remoteService
                                       ? TypedSubscription.FULL.forType(ServiceDiscoveryRequest.class)
                                       : TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class);
-            if (remoteService) {
-                setTypedSubscriptions(Stream.concat(Arrays.stream(super.typedSubscriptions),
-                                                    Stream.of(serviceSubscription))
-                                            .distinct()
-                                            .toArray(TypedSubscription[]::new));
-            }
+
+            setTypedSubscriptions(Stream.concat(Arrays.stream(super.typedSubscriptions),
+                                                Stream.of(serviceSubscription))
+                                        .distinct()
+                                        .toArray(TypedSubscription[]::new));
+
             return getThis();
         }
     }

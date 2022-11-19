@@ -48,7 +48,7 @@ public class DistributedPublisherTest {
 
   @Test
   public void testRemotePublishing() throws InterruptedException {
-    var publisher = new ReactedSubmissionPublisher<>(system, "TestPublisher");
+    var publisher = new ReactedSubmissionPublisher<>(system, 10_000, "TestPublisher");
     var testSubscriber = new TestSubscription();
     publisher.subscribe(testSubscriber);
     var remoteSubscriber = system.spawn(new RemoteReactor("RemoteSubscriber"))

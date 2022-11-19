@@ -12,7 +12,13 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.Try;
-import java.io.FileNotFoundException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.reactivestreams.tck.TestEnvironment;
 import org.reactivestreams.tck.flow.FlowPublisherVerification;
 import org.slf4j.Logger;
@@ -22,14 +28,6 @@ import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
-
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Test
 public class PublisherTCKTest extends FlowPublisherVerification<Long> {
@@ -52,7 +50,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
 
     @Override
     public Flow.Publisher<Long> createFlowPublisher(long l) {
-        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem,
+        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem, 10_000,
                                                              "TckFeed-" + counter.getAndIncrement());
         generatedFlows.add(publisher);
         asyncPublishMessages(publisher, l);
@@ -61,7 +59,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
 
     @Override
     public Flow.Publisher<Long> createFailedFlowPublisher() {
-        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem,
+        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem, 10_000,
                                                              "FailedTckFeed-" + counter.getAndIncrement());
         publisher.close();
         Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(20))
