@@ -36,7 +36,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
                                                                                                   Long.MAX_VALUE,
                                                                                                   TimeUnit.NANOSECONDS);
         this.ackCacheCleanupInterval = ObjectUtils.checkNonNullPositiveTimeInterval(builder.ackCacheCleanupInterval);
-        this.ackCacheSize = ObjectUtils.requiredInRange(builder.ackCacheSize, 1, Integer.MAX_VALUE,
+        this.ackCacheSize = ObjectUtils.requiredInRange(builder.ackCacheSize, 0, Integer.MAX_VALUE,
                                                         IllegalArgumentException::new);
     }
 

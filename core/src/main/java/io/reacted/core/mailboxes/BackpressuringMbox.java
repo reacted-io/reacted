@@ -84,22 +84,21 @@ public class BackpressuringMbox implements MailBox {
     @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) {
+        if (!isDelayable(message.getPayload().getClass())) {
+            return realMbox.deliver(message);
+        }
         DeliveryStatus deliveryAttempt = DeliveryStatus.DELIVERED;
-        if (isDelayable(message.getPayload().getClass())) {
-            synchronized (this) {
-                if (available > 0 && bufferQueue.isEmpty()) {
-                    if (!outOfStreamControl.contains(message.getPayload().getClass())) {
-                        available--;
-                    }
-                    return realMbox.deliver(message);
+        synchronized (this) {
+            if (isAnotherMessageAllowed() && bufferQueue.isEmpty()) {
+                if (!outOfStreamControl.contains(message.getPayload().getClass())) {
+                    decreaseAllowedMessages();
                 }
-                bufferQueue.addLast(message);
+                return realMbox.deliver(message);
             }
-            if (bufferQueue.size() >= backpressuringThreshold) {
-                deliveryAttempt = DeliveryStatus.BACKPRESSURE_REQUIRED;
-            }
-        } else {
-            deliveryAttempt = realMbox.deliver(message);
+            bufferQueue.addLast(message);
+        }
+        if (bufferQueue.size() >= backpressuringThreshold) {
+            deliveryAttempt = DeliveryStatus.BACKPRESSURE_REQUIRED;
         }
         return deliveryAttempt;
     }
@@ -107,12 +106,12 @@ public class BackpressuringMbox implements MailBox {
     @Override
     public void request(long messagesNum) {
         synchronized (this) {
-            this.available += messagesNum;
-            while(available != 0 && !bufferQueue.isEmpty()) {
+            updateAllowedMessages(messagesNum);
+            while(isAnotherMessageAllowed() && !bufferQueue.isEmpty()) {
                 Message payload = bufferQueue.removeFirst();
                 realMbox.deliver(payload);
                 if (!outOfStreamControl.contains(payload.getPayload().getClass())) {
-                    available--;
+                    decreaseAllowedMessages();
                 }
             }
         }
@@ -143,6 +142,12 @@ public class BackpressuringMbox implements MailBox {
         return this;
     }
 
+    private boolean isAnotherMessageAllowed() { return available > 0; }
+    private void decreaseAllowedMessages() { updateAllowedMessages(-1); }
+
+    private void updateAllowedMessages(long delta) {
+        this.available += delta;
+    }
     public static class Builder {
         private MailBox realMbox = new BasicMbox();
         private long backpressuringThreshold = DEFAULT_MESSAGES_REQUESTED_ON_STARTUP;
