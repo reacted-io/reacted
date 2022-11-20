@@ -11,14 +11,13 @@ package io.reacted.core.config.reactorsystem;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
-import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.reactors.systemreactors.SystemMonitor;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
-
+import io.reacted.patterns.ObjectUtils;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Objects;
@@ -197,7 +196,8 @@ public class ReActorSystemConfig {
         /**
          * Gives a hint regarding the expected maximum reactors population size
          * @param expectedReActorsNum An integer [1, Integer.MAX_VALUE / 2] representing the
-         *                            expected maximum reactor population size
+         *                            expected maximum reactor population size.
+         *                            Default {@link ReActorSystemConfig#DEFAULT_MAXIMUM_REACTORS_NUM}
          * @return this builder
          */
         public final Builder setExpectedReActorsNum(int expectedReActorsNum) {

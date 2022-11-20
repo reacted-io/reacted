@@ -8,9 +8,9 @@
 
 package io.reacted.core.config.reactors;
 
-import javax.annotation.Nonnull;
 import java.util.Objects;
 import java.util.Properties;
+import javax.annotation.Nonnull;
 
 public abstract class ServiceRegistryConfig<BuilderT extends ServiceRegistryConfig.Builder<BuilderT,
                                                                                            BuiltT>,
@@ -34,6 +34,13 @@ public abstract class ServiceRegistryConfig<BuilderT extends ServiceRegistryConf
         private Properties serviceRegistryProperties;
 
         protected Builder() { this.serviceRegistryProperties = new Properties(); }
+
+        /**
+         * Set {@link Properties} for a service registry
+         * @param serviceRegistryProperties Non-null {@link Properties} for this service registry
+         *                                  instance. Default: empty properties
+         * @return this {@link Builder}
+         */
         public final BuilderT
         setServiceRegistryProperties(@Nonnull Properties serviceRegistryProperties) {
             this.serviceRegistryProperties = serviceRegistryProperties;
