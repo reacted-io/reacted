@@ -15,10 +15,6 @@ import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -28,11 +24,11 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class BackpressuringMbox implements MailBox {
     public static final long DEFAULT_MESSAGES_REQUESTED_ON_STARTUP = 1L;
-    private static final Logger LOGGER = LoggerFactory.getLogger(BackpressuringMbox.class);
     private final MailBox realMbox;
     private final AtomicReference<Set<Class<? extends Serializable>>> notDelayable;
     private final Set<? extends Serializable> outOfStreamControl;
@@ -165,6 +161,15 @@ public class BackpressuringMbox implements MailBox {
             this.outOfStreamControl = Set.of(notRegulatedByStreamControl);
             return this;
         }
+
+        /**
+         * Set the backpressuring threshold for this mailbox. If more messages than this
+         * threshold should be waiting in the mailbox, the outcome of a delivery will be
+         * {@link DeliveryStatus#BACKPRESSURE_REQUIRED} to notify the producer that it has
+         * to slowdown
+         * @param threshold
+         * @return this {@link Builder}
+         */
         public final Builder setBackpressuringThreshold(long threshold) {
             this.backpressuringThreshold = threshold;
             return this;
@@ -173,7 +178,7 @@ public class BackpressuringMbox implements MailBox {
          *
          * @param realMbox Backing-up mailbox
          *                 Default: {@link BasicMbox}
-         * @return this builder
+         * @return this {@link Builder}
          */
         public final Builder setRealMbox(MailBox realMbox) {
             this.realMbox = realMbox;
@@ -183,10 +188,11 @@ public class BackpressuringMbox implements MailBox {
 
         /**
          *
-         * @param requestOnStartup how main messages should be automatically made deliverable on startup.
+         * @param requestOnStartup a non-negative integer representing how main messages should be
+         *                         automatically made deliverable on startup.
          *                         Same semantic of Java Flow Subscription.request.
          *                         Default {@link #DEFAULT_MESSAGES_REQUESTED_ON_STARTUP}
-         * @return this builder
+         * @return this {@link Builder}
          */
         public final Builder setRequestOnStartup(int requestOnStartup) {
             this.requestOnStartup = requestOnStartup;
@@ -197,7 +203,8 @@ public class BackpressuringMbox implements MailBox {
          *
          * @param notDelayable Messages that cannot be delayed. These will be delivered regardless
          *                     of the requested messages
-         * @return this builder
+         * @see BackpressuringMbox#request(long)
+         * @return this {@link Builder}
          */
         @SafeVarargs
         public final Builder setNonDelayable(Class<? extends Serializable> ...notDelayable) {
