@@ -156,6 +156,15 @@ public class BackpressuringMbox implements MailBox {
 
         private Builder() { }
 
+        /**
+         * Message types that will be delivered according to the mailbox sequence, but will not be affected
+         * by the {@link java.util.concurrent.Flow} regulation mechanism: a message delivered whose type
+         * belongs to this set, will not alter the requested (allowed to be delivered) counter
+         *
+         * @param notRegulatedByStreamControl An arbitrary set of {@link Class} message types that will not impact
+         *                                    the {@link BackpressuringMbox#request(long)} mechanism when delivered
+         * @return this {@link Builder}
+         */
         @SafeVarargs
         public final Builder setOutOfStreamControl(Class<? extends Serializable> ...notRegulatedByStreamControl) {
             this.outOfStreamControl = Set.of(notRegulatedByStreamControl);
@@ -166,7 +175,7 @@ public class BackpressuringMbox implements MailBox {
          * Set the backpressuring threshold for this mailbox. If more messages than this
          * threshold should be waiting in the mailbox, the outcome of a delivery will be
          * {@link DeliveryStatus#BACKPRESSURE_REQUIRED} to notify the producer that it has
-         * to slowdown
+         * to slow down
          * @param threshold
          * @return this {@link Builder}
          */
@@ -200,9 +209,11 @@ public class BackpressuringMbox implements MailBox {
         }
 
         /**
+         * A non-delayable message is a message that has to be delivered immediately, without being
+         * regulated by the {@link BackpressuringMbox#request(long)} mechanism and preempting any
+         * other pending message
          *
-         * @param notDelayable Messages that cannot be delayed. These will be delivered regardless
-         *                     of the requested messages
+         * @param notDelayable An arbitrary set of {@link Class} message types that cannot be delayed
          * @see BackpressuringMbox#request(long)
          * @return this {@link Builder}
          */
@@ -215,7 +226,7 @@ public class BackpressuringMbox implements MailBox {
         /**
          *
          * @param realMailboxOwner {@link ReActorContext} of the reactor owning {@link BackpressuringMbox#realMbox}
-         * @return this builder
+         * @return this {@link Builder}
          */
         public final Builder setRealMailboxOwner(ReActorContext realMailboxOwner) {
             this.realMailboxOwner = realMailboxOwner;
