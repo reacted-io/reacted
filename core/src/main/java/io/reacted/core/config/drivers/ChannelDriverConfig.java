@@ -9,9 +9,8 @@
 package io.reacted.core.config.drivers;
 
 import io.reacted.core.config.InheritableBuilder;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
-
+import io.reacted.patterns.ObjectUtils;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
@@ -21,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Builder<BuilderT, BuiltT>,
                                           BuiltT extends InheritableBuilder<BuilderT, BuiltT>>
         extends InheritableBuilder<BuilderT, BuiltT> {
-    public static final Duration NEVER_FAIL = Duration.ofNanos(Long.MAX_VALUE);
     public static final Duration DEFAULT_MSG_LOST_TIMEOUT = Duration.ofSeconds(20);
     public static final int DEFAULT_ACK_CACHE_SIZE = 10_000_000;
     public static final String CHANNEL_ID_PROPERTY_NAME = "channelName";
@@ -38,7 +36,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
                                                                                                   Long.MAX_VALUE,
                                                                                                   TimeUnit.NANOSECONDS);
         this.ackCacheCleanupInterval = ObjectUtils.checkNonNullPositiveTimeInterval(builder.ackCacheCleanupInterval);
-        this.ackCacheSize = ObjectUtils.requiredInRange(builder.ackCacheSize, 0, Integer.MAX_VALUE,
+        this.ackCacheSize = ObjectUtils.requiredInRange(builder.ackCacheSize, 1, Integer.MAX_VALUE,
                                                         IllegalArgumentException::new);
     }
 
@@ -97,7 +95,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
 
         /**
          * Gives a hint regarding the size of the ack cache for this driver
-         * @param ackCacheSize A non negative integer
+         * @param ackCacheSize A positive integer. Default {@link ChannelDriverConfig#DEFAULT_ACK_CACHE_SIZE}
          * @return This builder
          */
         public final BuilderT setAckCacheSize(int ackCacheSize) {

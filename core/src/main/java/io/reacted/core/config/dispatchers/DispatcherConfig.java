@@ -9,11 +9,10 @@
 package io.reacted.core.config.dispatchers;
 
 import com.google.common.base.Strings;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
-
-import javax.annotation.concurrent.Immutable;
+import io.reacted.patterns.ObjectUtils;
 import java.util.Objects;
+import javax.annotation.concurrent.Immutable;
 
 @Immutable
 @NonNullByDefault
@@ -63,7 +62,8 @@ public class DispatcherConfig {
          * A dispatcher processes messages from a reactor mailbox. How many of them in a row? This
          * parameter defines that. Default value: {@link #DEFAULT_DISPATCHER_BATCH_SIZE}
          *
-         * @param batchSize Number of messages that should be processed at maximum for a single reactor for a single
+         * @param batchSize A positive number indicating the number of messages that should be
+         *                  processed at maximum for a single reactor for a single
          *                  scheduling request
          * @return this builder
          */
@@ -76,7 +76,8 @@ public class DispatcherConfig {
          * A dispatcher can process as many reactors in parallel as many thread it has.
          * Default: {@link #DEFAULT_DISPATCHER_THREAD_NUM}
          *
-         * @param dispatcherThreadsNum How many thread should be allocated to this dispatcher
+         * @param dispatcherThreadsNum A positive number indicating how many thread should be
+         *                             allocated to this dispatcher
          * @return this builder
          */
         public final Builder setDispatcherThreadsNum(int dispatcherThreadsNum) {

@@ -11,7 +11,18 @@ package io.reacted.drivers.channels.grpc;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
-import io.grpc.*;
+import io.grpc.CallOptions;
+import io.grpc.Channel;
+import io.grpc.ClientCall;
+import io.grpc.ClientInterceptor;
+import io.grpc.ForwardingClientCall;
+import io.grpc.ForwardingClientCallListener;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
+import io.grpc.Server;
+import io.grpc.Status;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
@@ -31,8 +42,6 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-
-import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -41,8 +50,14 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
@@ -144,7 +159,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             Fact 3: Give the above 2 facts, it means that in order to send a message to a GRPC node, you not only
                     need a driver instance, but also the specific properties of the remote peer.
             Fact 4: On network failures, one route might be canceled. Canceling a route means canceling from the
-                    reactor system the information about how to reach a given peer. These information include the
+                    reactor system the information about how to reach a given peer. This information include the
                     channel properties for the remote peer
 
             Scenario: a message that requires an ACK arrives at this GRPC driver, but a network failure triggered

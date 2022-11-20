@@ -34,12 +34,16 @@ class SlowdownProducerApp {
                                .join();
             }
             var msgNum = 1_000_000;
+            long bpcnt = 0;
+            long maxbptime = 1;
             Duration delay = Duration.ofNanos(1);
             //Produce a stream of updates
             for(int updateNum = 0; updateNum < msgNum; updateNum++) {
                 if (streamPublisher.submit(updateNum).isBackpressureRequired()) {
                     TimeUnit.NANOSECONDS.sleep(delay.toNanos());
                     delay = delay.multipliedBy(2);
+                    bpcnt++;
+                    maxbptime = Math.max(maxbptime, delay.toNanos());
                 } else {
                     if (delay.toNanos() > 1) {
                         delay = Duration.ofNanos(Math.max(1, delay.toNanos() / 2));
@@ -48,12 +52,13 @@ class SlowdownProducerApp {
             }
             //NOTE: you can join or triggering the new update once the previous one has been delivered
             Awaitility.await()
-                      .atMost(Duration.ofSeconds(10))
+                      .atMost(Duration.ofSeconds(1))
                       .until(() -> subscribers.stream()
                                               .map(TestSubscriber::getReceivedUpdates)
                                               .allMatch(updates -> updates == msgNum));
-            System.out.printf("Subscribers received %d/%d updates%n",
-                              subscribers.get(0).getReceivedUpdates(), msgNum);
+            System.out.printf("Subscribers received %d/%d updates with backpressure count %d and max slowdown time %s%n",
+                              subscribers.get(0).getReceivedUpdates(), msgNum, bpcnt,
+                              Duration.ofNanos(maxbptime).toString());
         }
         reactorSystem.shutDown();
     }
