@@ -80,7 +80,7 @@ public class SystemMonitor implements ReActiveEntity {
     private static SystemMonitorReport getSystemStatistics(OperatingSystemMXBean systemInterface) {
         return SystemMonitorReport.newBuilder()
                                   .setCpuLoad(systemInterface.getSystemLoadAverage())
-                                  .setFreeMemorySize(systemInterface.getFreePhysicalMemorySize())
+                                  .setFreeMemorySize(systemInterface.getFreeMemorySize())
                                   .build();
     }
 

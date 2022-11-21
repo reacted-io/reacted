@@ -12,6 +12,13 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.Try;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.reactivestreams.tck.TestEnvironment;
 import org.reactivestreams.tck.flow.FlowPublisherVerification;
 import org.slf4j.Logger;
@@ -21,14 +28,6 @@ import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
-
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Test
 public class PublisherTCKTest extends FlowPublisherVerification<Long> {
@@ -42,7 +41,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
         super(new TestEnvironment(250, 250, false));
         var rasCfg = ReActorSystemConfig.newBuilder()
                 .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
-                .setRecordExecution(false)
+                .setRecordExecution(true)
                 .setMsgFanOutPoolSize(1)
                 .setReactorSystemName("TckValidationRAS")
                 .build();
@@ -51,7 +50,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
 
     @Override
     public Flow.Publisher<Long> createFlowPublisher(long l) {
-        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem,
+        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem, 10_000,
                                                              "TckFeed-" + counter.getAndIncrement());
         generatedFlows.add(publisher);
         asyncPublishMessages(publisher, l);
@@ -60,7 +59,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
 
     @Override
     public Flow.Publisher<Long> createFailedFlowPublisher() {
-        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem,
+        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem, 10_000,
                                                              "FailedTckFeed-" + counter.getAndIncrement());
         publisher.close();
         Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(20))
@@ -100,13 +99,12 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     private void asyncPublishMessages(ReactedSubmissionPublisher<Long> publisher,
                                       long messagesNum) {
         submitterThread.submit(() -> {
-            Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(150));
+            //The subscription handshake needs some time to complete
+            Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(50));
             for(long cycle = 0; cycle < messagesNum && !Thread.currentThread().isInterrupted(); cycle++) {
-                publisher.submit(cycle)
-                         .toCompletableFuture()
-                         .exceptionally(error -> { LOGGER.error("Error on submit", error);
-                                                   return null; })
-                         .join();
+                if (publisher.submit(cycle).isNotSent()) {
+                    LOGGER.error("Critic! Message {} not sent!", cycle);
+                }
             }
             Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(50));
             publisher.close();

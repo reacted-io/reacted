@@ -14,12 +14,11 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.Ask;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
-
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
@@ -30,6 +29,7 @@ import java.util.concurrent.CompletionStage;
 public final class ReActorRef implements Externalizable {
     public static final ReActorRef NO_REACTOR_REF = new ReActorRef(ReActorId.NO_REACTOR_ID,
                                                                    NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF);
+    @Serial
     private static final long serialVersionUID = 1;
     private static final long REACTOR_ID_OFFSET = SerializationUtils.getFieldOffset(ReActorRef.class, "reActorId")
                                                                     .orElseSneakyThrow();
@@ -78,17 +78,18 @@ public final class ReActorRef implements Externalizable {
     }
 
     /**
-     * Sends a message to this ReActor using system sync as source
+     * Sends a message to this ReActor using {@link ReActorSystem#getSystemSink()} as source
      *
      * @param messagePayload payload
      * @param <PayloadT> Any {@link Serializable} object
-     * @return A completable future that is going to be completed once the message has been delivered into the
-     * local driver bus, containing the outcome of the operation
+     * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
+     * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
+     * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> tell(PayloadT messagePayload) {
+    public <PayloadT extends Serializable> DeliveryStatus tell(PayloadT messagePayload) {
         return reActorSystemRef.tell(reActorSystemRef.getBackingDriver()
                                                      .getLocalReActorSystem()
-                                                     .getSystemSink(), this, AckingPolicy.NONE,
+                                                     .getSystemSink(), this,
                                      Objects.requireNonNull(messagePayload));
     }
 
@@ -98,12 +99,13 @@ public final class ReActorRef implements Externalizable {
      * @param msgSender      source of the message
      * @param messagePayload payload
      * @param <PayloadT> Any {@link Serializable} object
-     * @return A completable future that is going to be completed once the message has been delivered into the
-     * local driver bus, containing the outcome of the operation
+     * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
+     * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
+     * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> tell(ReActorRef msgSender,
-                                                                                     PayloadT messagePayload) {
-        return reActorSystemRef.tell(Objects.requireNonNull(msgSender), this, AckingPolicy.NONE,
+    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef msgSender,
+                                                               PayloadT messagePayload) {
+        return reActorSystemRef.tell(Objects.requireNonNull(msgSender), this,
                                      Objects.requireNonNull(messagePayload));
     }
 
@@ -114,13 +116,31 @@ public final class ReActorRef implements Externalizable {
      * @param msgSender      source of the message
      * @param messagePayload payload
      * @param <PayloadT> Any {@link Serializable} object
-     * @return A completable future that is going to be completed once the message has been delivered into the
-     * local driver bus, containing the outcome of the operation
+     * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
+     * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
+     * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    public <PayloadT extends Serializable> DeliveryStatus
     route(ReActorRef msgSender, PayloadT messagePayload) {
-        return reActorSystemRef.route(Objects.requireNonNull(msgSender), this, AckingPolicy.NONE,
-                                        Objects.requireNonNull(messagePayload));
+        return reActorSystemRef.route(Objects.requireNonNull(msgSender), this,
+                                      Objects.requireNonNull(messagePayload));
+    }
+
+    /**
+     * Sends a message to this ReActor requiring an ack as a confirmation of the delivery into the target reactor's
+     * mailbox. All the subscribers for {@code PayloadT} type will not be notified.
+     * @see io.reacted.core.typedsubscriptions.TypedSubscription
+     *
+     * @param msgSender      message source
+     * @param messagePayload message payload
+     * @param <PayloadT> Any {@link Serializable} object
+     * @return A {@link CompletionStage} that is going to be completed when an ack from the destination reactor system
+     * is received containing the outcome of the delivery of the message into the target actor mailbox
+     */
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    aroute(ReActorRef msgSender, PayloadT messagePayload) {
+        return reActorSystemRef.aroute(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
+                                       Objects.requireNonNull(messagePayload));
     }
 
     /**
@@ -132,8 +152,8 @@ public final class ReActorRef implements Externalizable {
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> atell(PayloadT messagePayload) {
-        return reActorSystemRef.tell(reActorSystemRef.getBackingDriver()
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(PayloadT messagePayload) {
+        return reActorSystemRef.atell(reActorSystemRef.getBackingDriver()
                                                      .getLocalReActorSystem()
                                                      .getSystemSink(), this, AckingPolicy.ONE_TO_ONE,
                                      Objects.requireNonNull(messagePayload));
@@ -149,25 +169,9 @@ public final class ReActorRef implements Externalizable {
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> atell(ReActorRef msgSender,
-                                                                                      PayloadT messagePayload) {
-        return reActorSystemRef.tell(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
-                                     Objects.requireNonNull(messagePayload));
-    }
-
-    /**
-     * Sends a message to a this ReActor requiring an ack as a confirmation of the delivery into the target reactor's
-     * mailbox. All the subscribers for {@code PayloadT} type will not be notified
-     *
-     * @param msgSender      message source
-     * @param messagePayload message payload
-     * @param <PayloadT> Any {@link Serializable} object
-     * @return A completable future that is going to be completed when an ack from the destination reactor system
-     * is received containing the outcome of the delivery of the message into the target actor mailbox
-     */
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    aroute(ReActorRef msgSender, PayloadT messagePayload) {
-        return reActorSystemRef.route(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef msgSender,
+                                                                                 PayloadT messagePayload) {
+        return reActorSystemRef.atell(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
                                       Objects.requireNonNull(messagePayload));
     }
 
@@ -180,12 +184,12 @@ public final class ReActorRef implements Externalizable {
      *                      ask is alive
      * @param <ReplyT> Any {@link Serializable} object
      * @param <RequestT> Any {@link Serializable} object
-     * @return A completable future that is going to be completed once an answer for the request has been received.
-     * On failure, the received Try will contain the cause of the failure, otherwise the requested answer
+     * @return A {@link CompletionStage} that is going to be completed once an answer for the request has been received.
+     * On failure, the {@link CompletionStage} will be a failed {@link CompletionStage} contain the cause of the failure
      */
     public <ReplyT extends Serializable, RequestT extends Serializable>
-    CompletionStage<Try<ReplyT>> ask(RequestT request, Class<ReplyT> expectedReply,
-                                     String requestName) {
+    CompletionStage<ReplyT> ask(RequestT request, Class<ReplyT> expectedReply,
+                                String requestName) {
         return ask(getReActorSystemRef().getBackingDriver().getLocalReActorSystem(), this,
                    Objects.requireNonNull(request), Objects.requireNonNull(expectedReply),
                    NO_TIMEOUT, requestName);
@@ -201,13 +205,12 @@ public final class ReActorRef implements Externalizable {
      *                      ask is alive
      * @param <ReplyT> Any {@link Serializable} object
      * @param <RequestT> Any {@link Serializable} object
-     * @return A {@link CompletionStage}&lt;{@link Try}&lt;{@link ReplyT}&gt;&gt; that is going to be completed once an
-     * answer for the request has been received or the specified timeout is expired. On failure, the received Try will
-     * contain the cause of the failure, otherwise the requested answer
+     * @return A {@link CompletionStage} that is going to be completed once an answer for the request has been received.
+     * On failure, the {@link CompletionStage} will be a failed {@link CompletionStage} contain the cause of the failure
      */
     public <ReplyT extends Serializable, RequestT extends Serializable>
-    CompletionStage<Try<ReplyT>> ask(RequestT request, Class<ReplyT> expectedReply, Duration expireTimeout,
-                                     String requestName) {
+    CompletionStage<ReplyT> ask(RequestT request, Class<ReplyT> expectedReply, Duration expireTimeout,
+                                String requestName) {
         return ask(Objects.requireNonNull(getReActorSystemRef().getBackingDriver().getLocalReActorSystem()),
                    this, Objects.requireNonNull(request), Objects.requireNonNull(expectedReply),
                    Objects.requireNonNull(expireTimeout), Objects.requireNonNull(requestName));
@@ -234,11 +237,11 @@ public final class ReActorRef implements Externalizable {
     }
 
     private static <ReplyT extends Serializable, RequestT extends Serializable>
-    CompletionStage<Try<ReplyT>> ask(ReActorSystem localReActorSystem, ReActorRef target, RequestT request,
-                                     Class<ReplyT> expectedReplyType, Duration askTimeout, String requestName) {
-        CompletableFuture<Try<ReplyT>> returnValue = new CompletableFuture<>();
+    CompletionStage<ReplyT> ask(ReActorSystem localReActorSystem, ReActorRef target, RequestT request,
+                                Class<ReplyT> expectedReplyType, Duration askTimeout, String requestName) {
+        CompletableFuture<ReplyT> returnValue = new CompletableFuture<>();
         localReActorSystem.spawn(new Ask<>(askTimeout, expectedReplyType, returnValue, requestName, target, request))
-                          .ifError(spawnError -> returnValue.complete(Try.ofFailure(spawnError)));
+                          .ifError(returnValue::completeExceptionally);
         return returnValue;
     }
     private void setReActorId(ReActorId reActorId) {

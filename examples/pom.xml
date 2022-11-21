@@ -7,35 +7,73 @@
   ~ LICENSE file in the root directory of this source tree.
   -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <artifactId>reacted-all</artifactId>
-        <groupId>io.reacted</groupId>
-        <version>1.4.9-SNAPSHOT</version>
-    </parent>
     <modelVersion>4.0.0</modelVersion>
 
+    <groupId>io.reacted</groupId>
     <artifactId>reacted-examples</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+
+    <properties>
+        <reacted.version>2.0.0-SNAPSHOT</reacted.version>
+        <awaitility.version>4.2.0</awaitility.version>
+        <kafka.client.version>3.3.1</kafka.client.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.release>17</maven.compiler.release>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.reacted</groupId>
+                <artifactId>reacted-framework-bom</artifactId>
+                <version>${reacted.version}</version>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver-reactivestreams</artifactId>
-            <version>4.1.1</version>
+            <version>4.7.1</version>
         </dependency>
         <dependency>
             <groupId>org.reactivestreams</groupId>
             <artifactId>reactive-streams</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.4</version>
             <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.reacted</groupId>
-            <artifactId>reacted-framework</artifactId>
         </dependency>
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
-            <scope>compile</scope>
+            <version>${awaitility.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-streams</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-core</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-drivers</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-flow</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>${kafka.client.version}</version>
         </dependency>
     </dependencies>
 </project>

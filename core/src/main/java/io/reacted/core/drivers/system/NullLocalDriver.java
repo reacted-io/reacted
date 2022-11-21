@@ -10,7 +10,6 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.NullLocalDriverConfig;
-import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -19,6 +18,7 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Properties;
@@ -67,22 +67,14 @@ public class NullLocalDriver extends LocalDriver<NullLocalDriverConfig> {
 
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
-        return CompletableFuture.completedFuture(Try.ofFailure(new UnsupportedOperationException()));
+    public <PayloadT extends Serializable> DeliveryStatus
+    route(ReActorRef src, ReActorRef dst, PayloadT message) {
+        return DeliveryStatus.NOT_DELIVERED;
     }
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return Try.ofFailure(new UnsupportedOperationException());
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+        throw new UnsupportedOperationException();
     }
-
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(sendMessage(destination, message));
-    }
-
-    @Override
-    public boolean channelRequiresDeliveryAck() { return false; }
 
     @Override
     public ChannelId getChannelId() { return channelId; }

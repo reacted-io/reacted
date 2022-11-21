@@ -9,37 +9,35 @@
 package io.reacted.core.reactorsystem;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.core.config.drivers.NullLocalDriverConfig;
-import io.reacted.core.config.reactors.ReActorServiceConfig;
-import io.reacted.core.config.reactors.ServiceRegistryConfig;
-import io.reacted.core.drivers.system.NullLocalDriver;
-import io.reacted.core.exceptions.DeliveryException;
-import io.reacted.core.mailboxes.BoundedBasicMbox;
-import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.typedsubscriptions.SubscriptionsManager;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
+import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.config.drivers.NullLocalDriverConfig;
 import io.reacted.core.config.reactors.ReActiveEntityConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.ReActorServiceConfig;
+import io.reacted.core.config.reactors.ServiceRegistryConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.LoopbackDriver;
 import io.reacted.core.drivers.system.NullDriver;
+import io.reacted.core.drivers.system.NullLocalDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.exceptions.ReActorRegistrationException;
 import io.reacted.core.exceptions.ReActorSystemInitException;
 import io.reacted.core.exceptions.ReActorSystemStructuralInconsistencyError;
+import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.mailboxes.NullMailbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
+import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActedDebug;
 import io.reacted.core.messages.reactors.ReActedError;
 import io.reacted.core.messages.reactors.ReActedInfo;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
@@ -49,17 +47,15 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.DeadLetter;
 import io.reacted.core.reactors.systemreactors.RemotingRoot;
-import io.reacted.core.reactors.systemreactors.SystemMonitor;
 import io.reacted.core.reactors.systemreactors.SystemLogger;
+import io.reacted.core.reactors.systemreactors.SystemMonitor;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.services.Service;
+import io.reacted.core.typedsubscriptions.SubscriptionsManager;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
@@ -83,6 +79,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @NonNullByDefault
@@ -105,7 +104,8 @@ public class ReActorSystem {
 
     private final Set<ReActorSystemDriver<? extends ChannelDriverConfig<?, ?>>> reActorSystemDrivers;
     /* All the reactors spawned by a specific reactor system instance */
-    private final Map<ReActorId, ReActorContext> reActors;
+    private final Map<ReActorId, ReActorContext> reactorsByReactorId;
+    private final Map<Long, ReActorContext> reactorsBySchedulationId;
     /* All the reactors that listen for a specific message type are saved here */
     private final SubscriptionsManager typedSubscriptionsManager;
     private final RegistryGatesCentralizedManager gatesCentralizedManager;
@@ -114,6 +114,7 @@ public class ReActorSystem {
     private final AtomicLong newSeqNum;
     private final Message reActorStop;
     private final ReActorSystemId localReActorSystemId;
+    private final int maximumReActorsNumForThisSystem;
 
     /**
      * The fields below can be null only before a successful init completion
@@ -140,8 +141,10 @@ public class ReActorSystem {
     private ReActorRef systemMonitor;
 
     private ReActorSystem() {
+        this.maximumReActorsNumForThisSystem = 0;
         this.reActorSystemDrivers = Set.of();
-        this.reActors = Map.of();
+        this.reactorsByReactorId = Map.of();
+        this.reactorsBySchedulationId = Map.of();
         this.localReActorSystemId = ReActorSystemId.NO_REACTORSYSTEM_ID;
         this.typedSubscriptionsManager = new SubscriptionsManager() { };
         this.dispatchers = Map.of();
@@ -161,12 +164,14 @@ public class ReActorSystem {
     }
 
     public ReActorSystem(ReActorSystemConfig config) {
+        this.maximumReActorsNumForThisSystem = config.getMaximumReActorsNum();
         this.systemConfig = Objects.requireNonNull(config);
         this.localReActorSystemId = new ReActorSystemId(config.getReActorSystemName());
         this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
                                                                            new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
         this.reActorSystemDrivers = new CopyOnWriteArraySet<>();
-        this.reActors = new ConcurrentHashMap<>(config.getExpectedReActorsNum() * 2, 0.5f);
+        this.reactorsByReactorId = new ConcurrentHashMap<>(maximumReActorsNumForThisSystem, 0.1f);
+        this.reactorsBySchedulationId = new ConcurrentHashMap<>(maximumReActorsNumForThisSystem, 0.1f);
         this.typedSubscriptionsManager = new TypedSubscriptionsManager();
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.newSeqNum = new AtomicLong(0);
@@ -183,13 +188,6 @@ public class ReActorSystem {
      */
     public ReActorRef getSystemSink() {
         return Objects.requireNonNull(init);
-    }
-
-    /**
-     * @return A reference to the system deadletters
-     */
-    public ReActorRef getSystemDeadLetters() {
-        return Objects.requireNonNull(systemDeadLetters);
     }
 
     /**
@@ -232,15 +230,26 @@ public class ReActorSystem {
     public ReActorRef getSystemMonitor() { return Objects.requireNonNull(systemMonitor); }
 
     /**
+     *
+     * @param anyRef Any {@link ReActorRef}
+     * @return True is the specified argument is a system Dead Letters
+     */
+    public boolean isSystemDeadLetters(ReActorRef anyRef) {
+        return Objects.requireNonNull(anyRef).equals(systemDeadLetters);
+    }
+
+    /**
      * Log an error using the centralized logging system
      *
      * @param errorDescription Sl4j Format error description
      * @param args             Arguments for Sl4j
      */
     public void logError(String errorDescription, Serializable ...args) {
-        getSystemLogger().tell(getSystemSink(), new ReActedError(errorDescription, args))
-                         .thenAccept(tryDelivery -> tryDelivery.ifError(error -> LOGGER.error("Unable to log error: ",
-                                                                                              error)));
+        if (getSystemLogger().tell(getSystemSink(), new ReActedError(errorDescription, args))
+                             .isNotSent()) {
+                LOGGER.error("Unable to log error: {}", errorDescription);
+                LOGGER.error(errorDescription, (Object) args);
+        }
     }
 
     /**
@@ -250,10 +259,12 @@ public class ReActorSystem {
      * @param args   Arguments for Sl4j
      */
     public void logDebug(String format, Serializable ...args) {
-        getSystemLogger().tell(getSystemSink(), new ReActedDebug(Objects.requireNonNull(format),
-                                                                 Objects.requireNonNull(args)))
-                         .thenAccept(tryDelivery -> tryDelivery.ifError(error -> LOGGER.error("Unable to log debug" +
-                                                                                              " info:", error)));
+        if (getSystemLogger().tell(getSystemSink(),
+                                   new ReActedDebug(Objects.requireNonNull(format),
+                                                    Objects.requireNonNull(args))).isNotSent()) {
+            LOGGER.error("Unable to log {}", format);
+            LOGGER.debug(format, (Object) args);
+        }
     }
 
     /**
@@ -263,10 +274,31 @@ public class ReActorSystem {
      * @param args   Arguments for Sl4j
      */
     public void logInfo(String format, Serializable ...args) {
-        getSystemLogger().tell(getSystemSink(), new ReActedInfo(Objects.requireNonNull(format),
-                                                                Objects.requireNonNull(args)))
-                         .thenAccept(tryDelivery -> tryDelivery.ifError(error -> LOGGER.error("Unable to log debug" +
-                                                                                              " info:", error)));
+        if (getSystemLogger().tell(getSystemSink(),
+                                   new ReActedInfo(Objects.requireNonNull(format),
+                                                   Objects.requireNonNull(args))).isNotSent()) {
+                LOGGER.error("Unable to log {}", format);
+                LOGGER.info(format, (Object) args);
+            }
+    }
+
+    public DeliveryStatus toDeadLetters(Serializable payload) {
+        return toDeadLetters(ReActorRef.NO_REACTOR_REF, payload);
+    }
+
+    public DeliveryStatus toDeadLetters(Message message) {
+        return isSystemDeadLetters(message.getSender())
+               ? DeliveryStatus.NOT_SENT
+               : toDeadLetters(message.getSender(), message.getPayload());
+    }
+    public DeliveryStatus toDeadLetters(ReActorRef sender, Serializable payload) {
+        DeliveryStatus deliveryStatus = Objects.requireNonNull(systemDeadLetters)
+                                               .route(sender, new DeadMessage(payload));
+        if (deliveryStatus.isNotSent()) {
+            LOGGER.error("Unable to send from {} to DeadLetters payload {}",
+                         sender, payload);
+        }
+        return deliveryStatus;
     }
 
     /**
@@ -355,7 +387,8 @@ public class ReActorSystem {
      * @param preferredChannelId Preferred {@link ChannelId} to use
      * @return A route/reference towards the requested reactor system
      */
-    public Optional<ReActorSystemRef> findGate(ReActorSystemId reActorSystemId, ChannelId preferredChannelId) {
+    @Nullable
+    public ReActorSystemRef findGate(ReActorSystemId reActorSystemId, ChannelId preferredChannelId) {
         return gatesCentralizedManager.findGate(reActorSystemId, preferredChannelId);
     }
 
@@ -418,7 +451,7 @@ public class ReActorSystem {
      * @return On success a future containing the result of the request
      * On failure a future containing the exception that caused the failure
      */
-    public CompletionStage<Try<ServiceDiscoveryReply>>
+    public CompletionStage<ServiceDiscoveryReply>
     serviceDiscovery(ServiceDiscoverySearchFilter searchFilter) {
         return serviceDiscovery(searchFilter, "");
     }
@@ -433,7 +466,7 @@ public class ReActorSystem {
      * @return On success a future containing the result of the request
      * On failure a future containing the exception that caused the failure
      */
-    public CompletionStage<Try<ServiceDiscoveryReply>>
+    public CompletionStage<ServiceDiscoveryReply>
     serviceDiscovery(ServiceDiscoverySearchFilter searchFilter, String requestId) {
         return getSystemSink().ask(new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)),
                                    ServiceDiscoveryReply.class, SERVICE_DISCOVERY_TIMEOUT,
@@ -449,8 +482,8 @@ public class ReActorSystem {
      * @return The outcome of the request
      */
     @SuppressWarnings("UnusedReturnValue")
-    public CompletionStage<Try<DeliveryStatus>> serviceDiscovery(ServiceDiscoverySearchFilter searchFilter,
-                                                                 ReActorRef requester) {
+    public DeliveryStatus serviceDiscovery(ServiceDiscoverySearchFilter searchFilter,
+                                           ReActorRef requester) {
         return broadcastToLocalSubscribers(Objects.requireNonNull(requester),
                                            new ServiceDiscoveryRequest(Objects.requireNonNull(searchFilter)));
     }
@@ -554,7 +587,7 @@ public class ReActorSystem {
      * @param <PayLoadT> Any {@link Serializable} object
      * @return A {@link CompletionStage} that is going to be completed when the message is sent
      */
-    public <PayLoadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
+    public <PayLoadT extends Serializable> DeliveryStatus
     broadcastToLocalSubscribers(ReActorRef msgSender, PayLoadT payload) {
         return getSystemSink().tell(Objects.requireNonNull(msgSender), Objects.requireNonNull(payload));
     }
@@ -607,15 +640,14 @@ public class ReActorSystem {
                                                                       Objects.requireNonNull(payload)));
     }
 
-    //XXX Reactor Id -> ReActor Context mapper
-    public Optional<ReActorContext> getReActor(ReActorId reference) {
-        return Optional.ofNullable(getNullableReActorCtx(Objects.requireNonNull(reference)));
+    @Nullable
+    public ReActorContext getReActorCtx(ReActorId reActorId) {
+        return reactorsByReactorId.get(Objects.requireNonNull(reActorId));
     }
 
-    //XXX Get a reactor context given the reactor id without the Optional overhead
     @Nullable
-    public ReActorContext getNullableReActorCtx(ReActorId reActorId) {
-        return reActors.get(Objects.requireNonNull(reActorId));
+    public ReActorContext getReActorCtx(long schedulationId) {
+        return reactorsBySchedulationId.get(schedulationId);
     }
 
     //Create a ReActorRef with the appropriate driver attached for the specified reactor system / channel id
@@ -634,7 +666,7 @@ public class ReActorSystem {
      * terminated. An empty optional otherwise
      */
     public Optional<CompletionStage<Void>> stop(ReActorId reActorToStop) {
-        return getReActor(reActorToStop).map(ReActorContext::stop);
+        return Optional.ofNullable(getReActorCtx(reActorToStop)).map(ReActorContext::stop);
     }
 
     public ScheduledExecutorService getSystemSchedulingService() {
@@ -684,7 +716,7 @@ public class ReActorSystem {
      */
     private void initSystem() {
 
-        if (getAllDispatchers(getSystemConfig().getDispatchersConfigs())
+        if (createAllDispatchers(getSystemConfig().getDispatchersConfigs(), this)
                 .anyMatch(Predicate.not(this::registerDispatcher))) {
             throw new ReActorSystemInitException("Unable to register system dispatcher");
         }
@@ -731,10 +763,12 @@ public class ReActorSystem {
      * @throws ReActorSystemInitException If unable to deliver reactor init message
      */
     private void initReActorSystemReActors() {
-        reActors.values().stream()
-                .map(ReActorContext::getSelf)
-                .forEach(reactor -> throwOnFailedDelivery(reactor.tell(getSystemSink(), REACTOR_INIT),
-                                                          ReActorSystemInitException::new));
+        if (reactorsByReactorId.values().stream()
+                               .map(ReActorContext::getSelf)
+                               .map(reactor -> reactor.tell(getSystemSink(), REACTOR_INIT))
+                               .anyMatch(Predicate.not(DeliveryStatus::isSent))) {
+            throw new ReActorSystemInitException("Unable to init all system reactors");
+        }
     }
 
     /**
@@ -802,8 +836,10 @@ public class ReActorSystem {
 
     private CompletionStage<Void> stopSystemRoot(ReActorRef reActorRoot) {
         //Kill all the user actors hierarchy
-        return getReActor(reActorRoot.getReActorId()).map(ReActorContext::stop)
-                                                     .orElse(CompletableFuture.completedFuture(null));
+        ReActorContext rootCtx = getReActorCtx(reActorRoot.getReActorId());
+        return rootCtx != null
+               ? rootCtx.stop()
+               : CompletableFuture.completedFuture(null);
     }
 
     private void stopDispatchers() {
@@ -902,6 +938,7 @@ public class ReActorSystem {
 
     private Try<ReActorRef> spawn(ReActorSystemRef spawnerAs, ReActions reActions,
                                   ReActorRef parent, ReActiveEntityConfig<?, ?> reActorConfig) {
+
         var reActorCtx = createReActorCtx(spawnerAs, reActions, parent,
                                           new ReActorId(parent.getReActorId(), reActorConfig.getReActorName()),
                                           reActorConfig);
@@ -928,35 +965,37 @@ public class ReActorSystem {
     }
 
     private Try<ReActorContext> registerNewReActor(ReActorRef parent, ReActorContext newReActor) {
-        return getReActor(parent.getReActorId())
-                .map(parentCtx -> Try.of(() -> registerNewReActor(parentCtx, newReActor))
-                                     .filter(Try::identity,
-                                             () -> new ReActorRegistrationException(newReActor.getSelf()
-                                                                                              .getReActorId()
-                                                                                              .getReActorName()))
-                                     .map(registered -> newReActor))
-                .orElseGet(() -> Try.ofFailure(new ReActorRegistrationException(newReActor.getSelf()
+        ReActorContext parentCtx = getReActorCtx(parent.getReActorId());
+        if (parentCtx == null || reactorsByReactorId.size() >= getSystemConfig().getMaximumReActorsNum()) {
+            return Try.ofFailure(new ReActorRegistrationException(newReActor.getSelf()
+                                                                            .getReActorId()
+                                                                            .getReActorName()));
+        }
+        return Try.of(() -> registerNewReActor(parentCtx, newReActor))
+                  .filter(Try::identity, () -> new ReActorRegistrationException(newReActor.getSelf()
                                                                                           .getReActorId()
-                                                                                          .getReActorName())));
+                                                                                          .getReActorName()))
+                  .map(registered -> newReActor);
     }
 
     private Optional<CompletionStage<Void>> unRegisterReActor(ReActorContext stopMe) {
         Optional<CompletionStage<Void>> stopHook = Optional.empty();
-        getReActor(stopMe.getParent().getReActorId())
-                .ifPresent(parentReActor -> parentReActor.unregisterChild(stopMe.getSelf()));
+        ReActorContext parentCtx = getReActorCtx(stopMe.getParent().getReActorId());
+        if (parentCtx != null) {
+            parentCtx.unregisterChild(stopMe.getSelf());
+        }
         //Avoid spawning a child while it's being stopped
         stopMe.getStructuralLock().writeLock().lock();
         try {
             //If it is already stopped don't process further, otherwise the remove could remove the name
             //of a new reactor with the same name that has just been spawned
             if (!stopMe.getHierarchyTermination().toCompletableFuture().isDone() &&
-                reActors.remove(stopMe.getSelf().getReActorId()) != null) {
+                reactorsByReactorId.remove(stopMe.getSelf().getReActorId()) != null) {
+                reactorsBySchedulationId.remove(stopMe.getReActorSchedulationId());
                 updateMessageInterceptors(stopMe, stopMe.getTypedSubscriptions(),
                                           TypedSubscription.NO_SUBSCRIPTIONS);
                 Try.ofRunnable(() -> stopMe.reAct(reActorStop))
                    .ifError(error -> stopMe.logError("Unable to properly stop reactor: ", error));
-                Try.ofRunnable(() -> stopMe.getMbox().close())
-                   .ifError(error -> stopMe.logError("Unable to properly close mailbox", error));
                 var allChildrenTerminated = allChildrenTerminationFuture(stopMe.getChildren(), this);
                 CompletableFuture<Void> myTerminationHook = stopMe.getHierarchyTermination()
                                                                   .toCompletableFuture();
@@ -971,10 +1010,11 @@ public class ReActorSystem {
 
     private static CompletionStage<Void> allChildrenTerminationFuture(Collection<ReActorRef> children,
                                                                       ReActorSystem reActorSystem) {
+
         return children.stream()
                        .map(ReActorRef::getReActorId)
-                       .map(reActorSystem::getReActor)
-                       .flatMap(Optional::stream)
+                       .map(reActorSystem::getReActorCtx)
+                       .filter(Objects::nonNull)
                        //exploit the dispatcher for stopping the actor
                        .map(ReActorContext::stop)
                        .reduce((firstChild, secondChild) -> firstChild.thenComposeAsync(res -> secondChild))
@@ -989,8 +1029,9 @@ public class ReActorSystem {
         parentReActorCtx.getStructuralLock().writeLock().lock();
 
         try {
-            if ((isSelfAdd || reActors.containsKey(parentReActorCtx.getSelf().getReActorId())) &&
-                reActors.putIfAbsent(newActor.getSelf().getReActorId(), newActor) == null) {
+            if ((isSelfAdd || reactorsByReactorId.containsKey(parentReActorCtx.getSelf().getReActorId())) &&
+                reactorsByReactorId.putIfAbsent(newActor.getSelf().getReActorId(), newActor) == null) {
+                reactorsBySchedulationId.put(newActor.getReActorSchedulationId(), newActor);
                 //Do not add an actor to its own children
                 if (!isSelfAdd) {
                     parentReActorCtx.registerChild(newActor.getSelf());
@@ -1007,7 +1048,6 @@ public class ReActorSystem {
     private Optional<Dispatcher> getDispatcher(String dispatcherName) {
         return Optional.ofNullable(dispatchers.get(dispatcherName));
     }
-
     private static void initAllDispatchers(Collection<Dispatcher> dispatchers, ReActorRef systemSink,
                                            boolean recordedExecution,
                                            Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
@@ -1015,9 +1055,10 @@ public class ReActorSystem {
                                                                     reActorUnregister));
     }
 
-    private static Stream<Dispatcher> getAllDispatchers(Collection<DispatcherConfig> configuredDispatchers) {
+    private static Stream<Dispatcher> createAllDispatchers(Collection<DispatcherConfig> configuredDispatchers,
+                                                           ReActorSystem reActorSystem) {
         return Stream.concat(Stream.of(SYSTEM_DISPATCHER_CONFIG), configuredDispatchers.stream())
-                     .map(Dispatcher::new);
+                     .map(dispatcherCfg -> new Dispatcher(dispatcherCfg, reActorSystem));
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -1037,14 +1078,5 @@ public class ReActorSystem {
                 .setUncaughtExceptionHandler((thread, error) -> LOGGER.error("Critic! FanOut Thread Terminated", error))
                 .build();
         return Executors.newFixedThreadPool(poolSize, fanOutThreads);
-    }
-
-    private static <ExceptionT extends Exception>
-    void throwOnFailedDelivery(CompletionStage<Try<DeliveryStatus>> deliveryAttempt,
-                               Function<? super Throwable, ExceptionT> exceptionMapper) throws ExceptionT {
-        Try.of(() -> deliveryAttempt.toCompletableFuture().join())
-           .flatMap(Try::identity)
-           .filter(DeliveryStatus::isDelivered, DeliveryException::new)
-           .orElseThrow(exceptionMapper::apply);
     }
 }

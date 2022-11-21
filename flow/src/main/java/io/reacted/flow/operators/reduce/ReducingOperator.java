@@ -34,8 +34,7 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
     protected ReducingOperator(ConfigT config) {
         super(config);
         this.storage = config.getReductionRules().keySet().stream()
-                             .collect(Collectors.toUnmodifiableMap(Function.identity(),
-                                                                   msgType -> new LinkedList<>()));
+                             .collect(Collectors.toMap(Function.identity(), msgType -> new LinkedList<>()));
     }
 
     @Override

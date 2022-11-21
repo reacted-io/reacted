@@ -8,14 +8,14 @@
 
 package io.reacted.core.drivers.system;
 
+import static org.mockito.Mockito.mock;
+
 import io.reacted.core.CoreConstants;
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.drivers.system.LocalDriver;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
+import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -25,11 +25,10 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import static org.mockito.Mockito.mock;
 
 class LocalDriverTest {
     static ReActorSystem reActorSystem;
@@ -44,8 +43,7 @@ class LocalDriverTest {
                                                                      .setReactorSystemName(CoreConstants.REACTED_ACTOR_SYSTEM)
                                                                      .setMsgFanOutPoolSize(1)
                                                                      .setRecordExecution(false)
-                                                                     .setLocalDriver(
-                                                                         SystemLocalDrivers.DIRECT_COMMUNICATION)
+                                                                     .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
                                                                      .addDispatcherConfig(DispatcherConfig.newBuilder()
                                                                                                           .setDispatcherName("Dispatcher")
                                                                                                           .setBatchSize(1_000)
@@ -89,7 +87,7 @@ class LocalDriverTest {
 
     @Test
     void localDriverDeliversMessagesInMailBox() {
-        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isSuccess());
+        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isDelivered());
 
         Assertions.assertEquals(1, basicMbox.getMsgNum());
         Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
@@ -98,14 +96,14 @@ class LocalDriverTest {
 
     @Test
     void localDriverForwardsMessageToLocalActor() {
-        Assertions.assertTrue(LocalDriver.forwardMessageToLocalActor(reActorContext, originalMsg)
-                                         .toCompletableFuture().join().isSuccess());
+        Assertions.assertTrue(LocalDriver.syncForwardMessageToLocalActor(reActorContext, originalMsg)
+                                         .isDelivered());
         Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
     }
 
     @Test
     void localDriverCanSendMessage() {
-        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isSuccess());
+        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isDelivered());
         Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
     }
 }

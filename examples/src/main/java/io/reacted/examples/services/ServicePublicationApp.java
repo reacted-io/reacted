@@ -103,16 +103,13 @@ public class ServicePublicationApp {
                                                                         .setServiceName(serviceName)
                                                                         .setSelectionType(SelectionType.ROUTED)
                                                                         .build())
-                     .thenApply(discovery -> discovery.map(ServiceDiscoveryReply::getServiceGates))
-                     .thenApply(services -> services.filter(list -> !list.isEmpty()))
+                     .thenApply(ServiceDiscoveryReply::getServiceGates)
                      //get the first gate available
-                     .thenApply(services -> services.map(list -> list.iterator().next()))
-                     .thenApply(serviceGate -> serviceGate.orElse(ReActorRef.NO_REACTOR_REF))
+                     .thenApply(services -> services.iterator().next())
                      //Ask the service for the time
                      .thenCompose(gate -> gate.ask(new TimeRequest(), ZonedDateTime.class, "Request the time"))
                      //print the answer
-                     .thenAcceptAsync(timeRequest -> timeRequest.ifSuccessOrElse(System.out::println,
-                                                                                 Throwable::printStackTrace))
+                     .thenAcceptAsync(System.out::println)
                      //kill the reactor system
                      .thenAccept(dummyReturn -> reActorSystem.shutDown());
     }

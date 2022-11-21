@@ -9,20 +9,22 @@
 package io.reacted.core.reactors;
 
 import io.reacted.core.messages.SerializationUtils;
-
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
 
 @Immutable
 public final class ReActorId implements Externalizable {
+    @Serial
     private static final long serialVersionUID = 1;
+    private static final int UUID_BYTES_SIZE = 16;
     private static final long REACTOR_UUID_OFFSET = SerializationUtils.getFieldOffset(ReActorId.class, "reActorUUID")
                                                                       .orElseSneakyThrow();
     private static final long REACTOR_NAME_OFFSET = SerializationUtils.getFieldOffset(ReActorId.class, "reActorName")
@@ -31,7 +33,7 @@ public final class ReActorId implements Externalizable {
                                                                   .orElseSneakyThrow();
     public static final ReActorId NO_REACTOR_ID = new ReActorId().setReActorName("Init")
                                                                  .setReActorUUID(new UUID(0, 0))
-                                                                 .setHashCode(Objects.hash("Init", new UUID(0, 0)));
+                                                                 .setHashCode(Objects.hash(new UUID(0, 0), "Init"));
 
     private final UUID reActorUUID;
     private final String reActorName;
@@ -67,6 +69,9 @@ public final class ReActorId implements Externalizable {
                                                                                                reActorId1.getReActorName());
     }
 
+    @SuppressWarnings("SameReturnValue")
+    public int getRawIdSize() { return UUID_BYTES_SIZE; }
+
     @Override
     public int hashCode() { return hashCode; }
 
@@ -78,21 +83,17 @@ public final class ReActorId implements Externalizable {
         return reActorName;
     }
 
-    public int getHashCode() { return hashCode(); }
-
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeLong(getReActorUUID().getMostSignificantBits());
-        out.writeLong(getReActorUUID().getLeastSignificantBits());
+        out.writeObject(getReActorUUID());
         out.writeObject(reActorName);
-        out.writeInt(hashCode);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        setReActorUUID(new UUID(in.readLong(), in.readLong()));
+        setReActorUUID((UUID)in.readObject());
         setReActorName((String)in.readObject());
-        setHashCode(in.readInt());
+        setHashCode(Objects.hash(getReActorUUID(), getReActorName()));
     }
 
     public ReActorId setReActorUUID(UUID uuid) {

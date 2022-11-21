@@ -12,14 +12,14 @@ import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import java.io.Serializable;
-import java.util.Optional;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 public interface LoadBalancingPolicy {
-  @Nonnull
+  @Nullable
   <ServiceConfigBuilderT extends ReActorServiceConfig.Builder<ServiceConfigBuilderT, ServiceConfigT>,
    ServiceConfigT extends ReActorServiceConfig<ServiceConfigBuilderT, ServiceConfigT>>
-  Optional<ReActorRef> selectRoutee(@Nonnull ReActorContext routerCtx,
-                                    @Nonnull Service<ServiceConfigBuilderT, ServiceConfigT> thisService,
-                                    long msgNum, @Nonnull Serializable message);
+  ReActorRef selectRoutee(@Nonnull ReActorContext routerCtx,
+                          @Nonnull Service<ServiceConfigBuilderT, ServiceConfigT> thisService,
+                          long msgNum, @Nonnull Serializable message);
 }

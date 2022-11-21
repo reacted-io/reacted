@@ -17,9 +17,9 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.examples.webappbackend.Backend;
 import io.reacted.examples.webappbackend.db.StorageMessages;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,8 +107,7 @@ public class Get implements ReActor {
 
     private void retrieveEntry(ReActorContext raCtx, String key, ReActorRef dbGate) {
         dbGate.ask(new StorageMessages.QueryRequest(key), StorageMessages.QueryReply.class, raCtx.getSelf().getReActorId().toString())
-              .thenComposeAsync(queryReply -> sendReplyMessage(queryReply.map(StorageMessages.QueryReply::getPayload)
-                                                                         .orElseGet(Throwable::getMessage)),
+              .thenComposeAsync(queryReply -> sendReplyMessage(queryReply.payload()),
                                 asyncService)
               .thenAccept(sendReturn -> { sendReturn.ifError(error -> raCtx.logError("Unable to send back reply", error));
                                           raCtx.stop(); });
@@ -131,10 +130,7 @@ public class Get implements ReActor {
         outputStream.write(data.getBytes());
         return ObjectUtils.VOID;
     }
-    private static class ProcessGet implements Serializable {
-        private final String getRequest;
-        private ProcessGet(String getRequest) {
-            this.getRequest = getRequest;
-        }
+
+    private record ProcessGet(String getRequest) implements Serializable {
     }
 }

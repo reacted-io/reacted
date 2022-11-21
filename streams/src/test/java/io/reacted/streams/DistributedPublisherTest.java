@@ -48,16 +48,14 @@ public class DistributedPublisherTest {
 
   @Test
   public void testRemotePublishing() throws InterruptedException {
-    var publisher = new ReactedSubmissionPublisher<>(system, "TestPublisher");
+    var publisher = new ReactedSubmissionPublisher<>(system, 10_000, "TestPublisher");
     var testSubscriber = new TestSubscription();
     publisher.subscribe(testSubscriber);
     var remoteSubscriber = system.spawn(new RemoteReactor("RemoteSubscriber"))
                                  .orElseSneakyThrow();
     remoteSubscriber.tell(publisher);
     TimeUnit.SECONDS.sleep(2);
-    publisher.backpressurableSubmit("First Message")
-             .toCompletableFuture()
-             .join();
+    publisher.submit("First Message");
     TimeUnit.SECONDS.sleep(2);
     Assertions.assertEquals(2L, testSubscriber.getMessagesCount());
   }
@@ -111,8 +109,8 @@ public class DistributedPublisherTest {
     }
 
     private void onMessage(ReActorContext raCtx, Serializable message) {
-      publisher.backpressurableSubmit(message)
-               .thenAccept(noVal -> subscription.request(1));
+      publisher.submit(message);
+      subscription.request(1);
     }
     private void onPublisher(ReActorContext raCtx,ReactedSubmissionPublisher<Serializable> publisher) {
       this.publisher = publisher;

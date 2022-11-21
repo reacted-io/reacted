@@ -19,18 +19,14 @@ import io.reacted.flow.operators.FlowOperator;
 import io.reacted.flow.operators.service.ServiceOperatorConfig.Builder;
 import io.reacted.patterns.AsyncUtils;
 import io.reacted.patterns.NonNullByDefault;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import java.util.concurrent.*;
 
 @NonNullByDefault
 public class ServiceOperator extends FlowOperator<Builder,
@@ -85,11 +81,14 @@ public class ServiceOperator extends FlowOperator<Builder,
   private void onServiceOperatorInit(ReActorContext raCtx, ReActorInit init) {
     super.onInit(raCtx, init);
     BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
-                      .ifPresent(mbox -> mbox.addNonDelayedMessageTypes(Set.of(RefreshServiceRequest.class)));
+                      .ifPresent(mbox -> mbox.addNonDelayableTypes(Set.of(RefreshServiceRequest.class)));
     this.serviceRefreshTask = raCtx.getReActorSystem()
          .getSystemSchedulingService()
-         .scheduleWithFixedDelay(() -> ReActedUtils.ifNotDelivered(raCtx.selfTell(new RefreshServiceRequest()),
-                                                                   error -> raCtx.logError("Unable to request refresh of service operators")),
+         .scheduleWithFixedDelay(() -> {
+                                   if (!raCtx.selfTell(new RefreshServiceRequest()).isSent()) {
+                                       raCtx.logError("Unable to request refresh of service operators");
+                                   }
+                                 },
                                  0, getOperatorCfg().getServiceRefreshPeriod()
                                                     .toNanos(), TimeUnit.NANOSECONDS);
   }
@@ -140,10 +139,6 @@ public class ServiceOperator extends FlowOperator<Builder,
     }
   }
 
-  private static class RefreshServiceUpdate implements Serializable {
-    private final Collection<ReActorRef> serviceGates;
-    private RefreshServiceUpdate(Collection<ReActorRef> serviceGates) {
-      this.serviceGates = serviceGates;
-    }
+  private record RefreshServiceUpdate(Collection<ReActorRef> serviceGates) implements Serializable {
   }
 }

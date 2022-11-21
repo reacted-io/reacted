@@ -10,14 +10,5 @@ package io.reacted.examples.communication.tell.pingpong;
 
 import java.io.Serializable;
 
-class Ping implements Serializable {
-    private final int pingValue;
-
-    Ping(int pingValue) {
-        this.pingValue = pingValue;
-    }
-
-    public int getPingValue() {
-        return pingValue;
-    }
+record Ping(int pingValue) implements Serializable {
 }

@@ -72,37 +72,49 @@ public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>> tell(ReActorRef src, ReActorRef dst,
-                                                                                     AckingPolicy ackingPolicy,
-                                                                                     PayloadT message) {
-        return CompletableFuture.completedFuture(Try.ofFailure(new NoRouteToReActorSystem()));
+    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst,
+                                                               PayloadT message) {
+        return DeliveryStatus.NOT_DELIVERED;
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+    public <PayloadT extends Serializable> DeliveryStatus
+    tell(ReActorRef src, ReActorRef dst,
          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
-        return CompletableFuture.completedFuture(Try.ofFailure(new NoRouteToReActorSystem()));
+        return DeliveryStatus.NOT_DELIVERED;
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
-        return CompletableFuture.completedFuture(Try.ofFailure(new NoRouteToReActorSystem()));
-    }
-    @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return Try.ofFailure(new NoRouteToReActorSystem());
+    public <PayloadT extends Serializable> DeliveryStatus
+    route(ReActorRef src, ReActorRef dst, PayloadT message) {
+        return DeliveryStatus.NOT_DELIVERED;
     }
 
     @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(sendMessage(destination, message));
+    public <PayloadT extends Serializable>
+    CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                          PayloadT message) {
+        return CompletableFuture.failedStage(new NoRouteToReActorSystem());
     }
 
     @Override
-    public boolean channelRequiresDeliveryAck() { return false; }
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers,
+          PayloadT message) {
+        return CompletableFuture.failedStage(new NoRouteToReActorSystem());
+    }
 
+    @Override
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    aroute(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+        return CompletableFuture.failedStage(new NoRouteToReActorSystem());
+    }
+
+    @Override
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+        throw new NoRouteToReActorSystem();
+    }
     @Override
     public ChannelId getChannelId() { return channelId; }
 

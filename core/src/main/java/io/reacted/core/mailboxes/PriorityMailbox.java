@@ -11,22 +11,18 @@ package io.reacted.core.mailboxes;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 
+import javax.annotation.Nonnull;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.PriorityBlockingQueue;
-import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class PriorityMailbox implements MailBox {
-
     private final PriorityBlockingQueue<Message> mailBox;
 
     public PriorityMailbox() {
-        this.mailBox = new PriorityBlockingQueue<>();
+        this(Comparator.comparingLong(Message::getSequenceNumber));
     }
 
     public PriorityMailbox(Comparator<? super Message> msgComparator) {
@@ -53,11 +49,5 @@ public class PriorityMailbox implements MailBox {
     @Override
     public DeliveryStatus deliver(Message message) {
         return mailBox.add(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.NOT_DELIVERED;
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
-        return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
     }
 }

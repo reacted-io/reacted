@@ -9,22 +9,20 @@
 package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.runtime.Dispatcher;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.services.SelectionType;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 
 import javax.annotation.Nonnull;
 import java.time.ZonedDateTime;
-
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 public class TimeReActor implements ReActor {
     private final String serviceToQuery;
@@ -45,19 +43,19 @@ public class TimeReActor implements ReActor {
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
-        ifNotDelivered(raCtx.getReActorSystem()
+        if (!raCtx.getReActorSystem()
                             .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                .setServiceName(serviceToQuery)
                                                                                .setSelectionType(SelectionType.DIRECT)
-                                                                               .build(), raCtx.getSelf()),
-                       error -> raCtx.logError("Error discovering service", error));
+                                                                               .build(), raCtx.getSelf()).isDelivered()) {
+            raCtx.logError("Error discovering service");
+        }
     }
 
     private void onServiceDiscoveryReply(ReActorContext raCtx, ServiceDiscoveryReply serviceDiscoveryReply) {
         var gate = serviceDiscoveryReply.getServiceGates().stream()
                                         .findAny();
-        gate.ifPresentOrElse(serviceGate -> ifNotDelivered(serviceGate.tell(raCtx.getSelf(), new TimeRequest()),
-                                                          Throwable::printStackTrace),
+        gate.ifPresentOrElse(serviceGate -> serviceGate.tell(raCtx.getSelf(), new TimeRequest()),
                              () -> raCtx.logError("No service discovery response received"));
     }
 

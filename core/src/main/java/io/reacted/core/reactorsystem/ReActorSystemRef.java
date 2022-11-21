@@ -11,28 +11,29 @@ package io.reacted.core.reactorsystem;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.patterns.Try;
-
-import javax.annotation.Nullable;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
+import javax.annotation.Nullable;
 
 /**
  * ReActorSystem abstraction. Through this interface we can perform operations on the contained reactors,
  * regardless if they are local or remote
  */
 public class ReActorSystemRef implements Externalizable {
+    @Serial
     private static final long serialVersionUID = 1;
     private static final long REACTORSYSTEM_ID_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemRef.class,
                                                                                 "reActorSystemId")
@@ -73,16 +74,27 @@ public class ReActorSystemRef implements Externalizable {
     }
 
     <PayloadT extends Serializable>
-    CompletionStage<Try<DeliveryStatus>> tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                              PayloadT message) {
-        return backingDriver.tell(src, dst, ackingPolicy, message);
+    DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
+        return backingDriver.tell(src, dst, message);
     }
 
     <PayloadT extends Serializable>
-    CompletionStage<Try<DeliveryStatus>> route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                              PayloadT message) {
-        return backingDriver.route(src, dst, ackingPolicy, message);
+    DeliveryStatus route(ReActorRef src, ReActorRef dst, PayloadT message) {
+        return backingDriver.route(src, dst, message);
     }
+
+    <PayloadT extends Serializable>
+    CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                          PayloadT message) {
+        return backingDriver.atell(src, dst, ackingPolicy, message);
+    }
+
+    <PayloadT extends Serializable>
+    CompletionStage<DeliveryStatus> aroute(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                           PayloadT message) {
+        return backingDriver.aroute(src, dst, ackingPolicy, message);
+    }
+
 
     public ReActorSystemId getReActorSystemId() {
         return reActorSystemId;
@@ -115,8 +127,12 @@ public class ReActorSystemRef implements Externalizable {
 
     @Override
     public String toString() {
-        return "ReActorSystemRef{" + "reActorSystemId=" + reActorSystemId + ", channelId=" + channelId + ", " +
-               "backingDriver=" + backingDriver + ", gateProperties=" + gateProperties + '}';
+        return "ReActorSystemRef{" +
+               "reActorSystemId=" + reActorSystemId +
+               ", channelId=" + channelId +
+               ", backingDriver=" + backingDriver +
+               ", gateProperties=" + gateProperties +
+               '}';
     }
 
     @Override
@@ -136,14 +152,18 @@ public class ReActorSystemRef implements Externalizable {
          */
         ChannelId sourceChannelId = new ChannelId();
         sourceChannelId.readExternal(in);
-        ReActorSystemDriver.getDriverCtx()
-                      .flatMap(driverCtx -> driverCtx.getLocalReActorSystem()
-                                                     .findGate(reActorSystemId,
-                                                               sourceChannelId.equals(ChannelId.INVALID_CHANNEL_ID)
-                                                               ? driverCtx.getDecodingDriver().getChannelId()
-                                                               : sourceChannelId))
-                      .ifPresent(gateRoute -> { setBackingDriver(gateRoute.getBackingDriver());
-                                                setGateProperties(gateRoute.getGateProperties()); });
+        DriverCtx driverCtx = ReActorSystemDriver.getDriverCtx();
+        if (driverCtx != null) {
+            ReActorSystemRef gateForReActor = driverCtx.getLocalReActorSystem()
+                                                       .findGate(reActorSystemId, sourceChannelId.equals(ChannelId.INVALID_CHANNEL_ID)
+                                                                                  ? driverCtx.getDecodingDriver()
+                                                                                             .getChannelId()
+                                                                                  : sourceChannelId);
+            if (gateForReActor != null) {
+                setBackingDriver(gateForReActor.getBackingDriver());
+                setGateProperties(gateForReActor.getGateProperties());
+            }
+        }
         setChannelId(getBackingDriver().getChannelId());
     }
     private void setReActorSystemId(ReActorSystemId reActorSystemId) {

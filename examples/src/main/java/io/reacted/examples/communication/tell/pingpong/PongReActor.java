@@ -9,13 +9,13 @@
 package io.reacted.examples.communication.tell.pingpong;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.runtime.Dispatcher;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BasicMbox;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 
 import javax.annotation.Nonnull;
 import java.util.Timer;
@@ -46,11 +46,11 @@ public class PongReActor implements ReActor {
     }
 
     public void onPing(ReActorContext raCtx, Ping ping) {
-        System.out.printf("Pong received a ping for seq %d%n", ping.getPingValue());
+        System.out.printf("Pong received a ping for seq %d%n", ping.pingValue());
         //Schedule a reply after 1 second
         pongTimer.schedule(new TimerTask() {
             @Override
-            public void run() { raCtx.reply(new Pong(ping.getPingValue())); }
+            public void run() { raCtx.reply(new Pong(ping.pingValue())); }
         }, 1000);
     }
 

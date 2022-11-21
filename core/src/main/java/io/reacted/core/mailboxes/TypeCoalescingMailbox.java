@@ -11,7 +11,6 @@ package io.reacted.core.mailboxes;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -19,8 +18,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -32,7 +29,7 @@ public class TypeCoalescingMailbox implements MailBox {
     private final Deque<Class<? extends Serializable>> lastAdded;
 
     public TypeCoalescingMailbox() {
-        this.latestByPayloadType = new HashMap<>(100, 0.5f);
+        this.latestByPayloadType = new HashMap<>();
         this.pendingUpdatedTypes = ConcurrentHashMap.newKeySet(100);
         this.lastAdded = new LinkedBlockingDeque<>();
     }
@@ -72,11 +69,5 @@ public class TypeCoalescingMailbox implements MailBox {
             }
         }
         return DeliveryStatus.DELIVERED;
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
-        return CompletableFuture.completedFuture(Try.of(() -> deliver(message)));
     }
 }

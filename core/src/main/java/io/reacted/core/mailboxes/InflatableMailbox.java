@@ -46,10 +46,10 @@ public class InflatableMailbox extends BasicMbox {
     @Override
     public DeliveryStatus deliver(Message message) {
         if (isFull()) {
-            return DeliveryStatus.BACKPRESSURED;
+            return DeliveryStatus.NOT_DELIVERED;
         }
         synchronized (mailboxCapacity) {
-            return isFull() ? DeliveryStatus.BACKPRESSURED
+            return isFull() ? DeliveryStatus.NOT_DELIVERED
                             : super.deliver(message);
         }
     }

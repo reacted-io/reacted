@@ -17,15 +17,16 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import javax.annotation.Nullable;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
+import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.WireKey;
-import javax.annotation.Nullable;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
 
 @NonNullByDefault
 public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
@@ -74,42 +75,48 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     }
 
     @Override
-    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
-
-    @Override
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return sendMessage(Objects.requireNonNull(chronicle)
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+        return sendMessage(getLocalReActorSystem(),
+                           Objects.requireNonNull(chronicle)
                                   .acquireAppender(), getDriverConfig().getTopic(), message);
     }
 
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {
-        Pauser readPauser = Pauser.millis(100, 500);
+        Pauser readPauser = Pauser.balanced();
 
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
 
-            @SuppressWarnings("ConstantConditions")
-            var newMessage = Try.withResources(cqTailer::readingDocument,
-                                               documentCtx -> documentCtx.isPresent()
-                                                              ? documentCtx.wire().read(getDriverConfig().getTopic())
-                                                                                  .object(Message.class)
-                                                              : null)
-                                .orElse(null,
-                                        error -> getLocalReActorSystem().logError("Unable to properly decode message",
-                                                                                  error));
+            Message newMessage = null;
+            try(DocumentContext docCtx = cqTailer.readingDocument()) {
+                if (docCtx.isPresent()) {
+                    newMessage = docCtx.wire().read(getDriverConfig().getTopic())
+                                       .object(Message.class);
+                    readPauser.reset();
+                }
+            } catch (Exception anyException) {
+                getLocalReActorSystem().logError("Unable to properly decode message", anyException);
+            }
+
             if (newMessage == null) {
                 readPauser.pause();
-                readPauser.reset();
                 continue;
             }
 
             offerMessage(newMessage);
         }
     }
-    private static Try<DeliveryStatus> sendMessage(ExcerptAppender cqAppender, WireKey topic,  Message message) {
-        return Try.ofRunnable(() -> cqAppender.writeMessage(topic, message))
-                  .map(success -> DeliveryStatus.DELIVERED);
+    private static DeliveryStatus sendMessage(ReActorSystem localReActorSystem,
+                                              ExcerptAppender cqAppender, WireKey topic,  Message message) {
+        try {
+            cqAppender.writeMessage(topic, message);
+            return DeliveryStatus.SENT;
+        } catch (Exception sendError) {
+            localReActorSystem.logError("Error sending message {}", message.toString(),
+                                        sendError);
+            return DeliveryStatus.NOT_SENT;
+        }
     }
 }

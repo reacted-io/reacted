@@ -10,14 +10,12 @@ package io.reacted.core.mailboxes;
 
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.concurrent.CompletionStage;
 
 @ParametersAreNonnullByDefault
-public interface MailBox extends AutoCloseable {
+public interface MailBox {
     boolean isEmpty();
 
     boolean isFull();
@@ -32,10 +30,5 @@ public interface MailBox extends AutoCloseable {
     @Nonnull
     DeliveryStatus deliver(Message message);
 
-    @Nonnull
-    CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message);
-
     default void request(long messagesNum) { }
-    @Override
-    default void close() throws Exception { }
 }

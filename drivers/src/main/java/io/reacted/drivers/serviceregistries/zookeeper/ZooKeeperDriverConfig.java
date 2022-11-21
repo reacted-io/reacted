@@ -9,11 +9,10 @@
 package io.reacted.drivers.serviceregistries.zookeeper;
 
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
-import io.reacted.patterns.ObjectUtils;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
-
+import io.reacted.patterns.ObjectUtils;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.Executor;
@@ -23,10 +22,10 @@ import java.util.concurrent.TimeUnit;
 @NonNullByDefault
 public class ZooKeeperDriverConfig extends ServiceRegistryConfig<ZooKeeperDriverConfig.Builder, ZooKeeperDriverConfig> {
     public static final String ZOOKEEPER_DEFAULT_CONNECTION_STRING = "localhost:2181";
-    public static final Duration ZOOKEEPER_DEFAULT_PING_INTERVAL = Duration.ofSeconds(20);
-    public static final Duration ZOOKEEPER_DEFAULT_SESSION_TIMEOUT = Duration.ofMinutes(2);
-    public static final Duration ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT = Duration.ofMinutes(2);
-    public static final Duration ZOOKEEPER_DEFAULT_RECONNECTION_DELAY = Duration.ofSeconds(2);
+    public static final Duration ZOOKEEPER_DEFAULT_PING_INTERVAL = Duration.ofSeconds(2);
+    public static final Duration ZOOKEEPER_DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(8);
+    public static final Duration ZOOKEEPER_DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(8);
+    public static final Duration ZOOKEEPER_DEFAULT_RECONNECTION_DELAY = Duration.ofSeconds(1);
     public static final int ZOOKEEPER_DEFAULT_MAX_RECONNECTION_ATTEMPTS = 20;
     private final Duration pingInterval;
     private final Duration sessionTimeout;

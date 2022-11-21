@@ -76,7 +76,7 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
         synchronized (logFile) {
             logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
                            Instant.now(),
@@ -88,25 +88,7 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
             logFile.flush();
         }
         return destination.isStop()
-               ? Try.ofSuccess(DeliveryStatus.NOT_DELIVERED)
+               ? DeliveryStatus.NOT_DELIVERED
                : localDeliver(destination, message);
-    }
-
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        synchronized (logFile) {
-
-            logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
-                           Instant.now(),
-                           message.getSender().getReActorId().getReActorName(),
-                           message.getDestination().getReActorId().getReActorName(),
-                           message.getSequenceNumber(),
-                           message.getPayload().getClass().toString(),
-                           message.getPayload());
-            logFile.flush();
-        }
-        return destination.isStop()
-               ? CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.NOT_DELIVERED))
-               : asyncLocalDeliver(destination, message);
     }
 }

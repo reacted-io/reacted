@@ -8,7 +8,6 @@
 
 package io.reacted.examples.communication.tell.ping;
 
-import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.examples.ExampleUtils;
 
@@ -33,12 +32,12 @@ class SendMessagesApp {
                                                          simpleReActorSystem.shutDown();
                                                      });
         //Let's ping our new reactor
-        newReActorReference.tell(ReActorRef.NO_REACTOR_REF, new PreparationRequest())
-                           .toCompletableFuture()
-                           .join()
-                           .filter(DeliveryStatus::isDelivered)
-                           .ifSuccessOrElse(success -> System.out.println("Preparation request has been delivered"),
-                                            error -> System.err.println("Error communicating with reactor"));
+        if ( newReActorReference.tell(ReActorRef.NO_REACTOR_REF, new PreparationRequest())
+                                .isDelivered()) {
+          System.out.println("Preparation request has been delivered");
+        } else {
+          System.err.println("Error communicating with reactor");
+        }
 
         IntStream.range(0, messagesToSend)
                  .parallel()

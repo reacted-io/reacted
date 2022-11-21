@@ -24,24 +24,21 @@ import io.reacted.core.utils.ReActedUtils;
 import io.reacted.flow.operators.messages.OperatorInitComplete;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.patterns.annotations.unstable.Unstable;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
 
 import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 @NonNullByDefault
+@Unstable
 public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builder<CfgBuilderT, CfgT>,
                                    CfgT extends FlowOperatorConfig<CfgBuilderT, CfgT>>
     implements ReActor {
@@ -92,20 +89,21 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
     @SuppressWarnings("EmptyMethod")
     protected void onInit(ReActorContext raCtx, ReActorInit init) {
         BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
-                          .map(mbox -> mbox.addNonDelayedMessageTypes(Set.of(RefreshOperatorRequest.class,
-                                                                             OperatorOutputGatesUpdate.class)))
+                          .map(mbox -> mbox.addNonDelayableTypes(Set.of(RefreshOperatorRequest.class,
+                                                                        OperatorOutputGatesUpdate.class)))
                           /* If this init is not delayed, an slot of the backpressuring buffer size
                              has been consumed to deliver init itself, so we must make it available
                              otherwise we will permanently leak 1 from buffer size
                           */
-                          .filter(mbox -> !mbox.getNotDelayedMessageTypes().contains(ReActorInit.class))
+                          .filter(mbox -> mbox.isDelayable(ReActorInit.class))
                           .ifPresent(mbox -> mbox.request(1));
         // Constantly refresh the gates. The idea is to automatically discover new available operators
         this.operatorsRefreshTask = raCtx.getReActorSystem()
             .getSystemSchedulingService()
-            .scheduleWithFixedDelay(() -> ReActedUtils.ifNotDelivered(raCtx.selfTell(new RefreshOperatorRequest()),
-                                                                      error -> raCtx.logError("Unable to request refresh of operator outputs",
-                                                                                              error)),
+            .scheduleWithFixedDelay(() -> {
+                if (!raCtx.selfTell(new RefreshOperatorRequest()).isSent()) {
+                    raCtx.logError("Unable to request refresh of operator outputs");
+                }},
                                     0, operatorCfg.getOutputOperatorsRefreshPeriod()
                                                   .toNanos(), TimeUnit.NANOSECONDS);
     }
@@ -162,7 +160,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
             .thenAccept(lastDelivery -> raCtx.getMbox().request(1));
     }
 
-    protected CompletionStage<Try<DeliveryStatus>>
+    protected CompletionStage<DeliveryStatus>
     propagate(CompletionStage<Collection<? extends Serializable>> operatorOutput,
               Serializable inputMessage, ReActorContext raCtx) {
         Consumer<Throwable> onDeliveryError = error -> onFailedDelivery(error, raCtx, inputMessage);
@@ -171,7 +169,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                                                                                                                                     msgToDst.getValue(),
                                                                                                                                     raCtx, msgToDst.getKey()))
                                                                                                 .reduce((first, second) -> ReActedUtils.composeDeliveries(first, second, onDeliveryError))
-                                                                                                .orElse(CompletableFuture.completedStage(Try.ofSuccess(DeliveryStatus.DELIVERED))));
+                                                                                                .orElse(CompletableFuture.completedStage(DeliveryStatus.DELIVERED)));
     }
     protected Map<Collection<ReActorRef>, ? extends Collection<? extends Serializable>>
     routeOutputMessageAfterFiltering(Collection<? extends Serializable> outputMessages) {
@@ -181,7 +179,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                                                                 ? ifPredicateOutputOperatorsRefs
                                                                 : thenElseOutputOperatorsRefs));
     }
-    protected CompletionStage<Try<DeliveryStatus>>
+    protected CompletionStage<DeliveryStatus>
     forwardToOperators(Consumer<Throwable> onDeliveryError,
                        Collection<? extends Serializable> messages,
                        ReActorContext raCtx, Collection<ReActorRef> nextStages) {
@@ -189,7 +187,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                        .flatMap(output -> nextStages.stream()
                                                     .map(dst -> dst.atell(raCtx.getSelf(), output)))
                        .reduce((first, second) -> composeDeliveries(first, second, onDeliveryError))
-                       .orElseGet(() -> CompletableFuture.completedFuture(Try.ofSuccess(DeliveryStatus.DELIVERED)));
+                       .orElseGet(() -> CompletableFuture.completedFuture(DeliveryStatus.DELIVERED));
     }
     @SuppressWarnings("SameReturnValue")
     protected  <InputT extends Serializable>
@@ -213,21 +211,14 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
         }
     }
 
-    private static class OperatorOutputGatesUpdate implements Serializable {
-        private final Collection<ReActorRef> ifPredicateServices;
-        private final Collection<ReActorRef> thenElseServices;
-
-        public OperatorOutputGatesUpdate(Collection<ReActorRef> ifPredicateServices,
-                                         Collection<ReActorRef> thenElseServices) {
-            this.ifPredicateServices = ifPredicateServices;
-            this.thenElseServices = thenElseServices;
-        }
+    private record OperatorOutputGatesUpdate(Collection<ReActorRef> ifPredicateServices,
+                                             Collection<ReActorRef> thenElseServices) implements Serializable {
         @Override
-        public String toString() {
-            return "OperatorOutputGatesUpdate{" +
-                   "ifPredicateServices=" + ifPredicateServices +
-                   ", thenElseServices=" + thenElseServices +
-                   '}';
+            public String toString() {
+                return "OperatorOutputGatesUpdate{" +
+                        "ifPredicateServices=" + ifPredicateServices +
+                        ", thenElseServices=" + thenElseServices +
+                        '}';
+            }
         }
-    }
 }

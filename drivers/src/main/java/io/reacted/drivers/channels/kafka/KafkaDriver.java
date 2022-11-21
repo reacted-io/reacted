@@ -89,14 +89,17 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return Try.of(() -> Objects.requireNonNull(kafkaProducer)
-                                   .send(new ProducerRecord<>(getDriverConfig().getTopic(), message)).get())
-                  .map(metaData -> DeliveryStatus.DELIVERED);
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+        try {
+            Objects.requireNonNull(kafkaProducer)
+                   .send(new ProducerRecord<>(getDriverConfig().getTopic(), message)).get();
+            return DeliveryStatus.SENT;
+        } catch (Exception sendError) {
+            getLocalReActorSystem().logError("Error sending message {}", message.toString(),
+                                             sendError);
+            return DeliveryStatus.NOT_SENT;
+        }
     }
-
-    @Override
-    public boolean channelRequiresDeliveryAck() { return true; }
 
     private static Consumer<Long, Message> createConsumer(KafkaDriverConfig driverConfig) {
         Properties props = new Properties();

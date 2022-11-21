@@ -15,11 +15,12 @@ import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.flow.ReActedGraph;
 import io.reacted.flow.operators.map.MapOperatorConfig;
 import io.reacted.flow.operators.reduce.ReduceOperatorConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ReducingExample {
   private static final Logger LOGGER = LoggerFactory.getLogger(ReducingExample.class);
@@ -34,6 +35,7 @@ public class ReducingExample {
                                                                           .setDispatcherThreadsNum(2)
                                                                           .build())
                                                       .build()).initReActorSystem();
+    @SuppressWarnings("unchecked")
     var graph = ReActedGraph.newBuilder()
                             .setDispatcherName(graphDispatcher)
                             .setReActorName("GraphController")

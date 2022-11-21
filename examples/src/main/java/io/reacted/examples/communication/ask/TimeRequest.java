@@ -10,5 +10,4 @@ package io.reacted.examples.communication.ask;
 
 import java.io.Serializable;
 
-class TimeRequest implements Serializable {
-}
+record TimeRequest() implements Serializable { }

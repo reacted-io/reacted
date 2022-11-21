@@ -10,14 +10,5 @@ package io.reacted.examples.typedsubscription;
 
 import java.io.Serializable;
 
-class Update implements Serializable {
-    private final int updateId;
-
-    Update(int updateId) {
-        this.updateId = updateId;
-    }
-
-    int getUpdateId() {
-        return updateId;
-    }
+record Update(int updateId) implements Serializable {
 }

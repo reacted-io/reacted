@@ -8,8 +8,6 @@
 
 package io.reacted.core.reactorsystem;
 
-import static org.mockito.Mockito.mock;
-
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
@@ -25,16 +23,19 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.Try;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import org.awaitility.Awaitility;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
+import static org.mockito.Mockito.mock;
 
 class ReActorSystemTest {
     private static final String DISPATCHER_NAME = "TestDispatcher";
@@ -105,8 +106,8 @@ class ReActorSystemTest {
 
         Assertions.assertTrue(reActorRef.isSuccess());
         ReActorId reActorId = reActorRef.get().getReActorId();
-        Assertions.assertTrue(reActorSystem.getReActor(reActorId).isPresent());
-        Assertions.assertFalse(reActorSystem.getReActor(reActorId).isEmpty());
+        Assertions.assertNotNull(reActorSystem.getReActorCtx(reActorId));
+        Assertions.assertNotNull(reActorSystem.getReActorCtx(reActorId));
     }
 
     @Test
@@ -115,12 +116,12 @@ class ReActorSystemTest {
         Try<ReActorRef> childReActor = reActorSystem.spawnChild(ReActions.NO_REACTIONS, fatherActor.get(),
                                                                 childReActorConfig);
         childReActor.map(ReActorRef::getReActorId)
-                    .map(reActorSystem::getReActor)
-                    .ifSuccessOrElse(raCtx -> Assertions.assertTrue(raCtx.isPresent()),
-                                     Assertions::fail);
+                    .map(reActorSystem::getReActorCtx)
+                    .ifSuccessOrElse(Assertions::assertNotNull, Assertions::fail);
 
         Optional<ReActorContext> reActor = fatherActor.map(ReActorRef::getReActorId)
-                                                      .map(reActorSystem::getReActor)
+                                                      .map(reActorSystem::getReActorCtx)
+                                                      .map(Optional::ofNullable)
                                                       .orElseSneakyThrow();
         childReActor.ifSuccessOrElse(child -> reActor.map(ReActorContext::getChildren)
                                                      .filter(children -> children.size() == 1)
@@ -151,7 +152,7 @@ class ReActorSystemTest {
                                                            childReActorConfig)
                                                .orElseSneakyThrow();
 
-        Optional<ReActorContext> fatherCtx = reActorSystem.getReActor(fatherActor.getReActorId());
+        Optional<ReActorContext> fatherCtx = Optional.ofNullable(reActorSystem.getReActorCtx(fatherActor.getReActorId()));
 
         Set<ReActorRef> children = fatherCtx.map(ReActorContext::getChildren)
                                              .orElse(Set.of());

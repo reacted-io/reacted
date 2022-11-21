@@ -47,7 +47,7 @@ public class DataLink implements Externalizable {
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         Objects.requireNonNull(generatingReActorSystem).writeExternal(out);
-        out.writeInt(Objects.requireNonNull(ackingPolicy).ordinal());
+        out.writeObject(Objects.requireNonNull(ackingPolicy));
     }
 
     @Override
@@ -55,7 +55,7 @@ public class DataLink implements Externalizable {
         var receivedGeneratingReActorSystem = new ReActorSystemId();
         receivedGeneratingReActorSystem.readExternal(in);
         setGeneratingReActorSystem(receivedGeneratingReActorSystem);
-        setAckingPolicy(AckingPolicy.values()[in.readInt()]);
+        setAckingPolicy((AckingPolicy)in.readObject());
     }
 
     public void setGeneratingReActorSystem(ReActorSystemId generatingReActorSystem) {

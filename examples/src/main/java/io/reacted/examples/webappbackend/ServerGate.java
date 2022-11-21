@@ -36,7 +36,6 @@ public class ServerGate implements ReActor, HttpHandler {
     private final ExecutorService asyncService;
     private final ExecutorService serverExecutor;
     private final ConcurrentHashMap<String, HttpExchange> requestIdToHttpExchange;
-    @SuppressWarnings("NotNullFieldNotInitialized")
     private ReActorContext thisCtx;
     public ServerGate(HttpServer server, ExecutorService asyncExecutorService, ExecutorService serverExecutor) {
         this.server = Objects.requireNonNull(server);

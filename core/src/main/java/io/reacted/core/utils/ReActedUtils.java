@@ -10,13 +10,11 @@ package io.reacted.core.utils;
 
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 
 import java.io.Serializable;
 import java.time.Duration;
@@ -25,12 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.function.*;
 import java.util.stream.Stream;
 
 @NonNullByDefault
@@ -41,34 +34,36 @@ public final class ReActedUtils {
     resolveServices(Collection<ServiceDiscoverySearchFilter> filters, ReActorSystem localSystem,
                     Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector,
                     String uniqueRequestId) {
-        var results = filters.stream()
-                             .map(filter -> localSystem.serviceDiscovery(filter, uniqueRequestId))
-                             .map(discovery -> discovery.thenApplyAsync(reply -> reply.map(ServiceDiscoveryReply::getServiceGates)
-                                                                                      .map(gateSelector::apply)
-                                                                                      .peekFailure(error -> localSystem.logError("Error discovering services", error))
-                                                                                      .orElse(Optional.empty())
-                                                                                      .orElse(ReActorRef.NO_REACTOR_REF))
-                                                        .toCompletableFuture())
-                             .map(gate -> gate.thenApplyAsync(Stream::of))
-                             .reduce((first, second) -> first.thenCombine(second, Stream::concat))
-                             .orElse(CompletableFuture.completedFuture(Stream.empty()));
-        return results.thenApply(gates -> gates.filter(Predicate.not(ReActorRef.NO_REACTOR_REF::equals))
-                                               .collect(Collectors.toUnmodifiableList()));
+        var serviceDiscoveryRequests = filters.stream()
+                                              .map(filter -> localSystem.serviceDiscovery(filter,
+                                                                                          uniqueRequestId))
+                                              .map(request -> request.thenApplyAsync(reply -> gateSelector.apply(reply.getServiceGates())
+                                                                                                          .orElse(ReActorRef.NO_REACTOR_REF)))
+                                              .map(gate -> gate.thenApplyAsync(Stream::of))
+                                              .reduce((first, second) -> first.thenCombine(second, Stream::concat))
+                                              .orElse(CompletableFuture.completedFuture(Stream.empty()));
+        return serviceDiscoveryRequests.thenApply(gates -> gates.filter(Predicate.not(ReActorRef.NO_REACTOR_REF::equals))
+                                                                .toList());
     }
-    public static CompletionStage<Try<DeliveryStatus>>
-    composeDeliveries(CompletionStage<Try<DeliveryStatus>> first,
-                      CompletionStage<Try<DeliveryStatus>> second,
+    public static CompletionStage<DeliveryStatus>
+    composeDeliveries(CompletionStage<DeliveryStatus> first,
+                      CompletionStage<DeliveryStatus> second,
                       Consumer<Throwable> onFailedDelivery) {
         return ifNotDelivered(first, onFailedDelivery)
             .thenCompose(prevStep -> ifNotDelivered(second, onFailedDelivery));
     }
-    public static CompletionStage<Try<DeliveryStatus>>
-    ifNotDelivered(CompletionStage<Try<DeliveryStatus>> deliveryAttempt,
+    public static CompletionStage<DeliveryStatus>
+    ifNotDelivered(CompletionStage<DeliveryStatus> deliveryAttempt,
                    Consumer<Throwable> onFailedDelivery) {
-        return deliveryAttempt.thenApplyAsync(deliveryStatusTry ->
-                                              deliveryStatusTry.filter(DeliveryStatus::isDelivered,
-                                                                       DeliveryException::new)
-                                                               .peekFailure(onFailedDelivery));
+        deliveryAttempt.handle((deliveryStatus, error) -> {
+            if (error != null) {
+                onFailedDelivery.accept(error); return null;
+            } else if (!deliveryStatus.isDelivered()) {
+                onFailedDelivery.accept(new DeliveryException());
+            }
+            return null;
+        });
+        return deliveryAttempt;
     }
 
     public static  <PayloadT extends Serializable>

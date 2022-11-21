@@ -17,20 +17,22 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-import net.openhft.chronicle.queue.ChronicleQueue;
-import net.openhft.chronicle.queue.ExcerptTailer;
-import net.openhft.chronicle.threads.Pauser;
-import org.apache.log4j.Logger;
-
-import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import javax.annotation.Nullable;
+import net.openhft.chronicle.queue.ChronicleQueue;
+import net.openhft.chronicle.queue.ExcerptTailer;
+import net.openhft.chronicle.queue.RollCycles;
+import net.openhft.chronicle.threads.Pauser;
+import net.openhft.chronicle.wire.DocumentContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @NonNullByDefault
 public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
-    private static final Logger LOGGER = Logger.getLogger(CQLocalDriver.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CQLocalDriver.class);
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
@@ -43,6 +45,7 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
         this.chronicle = ChronicleQueue.singleBuilder(getDriverConfig().getChronicleFilesDir())
+                                       .rollCycle(RollCycles.MINUTELY)
                                        .build();
         this.cqTailer = chronicle.createTailer().toEnd();
     }
@@ -61,17 +64,31 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
 
     @Override
-    public CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(sendMessage(destination, message));
+    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
+        if (!message.getDataLink().getAckingPolicy().isAckRequired()) {
+            return super.sendAsyncMessage(destination, message);
+        }
+        CompletionStage<DeliveryStatus> pendingAck = newPendingAckTrigger(message.getSequenceNumber());
+
+        DeliveryStatus localDeliveryStatus = sendMessage(destination, message);
+        if (localDeliveryStatus == DeliveryStatus.SENT) {
+            return pendingAck;
+        }
+        removePendingAckTrigger(message.getSequenceNumber());
+        return DELIVERY_RESULT_CACHE[localDeliveryStatus.ordinal()];
     }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
-        return sendMessage(message);
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+        try {
+            Objects.requireNonNull(chronicle).acquireAppender()
+                   .writeMessage(getDriverConfig().getTopic(), message);
+            return DeliveryStatus.SENT;
+        } catch (Exception anyException) {
+            getLocalReActorSystem().logError("Unable to send message {}", message, anyException);
+            return DeliveryStatus.NOT_SENT;
+        }
     }
-
-    @Override
-    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
 
     @Override
     public CompletionStage<Try<Void>> cleanDriverLoop() {
@@ -79,31 +96,24 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     }
 
     private void chronicleMainLoop(ExcerptTailer tailer) {
-        var waitForNextMsg = Pauser.millis(100, 500);
+        var waitForNextMsg = Pauser.balanced();
 
         while(!Thread.currentThread().isInterrupted()) {
+            try(DocumentContext docCtx = tailer.readingDocument()) {
+                if(docCtx.isPresent()) {
+                    Message newMessage = docCtx.wire().read(getDriverConfig().getTopic())
 
-            @SuppressWarnings("ConstantConditions")
-            var newMessage = Try.withResources(tailer::readingDocument,
-                                               dCtx -> dCtx.isPresent()
-                                                       ? dCtx.wire().read(getDriverConfig().getTopic())
-                                                                    .object(Message.class)
-                                                       : null)
-                                .orElse(null, error -> LOGGER.error("Unable to decode data", error));
-
-            if (newMessage == null) {
-                waitForNextMsg.pause();
-                waitForNextMsg.reset();
-                continue;
+                                       .object(Message.class);
+                    if (newMessage != null) {
+                        waitForNextMsg.reset();
+                        offerMessage(newMessage);
+                    } else {
+                        waitForNextMsg.pause();
+                    }
+                }
+            } catch (Exception anyException) {
+                LOGGER.error("Unable to decode data", anyException);
             }
-            offerMessage(newMessage);
         }
-        Thread.currentThread().interrupt();
-    }
-    private Try<DeliveryStatus> sendMessage(Message message) {
-        return Try.ofRunnable(() -> Objects.requireNonNull(Objects.requireNonNull(chronicle)
-                                                                  .acquireAppender())
-                                           .writeMessage(getDriverConfig().getTopic(), message))
-                  .map(dummy -> DeliveryStatus.DELIVERED);
     }
 }

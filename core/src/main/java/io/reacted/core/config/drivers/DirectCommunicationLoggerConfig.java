@@ -29,6 +29,12 @@ public class DirectCommunicationLoggerConfig extends ChannelDriverConfig<DirectC
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String logFilePath;
         private Builder() { }
+
+        /**
+         * Set the path to the file that will be used to store the messages logs
+         * @param logFilePath A path to a file. If not existent, it will be created, otherwise appended
+         * @return this {@link Builder}
+         */
         public final Builder setLogFilePath(String logFilePath) {
             this.logFilePath = logFilePath;
             return this;

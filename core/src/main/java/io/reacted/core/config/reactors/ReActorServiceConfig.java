@@ -13,10 +13,9 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.core.services.LoadBalancingPolicy;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.UnChecked;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Objects;
@@ -131,7 +130,7 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
          * A service automatically try to publish itself to the connected service registries. If an error should occur,
          * the service would not be discoverable. This parameter defines in how long the service should reattempt to
          * publish itself on the service registries
-         *
+         * <p>
          * Default value: {@link ReActorServiceConfig#DEFAULT_SERVICE_REPUBLISH_ATTEMPT_ON_ERROR_DELAY}
          *
          * @param republicationReattemptDelayOnError delay after than the republication should be reattempted
@@ -143,23 +142,25 @@ public abstract class ReActorServiceConfig<BuilderT extends ReActiveEntityConfig
         }
 
         /**
-         * Specify if this service should be published or not.
-         * If the service is marked as non remote, service discovery subscription is automatically
-         * enabled for this service.
-         * If the desired behaviour should be different, the subscriptions can be overridden
-         * using {@link ReActiveEntityConfig.Builder#setTypedSubscriptions(TypedSubscription...)}
+         * Specify if this service should be made remotely available or not. Default: false
+         * If the service is marked as non-remote, service discovery subscription is automatically
+         * locally enabled and remotely disabled for this service; the other way around if a service
+         * is marked as remotely available
          *
          * @param remoteService true if this service is meant to be published on the registries
          * @return this builder
          */
         public final BuilderT setIsRemoteService(boolean remoteService) {
             this.remoteService = remoteService;
-            if (!remoteService) {
-                setTypedSubscriptions(Stream.concat(Arrays.stream(super.typedSubscriptions),
-                                                    Stream.of(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class)))
-                                            .distinct()
-                                            .toArray(TypedSubscription[]::new));
-            }
+            var serviceSubscription = remoteService
+                                      ? TypedSubscription.FULL.forType(ServiceDiscoveryRequest.class)
+                                      : TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class);
+
+            setTypedSubscriptions(Stream.concat(Arrays.stream(super.typedSubscriptions),
+                                                Stream.of(serviceSubscription))
+                                        .distinct()
+                                        .toArray(TypedSubscription[]::new));
+
             return getThis();
         }
     }

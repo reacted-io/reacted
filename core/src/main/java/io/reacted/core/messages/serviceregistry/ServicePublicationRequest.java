@@ -12,6 +12,7 @@ import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.patterns.NonNullByDefault;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Properties;
@@ -20,6 +21,7 @@ import java.util.Properties;
 @NonNullByDefault
 public class ServicePublicationRequest implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1;
     private static final long SERVICE_GATE_OFFSET = SerializationUtils.getFieldOffset(ServicePublicationRequest.class,
                                                                                       "serviceGate")

@@ -9,12 +9,11 @@
 package io.reacted.examples.communication.ask;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.runtime.Dispatcher;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.reactors.ReActions;
+import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.examples.ExampleUtils;
-import io.reacted.patterns.Try;
 
 import java.io.FileNotFoundException;
 import java.time.Instant;
@@ -47,7 +46,6 @@ public class ReactiveClockApp {
         //Note: we do not need another reactor to intercept the answer
         reactiveClock.ask(new TimeRequest(), Instant.class, "What's the time?")
                      //Ignore the exception, it's just an example
-                     .thenApply(Try::orElseSneakyThrow)
                      .thenAccept(time -> System.out.printf("It's %s%n",
                                                            ZonedDateTime.ofInstant(time, ZoneId.systemDefault())))
                      .thenAcceptAsync(nullValue -> reActorSystem.shutDown());

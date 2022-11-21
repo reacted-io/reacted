@@ -26,6 +26,7 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 @NonNullByDefault
 class RegistryGatesCentralizedManager {
@@ -52,17 +53,18 @@ class RegistryGatesCentralizedManager {
     public LoopbackDriver<? extends ChannelDriverConfig<?, ?>> getLoopbackDriver() { return loopbackDriver; }
     public ReActorSystemRef getLoopBack() { return loopBack; }
 
-    public Optional<ReActorSystemRef> findGate(@Nonnull ReActorSystemId reActorSystemId,
-                                               @Nonnull ChannelId preferredChannelId) {
+    @Nullable
+    public ReActorSystemRef findGate(@Nonnull ReActorSystemId reActorSystemId,
+                                     @Nonnull ChannelId preferredChannelId) {
         if (ReActorSystemDriver.isLocalReActorSystem(localReActorSystemId, reActorSystemId)) {
-            return Optional.of(loopBack);
+            return loopBack;
         }
         var routesToReActorSystem = reActorSystemsGates.getOrDefault(reActorSystemId, Map.of());
         var route = routesToReActorSystem.get(preferredChannelId);
         if (route == null && routesToReActorSystem.size() != 0) {
-            return routesToReActorSystem.values().stream().findAny();
+            return routesToReActorSystem.values().stream().findAny().orElse(null);
         }
-        return Optional.ofNullable(route);
+        return route;
     }
 
     public Collection<ReActorSystemRef> findGates(@Nonnull ReActorSystemId reActorSystemId) {

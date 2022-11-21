@@ -11,10 +11,7 @@ package io.reacted.core.mailboxes;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import javax.annotation.Nonnull;
 
 @NonNullByDefault
@@ -39,10 +36,4 @@ public class NullMailbox implements MailBox {
     @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) { return DeliveryStatus.DELIVERED; }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
-        return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
-    }
 }

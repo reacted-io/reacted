@@ -11,14 +11,13 @@ package io.reacted.core.config.reactorsystem;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ServiceRegistryConfig;
-import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
+import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.reactors.systemreactors.SystemMonitor;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
-
+import io.reacted.patterns.ObjectUtils;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Objects;
@@ -30,11 +29,11 @@ public class ReActorSystemConfig {
     public static final int DEFAULT_FANOUT_POOL_SIZE = 1;
     public static final LocalDriver<? extends ChannelDriverConfig<?, ?>> DEFAULT_LOCAL_DRIVER = SystemLocalDrivers.DIRECT_COMMUNICATION;
     public static final Duration SYSTEM_MONITOR_DEFAULT_REFRESH_RATE = Duration.ofSeconds(20);
-    public static final int DEFAULT_EXPECTED_REACTORS_NUM = 1_000_000;
+    public static final int DEFAULT_MAXIMUM_REACTORS_NUM = 1_000_000;
     private final String reactorSystemName;
     private final boolean recordedExecution;
     private final int msgFanOutPoolSize;
-    private final int expectedReActorsNum;
+    private final int maximumReActorsNum;
     private final Duration systemMonitorRefreshInterval;
     private final LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver;
     private final Set<DispatcherConfig> dispatchersConfigs;
@@ -57,9 +56,9 @@ public class ReActorSystemConfig {
         this.remotingDrivers = Set.copyOf(reactorSystemConfig.remotingDrivers);
         this.serviceRegistryDrivers = Set.copyOf(reactorSystemConfig.serviceRegistryDrivers);
         this.systemMonitorRefreshInterval = ObjectUtils.checkNonNullPositiveTimeInterval(reactorSystemConfig.systemMonitorRefreshInterval);
-        this.expectedReActorsNum = ObjectUtils.requiredInRange(reactorSystemConfig.expectedReActorsNum,
-                                                               1, Integer.MAX_VALUE / 2,
-                                                               IllegalArgumentException::new);
+        this.maximumReActorsNum = ObjectUtils.requiredInRange(reactorSystemConfig.expectedReActorsNum,
+                                                              1, Integer.MAX_VALUE / 2,
+                                                              IllegalArgumentException::new);
     }
 
     public String getReActorSystemName() { return reactorSystemName; }
@@ -81,7 +80,7 @@ public class ReActorSystemConfig {
 
     public Duration getSystemMonitorRefreshInterval() { return systemMonitorRefreshInterval; }
 
-    public int getExpectedReActorsNum() { return expectedReActorsNum; }
+    public int getMaximumReActorsNum() { return maximumReActorsNum; }
     public static Builder newBuilder() { return new Builder(); }
 
     public static class Builder {
@@ -91,7 +90,7 @@ public class ReActorSystemConfig {
         private LocalDriver<? extends ChannelDriverConfig<?, ?>> localDriver = DEFAULT_LOCAL_DRIVER;
         private Duration systemMonitorRefreshInterval = SYSTEM_MONITOR_DEFAULT_REFRESH_RATE;
         private boolean shallRecordExecution;
-        private int expectedReActorsNum = DEFAULT_EXPECTED_REACTORS_NUM;
+        private int expectedReActorsNum = DEFAULT_MAXIMUM_REACTORS_NUM;
         private final Set<DispatcherConfig> dispatcherConfigs = new HashSet<>();
         private final Set<RemotingDriver<? extends ChannelDriverConfig<?, ?>>> remotingDrivers = new HashSet<>();
         private final Set<ServiceRegistryDriver<? extends ServiceRegistryConfig.Builder<?, ?>,
@@ -197,7 +196,8 @@ public class ReActorSystemConfig {
         /**
          * Gives a hint regarding the expected maximum reactors population size
          * @param expectedReActorsNum An integer [1, Integer.MAX_VALUE / 2] representing the
-         *                            expected maximum reactor population size
+         *                            expected maximum reactor population size.
+         *                            Default {@link ReActorSystemConfig#DEFAULT_MAXIMUM_REACTORS_NUM}
          * @return this builder
          */
         public final Builder setExpectedReActorsNum(int expectedReActorsNum) {

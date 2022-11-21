@@ -10,24 +10,22 @@ package io.reacted.core.mailboxes;
 
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
-import io.reacted.patterns.Try;
+import io.reacted.patterns.ObjectUtils;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 @NonNullByDefault
 public class BoundedBasicMbox implements MailBox {
-    private final LinkedBlockingDeque<Message> inbox;
+    private final BlockingQueue<Message> inbox;
     private final int mailboxCapacity;
 
     public BoundedBasicMbox(int maxMsgs) {
         this.mailboxCapacity = ObjectUtils.requiredInRange(maxMsgs, 1, Integer.MAX_VALUE,
                                                            IllegalArgumentException::new);
-        this.inbox = new LinkedBlockingDeque<>(mailboxCapacity);
+        this.inbox = new ArrayBlockingQueue<>(mailboxCapacity);
     }
 
     @Override
@@ -41,7 +39,7 @@ public class BoundedBasicMbox implements MailBox {
 
     @Nonnull
     @Override
-    public Message getNextMessage() { return inbox.removeFirst(); }
+    public Message getNextMessage() { return inbox.remove(); }
 
     @Override
     public boolean isFull() { return inbox.remainingCapacity() == mailboxCapacity; }
@@ -49,12 +47,6 @@ public class BoundedBasicMbox implements MailBox {
     @Nonnull
     @Override
     public DeliveryStatus deliver(Message message) {
-        return inbox.offerLast(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.BACKPRESSURED;
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Try<DeliveryStatus>> asyncDeliver(Message message) {
-        return CompletableFuture.completedFuture(Try.ofSuccess(deliver(message)));
+        return inbox.offer(message) ? DeliveryStatus.DELIVERED : DeliveryStatus.NOT_DELIVERED;
     }
 }

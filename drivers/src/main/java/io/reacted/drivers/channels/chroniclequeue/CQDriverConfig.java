@@ -23,19 +23,22 @@ public class CQDriverConfig extends ChannelDriverConfig<CQDriverConfig.Builder, 
     private final String chronicleFilesDir;
     private final String topicName;
 
+    private final WireKey topicGetter;
+
     private CQDriverConfig(Builder configBuilder) {
         super(configBuilder);
         this.chronicleFilesDir = Objects.requireNonNull(configBuilder.chronicleFilesDir,
                                                         "Output directory cannot be null");
         this.topicName = Objects.requireNonNull(configBuilder.topicName,
                                                 "Topic name cannot be null");
+        this.topicGetter = () -> topicName;
     }
 
     public static Builder newBuilder() { return new Builder(); }
 
     public String getChronicleFilesDir() { return chronicleFilesDir; }
 
-    public WireKey getTopic() { return () -> topicName; }
+    public WireKey getTopic() { return topicGetter; }
 
     @Override
     public Properties getChannelProperties() {

@@ -23,11 +23,7 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
 import io.reacted.core.reactors.ReActorId;
-import io.reacted.core.reactorsystem.NullReActorSystemRef;
-import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.reactorsystem.*;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -38,24 +34,21 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 @NonNullByDefault
 public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> {
     public static final ThreadLocal<DriverCtx> REACTOR_SYSTEM_CTX = new InheritableThreadLocal<>();
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystemDriver.class);
+    @SuppressWarnings("unchecked")
+    protected static final CompletionStage<DeliveryStatus>[] DELIVERY_RESULT_CACHE = Arrays.stream(DeliveryStatus.values())
+                                                                                           .map(CompletableFuture::completedStage)
+                                                                                           .toArray(CompletionStage[]::new);
     private final ConfigT driverConfig;
-    private final Cache<Long, CompletableFuture<Try<DeliveryStatus>>> pendingAcksTriggers;
+    private final Cache<Long, CompletableFuture<DeliveryStatus>> pendingAcksTriggers;
     @Nullable
     private ScheduledFuture<?> cacheMaintenanceTask;
     @Nullable
@@ -71,7 +64,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
                                                                        .toMillis(), TimeUnit.MILLISECONDS)
                                                .initialCapacity(config.getAckCacheSize())
                                                .removalListener((RemovalListener<Long,
-                                                                 CompletableFuture<Try<DeliveryStatus>>>)
+                                                                 CompletableFuture<DeliveryStatus>>)
                                                                         ReActorSystemDriver::expireOnTimeout)
                                                .build();
     }
@@ -81,28 +74,108 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     public abstract UnChecked.CheckedRunnable getDriverLoop();
     public abstract ChannelId getChannelId();
     public abstract Properties getChannelProperties();
-    public abstract Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message);
-    public abstract CompletionStage<Try<DeliveryStatus>> sendAsyncMessage(ReActorContext destination, Message message);
-    public abstract boolean channelRequiresDeliveryAck();
+    /**
+     * @throws io.reacted.core.exceptions.DeliveryException when a driver specific delivery error occurs
+     */
+    public abstract DeliveryStatus sendMessage(ReActorContext destination, Message message);
+    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
+        return DELIVERY_RESULT_CACHE[sendMessage(destination, message).ordinal()];
+    }
 
     public ConfigT getDriverConfig() { return driverConfig; }
 
     /**
+     * Sends a message through this driver
+     *
      * @param src source of the message
      * @param dst destination of the message
-     * @param ackingPolicy A {@link AckingPolicy} defining how or if this message should be ack-ed
      * @param message payload
      * @param <PayloadT> any Serializable object
-     * @return a completion stage that is going to be completed on error or when the message is successfully delivered
-     *         to the target mailbox
+     * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
+     * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
+     * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public abstract <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
-    public abstract  <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    tell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+    public abstract <PayloadT extends Serializable> DeliveryStatus
+    tell(ReActorRef src, ReActorRef dst, PayloadT message);
+
+    /**
+     * Sends a message through this driver
+     *
+     * @param src source of the message
+     * @param dst destination of the message
+     * @param propagateToSubscribers a consumer that will be called for every new message will be invoked
+     *                               for propagating that message to its type-subscribers.
+     * @see io.reacted.core.typedsubscriptions.TypedSubscription
+     * @param message payload
+     * @param <PayloadT> any Serializable object
+     * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
+     * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
+     * baseline for this method is providing delivery guarantee to the local driver bus
+     */
+    public abstract  <PayloadT extends Serializable> DeliveryStatus
+    tell(ReActorRef src, ReActorRef dst,
          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message);
-    public abstract <PayloadT extends Serializable> CompletionStage<Try<DeliveryStatus>>
-    route(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
+    /**
+     * Sends a message through this driver. Type subscribers will not be notified
+     * @see io.reacted.core.typedsubscriptions.TypedSubscription
+     *
+     * @param src source of the message
+     * @param dst destination of the message
+     * @param message payload
+     * @param <PayloadT> any Serializable object
+     * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
+     * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
+     * baseline for this method is providing delivery guarantee to the local driver bus
+     */
+    public abstract <PayloadT extends Serializable> DeliveryStatus
+    route(ReActorRef src, ReActorRef dst, PayloadT message);
+    /**
+     * Sends a message through this driver requiring an ack as a confirmation of the delivery into the target reactor's
+     * mailbox. Type subscribers will not be notified.
+     * @see io.reacted.core.typedsubscriptions.TypedSubscription
+     *
+     * @param src source of the message
+     * @param dst destination of the message
+     * @param ackingPolicy the {@link AckingPolicy} that should be used for managing the ack control for this message
+     * @param message payload
+     * @param <PayloadT> any Serializable object
+     * @return A {@link CompletionStage} that is going to be completed when an ack from the destination reactor system
+     * is received containing the outcome of the delivery of the message into the target actor mailbox
+     */
+    public abstract <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    aroute(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
+    /**
+     * Sends a message through this driver requiring an ack as a confirmation of the delivery into the target reactor's
+     * mailbox.
+     *
+     * @param src source of the message
+     * @param dst destination of the message
+     * @param ackingPolicy the {@link AckingPolicy} that should be used for managing the ack control for this message
+     * @param message payload
+     * @param <PayloadT> any Serializable object
+     * @return A {@link CompletionStage} that is going to be completed when an ack from the destination reactor system
+     * is received containing the outcome of the delivery of the message into the target actor mailbox
+     */
+    public abstract <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
+    /**
+     * Sends a message through this driver requiring an ack as a confirmation of the delivery into the target reactor's
+     * mailbox.
+     *
+     * @param src source of the message
+     * @param dst destination of the message
+     * @param ackingPolicy the {@link AckingPolicy} that should be used for managing the ack control for this message
+     * @param propagateToSubscribers a consumer that will be called for every new message will be invoked
+     *                               for propagating that message to its type-subscribers.
+     * @see io.reacted.core.typedsubscriptions.TypedSubscription
+     * @param message payload
+     * @param <PayloadT> any Serializable object
+     * @return A {@link CompletionStage} that is going to be completed when an ack from the destination reactor system
+     * is received containing the outcome of the delivery of the message into the target actor mailbox
+     */
+    public abstract  <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message);
 
     protected void offerMessage(Message message) {
         getLocalReActorSystem().logError("Invalid message offering {}", message,
@@ -110,14 +183,14 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     }
 
     @Nullable
-    public CompletionStage<Try<DeliveryStatus>> removePendingAckTrigger(long msgSeqNum) {
+    public CompletionStage<DeliveryStatus> removePendingAckTrigger(long msgSeqNum) {
         var ackTrigger = pendingAcksTriggers.getIfPresent(msgSeqNum);
         pendingAcksTriggers.invalidate(msgSeqNum);
         return ackTrigger;
     }
 
-    public CompletionStage<Try<DeliveryStatus>> newPendingAckTrigger(long msgSeqNum) {
-        CompletableFuture<Try<DeliveryStatus>> newTrigger = new CompletableFuture<>();
+    public CompletionStage<DeliveryStatus> newPendingAckTrigger(long msgSeqNum) {
+        CompletableFuture<DeliveryStatus> newTrigger = new CompletableFuture<>();
         pendingAcksTriggers.put(msgSeqNum, newTrigger);
         return newTrigger;
     }
@@ -160,8 +233,9 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
         return cleanDriverLoop();
     }
 
-    public static Optional<DriverCtx> getDriverCtx() {
-        return Optional.ofNullable(REACTOR_SYSTEM_CTX.get());
+    @Nullable
+    public static DriverCtx getDriverCtx() {
+        return REACTOR_SYSTEM_CTX.get();
     }
 
     public ReActorSystem getLocalReActorSystem() { return Objects.requireNonNull(localReActorSystem); }
@@ -175,15 +249,11 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
         return localReActorSystemId.equals(msgDataLink.getGeneratingReActorSystem());
     }
 
-    protected static boolean isAckRequired(boolean isAckRequiredByChannel, AckingPolicy messageAckingPolicy) {
-        return messageAckingPolicy != AckingPolicy.NONE && isAckRequiredByChannel;
-    }
-
-    protected static CompletionStage<Try<DeliveryStatus>>
+    protected static DeliveryStatus
     sendDeliveryAck(ReActorSystem localReActorSystem, ChannelId gateChannelId,
-                    Try<DeliveryStatus> deliveryResult, Message originalMessage) {
+                    DeliveryStatus deliveryResult, Message originalMessage) {
         var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
-                                                           deliveryResult.orElse(DeliveryStatus.NOT_DELIVERED),
+                                                           deliveryResult,
                                                            localReActorSystem.getLocalReActorSystemId(),
                                                            gateChannelId);
         /* An ack has to be sent not to the nominal sender, but to the reactorsystem that actually generated the message
@@ -193,16 +263,18 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
          */
         var destSystem = localReActorSystem.findGate(originalMessage.getDataLink()
                                                                     .getGeneratingReActorSystem(),
-                                                     gateChannelId)
-                             .orElse(NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF);
+                                                     gateChannelId);
+        if (destSystem == null) {
+            destSystem = NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF;
+        }
         var destReActor = new ReActorRef(ReActorId.NO_REACTOR_ID, destSystem);
         return destReActor.tell(ReActorRef.NO_REACTOR_REF, statusUpdatePayload);
     }
 
     private static void
-    expireOnTimeout(RemovalNotification<Long, CompletableFuture<Try<DeliveryStatus>>> notification) {
+    expireOnTimeout(RemovalNotification<Long, CompletableFuture<DeliveryStatus>> notification) {
         if (notification.getCause() != RemovalCause.EXPLICIT) {
-            notification.getValue().completeAsync(() -> Try.ofFailure(new TimeoutException()));
+            notification.getValue().completeExceptionally(new TimeoutException());
         }
     }
 }

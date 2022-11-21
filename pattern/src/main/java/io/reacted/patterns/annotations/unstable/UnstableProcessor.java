@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 , <Pierre Falda> [ pierre@reacted.io ]
+ * Copyright (c) 2022 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -8,7 +8,6 @@
 
 package io.reacted.patterns.annotations.unstable;
 
-import java.util.Set;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -17,9 +16,10 @@ import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
+import java.util.Set;
 
 @SupportedAnnotationTypes("io.reacted.patterns.annotations.unstable.Unstable")
-@SupportedSourceVersion(SourceVersion.RELEASE_11)
+@SupportedSourceVersion(SourceVersion.RELEASE_17)
 public class UnstableProcessor extends AbstractProcessor {
   private ProcessingEnvironment env;
   @Override

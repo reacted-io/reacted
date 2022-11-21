@@ -10,4 +10,4 @@ package io.reacted.core.exceptions;
 
 import javax.annotation.concurrent.Immutable;
 @Immutable
-public class NoRouteToReActorSystem extends RuntimeException { }
+public class NoRouteToReActorSystem extends DeliveryException { }

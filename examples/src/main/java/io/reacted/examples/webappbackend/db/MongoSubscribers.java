@@ -10,8 +10,6 @@ package io.reacted.examples.webappbackend.db;
 
 import com.mongodb.client.result.InsertOneResult;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.examples.webappbackend.db.DatabaseService;
-import io.reacted.examples.webappbackend.db.StorageMessages;
 import io.reacted.patterns.NonNullByDefault;
 import org.bson.Document;
 import org.reactivestreams.Subscriber;
@@ -20,7 +18,6 @@ import org.reactivestreams.Subscription;
 @NonNullByDefault
 final class MongoSubscribers {
     static class MongoQuerySubscriber implements Subscriber<Document> {
-        @SuppressWarnings("NotNullFieldNotInitialized")
         private Subscription subscription;
         private final ReActorRef mongoGate;
         private final ReActorRef requester;
@@ -38,8 +35,8 @@ final class MongoSubscribers {
         @Override
         public void onNext(Document item) {
             requester.tell(mongoGate, new StorageMessages.QueryReply(item.get(DatabaseService.PAYLOAD_FIELD)
-                                                                         .toString()))
-                     .thenAccept(delivery -> subscription.request(1));
+                                                                         .toString()));
+            subscription.request(1);
         }
 
         @Override

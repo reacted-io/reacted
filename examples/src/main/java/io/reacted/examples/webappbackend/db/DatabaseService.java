@@ -7,6 +7,8 @@
  */
 
 package io.reacted.examples.webappbackend.db;
+
+import com.mongodb.client.model.Filters;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoCollection;
 import io.reacted.core.config.reactors.ReActorConfig;
@@ -16,7 +18,6 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.patterns.NonNullByDefault;
 import org.bson.Document;
-import com.mongodb.client.model.Filters;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -32,7 +33,6 @@ public class DatabaseService implements ReActor {
     static final String PAYLOAD_FIELD = "payload";
     @Nullable
     private final MongoClient mongoClient;
-    @SuppressWarnings("NotNullFieldNotInitialized")
     private MongoCollection<Document> mongoCollection;
     public DatabaseService(@Nullable MongoClient mongoClient) {
         this.mongoClient = mongoClient;
@@ -69,7 +69,7 @@ public class DatabaseService implements ReActor {
     }
 
     private void onQueryRequest(ReActorContext raCtx, StorageMessages.QueryRequest request) {
-        mongoCollection.find(Filters.eq("_id", request.getKey()))
+        mongoCollection.find(Filters.eq("_id", request.key()))
                        .first().subscribe(new MongoSubscribers.MongoQuerySubscriber(raCtx.getSelf(),
                                                                                     raCtx.getSender()));
     }

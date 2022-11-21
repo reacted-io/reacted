@@ -10,21 +10,10 @@ package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
-import io.reacted.core.messages.serviceregistry.DuplicatedPublicationError;
-import io.reacted.core.messages.serviceregistry.FilterServiceDiscoveryRequest;
-import io.reacted.core.messages.serviceregistry.RegistryConnectionLost;
-import io.reacted.core.messages.serviceregistry.RegistryDriverInitComplete;
-import io.reacted.core.messages.serviceregistry.RegistryGateRemoved;
-import io.reacted.core.messages.serviceregistry.RegistryGateUpserted;
-import io.reacted.core.messages.serviceregistry.ReActorSystemChannelIdPublicationRequest;
-import io.reacted.core.messages.serviceregistry.ServiceCancellationRequest;
-import io.reacted.core.messages.serviceregistry.RegistryServicePublicationFailed;
-import io.reacted.core.messages.serviceregistry.ServicePublicationRequest;
-import io.reacted.core.messages.serviceregistry.ServiceRegistryNotAvailable;
-import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryComplete;
-import io.reacted.core.messages.serviceregistry.SynchronizationWithServiceRegistryRequest;
+import io.reacted.core.messages.serviceregistry.*;
 import io.reacted.core.messages.services.FilterItem;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.reactors.ReActions;
@@ -35,9 +24,8 @@ import io.reacted.core.reactorsystem.ReActorSystemId;
 import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
-
-import static io.reacted.core.utils.ReActedUtils.*;
 
 @Immutable
 public class RemotingRoot {
@@ -86,16 +74,18 @@ public class RemotingRoot {
 
     private static void onPublishService(ReActorContext raCtx, ServicePublicationRequest publishService) {
         if (raCtx.getChildren().isEmpty()) {
-             ifNotDelivered(raCtx.reply(new ServiceRegistryNotAvailable()),
-                            error -> raCtx.logError("Unable to make a service discoverable {}",
-                                                    publishService.getServiceProperties(), error));
+             if (!raCtx.reply(new ServiceRegistryNotAvailable()).isSent()) {
+                 raCtx.logError("Unable to make a service discoverable {}",
+                                publishService.getServiceProperties());
+             }
              return;
         }
 
-        raCtx.getChildren()
-             .forEach(registryDriver -> ifNotDelivered(registryDriver.tell(raCtx.getSelf(), publishService),
-                                                       error -> raCtx.logError("Unable to deliver service publication request {}",
-                                                                               publishService.getServiceProperties(), error)));
+        raCtx.getChildren().stream()
+             .map(registryDriver -> registryDriver.tell(raCtx.getSelf(), publishService))
+             .filter(Predicate.not(DeliveryStatus::isSent))
+             .forEach(registryDriver -> raCtx.logError("Unable to deliver service publication request {}",
+                                                       publishService.getServiceProperties()));
     }
 
     private static void onInitComplete(ReActorContext raCtx,
@@ -114,9 +104,8 @@ public class RemotingRoot {
                                                                                            remotingDriver.getChannelId(),
                                                                                            remotingDriver.getChannelProperties()))
                        .map(raCtx::reply)
-                       .forEach(pubRequest -> ifNotDelivered(pubRequest,
-                                                             error -> raCtx.logError("Unable to publish channel:",
-                                                                                     error)));
+                       .filter(Predicate.not(DeliveryStatus::isSent))
+                       .forEach(pubRequest -> raCtx.logError("Unable to publish channel"));
     }
 
     private static void onRegistryServicePublicationFailure(ReActorContext raCtx,
@@ -155,16 +144,17 @@ public class RemotingRoot {
     private static void onFilterServiceDiscoveryRequest(ReActorContext raCtx,
                                                         FilterServiceDiscoveryRequest filterThis) {
         var foundServices = filterThis.getServiceDiscoveryResult().stream()
-                  .flatMap(filterItem -> ReActorSystem.getRoutedReference(filterItem.getServiceGate(),
+                  .flatMap(filterItem -> ReActorSystem.getRoutedReference(filterItem.serviceGate(),
                                                                           raCtx.getReActorSystem()).stream()
                                                       .map(routedGate -> new FilterItem(routedGate,
-                                                                                        filterItem.getServiceProperties())))
-                  .filter(filterItem -> filterThis.getFilteringRuleToApply().matches(filterItem.getServiceProperties(),
-                                                                                     filterItem.getServiceGate()))
-                  .map(FilterItem::getServiceGate)
+                                                                                        filterItem.serviceProperties())))
+                  .filter(filterItem -> filterThis.getFilteringRuleToApply().matches(filterItem.serviceProperties(),
+                                                                                     filterItem.serviceGate()))
+                  .map(FilterItem::serviceGate)
                   .collect(Collectors.toUnmodifiableSet());
-        ifNotDelivered(raCtx.reply(new ServiceDiscoveryReply(foundServices)),
-                       error -> raCtx.logError("Unable to answer with a {}",
-                                               ServiceDiscoveryReply.class.getSimpleName(), error));
+        if (!raCtx.reply(new ServiceDiscoveryReply(foundServices)).isSent()) {
+            raCtx.logError("Unable to answer with a {}",
+                           ServiceDiscoveryReply.class.getSimpleName());
+        }
     }
 }

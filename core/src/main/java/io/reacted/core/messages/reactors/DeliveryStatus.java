@@ -9,19 +9,17 @@
 package io.reacted.core.messages.reactors;
 
 public enum DeliveryStatus {
+    SENT,
+    NOT_SENT,
     DELIVERED,
     NOT_DELIVERED,
-    BACKPRESSURED;
+    BACKPRESSURE_REQUIRED;
 
-    public boolean isDelivered() {
-        return this == DELIVERED;
-    }
+    public boolean isDelivered() { return this == DELIVERED || this == BACKPRESSURE_REQUIRED; }
+    public boolean isNotSent() { return this == NOT_SENT; }
+    public boolean isNotDelivered() { return this == NOT_SENT || this == NOT_DELIVERED; }
 
-    public boolean isNotDelivered() {
-        return !isDelivered();
-    }
+    public boolean isSent() { return this == SENT || isDelivered(); }
+    public boolean isBackpressureRequired() { return this == BACKPRESSURE_REQUIRED; }
 
-    public boolean isBackPressured() {
-        return this == BACKPRESSURED;
-    }
 }

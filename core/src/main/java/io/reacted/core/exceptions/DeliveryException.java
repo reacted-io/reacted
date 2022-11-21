@@ -8,4 +8,7 @@
 
 package io.reacted.core.exceptions;
 
-public class DeliveryException extends RuntimeException { }
+public class DeliveryException extends RuntimeException {
+  public DeliveryException() { }
+  public DeliveryException(Exception realCause) { super(realCause); }
+}

@@ -38,11 +38,10 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -58,6 +57,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
@@ -146,12 +146,12 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public ChannelId getChannelId() { return channelId; }
 
     @Override
-    public Try<DeliveryStatus> sendMessage(ReActorContext destination, Message message) {
+    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
         Properties dstChannelIdProperties = message.getDestination().getReActorSystemRef().getGateProperties();
         String dstChannelIdName = dstChannelIdProperties.getProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME);
         /*
             Fact 1: GRPC links are not bidirectional.
-            Fact 2: Every couple Channel Type - Channel Name (Aka channel id) has a dedicate driver instance.
+            Fact 2: Every couple Channel Type - Channel Name (Aka channel id) has a dedicated driver instance.
                     To communicate with another reacted node, you need to know the channel id and the channel properties.
                     If some nodes communicate on a channel using the same setup that can be safely stored within
                     the driver instance (i.e. think about a kafka channel:  all the nodes will use the same kafka
@@ -159,10 +159,10 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             Fact 3: Give the above 2 facts, it means that in order to send a message to a GRPC node, you not only
                     need a driver instance, but also the specific properties of the remote peer.
             Fact 4: On network failures, one route might be canceled. Canceling a route means canceling from the
-                    reactor system the information about how to reach a given peer. These information include the
+                    reactor system the information about how to reach a given peer. This information include the
                     channel properties for the remote peer
 
-            Scenario: a message that requires an ACK arrives on this GRPC driver, but a network failure triggered
+            Scenario: a message that requires an ACK arrives at this GRPC driver, but a network failure triggered
             the route cancellation before we can send back the ACK.
 
             ACKs has to be sent using the same driver that processed the incoming message and have to be sent to the
@@ -192,7 +192,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             that can be done except returning an error
          */
         if (dstChannelIdName == null) {
-            return Try.ofFailure(new ChannelUnavailableException());
+            throw new ChannelUnavailableException();
         }
         SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram> grpcLink;
         var peerChannelKey = getChannelPeerKey(dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST),
@@ -215,17 +215,14 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             synchronized (grpcLink) {
                 grpcLink.link.onNext(payload);
             }
-            return Try.ofSuccess(DeliveryStatus.DELIVERED);
+            return DeliveryStatus.SENT;
 
         } catch (Exception error) {
             removeStaleChannel(peerChannelKey);
             getLocalReActorSystem().logError("Error sending message {}", message.toString(), error);
-            return Try.ofFailure(error);
+            return DeliveryStatus.NOT_SENT;
         }
     }
-
-    @Override
-    public boolean channelRequiresDeliveryAck() { return getDriverConfig().isDeliveryAckRequiredByChannel(); }
 
     @Override
     public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
@@ -317,17 +314,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
         };
     }
 
-    private static final class SystemLinkContainer<InputTypeT> {
-        private final ManagedChannel channel;
-        private final StreamObserver<InputTypeT> link;
-        private SystemLinkContainer(ManagedChannel channel, StreamObserver<InputTypeT> link) {
-            this.channel = channel;
-            this.link = link;
-        }
+    private record SystemLinkContainer<InputTypeT>(ManagedChannel channel, StreamObserver<InputTypeT> link) {
         private static <StubT, InputTypeT>
-        SystemLinkContainer<InputTypeT> ofChannel(ManagedChannel channel, Function<ManagedChannel, StubT> toStub,
-                                                  Function<StubT, StreamObserver<InputTypeT>> toLink) {
-            return new SystemLinkContainer<>(channel, toLink.apply(toStub.apply(channel)));
+            SystemLinkContainer<InputTypeT> ofChannel(ManagedChannel channel, Function<ManagedChannel, StubT> toStub,
+                                                      Function<StubT, StreamObserver<InputTypeT>> toLink) {
+                return new SystemLinkContainer<>(channel, toLink.apply(toStub.apply(channel)));
+            }
         }
-    }
 }

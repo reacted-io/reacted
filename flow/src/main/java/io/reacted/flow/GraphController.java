@@ -103,7 +103,7 @@ class GraphController implements ReActiveEntity {
   }
   private void onInit(ReActorContext raCtx) {
     BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
-                      .ifPresent(mbox -> mbox.addNonDelayedMessageTypes(Set.of(OperatorInitComplete.class)));
+                      .ifPresent(mbox -> mbox.addNonDelayableTypes(Set.of(OperatorInitComplete.class)));
     for(var operatorCfg : operatorsCfgsByName.entrySet()) {
       operatorNameToOperator.put(operatorCfg.getKey(),
                                  spawnOperator(raCtx.getReActorSystem(),operatorCfg.getValue(),
@@ -159,7 +159,7 @@ class GraphController implements ReActiveEntity {
     return Executors.newSingleThreadExecutor(inputStreamThreadFactory.build());
   }
 
-  private static final class InitInputStreams implements Serializable {
+  private record InitInputStreams() implements Serializable {
     @Override
     public String toString() {
       return "InitInputStreams{}";

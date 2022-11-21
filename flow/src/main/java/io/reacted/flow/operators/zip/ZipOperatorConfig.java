@@ -11,6 +11,7 @@ package io.reacted.flow.operators.zip;
 import io.reacted.flow.operators.reduce.ReducingOperatorConfig;
 import io.reacted.flow.operators.zip.ZipOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
+
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
@@ -51,14 +52,13 @@ public class ZipOperatorConfig extends ReducingOperatorConfig<Builder, ZipOperat
       setReductionRules(setZipTypes);
       return this;
     }
-    public final Builder setZipper(Function<Map<Class<? extends Serializable>,
-                                          List<? extends Serializable>>,
-                             Collection<? extends Serializable>> zipper) {
+    public final Builder setZipper(Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
+                                            Collection<? extends Serializable>> zipper) {
       return setReducer(zipper);
     }
 
     public final Builder setZippingConsumer(Consumer<Map<Class<? extends Serializable>,
-                                                   List<? extends Serializable>>> zippingConsumer) {
+                                            List<? extends Serializable>>> zippingConsumer) {
       return setReducer(map -> { zippingConsumer.accept(map); return List.of(); });
     }
 

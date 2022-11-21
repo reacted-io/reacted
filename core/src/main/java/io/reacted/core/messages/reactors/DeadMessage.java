@@ -11,6 +11,7 @@ package io.reacted.core.messages.reactors;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.patterns.NonNullByDefault;
 
+import java.io.Serial;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
@@ -24,6 +25,7 @@ import java.util.Objects;
 @NonNullByDefault
 public class DeadMessage implements Externalizable {
 
+    @Serial
     private static final long serialVersionUID = 1;
     private static final long PAYLOAD_OFFSET = SerializationUtils.getFieldOffset(DeadMessage.class, "payload")
                                                                  .orElseSneakyThrow();

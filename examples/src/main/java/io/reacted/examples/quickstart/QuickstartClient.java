@@ -41,17 +41,15 @@ public class QuickstartClient {
                                                             .build();
         var serviceDiscoveryReply = showOffClientSystem.serviceDiscovery(searchFilter)
                                                        .toCompletableFuture()
-                                                       .join()
-                                                       .orElseSneakyThrow();
+                                                       .join();
 
         if (serviceDiscoveryReply.getServiceGates().isEmpty()) {
             showOffClientSystem.logInfo("No services found, exiting");
         } else {
             var serviceGate = serviceDiscoveryReply.getServiceGates().iterator().next();
-            serviceGate.ask(new GreeterService.GreetingsRequest(), String.class, "Request to service")
+            showOffClientSystem.logInfo(serviceGate.ask(new GreeterService.GreetingsRequest(), String.class, "Request to service")
                        .toCompletableFuture()
-                       .join()
-                       .ifSuccessOrElse(showOffClientSystem::logInfo, Throwable::printStackTrace);
+                       .join());
         }
         showOffClientSystem.shutDown();
     }
