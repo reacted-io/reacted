@@ -12,18 +12,18 @@ import io.reacted.core.messages.SerializationUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
-import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Immutable
 @NonNullByDefault
@@ -113,7 +113,8 @@ public class ChannelId implements Externalizable {
         LOCAL_CHRONICLE_QUEUE,
         REMOTING_CHRONICLE_QUEUE,
         KAFKA,
-        GRPC;
+        GRPC,
+        RABBITMQ;
 
         private static final Map<ChannelType, Map<String, ChannelId>> CHANNEL_ID_CACHE_BY_CHANNEL_TYPE_BY_CHANNEL_NAME = Arrays.stream(ChannelType.values())
             .collect(Collectors.toConcurrentMap(Function.identity(), channelTypeDummy -> new ConcurrentHashMap<>()));

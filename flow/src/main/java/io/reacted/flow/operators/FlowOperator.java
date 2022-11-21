@@ -24,6 +24,7 @@ import io.reacted.core.utils.ReActedUtils;
 import io.reacted.flow.operators.messages.OperatorInitComplete;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import io.reacted.patterns.annotations.unstable.Unstable;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 
 import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 @NonNullByDefault
+@Unstable
 public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builder<CfgBuilderT, CfgT>,
                                    CfgT extends FlowOperatorConfig<CfgBuilderT, CfgT>>
     implements ReActor {

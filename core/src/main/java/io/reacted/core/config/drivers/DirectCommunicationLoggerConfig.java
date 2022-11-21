@@ -9,6 +9,7 @@
 package io.reacted.core.config.drivers;
 
 import io.reacted.patterns.NonNullByDefault;
+
 import java.util.Objects;
 
 @NonNullByDefault
@@ -32,7 +33,7 @@ public class DirectCommunicationLoggerConfig extends ChannelDriverConfig<DirectC
         /**
          * Set the path to the file that will be used to store the messages logs
          * @param logFilePath A path to a file. If not existent, it will be created, otherwise appended
-         * @return
+         * @return this {@link Builder}
          */
         public final Builder setLogFilePath(String logFilePath) {
             this.logFilePath = logFilePath;

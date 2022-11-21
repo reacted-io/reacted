@@ -15,6 +15,8 @@ import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
+
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,7 +26,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class BackpressuringMbox implements MailBox {
@@ -181,7 +182,7 @@ public class BackpressuringMbox implements MailBox {
          * threshold should be waiting in the mailbox, the outcome of a delivery will be
          * {@link DeliveryStatus#BACKPRESSURE_REQUIRED} to notify the producer that it has
          * to slow down
-         * @param threshold
+         * @param threshold A positive long
          * @return this {@link Builder}
          */
         public final Builder setBackpressuringThreshold(long threshold) {

@@ -8,8 +8,6 @@
 
 package io.reacted.streams;
 
-import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
-
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
@@ -32,6 +30,7 @@ import io.reacted.streams.messages.PublisherShutdown;
 import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
+
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -48,6 +47,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.TimeUnit;
+
+import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
 public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
@@ -66,9 +67,11 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     private Duration streamBackpressureTimeout = BACKPRESSURE_DELAY_BASE;
 
     /**
-     * Creates a location oblivious data publisher with backpressure. Subscribers can slow down
+     * Creates a location oblivious data publisher with automatic backpressure. Subscribers can slow down
      * the producer. Publisher is Serializable, so it can be sent to any reactor over any gate
      * and subscribers can simply join the stream.
+     * This publisher is reactive-streams compliant
+     * @see <a href=https://www.reactive-streams.org>https://www.reactive-streams.org/</a>
      *
      * @param localReActorSystem ReActorSystem used to manage and control the data flow
      * @param producerBackpressuringThreshold Number of messages that can be buffered in the producer
@@ -141,10 +144,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     public void interrupt() { feedGate.tell(feedGate, new PublisherInterrupt()); }
 
     /**
-     + Registers a best effort subscriber. All the updates sent to this subscriber that cannot be
-     * processed will be lost. This subscriber consumption speed will not affect the producer,
-     * but delivery speed to the subscriber could.
-     * For the non lost updates, strict message ordering is guaranteed to be the same of submission
+     + Registers a subscriber.
      * NOTE: this overload generates NON REPLAYABLE subscriptions
      *
      * @param subscriber Java Flow compliant subscriber
@@ -156,10 +156,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     /**
-     * Registers a best effort subscriber. All the updates sent to this subscriber that cannot be
-     * processed will be lost. This subscriber consumption speed will not affect the producer,
-     * but delivery speed to the subscriber could.
-     * For the non lost updates, strict message ordering is guaranteed to be the same of submission
+     * Registers subscriber.
      *
      * @param subscriber     Java Flow compliant subscriber
      * @param subscriptionName This name must be unique and if deterministic it allows cold replay
@@ -171,13 +168,10 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     /**
-     * Registers a best effort subscriber. All the updates sent to this subscriber that cannot be
-     * processed will be lost. This subscriber consumption speed will not affect the producer,
-     * but delivery speed to the subscriber could.
-     * For the non lost updates, strict message ordering is guaranteed to be the same of submission
+     * Registers subscriber.
      *
      * @param subscriber     Java Flow compliant subscriber
-     * @param bufferSize     How many elements can be buffered in the best effort subscriber. <b>Positive</b> values
+     * @param bufferSize     How many elements can be buffered in the subscriber. <b>Positive</b> values
      *                       only
      * @param subscriberName This name must be unique and if deterministic
      *                       it allows cold replay
@@ -195,7 +189,6 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     /**
      * Register a generic subscriber to the stream.
-     * Strict message ordering is guaranteed to be the same of submission
      *
      * @param subscriptionConfig A {@link ReActedSubscriptionConfig}
      * SneakyThrows any exception raised

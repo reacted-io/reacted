@@ -23,31 +23,21 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
 import io.reacted.core.reactors.ReActorId;
-import io.reacted.core.reactorsystem.NullReActorSystemRef;
-import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.reactorsystem.*;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
+import org.apache.commons.lang3.NotImplementedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import javax.annotation.Nullable;
-import org.apache.commons.lang3.NotImplementedException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.concurrent.*;
 
 @NonNullByDefault
 public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> {
@@ -85,7 +75,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     public abstract ChannelId getChannelId();
     public abstract Properties getChannelProperties();
     /**
-     * @throws io.reacted.core.exceptions.DeliveryException
+     * @throws io.reacted.core.exceptions.DeliveryException when a driver specific delivery error occurs
      */
     public abstract DeliveryStatus sendMessage(ReActorContext destination, Message message);
     public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {

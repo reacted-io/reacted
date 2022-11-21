@@ -11,6 +11,7 @@ package io.reacted.core.config.drivers;
 import io.reacted.core.config.InheritableBuilder;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
+
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
@@ -74,7 +75,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
          * should be automatically marked as completed as a failure
          * @param atellFailureTimeout the automatic failure timeout. Default {@link ChannelDriverConfig#DEFAULT_MSG_LOST_TIMEOUT}
          *                            Max Value: {@link Long#MAX_VALUE} nanosecs
-         * @return this builder
+         * @return this {@link Builder}
          */
         public final BuilderT setAtellAutomaticFailureAfterTimeout(Duration atellFailureTimeout) {
             this.atellFailureTimeout = atellFailureTimeout;
@@ -86,7 +87,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
          * should be checked for maintenance
          *
          * @param ackCacheCleanupInterval Cache cleanup rate. Positive intervals only, default: {@link ChannelDriverConfig#DEFAULT_MSG_LOST_TIMEOUT}
-         * @return this builder
+         * @return this {@link Builder}
          */
         public final BuilderT setAckCacheCleanupInterval(Duration ackCacheCleanupInterval) {
             this.ackCacheCleanupInterval = ackCacheCleanupInterval;
@@ -96,7 +97,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         /**
          * Gives a hint regarding the size of the ack cache for this driver
          * @param ackCacheSize A positive integer. Default {@link ChannelDriverConfig#DEFAULT_ACK_CACHE_SIZE}
-         * @return This builder
+         * @return this {@link Builder}
          */
         public final BuilderT setAckCacheSize(int ackCacheSize) {
             this.ackCacheSize = ackCacheSize;

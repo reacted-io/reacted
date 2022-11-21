@@ -26,13 +26,14 @@ import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 import io.reacted.examples.ExampleUtils;
+
+import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.Nonnull;
 
 class MessageStormApp {
     public static void main(String[] args) throws InterruptedException {
@@ -172,6 +173,6 @@ class MessageStormApp {
                                });
             }
         }
-        private enum NextRecord { INSTANCE; }
+        private enum NextRecord { INSTANCE }
     }
 }

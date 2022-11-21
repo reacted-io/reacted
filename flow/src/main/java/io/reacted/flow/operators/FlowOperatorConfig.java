@@ -16,6 +16,9 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.UnChecked.TriConsumer;
+import io.reacted.patterns.annotations.unstable.Unstable;
+
+import javax.annotation.concurrent.Immutable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
@@ -25,10 +28,10 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.concurrent.Immutable;
 
 @NonNullByDefault
 @Immutable
+@Unstable
 public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.Builder<BuilderT, BuiltT>,
                                          BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>>
     extends ReActorServiceConfig<BuilderT, BuiltT> {
