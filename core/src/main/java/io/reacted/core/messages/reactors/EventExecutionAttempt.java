@@ -13,7 +13,11 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serial;
 import java.util.Objects;
 
 @Immutable
