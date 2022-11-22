@@ -126,14 +126,16 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     private static void kafkaDriverLoop(Consumer<Long, Message> kafkaConsumer, KafkaDriver thisDriver,
                                         ReActorSystem localReActorSystem) {
         while(!Thread.currentThread().isInterrupted()) {
-            Try.of(() -> kafkaConsumer.poll(POLL_TIMEOUT))
-               .recover(InterruptException.class,
-                        (Try.TryValueSupplier<ConsumerRecords<Long, Message>>) ConsumerRecords::empty)
-               .ifSuccessOrElse(records -> records.forEach(record -> thisDriver.offerMessage(record.value())),
-                                error -> localReActorSystem.logError("Unable to fetch messages from kafka", error))
-               .ifError(error -> LOGGER.error("CRITIC! Error offering message", error));
+            try {
+                kafkaConsumer.poll(POLL_TIMEOUT)
+                             .forEach(record -> thisDriver.offerMessage(record.value()));
+            } catch (InterruptException interruptException) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception exchetionWhileOffering) {
+                localReActorSystem.logError("Unable to fetch messages from kafka", exchetionWhileOffering);
+            }
         }
-        Thread.currentThread().interrupt();
     }
 
     public static class MessageDecoder implements Deserializer<Message> {
