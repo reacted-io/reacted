@@ -140,23 +140,29 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
 
     public static class MessageDecoder implements Deserializer<Message> {
         @Override
+        @Nullable
         public Message deserialize(String topic, byte[] data) {
-            return (Message) Try.withResources(() -> new ObjectInputStream(new ByteArrayInputStream(data)),
-                                               ObjectInputStream::readObject)
-                                .orElseGet(() -> NO_VALID_PAYLOAD,
-                                           error -> LOGGER.error("Unable to properly decode message", error));
+            try (var inputStream = new ObjectInputStream(new ByteArrayInputStream(data))) {
+                return (Message)inputStream.readObject();
+            } catch (Exception anyMessageDecodeError) {
+                LOGGER.error("Unable to properly decode message", anyMessageDecodeError);
+                return NO_VALID_PAYLOAD;
+            }
         }
     }
 
     public static class MessageEncoder implements Serializer<Message> {
         @Override
+        @Nullable
         public byte[] serialize(String topic, Message data) {
-            return Try.withChainedResources(ByteArrayOutputStream::new,
-                                            ObjectOutputStream::new,
-                                            (byteArray, objectOutput) -> { objectOutput.writeObject(data);
-                                                                           return byteArray.toByteArray(); })
-                      .orElseGet(() -> NO_SERIALIZED_PAYLOAD,
-                                 error -> LOGGER.error("Unable to encode message", error));
+            try (var byteArrayOutputStream = new ByteArrayOutputStream();
+                 var objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)) {
+                objectOutputStream.writeObject(data);
+                return byteArrayOutputStream.toByteArray();
+            } catch (Exception anyMessageEncodeError) {
+                LOGGER.error("Unable to encode message", anyMessageEncodeError);
+                return NO_SERIALIZED_PAYLOAD;
+            }
         }
     }
 }
