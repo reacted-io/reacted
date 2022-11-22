@@ -488,7 +488,7 @@
     <profiles>
         <!-- GPG Signature on release -->
         <profile>
-            <id>release-sign-artifacts</id>
+            <id>ossrh</id>
             <activation>
                 <property>
                     <name>performRelease</name>
