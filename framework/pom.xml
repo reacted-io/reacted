@@ -39,29 +39,23 @@
             <dependency>
                 <groupId>io.reacted</groupId>
                 <artifactId>reacted-pattern</artifactId>
-                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.reacted</groupId>
                 <artifactId>reacted-core</artifactId>
-                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.reacted</groupId>
                 <artifactId>reacted-drivers</artifactId>
-                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.reacted</groupId>
                 <artifactId>reacted-streams</artifactId>
-                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.reacted</groupId>
                 <artifactId>reacted-flow</artifactId>
-                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
-
 </project>
