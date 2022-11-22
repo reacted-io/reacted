@@ -87,10 +87,10 @@
         <maven.compiler.plugin.version>3.8.1</maven.compiler.plugin.version>
         <maven.surefire.plugin.version>2.22.0</maven.surefire.plugin.version>
         <maven.deploy.plugin.version>3.0.0</maven.deploy.plugin.version>
-        <maven.release.plugin.version>3.0.0-M7</maven.release.plugin.version>
+        <maven.release.plugin.version>2.5.3</maven.release.plugin.version>
         <nexus.staging.plugin.version>1.6.13</nexus.staging.plugin.version>
         <maven.source.plugin.version>3.0.1</maven.source.plugin.version>
-        <maven.gpg.plugin.version>3.0.1</maven.gpg.plugin.version>
+        <maven.gpg.plugin.version>1.5</maven.gpg.plugin.version>
         <maven.failsafe.plugin.version>3.0.0-M5</maven.failsafe.plugin.version>
         <maven.javadoc.plugin.version>3.4.1</maven.javadoc.plugin.version>
         <agrona.version>1.17.1</agrona.version>
@@ -425,6 +425,10 @@
                 <artifactId>maven-release-plugin</artifactId>
                 <version>${maven.release.plugin.version}</version>
                 <configuration>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <useReleaseProfile>false</useReleaseProfile>
+                    <releaseProfiles>release</releaseProfiles>
+                    <goals>deploy</goals>
                     <localCheckout>true</localCheckout>
                     <pushChanges>false</pushChanges>
                     <mavenExecutorId>forked-path</mavenExecutorId>
