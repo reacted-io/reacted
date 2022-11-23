@@ -21,19 +21,12 @@
         <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>io.reacted</groupId>
-                <artifactId>reacted-framework-bom</artifactId>
-                <version>${reacted.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
+        <dependency>
+            <groupId>io.reacted</groupId>
+            <artifactId>reacted-framework</artifactId>
+            <version>${reacted.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver-reactivestreams</artifactId>
@@ -49,22 +42,6 @@
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
             <version>${awaitility.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.reacted</groupId>
-            <artifactId>reacted-streams</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.reacted</groupId>
-            <artifactId>reacted-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.reacted</groupId>
-            <artifactId>reacted-drivers</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.reacted</groupId>
-            <artifactId>reacted-flow</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>

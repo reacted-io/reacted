@@ -116,6 +116,7 @@
         <module>streams</module>
         <module>drivers</module>
         <module>flow</module>
+        <module>framework-bom</module>
         <module>framework</module>
     </modules>
     <dependencyManagement>
