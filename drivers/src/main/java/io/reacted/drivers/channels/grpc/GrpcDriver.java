@@ -192,8 +192,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             that can be done except returning an error
          */
         if (dstChannelIdName == null) {
-            throw new ChannelUnavailableException();
+            getLocalReActorSystem().logDebug("Not sending message. Destination channel is no longer available for message {}",
+                                             message.toString());
+            return DeliveryStatus.NOT_SENT;
         }
+        
         SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram> grpcLink;
         var peerChannelKey = getChannelPeerKey(dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST),
                                                dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_PORT));
