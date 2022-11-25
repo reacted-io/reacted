@@ -21,6 +21,7 @@ import io.reacted.patterns.Try;
 import org.agrona.BitUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.BackoffIdleStrategy;
+import org.agrona.concurrent.ControlledMessageHandler;
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.MessageHandler;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -150,12 +151,14 @@ public class Dispatcher {
         var processed = 0L;
         IdleStrategy ringBufferConsumerPauser = new BackoffIdleStrategy();
 
-        MessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) ->
-            onMessage(buffer, index, dispatcherBatchSize, dispatcherLifeCyclePool,
-                      isExecutionRecorded, reActorSystem, devNull, reActorUnregister));
+        ControlledMessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
+            onMessage(buffer, index, dispatcherBatchSize, dispatcherLifeCyclePool, isExecutionRecorded, reActorSystem, devNull, reActorUnregister);
+            return ControlledMessageHandler.Action.COMMIT;
+        });
+
         var processedInRound = 0;
         while (!Thread.currentThread().isInterrupted()) {
-            processedInRound = scheduledList.read(ringBufferMessageProcessor);
+            processedInRound = scheduledList.controlledRead(ringBufferMessageProcessor);
             ringBufferConsumerPauser.idle(processedInRound);
             processed += processedInRound;
         }
