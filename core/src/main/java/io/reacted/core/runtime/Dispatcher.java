@@ -130,7 +130,11 @@ public class Dispatcher {
     public boolean dispatch(ReActorContext reActor) {
         if (reActor.acquireScheduling()) {
             var rb = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)];
-            return rb.write(1,reActor.getSchedulationIdBuffer(),0,Long.BYTES);
+            boolean scheduled = rb.write(1,reActor.getSchedulationIdBuffer(),0,Long.BYTES);
+            if (!scheduled) {
+                reActor.releaseScheduling();
+            }
+            return scheduled;
         }
         return true;
     }
@@ -155,7 +159,7 @@ public class Dispatcher {
             ringBufferConsumerPauser.idle(processedInRound);
             processed += processedInRound;
         }
-        LOGGER.debug("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
+        LOGGER.info("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
     }
     public void onMessage(MutableDirectBuffer buffer, int index, int dispatcherBatchSize,
                           ExecutorService dispatcherLifeCyclePool,
@@ -207,7 +211,10 @@ public class Dispatcher {
             dispatcherLifeCyclePool.submit(() -> reActorUnregister.apply(scheduledReActor));
         } else if (!scheduledReActor.getMbox().isEmpty()) {
             //If there are other messages to be processed, request another schedulation fo the dispatcher
-             dispatch(scheduledReActor);
+            if (!dispatch(scheduledReActor)) {
+                LOGGER.error("CRITIC! Dispatcher cannot reschedule reactor {} with still {} pending messages",
+                             scheduledReActor.getSelf().getReActorId(), scheduledReActor.getMbox().getMsgNum());
+            }
         }
     }
 
