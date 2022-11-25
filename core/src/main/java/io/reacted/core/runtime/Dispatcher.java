@@ -152,7 +152,11 @@ public class Dispatcher {
         IdleStrategy ringBufferConsumerPauser = new BackoffIdleStrategy();
 
         ControlledMessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
-            onMessage(buffer, index, dispatcherBatchSize, dispatcherLifeCyclePool, isExecutionRecorded, reActorSystem, devNull, reActorUnregister);
+            ReActorContext scheduledReActor = reActorSystem.getReActorCtx(buffer.getLong(index, ByteOrder.BIG_ENDIAN));
+            if (scheduledReActor != null) {
+                onMessage(scheduledReActor, dispatcherBatchSize, dispatcherLifeCyclePool, isExecutionRecorded, devNull,
+                          reActorUnregister);
+            }
             return ControlledMessageHandler.Action.COMMIT;
         });
 
@@ -164,15 +168,9 @@ public class Dispatcher {
         }
         LOGGER.info("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
     }
-    public void onMessage(MutableDirectBuffer buffer, int index, int dispatcherBatchSize,
-                          ExecutorService dispatcherLifeCyclePool,
-                          boolean isExecutionRecorded, ReActorSystem reActorSystem, ReActorRef devNull,
+    public void onMessage(ReActorContext scheduledReActor, int dispatcherBatchSize,
+                          ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded, ReActorRef devNull,
                           Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
-        ReActorContext scheduledReActor = reActorSystem.getReActorCtx(buffer.getLong(index, ByteOrder.BIG_ENDIAN));
-
-        if (scheduledReActor == null) {
-            return;
-        }
         //memory acquire
         scheduledReActor.acquireCoherence();
 
