@@ -547,7 +547,7 @@ public class ReActorSystem {
         Try<ReActorRef> spawned = spawn(getLoopback(), Objects.requireNonNull(reActions, "ReActions cannot be null"),
                                         Objects.requireNonNull(father, "Father ReActor cannot be null"),
                                         Objects.requireNonNull(reActorConfig, "ReActor config cannot be null"));
-        spawned.ifSuccess(initMe -> initMe.publish(getSystemSink(), REACTOR_INIT));
+        spawned.ifSuccess(initMe -> initMe.tell(getSystemSink(), REACTOR_INIT));
         return spawned;
     }
 

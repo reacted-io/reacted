@@ -35,7 +35,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ReActorSystemTest {
     private static final String DISPATCHER_NAME = "TestDispatcher";
@@ -102,10 +104,10 @@ class ReActorSystemTest {
 
     @Test
     void reactorSystemCanSpawnNewReactor() {
-        Try<ReActorRef> reActorRef = reActorSystem.spawn(mock(ReActions.class), reActorConfig);
+        Try<ReActorRef> reActorRef = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig);
 
         Assertions.assertTrue(reActorRef.isSuccess());
-        ReActorId reActorId = reActorRef.get().getReActorId();
+        ReActorId reActorId = reActorRef.orElseSneakyThrow().getReActorId();
         Assertions.assertNotNull(reActorSystem.getReActorCtx(reActorId));
         Assertions.assertNotNull(reActorSystem.getReActorCtx(reActorId));
     }
@@ -141,7 +143,7 @@ class ReActorSystemTest {
                     .map(CompletionStage::toCompletableFuture)
                     .ifPresentOrElse(CompletableFuture::join,
                                      () -> Assertions.fail(NO_RE_ACTOR_FOUND));
-        } while (iteration++ < 500_000);
+        } while (iteration++ < 5_000_000);
     }
 
     @Test
