@@ -157,16 +157,16 @@ public class Dispatcher {
                                                                         BackoffIdleStrategy.DEFAULT_MAX_PARK_PERIOD_NS);
 
         ControlledMessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
-            int positionCounter = filled.getPlain();
+            int positionCounter = filled.getAcquire();
             schedulationIds[positionCounter] = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
-            filled.setPlain(positionCounter + 1);
+            filled.setRelease(positionCounter + 1);
             return ControlledMessageHandler.Action.COMMIT;
         });
         while (!Thread.currentThread().isInterrupted()) {
             processedInRound = 0;
             int ringRecordsProcessed = scheduledList.controlledRead(ringBufferMessageProcessor,
                                                                     schedulationIds.length);
-            int limit = filled.getPlain();
+            int limit = filled.getAcquire();
             for(int schedIdIdx = 0; schedIdIdx < limit; schedIdIdx++) {
                 ReActorContext scheduledReActor = reActorSystem.getReActorCtx(schedulationIds[schedIdIdx]);
                 if (scheduledReActor != null) {
@@ -174,7 +174,7 @@ public class Dispatcher {
                                                   isExecutionRecorded, devNull, reActorUnregister);
                 }
             }
-            filled.setPlain(0);
+            filled.setRelease(0);
             processedForDispatcher += processedInRound;
             ringBufferConsumerPauser.idle(ringRecordsProcessed);
         }
