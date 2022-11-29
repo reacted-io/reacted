@@ -98,7 +98,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
                                     serviceConfig.getServiceRepublishReattemptDelayOnError().toMillis(),
                                     TimeUnit.MILLISECONDS))
            .peekFailure(failure -> raCtx.logError("Unable to reschedule service publication", failure))
-           .ifError(failure -> raCtx.getSelf().tell(raCtx.getSender(), error));
+           .ifError(failure -> raCtx.getSelf().publish(raCtx.getSender(), error));
     }
 
     List<ReActorRef> getRouteesMap() { return routeesMap; }
@@ -112,8 +112,8 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     private void stopService(ReActorContext raCtx, ReActorStop stop) {
         raCtx.getReActorSystem()
              .getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new ServiceCancellationRequest(raCtx.getReActorSystem().getLocalReActorSystemId(),
-                                                                   serviceConfig.getReActorName()));
+             .publish(raCtx.getSelf(), new ServiceCancellationRequest(raCtx.getReActorSystem().getLocalReActorSystemId(),
+                                                                      serviceConfig.getReActorName()));
     }
 
     private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
@@ -170,7 +170,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
                                         Serializable newMessage) {
         ReActorRef routee = selectRoutee(raCtx, ++msgReceived, newMessage);
         return routee != null
-               ? routee.route(raCtx.getSender(), newMessage)
+               ? routee.tell(raCtx.getSender(), newMessage)
                : DeliveryStatus.NOT_DELIVERED;
     }
 
@@ -227,7 +227,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
                                                          Properties serviceInfo) {
         return raCtx.getReActorSystem()
                     .getSystemRemotingRoot()
-                    .tell(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), serviceInfo));
+                    .publish(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), serviceInfo));
     }
 
     private static <PayloadT extends Serializable>

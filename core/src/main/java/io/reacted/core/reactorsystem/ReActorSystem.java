@@ -245,7 +245,7 @@ public class ReActorSystem {
      * @param args             Arguments for Sl4j
      */
     public void logError(String errorDescription, Serializable ...args) {
-        if (getSystemLogger().tell(getSystemSink(), new ReActedError(errorDescription, args))
+        if (getSystemLogger().publish(getSystemSink(), new ReActedError(errorDescription, args))
                              .isNotSent()) {
                 LOGGER.error("Unable to log error: {}", errorDescription);
                 LOGGER.error(errorDescription, (Object) args);
@@ -259,8 +259,8 @@ public class ReActorSystem {
      * @param args   Arguments for Sl4j
      */
     public void logDebug(String format, Serializable ...args) {
-        if (getSystemLogger().tell(getSystemSink(),
-                                   new ReActedDebug(Objects.requireNonNull(format),
+        if (getSystemLogger().publish(getSystemSink(),
+                                      new ReActedDebug(Objects.requireNonNull(format),
                                                     Objects.requireNonNull(args))).isNotSent()) {
             LOGGER.error("Unable to log {}", format);
             LOGGER.debug(format, (Object) args);
@@ -274,8 +274,8 @@ public class ReActorSystem {
      * @param args   Arguments for Sl4j
      */
     public void logInfo(String format, Serializable ...args) {
-        if (getSystemLogger().tell(getSystemSink(),
-                                   new ReActedInfo(Objects.requireNonNull(format),
+        if (getSystemLogger().publish(getSystemSink(),
+                                      new ReActedInfo(Objects.requireNonNull(format),
                                                    Objects.requireNonNull(args))).isNotSent()) {
                 LOGGER.error("Unable to log {}", format);
                 LOGGER.info(format, (Object) args);
@@ -293,7 +293,7 @@ public class ReActorSystem {
     }
     public DeliveryStatus toDeadLetters(ReActorRef sender, Serializable payload) {
         DeliveryStatus deliveryStatus = Objects.requireNonNull(systemDeadLetters)
-                                               .route(sender, new DeadMessage(payload));
+                                               .tell(sender, new DeadMessage(payload));
         if (deliveryStatus.isNotSent()) {
             LOGGER.error("Unable to send from {} to DeadLetters payload {}",
                          sender, payload);
@@ -547,7 +547,7 @@ public class ReActorSystem {
         Try<ReActorRef> spawned = spawn(getLoopback(), Objects.requireNonNull(reActions, "ReActions cannot be null"),
                                         Objects.requireNonNull(father, "Father ReActor cannot be null"),
                                         Objects.requireNonNull(reActorConfig, "ReActor config cannot be null"));
-        spawned.ifSuccess(initMe -> initMe.tell(getSystemSink(), REACTOR_INIT));
+        spawned.ifSuccess(initMe -> initMe.publish(getSystemSink(), REACTOR_INIT));
         return spawned;
     }
 
@@ -589,7 +589,7 @@ public class ReActorSystem {
      */
     public <PayLoadT extends Serializable> DeliveryStatus
     broadcastToLocalSubscribers(ReActorRef msgSender, PayLoadT payload) {
-        return getSystemSink().tell(Objects.requireNonNull(msgSender), Objects.requireNonNull(payload));
+        return getSystemSink().publish(Objects.requireNonNull(msgSender), Objects.requireNonNull(payload));
     }
 
     /**
@@ -611,8 +611,8 @@ public class ReActorSystem {
         gatesCentralizedManager.findAllGates().stream()
                                .filter(Predicate.not(getLoopback()::equals))
                                .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
-                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
-                                                                      Objects.requireNonNull(payload)));
+                               .forEach(remoteGate -> remoteGate.publish(Objects.requireNonNull(msgSender),
+                                                                         Objects.requireNonNull(payload)));
     }
 
     /**
@@ -636,8 +636,8 @@ public class ReActorSystem {
                                                                           PayLoadT payload) {
         gatesCentralizedManager.findAllGates(channelId).stream()
                                .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
-                               .forEach(remoteGate -> remoteGate.tell(Objects.requireNonNull(msgSender),
-                                                                      Objects.requireNonNull(payload)));
+                               .forEach(remoteGate -> remoteGate.publish(Objects.requireNonNull(msgSender),
+                                                                         Objects.requireNonNull(payload)));
     }
 
     @Nullable
@@ -909,7 +909,7 @@ public class ReActorSystem {
                                                       getSystemSchedulingService()).getReActions(),
                      systemActorsRoot, ReActorConfig.newBuilder()
                                                     .setReActorName("SystemMonitor")
-                                                    .setMailBoxProvider(ctx -> new BoundedBasicMbox(1))
+                                                    .setMailBoxProvider(ctx -> new BoundedBasicMbox(2))
                                                     .build()).orElseSneakyThrow();
     }
 

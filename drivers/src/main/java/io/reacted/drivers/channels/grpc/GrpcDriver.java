@@ -196,7 +196,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                              message.toString());
             return DeliveryStatus.NOT_SENT;
         }
-        
+
         SystemLinkContainer<ReActedLinkProtocol.ReActedDatagram> grpcLink;
         var peerChannelKey = getChannelPeerKey(dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_HOST),
                                                dstChannelIdProperties.getProperty(GrpcDriverConfig.GRPC_PORT));
@@ -228,7 +228,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     }
 
     @Override
-    public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
+    public Properties getChannelProperties() { return getDriverConfig().getChannelProperties(); }
 
     private void removeStaleChannel(String peerChannelKey) {
         ObjectUtils.ifNotNull(this.gatesStubs.remove(peerChannelKey),

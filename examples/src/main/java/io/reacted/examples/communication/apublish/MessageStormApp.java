@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.reacted.examples.communication.atell;
+package io.reacted.examples.communication.apublish;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
@@ -145,7 +145,7 @@ class MessageStormApp {
 
         private void onInit(ReActorContext raCtx) {
             this.testStart = System.nanoTime();
-            raCtx.selfTell(NextRecord.INSTANCE);
+            raCtx.selfPublish(NextRecord.INSTANCE);
         }
 
         private void onNextRecord(ReActorContext raCtx) {
@@ -154,7 +154,7 @@ class MessageStormApp {
                                   Duration.ofNanos(System.nanoTime() - testStart));
                 raCtx.stop();
             } else {
-                serverReference.atell(String.format("Async Message %d", missingCycles--))
+                serverReference.apublish(String.format("Async Message %d", missingCycles--))
                                .toCompletableFuture()
                                .handle((deliveryStatus, error) -> {
                                    if (error != null) {
@@ -162,7 +162,7 @@ class MessageStormApp {
                                        error.printStackTrace();
                                    } else {
                                        if (deliveryStatus.isDelivered()) {
-                                           raCtx.selfTell(NextRecord.INSTANCE);
+                                           raCtx.selfPublish(NextRecord.INSTANCE);
                                        } else {
                                            System.err.printf("Unable to deliver loop message: %s%n",
                                                              deliveryStatus);

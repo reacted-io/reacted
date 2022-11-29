@@ -63,6 +63,6 @@ class PingReActor implements ReActor {
     }
 
     private void sendPing(ReActorRef sender, int pingSeq) {
-        ponger.tell(sender, new Ping(pingSeq));
+        ponger.publish(sender, new Ping(pingSeq));
     }
 }

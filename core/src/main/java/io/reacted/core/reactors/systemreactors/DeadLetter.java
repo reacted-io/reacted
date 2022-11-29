@@ -24,8 +24,8 @@ public class DeadLetter {
     public static final ReActions DEADLETTERS = ReActions.newBuilder()
                                                          .reAct(DeadMessage.class,
                                                                 (ctx, payload) -> ctx.getSelf()
-                                                                                     .route(ctx.getSender(),
-                                                                                            payload.getPayload()))
+                                                                                     .tell(ctx.getSender(),
+                                                                                           payload.getPayload()))
                                                          .reAct(Service.RouteeReSpawnRequest.class,
                                                                 ReActions::noReAction)
                                                          .reAct(ReActorInit.class, ReActions::noReAction)

@@ -63,7 +63,7 @@ public class SystemReplayApp {
 
         if (IntStream.range(0, 5)
                      .mapToObj(cycle -> "Message number " + cycle)
-                     .map(echoReference::atell)
+                     .map(echoReference::apublish)
                      .map(CompletionStage::toCompletableFuture)
                      .map(CompletableFuture::join)
                      .anyMatch(DeliveryStatus::isNotDelivered)) {

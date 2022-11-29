@@ -153,30 +153,40 @@ public class ReActorContext {
     public DeliveryStatus reply(Serializable anyPayload) { return reply(getSelf(), anyPayload); }
 
     public DeliveryStatus reply(ReActorRef sender, Serializable anyPayload) {
-        return getSender().tell(sender, anyPayload);
+        return getSender().publish(sender, anyPayload);
     }
 
     public Try<ScheduledFuture<DeliveryStatus>>
     rescheduleMessage(Serializable messageToBeRescheduled, Duration inHowLong) {
         ReActorRef sender = getSender();
         return Try.of(() -> getReActorSystem().getSystemSchedulingService()
-                                              .schedule(() -> getSelf().route(sender, messageToBeRescheduled),
+                                              .schedule(() -> getSelf().tell(sender, messageToBeRescheduled),
                                                        inHowLong.toMillis(), TimeUnit.MILLISECONDS));
     }
 
     /**
-     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#atell(Serializable)}
+     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#apublish(Serializable)}
      * @param anyPayload payload to be sent
-     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#atell(ReActorRef, Serializable)}
+     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#apublish(ReActorRef, Serializable)}
      */
     public CompletionStage<DeliveryStatus> areply(Serializable anyPayload) {
-        return getSender().atell(anyPayload);
+        return getSender().apublish(anyPayload);
+    }
+
+    /**
+     * {@link ReActorRef#publish(Serializable)} to the current reactor the specified message setting itself as sender for the message
+     * @param anyPayload message that should be self-sent
+     * @return A {@link DeliveryStatus}
+     * complete
+     */
+    public DeliveryStatus selfPublish(Serializable anyPayload) {
+        return getSelf().publish(getSelf(), anyPayload);
     }
 
     /**
      * {@link ReActorRef#tell(Serializable)} to the current reactor the specified message setting itself as sender for the message
      * @param anyPayload message that should be self-sent
-     * @return A {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#tell(Serializable)}
+     * @return A {@link DeliveryStatus}
      * complete
      */
     public DeliveryStatus selfTell(Serializable anyPayload) {

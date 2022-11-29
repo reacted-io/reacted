@@ -11,7 +11,6 @@ package io.reacted.core.reactors.systemreactors;
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
@@ -23,7 +22,6 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 class DeadLetterTest {
 
@@ -53,7 +51,7 @@ class DeadLetterTest {
         reActorSystem.spawn(new MagicTestReActor(2, true, reActorConfig))
                      .orElseSneakyThrow();
         new ReActorRef(new ReActorId(ReActorId.NO_REACTOR_ID, CoreConstants.REACTOR_NAME),
-                       reActorSystem.getLoopback()).tell(ReActorRef.NO_REACTOR_REF, "message");
+                       reActorSystem.getLoopback()).publish(ReActorRef.NO_REACTOR_REF, "message");
         TimeUnit.SECONDS.sleep(1);
         Assertions.assertEquals(1, DeadLetter.RECEIVED.get());
     }

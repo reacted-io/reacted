@@ -61,7 +61,7 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     }
 
     @Override
-    public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
+    public Properties getChannelProperties() { return getDriverConfig().getChannelProperties(); }
 
     @Override
     public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {

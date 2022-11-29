@@ -69,7 +69,7 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
-        if (!target.tell(raCtx.getSelf(), request).isSent()) {
+        if (!target.publish(raCtx.getSelf(), request).isSent()) {
             raCtx.stop()
                  .thenAccept(noVal -> completionTrigger.completeExceptionally(new DeliveryException()));
         } else {

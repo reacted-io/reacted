@@ -19,11 +19,10 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.agrona.BitUtil;
-import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.ControlledMessageHandler;
 import org.agrona.concurrent.IdleStrategy;
-import org.agrona.concurrent.MessageHandler;
+import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.agrona.concurrent.ringbuffer.ManyToOneRingBuffer;
 import org.agrona.concurrent.ringbuffer.RingBuffer;
@@ -41,7 +40,9 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -148,35 +149,49 @@ public class Dispatcher {
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
                                 ReActorSystem reActorSystem, ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
-        var processed = 0L;
-        IdleStrategy ringBufferConsumerPauser = new BackoffIdleStrategy();
+        long[] schedulationIds = new long[10];
+        final AtomicInteger filled = new AtomicInteger(0);
+        var processedForDispatcher = 0L;
+        long processedInRound;
+        IdleStrategy ringBufferConsumerPauser = new BackoffIdleStrategy(1_000_000_000L,
+                                                                        100L,
+                                                                        BackoffIdleStrategy.DEFAULT_MIN_PARK_PERIOD_NS,
+                                                                        BackoffIdleStrategy.DEFAULT_MAX_PARK_PERIOD_NS);
 
         ControlledMessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
-            ReActorContext scheduledReActor = reActorSystem.getReActorCtx(buffer.getLong(index, ByteOrder.BIG_ENDIAN));
-            if (scheduledReActor != null) {
-                onMessage(scheduledReActor, dispatcherBatchSize, dispatcherLifeCyclePool, isExecutionRecorded, devNull,
-                          reActorUnregister);
-            }
+            int positionCounter = filled.getPlain();
+            schedulationIds[positionCounter] = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
+            filled.setPlain(positionCounter + 1);
             return ControlledMessageHandler.Action.COMMIT;
         });
-
-        var processedInRound = 0;
         while (!Thread.currentThread().isInterrupted()) {
-            processedInRound = scheduledList.controlledRead(ringBufferMessageProcessor);
-            ringBufferConsumerPauser.idle(processedInRound);
-            processed += processedInRound;
+            processedInRound = 0;
+            int ringRecordsProcessed = scheduledList.controlledRead(ringBufferMessageProcessor,
+                                                                    schedulationIds.length);
+            int limit = filled.getPlain();
+            for(int schedIdIdx = 0; schedIdIdx < limit; schedIdIdx++) {
+                ReActorContext scheduledReActor = reActorSystem.getReActorCtx(schedulationIds[schedIdIdx]);
+                if (scheduledReActor != null) {
+                    processedInRound += onMessage(scheduledReActor, dispatcherBatchSize, dispatcherLifeCyclePool,
+                                                  isExecutionRecorded, devNull, reActorUnregister);
+                }
+            }
+            filled.setPlain(0);
+            processedForDispatcher += processedInRound;
+            ringBufferConsumerPauser.idle(ringRecordsProcessed);
         }
-        LOGGER.info("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(), processed);
+        LOGGER.info("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(),
+                    processedForDispatcher);
     }
-    public void onMessage(ReActorContext scheduledReActor, int dispatcherBatchSize,
-                          ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded, ReActorRef devNull,
-                          Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
+    public int onMessage(ReActorContext scheduledReActor, int dispatcherBatchSize,
+                         ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded, ReActorRef devNull,
+                         Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
         //memory acquire
         scheduledReActor.acquireCoherence();
-
-        for (var msgNum = 0; msgNum < dispatcherBatchSize &&
+        int processed = 0;
+        for (; processed < dispatcherBatchSize &&
                              !scheduledReActor.getMbox().isEmpty() &&
-                             !scheduledReActor.isStop(); msgNum++) {
+                             !scheduledReActor.isStop(); processed++) {
             var newEvent = scheduledReActor.getMbox().getNextMessage();
 
             /*
@@ -194,8 +209,8 @@ public class Dispatcher {
               sequential execution attempts in the execution log
             */
             if (isExecutionRecorded &&
-                devNull.route(scheduledReActor.getSelf(),
-                              new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
+                devNull.tell(scheduledReActor.getSelf(),
+                             new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
                                                         scheduledReActor.getNextMsgExecutionId(),
                                                         newEvent.getSequenceNumber())).isNotSent()) {
                 LOGGER.error("CRITIC! Unable to send an Execution Attempt for message {} Replay will NOT be possible",
@@ -217,6 +232,7 @@ public class Dispatcher {
                              scheduledReActor.getSelf().getReActorId(), scheduledReActor.getMbox().getMsgNum());
             }
         }
+        return processed;
     }
 
     private void executeReactionForMessage(ReActorContext scheduledReActor, Message newEvent) {

@@ -70,8 +70,8 @@ public class Get implements ReActor {
         if (httpExchange != null) {
             CompletableFuture.runAsync(() -> Try.ofRunnable(() -> httpExchange.sendResponseHeaders(200, 0)), asyncService)
                              .toCompletableFuture()
-                             .thenAccept(noVal -> raCtx.selfTell(new ProcessGet(httpExchange.getRequestURI()
-                                                                                            .toString())));
+                             .thenAccept(noVal -> raCtx.selfPublish(new ProcessGet(httpExchange.getRequestURI()
+                                                                                               .toString())));
         }
         // start a request in parallel
         raCtx.getReActorSystem()

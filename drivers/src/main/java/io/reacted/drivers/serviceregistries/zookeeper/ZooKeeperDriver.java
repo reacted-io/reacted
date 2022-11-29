@@ -193,8 +193,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         ReActorRef discoveryRequester = raCtx.getSender();
         runAsync(() -> queryZooKeeper(raCtx, Objects.requireNonNull(this.serviceDiscovery), request.getSearchFilter()))
                 .thenAccept(filterItemSet -> raCtx.getReActorSystem().getSystemRemotingRoot()
-                                                  .tell(discoveryRequester,
-                                                        new FilterServiceDiscoveryRequest(request.getSearchFilter(),
+                                                  .publish(discoveryRequester,
+                                                           new FilterServiceDiscoveryRequest(request.getSearchFilter(),
                                                                                           filterItemSet)));
     }
 
@@ -258,7 +258,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         }
         cacheStarted.thenAccept(noVal -> raCtx.getReActorSystem()
                                               .getSystemRemotingRoot()
-                                              .tell(raCtx.getSelf(), new SynchronizationWithServiceRegistryComplete()));
+                                              .publish(raCtx.getSelf(), new SynchronizationWithServiceRegistryComplete()));
     }
 
     private void onStop(ReActorContext raCtx) {
@@ -266,7 +266,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         Try.ofRunnable(this::shutdownZookeeperConnection)
            .ifError(error -> raCtx.logError("Error stopping service registry", error));
         raCtx.getReActorSystem().getSystemRemotingRoot()
-             .tell(raCtx.getSelf(), new RegistryConnectionLost());
+             .publish(raCtx.getSelf(), new RegistryConnectionLost());
     }
 
     private void onInit(ReActorContext raCtx, ReActorInit init) {
@@ -284,7 +284,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         CompletableFuture.allOf(createPathIfRequired(asyncClient, CreateMode.PERSISTENT, REACTOR_SYSTEMS_PATH, NO_PAYLOAD),
                                 createPathIfRequired(asyncClient, CreateMode.PERSISTENT, SERVICES_PATH, NO_PAYLOAD),
                                 createPathIfRequired(asyncClient, CreateMode.PERSISTENT, REACTOR_SYSTEMS_GATES_PATH, NO_PAYLOAD))
-                         .thenAccept(pathCreated -> raCtx.selfTell(new ZooKeeperRootPathsCreated()))
+                         .thenAccept(pathCreated -> raCtx.selfPublish(new ZooKeeperRootPathsCreated()))
                          .exceptionally(initError -> {
                              raCtx.logError("Unable to init {} ", ZooKeeperDriver.class.getSimpleName(), initError);
                              raCtx.rescheduleMessage(init, getConfig().getReconnectionDelay());
@@ -313,8 +313,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                 .thenApply(isUnique -> isUnique
                                        ? serviceDiscovery == null
                                          ? setupServiceDiscovery(raCtx)
-                                         : raCtx.getReActorSystem().getSystemRemotingRoot().tell(raCtx.getSelf(),
-                                                                                                 new RegistryDriverInitComplete())
+                                         : raCtx.getReActorSystem().getSystemRemotingRoot().publish(raCtx.getSelf(),
+                                                                                                    new RegistryDriverInitComplete())
                                        : onDuplicateReactorSystem(raCtx));
 
     }
@@ -365,12 +365,12 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                         .thenAccept(noVal -> UnChecked.runnable(serviceDiscovery::start).run())
                         .thenApply(noVal -> raCtx.getReActorSystem()
                                                  .getSystemRemotingRoot()
-                                                 .tell(raCtx.getSelf(), new RegistryDriverInitComplete()));
+                                                 .publish(raCtx.getSelf(), new RegistryDriverInitComplete()));
     }
     private static DeliveryStatus onDuplicateReactorSystem(ReActorContext raCtx) {
         return raCtx.getReActorSystem()
                     .getSystemRemotingRoot()
-                    .tell(raCtx.getSelf(), new DuplicatedPublicationError());
+                    .publish(raCtx.getSelf(), new DuplicatedPublicationError());
     }
     private boolean isCuratorClientMissing() { return asyncClient == null; }
 
@@ -432,7 +432,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         return switch (treeCacheEvent.getType()) {
             case CONNECTION_SUSPENDED, CONNECTION_LOST, INITIALIZED -> DeliveryStatus.DELIVERED;
             case CONNECTION_RECONNECTED -> reActorSystem.getSystemRemotingRoot()
-                    .tell(driverReActor, new RegistryDriverInitComplete());
+                    .publish(driverReActor, new RegistryDriverInitComplete());
             case NODE_ADDED, NODE_UPDATED -> ZooKeeperDriver.shouldProcessUpdate(treeCacheEvent.getData().getPath())
                     ? ZooKeeperDriver.upsertGate(reActorSystem,
                     driverReActor,
@@ -451,8 +451,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         Optional<ChannelId> channelId = ChannelId.fromToString(reActorSystemNameAndChannelId.getNode());
 
         return channelId.map(channel -> reActorSystem.getSystemRemotingRoot()
-                                                     .tell(driverReActor,
-                                                           new RegistryGateRemoved(reActorSystemNameAndChannelId.getPath().substring(1),
+                                                     .publish(driverReActor,
+                                                              new RegistryGateRemoved(reActorSystemNameAndChannelId.getPath().substring(1),
                                                                                    channel)))
                         .orElse(DeliveryStatus.NOT_DELIVERED);
     }
@@ -465,8 +465,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         Try<Properties> properties = Try.of(() -> ObjectUtils.fromBytes(nodeData.getData()));
 
         return channelId.map(channel -> properties.map(props -> reActorSystem.getSystemRemotingRoot()
-                                                                             .tell(driverReActor,
-                                                                                   new RegistryGateUpserted(reActorSystemName,
+                                                                             .publish(driverReActor,
+                                                                                      new RegistryGateUpserted(reActorSystemName,
                                                                                                             channel,
                                                                                                             props)))
                                                   .orElse(DeliveryStatus.NOT_DELIVERED))
@@ -479,7 +479,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         switch (newState) {
             case LOST, SUSPENDED -> raCtx.getReActorSystem()
                                          .getSystemRemotingRoot()
-                                         .tell(raCtx.getSelf(), new RegistryConnectionLost());
+                                         .publish(raCtx.getSelf(), new RegistryConnectionLost());
             case RECONNECTED -> isReActorSystemUnique(raCtx.getReActorSystem().getLocalReActorSystemId(),
                     AsyncCuratorFramework.wrap(curator),
                     reActorSystemInstanceMarker)

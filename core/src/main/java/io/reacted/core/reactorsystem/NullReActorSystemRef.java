@@ -34,16 +34,16 @@ public final class NullReActorSystemRef extends ReActorSystemRef {
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst,
-                                                               PayloadT message) {
-        return NullDriver.NULL_DRIVER.tell(src, dst, message);
+    public <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+                                                                  PayloadT message) {
+        return NullDriver.NULL_DRIVER.publish(src, dst, message);
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst,
-                                                                                AckingPolicy ackingPolicy,
-                                                                                PayloadT message) {
-        return NullDriver.NULL_DRIVER.atell(src, dst,ackingPolicy, message);
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst,
+                                                                                    AckingPolicy ackingPolicy,
+                                                                                    PayloadT message) {
+        return NullDriver.NULL_DRIVER.apublish(src, dst, ackingPolicy, message);
     }
 
     @Override

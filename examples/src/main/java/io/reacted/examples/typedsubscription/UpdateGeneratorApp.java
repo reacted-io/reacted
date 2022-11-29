@@ -59,7 +59,7 @@ public class UpdateGeneratorApp {
         //alternatively, we can just send a message to another reactor. The listener will be triggered in the same way
         IntStream.range(1, 2)
                  .mapToObj(Update::new)
-                 .forEachOrdered(update -> reActorSystem.getSystemSink().tell(ReActorRef.NO_REACTOR_REF, update));
+                 .forEachOrdered(update -> reActorSystem.getSystemSink().publish(ReActorRef.NO_REACTOR_REF, update));
         TimeUnit.SECONDS.sleep(1);
         reActorSystem.shutDown();
     }

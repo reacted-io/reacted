@@ -50,7 +50,7 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
 
     @Override
     public Properties getChannelProperties() {
-        Properties properties = new Properties();
+        Properties properties = super.getChannelProperties();
         properties.setProperty(KAFKA_BOOTSTRAP_ENDPOINT, getBootstrapEndpoint());
         properties.setProperty(KAFKA_GROUP_ID, getGroupId());
         properties.setProperty(KAFKA_TOPIC, getTopic());

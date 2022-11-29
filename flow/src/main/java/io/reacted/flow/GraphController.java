@@ -98,7 +98,7 @@ class GraphController implements ReActiveEntity {
                                               entry.getValue().getRouteesNum()) &&
         !inputStreamsHaveBeenInited) {
       this.inputStreamsHaveBeenInited = true;
-      raCtx.selfTell(new InitInputStreams());
+      raCtx.selfPublish(new InitInputStreams());
     }
   }
   private void onInit(ReActorContext raCtx) {
@@ -133,7 +133,7 @@ class GraphController implements ReActiveEntity {
                                                                          operatorCfg.getReActorName());
     inputStreamProcessors.add(streamConsumerExecutor);
     var errorHandler = (TriConsumer<ReActorSystem, Object, ? super Throwable>) operatorCfg.getInputStreamErrorHandler();
-    AsyncUtils.asyncForeach(operator::atell, inputStream.iterator(),
+    AsyncUtils.asyncForeach(operator::apublish, inputStream.iterator(),
                             error -> errorHandler.accept(localReActorSystem, operatorCfg,
                                                          error),
                             streamConsumerExecutor)

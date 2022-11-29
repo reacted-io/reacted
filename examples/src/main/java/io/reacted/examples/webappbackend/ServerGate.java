@@ -68,7 +68,7 @@ public class ServerGate implements ReActor, HttpHandler {
     public void handle(HttpExchange exchange) {
         var requestId = exchange.getRequestURI().toASCIIString() + "|" + Instant.now().toString();
         this.requestIdToHttpExchange.put(requestId, exchange);
-        thisCtx.selfTell("GET".equals(exchange.getRequestMethod())
+        thisCtx.selfPublish("GET".equals(exchange.getRequestMethod())
                          ? new SpawnGetHandler(requestId)
                          : "POST".equals(exchange.getRequestMethod())
                             ? new SpawnPostHandler(requestId)

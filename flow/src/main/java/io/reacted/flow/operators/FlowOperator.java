@@ -105,7 +105,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
         this.operatorsRefreshTask = raCtx.getReActorSystem()
             .getSystemSchedulingService()
             .scheduleWithFixedDelay(() -> {
-                if (!raCtx.selfTell(new RefreshOperatorRequest()).isSent()) {
+                if (!raCtx.selfPublish(new RefreshOperatorRequest()).isSent()) {
                     raCtx.logError("Unable to request refresh of operator outputs");
                 }},
                                     0, operatorCfg.getOutputOperatorsRefreshPeriod()
@@ -148,7 +148,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                       if (isUpdateMatchingRequest(operatorCfg.getIfPredicateOutputOperators().size(),
                                                   operatorCfg.getThenElseOutputOperators().size(),
                                                   operatorOutputGatesUpdate)) {
-                          raCtx.selfTell(operatorOutputGatesUpdate);
+                          raCtx.selfPublish(operatorOutputGatesUpdate);
                       }
                   });
     }
@@ -189,7 +189,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                        ReActorContext raCtx, Collection<ReActorRef> nextStages) {
         return messages.stream()
                        .flatMap(output -> nextStages.stream()
-                                                    .map(dst -> dst.atell(raCtx.getSelf(), output)))
+                                                    .map(dst -> dst.apublish(raCtx.getSelf(), output)))
                        .reduce((first, second) -> composeDeliveries(first, second, onDeliveryError))
                        .orElseGet(() -> CompletableFuture.completedFuture(DeliveryStatus.DELIVERED));
     }

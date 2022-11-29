@@ -69,7 +69,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         this.bpMailboxBuilder = BackpressuringMbox.newBuilder()
                                                   .setRealMbox(new BoundedBasicMbox(subscription.getBufferSize()))
                                                   .setBackpressuringThreshold(subscription.getBufferSize())
-                                                  .setRequestOnStartup(0)
+                                                  .setAvailableOnStartup(0)
                                                   .setOutOfStreamControl(PublisherComplete.class,
                                                                          PublisherShutdown.class)
                                                   .setNonDelayable(ReActorInit.class, ReActorStop.class,
@@ -119,7 +119,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        feedGate.route(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(raCtx.getSelf()));
+        feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(raCtx.getSelf()));
     }
 
     private void forwarder(ReActorContext raCtx, Object anyPayload) {
@@ -160,7 +160,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         Consumer<Throwable> onSubscriptionError;
         onSubscriptionError = error -> { subscriber.onSubscribe(this);
                                          errorTermination(raCtx, error, subscriber); };
-        if (feedGate.route(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())).isNotSent()) {
+        if (feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())).isNotSent()) {
             onSubscriptionError.accept(new DeliveryException());
         }
     }

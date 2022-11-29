@@ -254,14 +254,14 @@ public class ReactiveServer {
 
         private void onInit(ReActorContext raCtx, String filePath) {
             this.fileLines = Try.of(() -> new InputStreamReader(new FileInputStream(filePath)))
-                                .orElse(null, error -> raCtx.getParent().tell(new InternalError(error)));
+                                .orElse(null, error -> raCtx.getParent().publish(new InternalError(error)));
 
             if (fileLines == null) {
                 dataPublisher.close();
                 return;
             }
-            if (raCtx.getParent().tell(raCtx.getSelf(), dataPublisher).isNotSent()) {
-                raCtx.getParent().tell(raCtx.getSelf(), new InternalError(new DeliveryException()));
+            if (raCtx.getParent().publish(raCtx.getSelf(), dataPublisher).isNotSent()) {
+                raCtx.getParent().publish(raCtx.getSelf(), new InternalError(new DeliveryException()));
             }
         }
 
@@ -288,10 +288,10 @@ public class ReactiveServer {
                     raCtx.rescheduleMessage(new PublishRequest(backpressureDelay.multipliedBy(2)),
                                             backpressureDelay.multipliedBy(2));
                 } else {
-                    raCtx.getSelf().route(raCtx.getSelf(), new PublishRequest(Duration.ofNanos(1)));
+                    raCtx.getSelf().tell(raCtx.getSelf(), new PublishRequest(Duration.ofNanos(1)));
                 }
             } catch (Exception exc) {
-                raCtx.getParent().tell(new InternalError(exc));
+                raCtx.getParent().publish(new InternalError(exc));
             }
         }
     }

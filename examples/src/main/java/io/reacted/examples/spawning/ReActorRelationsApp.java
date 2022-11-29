@@ -34,7 +34,7 @@ public class ReActorRelationsApp {
                                                    ReActorConfig.newBuilder()
                                                                 .setReActorName("Uncle")
                                                                 .build()).orElseSneakyThrow();
-            father.tell(uncle, new BreedRequest(3));
+            father.publish(uncle, new BreedRequest(3));
             TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -132,8 +132,8 @@ public class ReActorRelationsApp {
         }
 
         private void onInit(ReActorContext raCtx, ReActorInit init) {
-            breedRequester.tell(raCtx.getParent(),
-                                new Greetings("Hello from " + childConfig.getReActorName()));
+            breedRequester.publish(raCtx.getParent(),
+                                   new Greetings("Hello from " + childConfig.getReActorName()));
         }
     }
 

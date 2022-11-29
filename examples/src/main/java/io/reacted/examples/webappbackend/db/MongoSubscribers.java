@@ -34,8 +34,8 @@ final class MongoSubscribers {
 
         @Override
         public void onNext(Document item) {
-            requester.tell(mongoGate, new StorageMessages.QueryReply(item.get(DatabaseService.PAYLOAD_FIELD)
-                                                                         .toString()));
+            requester.publish(mongoGate, new StorageMessages.QueryReply(item.get(DatabaseService.PAYLOAD_FIELD)
+                                                                            .toString()));
             subscription.request(1);
         }
 
@@ -63,12 +63,12 @@ final class MongoSubscribers {
 
         @Override
         public void onError(Throwable throwable) {
-            requester.tell(mongoGate, new StorageMessages.StoreError(throwable));
+            requester.publish(mongoGate, new StorageMessages.StoreError(throwable));
         }
 
         @Override
         public void onComplete() {
-            requester.tell(mongoGate, new StorageMessages.StoreReply());
+            requester.publish(mongoGate, new StorageMessages.StoreReply());
         }
     }
 }

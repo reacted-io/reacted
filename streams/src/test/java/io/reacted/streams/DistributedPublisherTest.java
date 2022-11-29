@@ -53,7 +53,7 @@ public class DistributedPublisherTest {
     publisher.subscribe(testSubscriber);
     var remoteSubscriber = system.spawn(new RemoteReactor("RemoteSubscriber"))
                                  .orElseSneakyThrow();
-    remoteSubscriber.tell(publisher);
+    remoteSubscriber.publish(publisher);
     TimeUnit.SECONDS.sleep(2);
     publisher.submit("First Message");
     TimeUnit.SECONDS.sleep(2);
@@ -122,7 +122,7 @@ public class DistributedPublisherTest {
         }
 
         @Override
-        public void onNext(Serializable item) { raCtx.selfTell(item); }
+        public void onNext(Serializable item) { raCtx.selfPublish(item); }
 
         @Override
         public void onError(Throwable throwable) { fail(throwable); }

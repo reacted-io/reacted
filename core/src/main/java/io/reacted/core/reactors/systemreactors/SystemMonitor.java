@@ -87,6 +87,6 @@ public class SystemMonitor implements ReActiveEntity {
     private static void initRetry(Throwable error, ReActorContext raCtx) {
         raCtx.logError("Unable to init {} reattempting",
                        SystemMonitor.class.getSimpleName(), error);
-        raCtx.selfTell(new ReActorInit());
+        raCtx.selfPublish(new ReActorInit());
     }
 }

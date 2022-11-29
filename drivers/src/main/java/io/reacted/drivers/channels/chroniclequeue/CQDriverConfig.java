@@ -42,7 +42,7 @@ public class CQDriverConfig extends ChannelDriverConfig<CQDriverConfig.Builder, 
 
     @Override
     public Properties getChannelProperties() {
-        Properties properties = new Properties();
+        Properties properties = super.getChannelProperties();
         properties.setProperty(CQ_FILES_DIRECTORY, getChronicleFilesDir());
         properties.setProperty(CQ_TOPIC_NAME, topicName);
         return properties;

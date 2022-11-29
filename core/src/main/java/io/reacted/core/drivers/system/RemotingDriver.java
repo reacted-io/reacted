@@ -29,19 +29,18 @@ import javax.annotation.Nullable;
 @NonNullByDefault
 public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>>
         extends ReActorSystemDriver<ConfigT> {
-    private static final TriConsumer<ReActorId, Serializable, ReActorRef> DO_NOT_PROPAGATE = (a, b, c) -> {};
     protected RemotingDriver(ConfigT config) { super(config); }
 
     @Override
     public final <PayloadT extends Serializable>
-    DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
-        return tell(src, dst, DO_NOT_PROPAGATE, message);
+    DeliveryStatus publish(ReActorRef src, ReActorRef dst, PayloadT message) {
+        //While sending towards a remote peer, propagation towards subscribers never takes place
+        return publish(src, dst, DO_NOT_PROPAGATE, message);
     }
 
     @Override
-    public final <PayloadT extends Serializable> DeliveryStatus
-    tell(ReActorRef src, ReActorRef dst,
-         TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+    public final <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+                                                                        @Nullable TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
         long nextSeqNum = getLocalReActorSystem().getNewSeqNum();
         return sendMessage(ReActorContext.NO_REACTOR_CTX,
                            new Message(src, dst, nextSeqNum,
@@ -50,9 +49,8 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
-    route(ReActorRef src, ReActorRef dst, PayloadT message) {
-        return tell(src, dst, DO_NOT_PROPAGATE, message);
+    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
+        return publish(src, dst, DO_NOT_PROPAGATE, message);
     }
 
     /**
@@ -67,8 +65,8 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
      */
     @Override
     public <PayloadT extends Serializable>
-    CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                          PayloadT message) {
+    CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                             PayloadT message) {
         long nextSeqNum = getLocalReActorSystem().getNewSeqNum();
         var pendingAck = ackingPolicy.isAckRequired() ? newPendingAckTrigger(nextSeqNum) : null;
         DeliveryStatus sendResult = sendMessage(ReActorContext.NO_REACTOR_CTX,
@@ -87,19 +85,17 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     }
 
     @Override
-    public final <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
-    atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-         TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+    public final <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                                                                          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
         //While sending towards a remote peer, propagation towards subscribers never takes place
-        return atell(src, dst, ackingPolicy, message);
+        return apublish(src, dst, ackingPolicy, message);
     }
 
     @Override
-    public final <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
-    aroute(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+    public final <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
         //While sending towards a remote peer, propagation towards subscribers never takes place,
-        //so tell and route behave in the same way
-        return atell(src, dst, ackingPolicy, message);
+        //so tell and publish behave in the same way
+        return apublish(src, dst, ackingPolicy, message);
     }
 
     @Override
@@ -140,7 +136,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         //reactor system is the source channel is a 1:N channel such as a kafka topic
         if (isLocalReActorSystem(getLocalReActorSystem().getLocalReActorSystemId(),
                                  destination.getReActorSystemRef().getReActorSystemId())) {
-            //If so, this is an ACK confirmation for a message sent with atell
+            //If so, this is an ACK confirmation for a message sent with apublish
             if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
 
@@ -160,7 +156,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                     //only for consistent logging if a logging direct communication local driver is used because in this way
                     //also the ACK will appear in logs
                     getLocalReActorSystem().getSystemSink()
-                                           .tell(message.getSender(), message.getPayload());
+                                           .publish(message.getSender(), message.getPayload());
                 }
                 return;
             }
@@ -178,7 +174,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         boolean isAckRequired = !hasBeenSniffed &&
                                 message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
         if (isAckRequired) {
-            var deliverAttempt = destination.atell(sender, payload);
+            var deliverAttempt = destination.apublish(sender, payload);
             deliverAttempt.handle((deliveryStatus, deliveryError) -> {
                               DeliveryStatus result = deliveryStatus;
                               if (deliveryError != null) {
@@ -196,7 +192,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                               return null;
                           });
         } else {
-            var deliveryAttempt = destination.tell(sender, payload);
+            var deliveryAttempt = destination.publish(sender, payload);
             if (!deliveryAttempt.isSent()) {
                 getLocalReActorSystem().logInfo("Unable to deliver {} : {}",
                                                 message, deliveryAttempt);

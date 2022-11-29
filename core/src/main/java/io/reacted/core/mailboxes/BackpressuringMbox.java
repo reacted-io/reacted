@@ -33,7 +33,6 @@ public class BackpressuringMbox implements MailBox {
     private final MailBox realMbox;
     private final AtomicReference<Set<Class<? extends Serializable>>> notDelayable;
     private final Set<? extends Serializable> outOfStreamControl;
-    private final long requestOnStartup;
     private final ReActorContext realMailboxOwner;
     private final long backpressuringThreshold;
     private final BlockingDeque<Message> bufferQueue = new LinkedBlockingDeque<>();
@@ -45,7 +44,8 @@ public class BackpressuringMbox implements MailBox {
     private BackpressuringMbox(Builder builder) {
         this.outOfStreamControl = Objects.requireNonNull(builder.outOfStreamControl,
                                                          "Out of Stream control set cannot be null");
-        this.available = ObjectUtils.requiredInRange(builder.requestOnStartup, 0L, Long.MAX_VALUE, IllegalArgumentException::new);
+        this.available = ObjectUtils.requiredInRange(builder.availableOnStartup, 0L, Long.MAX_VALUE,
+                                                     IllegalArgumentException::new);
         this.realMailboxOwner = Objects.requireNonNull(builder.realMailboxOwner,
                                                        "Mailbox owner reactor cannot be null");
         this.realMbox = Objects.requireNonNull(builder.realMbox,
@@ -55,7 +55,6 @@ public class BackpressuringMbox implements MailBox {
                                    .stream()
                                    .filter(Objects::nonNull)
                                    .collect(Collectors.toUnmodifiableSet()));
-        this.requestOnStartup = builder.requestOnStartup;
         this.backpressuringThreshold = ObjectUtils.requiredInRange(builder.backpressuringThreshold,
                                                                    1L, Long.MAX_VALUE,
                                                                    IllegalArgumentException::new);
@@ -74,8 +73,6 @@ public class BackpressuringMbox implements MailBox {
 
     @Override
     public long getMaxSize() { return realMbox.getMaxSize(); }
-    public long getRequestOnStartup() { return requestOnStartup; }
-
     @Nonnull
     @Override
     public Message getNextMessage() {
@@ -152,7 +149,7 @@ public class BackpressuringMbox implements MailBox {
     public static class Builder {
         private MailBox realMbox = new BasicMbox();
         private long backpressuringThreshold = DEFAULT_MESSAGES_REQUESTED_ON_STARTUP;
-        private long requestOnStartup = DEFAULT_MESSAGES_REQUESTED_ON_STARTUP;
+        private long availableOnStartup = DEFAULT_MESSAGES_REQUESTED_ON_STARTUP;
 
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActorContext realMailboxOwner;
@@ -203,14 +200,14 @@ public class BackpressuringMbox implements MailBox {
 
         /**
          *
-         * @param requestOnStartup a non-negative integer representing how main messages should be
+         * @param availableOnStartup a non-negative integer representing how main messages should be
          *                         automatically made deliverable on startup.
          *                         Same semantic of Java Flow Subscription.request.
          *                         Default {@link #DEFAULT_MESSAGES_REQUESTED_ON_STARTUP}
          * @return this {@link Builder}
          */
-        public final Builder setRequestOnStartup(int requestOnStartup) {
-            this.requestOnStartup = requestOnStartup;
+        public final Builder setAvailableOnStartup(int availableOnStartup) {
+            this.availableOnStartup = availableOnStartup;
             return this;
         }
 
@@ -230,7 +227,7 @@ public class BackpressuringMbox implements MailBox {
         }
 
         /**
-         *
+         * Define which rector is going to be backpressured by this mailbox
          * @param realMailboxOwner {@link ReActorContext} of the reactor owning {@link BackpressuringMbox#realMbox}
          * @return this {@link Builder}
          */
@@ -242,7 +239,7 @@ public class BackpressuringMbox implements MailBox {
         /**
          *
          * @return a {@link BackpressuringMbox}
-         * @throws NullPointerException if any of the non null arguments is found to be null
+         * @throws NullPointerException if any of the non-null arguments is found to be null
          * @throws IllegalArgumentException if {@code sequencer} can create more than one thread
          *                                  if {@code bufferSize} is not positive
          *                                  if {@code requestOnStartup} is negative

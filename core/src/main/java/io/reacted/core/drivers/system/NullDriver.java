@@ -23,6 +23,7 @@ import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Properties;
@@ -43,7 +44,8 @@ public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     }
     @Override
     public Try<Void> initDriverCtx(ReActorSystem localReActorSystem) {
-        this.localReActorSystem = localReActorSystem;
+        this.localReActorSystem = Objects.requireNonNull(localReActorSystem,
+                                                         "Local reactor system cannot be null");
         return Try.VOID;
     }
 
@@ -72,42 +74,38 @@ public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst,
-                                                               PayloadT message) {
+    public <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+                                                                  PayloadT message) {
         return DeliveryStatus.NOT_DELIVERED;
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
-    tell(ReActorRef src, ReActorRef dst,
-         TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+    public <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+                                                                  @Nullable TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
         return DeliveryStatus.NOT_DELIVERED;
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
-    route(ReActorRef src, ReActorRef dst, PayloadT message) {
+    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
         return DeliveryStatus.NOT_DELIVERED;
     }
 
     @Override
     public <PayloadT extends Serializable>
-    CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                          PayloadT message) {
+    CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                             PayloadT message) {
         return CompletableFuture.failedStage(new NoRouteToReActorSystem());
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
-    atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers,
-          PayloadT message) {
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                                                                    TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers,
+                                                                                    PayloadT message) {
         return CompletableFuture.failedStage(new NoRouteToReActorSystem());
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
-    aroute(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
         return CompletableFuture.failedStage(new NoRouteToReActorSystem());
     }
 

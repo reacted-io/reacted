@@ -65,7 +65,7 @@ public class Post implements ReActor {
                             .setReActorName(requestId)
                             .setMailBoxProvider(raCtx -> BackpressuringMbox.newBuilder()
                                                                            .setRealMailboxOwner(raCtx)
-                                                                           .setRequestOnStartup(1)
+                                                                           .setAvailableOnStartup(1)
                                                                            .setRealMbox(new BasicMbox())
                                                                            .build())
                             .build();
@@ -84,11 +84,11 @@ public class Post implements ReActor {
         raCtx.getMbox().request(1);
         if (!services.getServiceGates().isEmpty()) {
             services.getServiceGates().iterator().next()
-                    .tell(raCtx.getSelf(),
-                          new StorageMessages.StoreRequest(String.valueOf(Instant.now().toEpochMilli()),
+                    .publish(raCtx.getSelf(),
+                             new StorageMessages.StoreRequest(String.valueOf(Instant.now().toEpochMilli()),
                                                            payloadBuilder.toString()));
         } else {
-            raCtx.selfTell(new StorageMessages.StoreError(new RuntimeException("No database found")));
+            raCtx.selfPublish(new StorageMessages.StoreError(new RuntimeException("No database found")));
         }
     }
 
@@ -141,7 +141,7 @@ public class Post implements ReActor {
    private static DeliveryStatus sendTillAvailable(ReActorContext raCtx,
                                                                          BufferedReader inputStream) {
         var nextMsg = getNextDataChunk(inputStream);
-        var nextSend = raCtx.selfTell(nextMsg);
+        var nextSend = raCtx.selfPublish(nextMsg);
         return nextMsg.getClass() != DataChunksCompleted.class
                 ? nextSend
                 : DeliveryStatus.BACKPRESSURE_REQUIRED;

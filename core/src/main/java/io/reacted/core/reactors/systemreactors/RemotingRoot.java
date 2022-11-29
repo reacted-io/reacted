@@ -80,8 +80,8 @@ public class RemotingRoot {
 
     private static void onCancelService(ReActorContext raCtx,
                                         ServiceCancellationRequest serviceCancellationRequest) {
-        raCtx.getChildren().forEach(serviceRegistryDriver -> serviceRegistryDriver.tell(raCtx.getSelf(),
-                                                                                        serviceCancellationRequest));
+        raCtx.getChildren().forEach(serviceRegistryDriver -> serviceRegistryDriver.publish(raCtx.getSelf(),
+                                                                                           serviceCancellationRequest));
     }
 
     private static void onPublishService(ReActorContext raCtx, ServicePublicationRequest publishService) {
@@ -94,7 +94,7 @@ public class RemotingRoot {
         }
 
         raCtx.getChildren().stream()
-             .map(registryDriver -> registryDriver.tell(raCtx.getSelf(), publishService))
+             .map(registryDriver -> registryDriver.publish(raCtx.getSelf(), publishService))
              .filter(Predicate.not(DeliveryStatus::isSent))
              .forEach(registryDriver -> raCtx.logError("Unable to deliver service publication request {}",
                                                        publishService.getServiceProperties()));
@@ -144,7 +144,7 @@ public class RemotingRoot {
     private void onRegistryGateRemoval(ReActorContext raCtx, RegistryGateRemoved removed) {
         if (raCtx.getReActorSystem().getLocalReActorSystemId().equals(removed.getReActorSystem())) {
             //if for any reason we got removed from remove service registry, refresh subscription
-            raCtx.getSelf().tell(raCtx.getSender(), new SynchronizationWithServiceRegistryComplete());
+            raCtx.getSelf().publish(raCtx.getSender(), new SynchronizationWithServiceRegistryComplete());
             return;
         }
         raCtx.logInfo("Gate removed in {} : {} -> {}",

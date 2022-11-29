@@ -70,7 +70,7 @@ public class ServiceOperator extends FlowOperator<Builder,
   protected final CompletionStage<Collection<? extends Serializable>>
   onNext(Serializable input, ReActorContext raCtx) {
 
-    return AsyncUtils.asyncForeach(request -> service.atell(raCtx.getSelf(), request),
+    return AsyncUtils.asyncForeach(request -> service.apublish(raCtx.getSelf(), request),
                                    getOperatorCfg().getToServiceRequests().apply(input).iterator(),
                                    error -> onFailedDelivery(error, raCtx, input), executorService)
                      .thenAccept(noVal -> raCtx.getMbox().request(1))
@@ -90,7 +90,7 @@ public class ServiceOperator extends FlowOperator<Builder,
     this.serviceRefreshTask = raCtx.getReActorSystem()
          .getSystemSchedulingService()
          .scheduleWithFixedDelay(() -> {
-                                   if (!raCtx.selfTell(new RefreshServiceRequest()).isSent()) {
+                                   if (!raCtx.selfPublish(new RefreshServiceRequest()).isSent()) {
                                        raCtx.logError("Unable to request refresh of service operators");
                                    }
                                  },
@@ -115,7 +115,7 @@ public class ServiceOperator extends FlowOperator<Builder,
                                  raCtx.getSelf().getReActorId().toString())
                 .thenAccept(selectedService -> {
                   if (!selectedService.isEmpty()) {
-                    raCtx.selfTell(new RefreshServiceUpdate(selectedService));
+                    raCtx.selfPublish(new RefreshServiceUpdate(selectedService));
                   }
                 });
 

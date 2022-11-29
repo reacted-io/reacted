@@ -71,7 +71,7 @@ class LoopbackDriverTest {
 
     @Test
     void loopbackDriverCanTellMessageToReactor() throws ExecutionException, InterruptedException {
-        Assertions.assertTrue(loopbackDriver.tell(ReActorRef.NO_REACTOR_REF, destReActorRef, message).isDelivered());
+        Assertions.assertTrue(loopbackDriver.publish(ReActorRef.NO_REACTOR_REF, destReActorRef, message).isDelivered());
         // as we have a dispatcher the message was dispatched & it cannot be found in destination mbox
         Awaitility.await().until(() -> MagicTestReActor.RECEIVED.sum() == 1);
     }

@@ -25,7 +25,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
     public static final int DEFAULT_ACK_CACHE_SIZE = 10_000_000;
     public static final String CHANNEL_ID_PROPERTY_NAME = "channelName";
     private final String channelName;
-    private final Duration atellAutomaticFailureTimeout;
+    private final Duration aPublishAutomaticFailureTimeout;
     private final Duration ackCacheCleanupInterval;
     private final int ackCacheSize;
 
@@ -33,25 +33,22 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         super(builder);
         this.channelName = Objects.requireNonNull(builder.channelName,
                                                   "Channel name cannot be null");
-        this.atellAutomaticFailureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.atellFailureTimeout,
-                                                                                                  Long.MAX_VALUE,
-                                                                                                  TimeUnit.NANOSECONDS);
+        this.aPublishAutomaticFailureTimeout = ObjectUtils.checkNonNullPositiveTimeIntervalWithLimit(builder.aPublishFailureTimeout,
+                                                                                                     Long.MAX_VALUE,
+                                                                                                     TimeUnit.NANOSECONDS);
         this.ackCacheCleanupInterval = ObjectUtils.checkNonNullPositiveTimeInterval(builder.ackCacheCleanupInterval);
         this.ackCacheSize = ObjectUtils.requiredInRange(builder.ackCacheSize, 0, Integer.MAX_VALUE,
                                                         IllegalArgumentException::new);
     }
+    public String getChannelName() { return channelName; }
 
-    public Properties getProperties() {
-        var props = getChannelProperties();
+    public Duration getApublishAutomaticFailureTimeout() { return aPublishAutomaticFailureTimeout; }
+
+    public Properties getChannelProperties() {
+        var props = new Properties();
         props.setProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME, getChannelName());
         return props;
     }
-
-    public String getChannelName() { return channelName; }
-
-    public Duration getAtellAutomaticFailureTimeout() { return atellAutomaticFailureTimeout; }
-
-    public Properties getChannelProperties() { return new Properties(); }
 
     public Duration getAckCacheCleanupInterval() { return ackCacheCleanupInterval; }
 
@@ -61,7 +58,7 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
             extends InheritableBuilder.Builder<BuilderT, BuiltT> {
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String channelName;
-        private Duration atellFailureTimeout = DEFAULT_MSG_LOST_TIMEOUT;
+        private Duration aPublishFailureTimeout = DEFAULT_MSG_LOST_TIMEOUT;
         private Duration ackCacheCleanupInterval = DEFAULT_MSG_LOST_TIMEOUT;
         private int ackCacheSize = DEFAULT_ACK_CACHE_SIZE;
 
@@ -71,19 +68,19 @@ public abstract class ChannelDriverConfig<BuilderT extends InheritableBuilder.Bu
         }
 
         /**
-         * Specify after how much time a not acknowledged message from {@link io.reacted.core.reactorsystem.ReActorRef#atell}
+         * Specify after how much time a not acknowledged message from {@link io.reacted.core.reactorsystem.ReActorRef#apublish}
          * should be automatically marked as completed as a failure
-         * @param atellFailureTimeout the automatic failure timeout. Default {@link ChannelDriverConfig#DEFAULT_MSG_LOST_TIMEOUT}
+         * @param aPublishFailureTimeout the automatic failure timeout. Default {@link ChannelDriverConfig#DEFAULT_MSG_LOST_TIMEOUT}
          *                            Max Value: {@link Long#MAX_VALUE} nanosecs
          * @return this {@link Builder}
          */
-        public final BuilderT setAtellAutomaticFailureAfterTimeout(Duration atellFailureTimeout) {
-            this.atellFailureTimeout = atellFailureTimeout;
+        public final BuilderT setApublishAutomaticFailureAfterTimeout(Duration aPublishFailureTimeout) {
+            this.aPublishFailureTimeout = aPublishFailureTimeout;
             return getThis();
         }
 
         /**
-         * Specify how often the cache used for keeping the pending acks triggers for {@link io.reacted.core.reactorsystem.ReActorRef#atell}
+         * Specify how often the cache used for keeping the pending acks triggers for {@link io.reacted.core.reactorsystem.ReActorRef#apublish}
          * should be checked for maintenance
          *
          * @param ackCacheCleanupInterval Cache cleanup rate. Positive intervals only, default: {@link ChannelDriverConfig#DEFAULT_MSG_LOST_TIMEOUT}

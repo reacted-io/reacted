@@ -86,7 +86,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     }
 
     @Override
-    public Properties getChannelProperties() { return getDriverConfig().getProperties(); }
+    public Properties getChannelProperties() { return getDriverConfig().getChannelProperties(); }
 
     @Override
     public DeliveryStatus sendMessage(ReActorContext destination, Message message) {

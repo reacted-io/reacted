@@ -74,25 +74,25 @@ public class ReActorSystemRef implements Externalizable {
     }
 
     <PayloadT extends Serializable>
+    DeliveryStatus publish(ReActorRef src, ReActorRef dst, PayloadT message) {
+        return backingDriver.publish(src, dst, message);
+    }
+
+    <PayloadT extends Serializable>
     DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
         return backingDriver.tell(src, dst, message);
     }
 
     <PayloadT extends Serializable>
-    DeliveryStatus route(ReActorRef src, ReActorRef dst, PayloadT message) {
-        return backingDriver.route(src, dst, message);
+    CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                             PayloadT message) {
+        return backingDriver.apublish(src, dst, ackingPolicy, message);
     }
 
     <PayloadT extends Serializable>
     CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
                                           PayloadT message) {
         return backingDriver.atell(src, dst, ackingPolicy, message);
-    }
-
-    <PayloadT extends Serializable>
-    CompletionStage<DeliveryStatus> aroute(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                           PayloadT message) {
-        return backingDriver.aroute(src, dst, ackingPolicy, message);
     }
 
 

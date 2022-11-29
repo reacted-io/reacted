@@ -67,8 +67,7 @@ public class NullLocalDriver extends LocalDriver<NullLocalDriverConfig> {
 
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
-    route(ReActorRef src, ReActorRef dst, PayloadT message) {
+    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
         return DeliveryStatus.NOT_DELIVERED;
     }
     @Override

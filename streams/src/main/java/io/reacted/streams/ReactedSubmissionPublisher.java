@@ -136,12 +136,12 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      *  Stop the publisher. All the subscribers will be able to consume all the messages already sent
      */
     @Override
-    public void close() { feedGate.tell(feedGate, new PublisherShutdown()); }
+    public void close() { feedGate.publish(feedGate, new PublisherShutdown()); }
 
     /**
      *  Stop the publisher. All the subscribers will be notified immediately of the termination
      */
-    public void interrupt() { feedGate.tell(feedGate, new PublisherInterrupt()); }
+    public void interrupt() { feedGate.publish(feedGate, new PublisherInterrupt()); }
 
     /**
      + Registers a subscriber.
@@ -231,7 +231,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
      */
 
     public DeliveryStatus submit(PayloadT message) {
-        return feedGate.tell(message);
+        return feedGate.publish(message);
     }
 
     private void forwardToSubscribers(ReActorContext raCtx, Serializable payload) {
@@ -245,7 +245,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         Iterator<ReActorRef> subscribersIterator = subscribers.iterator();
         for (int subscriberIdx = 0; subscribersIterator.hasNext(); subscriberIdx++) {
             subscribersRefs[subscriberIdx] = subscribersIterator.next();
-            deliveries[subscriberIdx] = subscribersRefs[subscriberIdx].atell(raCtx.getSelf(), payload);
+            deliveries[subscriberIdx] = subscribersRefs[subscriberIdx].apublish(raCtx.getSelf(), payload);
         }
         CompletionStage<DeliveryStatus> result = deliveries[0];
         for(int subscriberIdx = 1; subscriberIdx < deliveries.length; subscriberIdx++) {
@@ -278,13 +278,13 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                                           ReActorRef secondRef) {
         return first.handle((dStatus, error) -> {
             if (error != null) {
-                feedGate.tell(feedGate, new UnsubscriptionRequest(firstRef));
+                feedGate.publish(feedGate, new UnsubscriptionRequest(firstRef));
                 return DeliveryStatus.NOT_DELIVERED;
             }
             return dStatus;
         }).thenCompose(fStatus -> second.handle((sStatus, error) -> {
             if (error != null) {
-                feedGate.tell(feedGate, new UnsubscriptionRequest(secondRef));
+                feedGate.publish(feedGate, new UnsubscriptionRequest(secondRef));
                 sStatus = DeliveryStatus.NOT_DELIVERED;
             }
             return fStatus == DeliveryStatus.BACKPRESSURE_REQUIRED
@@ -294,14 +294,14 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
     }
 
     private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
-        subscribers.forEach(subscriber -> subscriber.tell(raCtx.getSelf(), interrupt));
+        subscribers.forEach(subscriber -> subscriber.publish(raCtx.getSelf(), interrupt));
         subscribers.clear();
         raCtx.stop();
     }
 
     private void onStop(ReActorContext raCtx, ReActorStop stop) {
         subscribers.forEach(subscriber -> {
-                       if(subscriber.route(raCtx.getSelf(), new PublisherComplete()).isNotSent()) {
+                       if(subscriber.tell(raCtx.getSelf(), new PublisherComplete()).isNotSent()) {
                            raCtx.logError("Unable to stop subscriber {}", subscriber);
                        }
                    });
@@ -310,8 +310,8 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     private void onSubscriptionRequest(ReActorContext raCtx, SubscriptionRequest subscription) {
         var backpressuringManager = subscription.subscriptionBackpressuringManager();
-        ifNotDelivered(backpressuringManager.atell(raCtx.getSelf(),
-                                                   new SubscriptionReply(subscribers.add(backpressuringManager))),
+        ifNotDelivered(backpressuringManager.apublish(raCtx.getSelf(),
+                                                      new SubscriptionReply(subscribers.add(backpressuringManager))),
                     error -> raCtx.logError("Unable to deliver subscription confirmation to {}",
                                             subscription.subscriptionBackpressuringManager(), error));
     }

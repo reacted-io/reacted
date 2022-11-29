@@ -32,7 +32,7 @@ class SendMessagesApp {
                                                          simpleReActorSystem.shutDown();
                                                      });
         //Let's ping our new reactor
-        if ( newReActorReference.tell(ReActorRef.NO_REACTOR_REF, new PreparationRequest())
+        if ( newReActorReference.publish(ReActorRef.NO_REACTOR_REF, new PreparationRequest())
                                 .isDelivered()) {
           System.out.println("Preparation request has been delivered");
         } else {
@@ -41,9 +41,9 @@ class SendMessagesApp {
 
         IntStream.range(0, messagesToSend)
                  .parallel()
-                 //Tell and atell are functionally the same if we do not care about the return value
-                 //atell brings more overhead because of the acking system
-                 .forEach(msgNum -> newReActorReference.atell("Ping Request" + pingDelim + msgNum));
+                 //Tell and apublish are functionally the same if we do not care about the return value
+                 //apublish brings more overhead because of the acking system
+                 .forEach(msgNum -> newReActorReference.apublish("Ping Request" + pingDelim + msgNum));
         TimeUnit.SECONDS.sleep(1);
         simpleReActorSystem.shutDown();
     }

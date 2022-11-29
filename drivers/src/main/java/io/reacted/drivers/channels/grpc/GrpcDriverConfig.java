@@ -38,7 +38,7 @@ public class GrpcDriverConfig extends ChannelDriverConfig<GrpcDriverConfig.Build
 
     @Override
     public Properties getChannelProperties() {
-        Properties properties = new Properties();
+        Properties properties = super.getChannelProperties();
         properties.setProperty(GRPC_PORT, getPort() + "");
         properties.setProperty(GRPC_HOST, getHostName());
         return properties;
