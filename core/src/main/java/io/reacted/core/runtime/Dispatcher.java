@@ -22,7 +22,6 @@ import org.agrona.BitUtil;
 import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.ControlledMessageHandler;
 import org.agrona.concurrent.IdleStrategy;
-import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.agrona.concurrent.ringbuffer.ManyToOneRingBuffer;
 import org.agrona.concurrent.ringbuffer.RingBuffer;
@@ -42,7 +41,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import java.util.stream.Stream;
 

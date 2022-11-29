@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * Copyright (c) 2022 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -15,8 +15,6 @@ import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
 
 @NonNullByDefault
 public class LowGarbageBasicMbox implements MailBox {

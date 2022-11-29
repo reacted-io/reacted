@@ -10,29 +10,18 @@ package io.reacted.examples.benchmarking;
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.mailboxes.BoundedBasicMbox;
 import io.reacted.core.mailboxes.LowGarbageBasicMbox;
-import io.reacted.core.mailboxes.LowGarbageBoundedBasicMbox;
-import io.reacted.core.mailboxes.TypeCoalescingMailbox;
 import io.reacted.core.messages.reactors.ReActorInit;
-import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.reactors.ReActions;
-import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.services.LoadBalancingPolicies;
-import io.reacted.core.services.SelectionType;
-import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -110,7 +99,7 @@ public class ReactionTime {
                             .reAct(Long.class, this::onNanoTime)
                             .reAct(LatenciesRequest.class,
                                    (ctx, request) -> ctx.reply(new LatenciesReply(getLatencies())))
-                            .reAct(ReActorInit.class, (ctx, init) -> { this.ctx = ctx; })
+                            .reAct(ReActorInit.class, (ctx, init) -> this.ctx = ctx)
                             .build();
         }
 
