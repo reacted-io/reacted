@@ -68,7 +68,7 @@
         <connection>scm:git:git://github.com/dexecutor/dependent-tasks-executor.git</connection>
         <developerConnection>scm:git:git@github.com:dexecutor/dexecutor.git</developerConnection>
         <url>https://github.com/dexecutor/dependent-tasks-executor</url>
-        <tag>reacted-all-1.0</tag>
+        <tag>reacted-all-2.1.1</tag>
     </scm>
 
     <properties>

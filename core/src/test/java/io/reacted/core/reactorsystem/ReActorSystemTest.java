@@ -143,7 +143,7 @@ class ReActorSystemTest {
                     .map(CompletionStage::toCompletableFuture)
                     .ifPresentOrElse(CompletableFuture::join,
                                      () -> Assertions.fail(NO_RE_ACTOR_FOUND));
-        } while (iteration++ < 5_000_000);
+        } while (iteration++ < 5_00_000);
     }
 
     @Test
