@@ -147,7 +147,7 @@ public class BackpressuringMbox implements MailBox {
         this.available += delta;
     }
     public static class Builder {
-        private MailBox realMbox = new BasicMbox();
+        private MailBox realMbox = new UnboundedMbox();
         private long backpressuringThreshold = DEFAULT_MESSAGES_REQUESTED_ON_STARTUP;
         private long availableOnStartup = DEFAULT_MESSAGES_REQUESTED_ON_STARTUP;
 
@@ -189,7 +189,7 @@ public class BackpressuringMbox implements MailBox {
         /**
          *
          * @param realMbox Backing-up mailbox
-         *                 Default: {@link BasicMbox}
+         *                 Default: {@link UnboundedMbox}
          * @return this {@link Builder}
          */
         public final Builder setRealMbox(MailBox realMbox) {

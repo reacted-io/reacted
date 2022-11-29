@@ -9,7 +9,7 @@
 package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
@@ -73,7 +73,7 @@ public class TimeReActor implements ReActor {
         return ReActorConfig.newBuilder()
                             .setReActorName(TimeReActor.class.getSimpleName())
                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
-                            .setMailBoxProvider(ctx -> new BasicMbox())
+                            .setMailBoxProvider(ctx -> new UnboundedMbox())
                             .setDispatcherName(Dispatcher.DEFAULT_DISPATCHER_NAME)
                             .build();
     }

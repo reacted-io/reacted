@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.Nonnull;
 
 @NonNullByDefault
-public class InflatableMailbox extends BasicMbox {
+public class InflatableMailbox extends UnboundedMbox {
     private final AtomicLong mailboxCapacity;
 
     public InflatableMailbox() { this(0L); }

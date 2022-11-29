@@ -10,7 +10,7 @@ package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
-import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.patterns.NonNullByDefault;
@@ -43,7 +43,7 @@ public class ClockReActor implements ReActor {
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                             .setReActorName(serviceName)
-                            .setMailBoxProvider(ctx -> new BasicMbox())
+                            .setMailBoxProvider(ctx -> new UnboundedMbox())
                             .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                             .build();
     }

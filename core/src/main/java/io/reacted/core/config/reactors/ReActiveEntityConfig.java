@@ -10,7 +10,7 @@ package io.reacted.core.config.reactors;
 
 import com.google.common.base.Strings;
 import io.reacted.core.config.InheritableBuilder;
-import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.runtime.Dispatcher;
@@ -28,7 +28,7 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
                                            BuiltT extends ReActiveEntityConfig<BuilderT, BuiltT>>
         extends InheritableBuilder<BuilderT, BuiltT> {
 
-    public static final Function<ReActorContext, MailBox> DEFAULT_MAILBOX_SUPPLIER = ctx -> new BasicMbox();
+    public static final Function<ReActorContext, MailBox> DEFAULT_MAILBOX_SUPPLIER = ctx -> new UnboundedMbox();
     public static final TypedSubscription[] DEFAULT_TYPED_SUBSCRIPTIONS = TypedSubscription.NO_SUBSCRIPTIONS;
     private final String dispatcherName;
     private final String reActorName;
@@ -100,7 +100,8 @@ public abstract class ReActiveEntityConfig<BuilderT extends ReActiveEntityConfig
         /**
          * Messages for a reactor are delivered within its unique and only mailbox
          *
-         * @param mailBoxProvider specify how to obtain a new mailbox. Used on reactor creation
+         * @param mailBoxProvider specify how to obtain a new mailbox. Used on reactor creation.
+         *                        Default: {@link UnboundedMbox}
          * @return this builder
          */
         public final BuilderT setMailBoxProvider(Function<ReActorContext, MailBox> mailBoxProvider) {

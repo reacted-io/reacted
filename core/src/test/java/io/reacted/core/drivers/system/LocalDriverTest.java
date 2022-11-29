@@ -16,7 +16,7 @@ import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.ReActions;
@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
 
 class LocalDriverTest {
     static ReActorSystem reActorSystem;
-    static BasicMbox basicMbox;
+    static UnboundedMbox unboundedMbox;
     static Message originalMsg;
     static LocalDriver localDriver;
     static ReActorContext reActorContext;
@@ -53,7 +53,7 @@ class LocalDriverTest {
         reActorSystem = new ReActorSystem(reActorSystemConfig);
         reActorSystem.initReActorSystem();
 
-        basicMbox = new BasicMbox();
+        unboundedMbox = new UnboundedMbox();
         localDriver = SystemLocalDrivers.DIRECT_COMMUNICATION;
         localDriver.initDriverLoop(reActorSystem);
 
@@ -61,7 +61,7 @@ class LocalDriverTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName(CoreConstants.REACTOR_NAME)
                                                    .setDispatcherName("Dispatcher")
-                                                   .setMailBoxProvider(ctx -> new BasicMbox())
+                                                   .setMailBoxProvider(ctx -> new UnboundedMbox())
                                                    .setTypedSubscriptions(subscribedTypes)
                                                    .build();
 
@@ -72,7 +72,7 @@ class LocalDriverTest {
 
 
         reActorContext = ReActorContext.newBuilder()
-                                       .setMbox(ctx -> basicMbox)
+                                       .setMbox(ctx -> unboundedMbox)
                                        .setReactorRef(reActorRef)
                                        .setReActorSystem(reActorSystem)
                                        .setParentActor(ReActorRef.NO_REACTOR_REF)
@@ -89,21 +89,21 @@ class LocalDriverTest {
     void localDriverDeliversMessagesInMailBox() {
         Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isDelivered());
 
-        Assertions.assertEquals(1, basicMbox.getMsgNum());
-        Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
-        Assertions.assertEquals(0, basicMbox.getMsgNum());
+        Assertions.assertEquals(1, unboundedMbox.getMsgNum());
+        Assertions.assertEquals(originalMsg, unboundedMbox.getNextMessage());
+        Assertions.assertEquals(0, unboundedMbox.getMsgNum());
     }
 
     @Test
     void localDriverForwardsMessageToLocalActor() {
         Assertions.assertTrue(LocalDriver.syncForwardMessageToLocalActor(reActorContext, originalMsg)
                                          .isDelivered());
-        Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
+        Assertions.assertEquals(originalMsg, unboundedMbox.getNextMessage());
     }
 
     @Test
     void localDriverCanSendMessage() {
         Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isDelivered());
-        Assertions.assertEquals(originalMsg, basicMbox.getNextMessage());
+        Assertions.assertEquals(originalMsg, unboundedMbox.getNextMessage());
     }
 }

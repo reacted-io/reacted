@@ -18,8 +18,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class BasicMboxTest {
-    BasicMbox basicMbox;
+class UnboundedMboxTest {
+    UnboundedMbox unboundedMbox;
     static Message originalMsg;
     static ReActorRef testMsgSrc;
     static ReActorRef testMsgDst;
@@ -35,48 +35,48 @@ class BasicMboxTest {
 
     @BeforeEach
     void prepareMailBox() {
-        basicMbox = new BasicMbox();
+        unboundedMbox = new UnboundedMbox();
     }
 
     @Test
     void messageGetsDeliveredInInbox() {
-        basicMbox.deliver(originalMsg);
-        Assertions.assertFalse(basicMbox.isEmpty());
+        unboundedMbox.deliver(originalMsg);
+        Assertions.assertFalse(unboundedMbox.isEmpty());
     }
 
     @Test
     void messagesAreCorrectlyCountedInInbox() {
-        basicMbox.deliver(originalMsg);
-        Assertions.assertEquals(1, basicMbox.getMsgNum());
+        unboundedMbox.deliver(originalMsg);
+        Assertions.assertEquals(1, unboundedMbox.getMsgNum());
     }
 
     @Test
     void inboxWithOneMessageIsNotFull() {
-        basicMbox.deliver(originalMsg);
-        Assertions.assertFalse(basicMbox.isFull());
+        unboundedMbox.deliver(originalMsg);
+        Assertions.assertFalse(unboundedMbox.isFull());
     }
 
     @Test
     void inboxWithOneMessageIsNotEmpty() {
-        basicMbox.deliver(originalMsg);
-        Assertions.assertFalse(basicMbox.isEmpty());
+        unboundedMbox.deliver(originalMsg);
+        Assertions.assertFalse(unboundedMbox.isEmpty());
     }
 
     @Test
     void inboxWithNoMessagesIsEmpty() {
-        Assertions.assertTrue(basicMbox.isEmpty());
+        Assertions.assertTrue(unboundedMbox.isEmpty());
     }
 
     @Test
     void getNextMessageReturnsSentMessage() {
-        basicMbox.deliver(originalMsg);
+        unboundedMbox.deliver(originalMsg);
         Assertions.assertEquals(
-                testMsgDst.toString(), basicMbox.getNextMessage().getDestination().toString());
+                testMsgDst.toString(), unboundedMbox.getNextMessage().getDestination().toString());
     }
 
     @Test
     void getNextMessageReturnsMessagesInTheOrderTheyWereSent() {
-        basicMbox.deliver(originalMsg);
+        unboundedMbox.deliver(originalMsg);
 
         ReActorRef testMsgSrc2 = ReactorHelper.generateReactor("source2");
         ReActorRef testMsgDst2 = ReactorHelper.generateReactor("destination2");
@@ -85,12 +85,12 @@ class BasicMboxTest {
                 new Message(testMsgSrc2, testMsgDst2, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
                         AckingPolicy.NONE, "De/Serialization Successful!");
 
-        basicMbox.deliver(originalMsg2);
-        Assertions.assertEquals(2, basicMbox.getMsgNum());
+        unboundedMbox.deliver(originalMsg2);
+        Assertions.assertEquals(2, unboundedMbox.getMsgNum());
 
         Assertions.assertEquals(
-                testMsgDst.toString(), basicMbox.getNextMessage().getDestination().toString());
+                testMsgDst.toString(), unboundedMbox.getNextMessage().getDestination().toString());
         Assertions.assertEquals(
-                testMsgDst2.toString(), basicMbox.getNextMessage().getDestination().toString());
+                testMsgDst2.toString(), unboundedMbox.getNextMessage().getDestination().toString());
     }
 }

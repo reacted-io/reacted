@@ -17,7 +17,7 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
 @NonNullByDefault
-public class BasicMbox implements MailBox {
+public class UnboundedMbox implements MailBox {
     private final BlockingDeque<Message> inbox = new LinkedBlockingDeque<>();
     @Override
     public boolean isEmpty() { return inbox.isEmpty(); }

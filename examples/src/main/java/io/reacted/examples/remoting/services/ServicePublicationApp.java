@@ -9,7 +9,7 @@
 package io.reacted.examples.remoting.services;
 
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
@@ -64,7 +64,7 @@ public class ServicePublicationApp {
                                       .setLoadBalancingPolicy(LoadBalancingPolicies.ROUND_ROBIN)
                                       .setDispatcherName(serviceDispatcherName)
                                       //Let's assume that we do not need any form of backpressure
-                                      .setMailBoxProvider(ctx -> new BasicMbox())
+                                      .setMailBoxProvider(ctx -> new UnboundedMbox())
                                       //We do not need to listen for ServiceDiscoveryRequests, we have the
                                       //Service Registry now
                                       .setRouteeProvider(serviceConfig -> new ClockReActor(serviceName))

@@ -11,7 +11,7 @@ package io.reacted.examples.webappbackend.handlers;
 import com.sun.net.httpserver.HttpExchange;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.mailboxes.BackpressuringMbox;
-import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
@@ -66,7 +66,7 @@ public class Post implements ReActor {
                             .setMailBoxProvider(raCtx -> BackpressuringMbox.newBuilder()
                                                                            .setRealMailboxOwner(raCtx)
                                                                            .setAvailableOnStartup(1)
-                                                                           .setRealMbox(new BasicMbox())
+                                                                           .setRealMbox(new UnboundedMbox())
                                                                            .build())
                             .build();
     }

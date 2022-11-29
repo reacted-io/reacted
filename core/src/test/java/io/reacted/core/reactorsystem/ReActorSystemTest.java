@@ -15,7 +15,7 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.system.LoopbackDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
-import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.ReActions;
@@ -42,14 +42,14 @@ class ReActorSystemTest {
     public static final String NO_RE_ACTOR_FOUND = "No ReActor found";
     private ReActorSystem reActorSystem;
     private final ReActorConfig reActorConfig = ReActorConfig.newBuilder()
-                                                             .setMailBoxProvider(ctx -> new BasicMbox())
+                                                             .setMailBoxProvider(ctx -> new UnboundedMbox())
                                                              .setDispatcherName(DISPATCHER_NAME)
                                                              .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                              .setReActorName("Reactor Name")
                                                              .build();
 
     private final ReActorConfig childReActorConfig = ReActorConfig.newBuilder()
-                                                                  .setMailBoxProvider(ctx -> new BasicMbox())
+                                                                  .setMailBoxProvider(ctx -> new UnboundedMbox())
                                                                   .setDispatcherName(DISPATCHER_NAME)
                                                                   .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                                   .setReActorName("Child reactor name")

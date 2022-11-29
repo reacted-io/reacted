@@ -11,7 +11,7 @@ package io.reacted.core.reactors.systemreactors;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
-import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.reactors.ReActions;
@@ -36,7 +36,7 @@ public class MagicTestReActor implements ReActor {
         this(maxMsgValue, checkMsgOrdering, ReActorConfig.newBuilder()
                                                          .setDispatcherName(
                                                              Dispatcher.DEFAULT_DISPATCHER_NAME)
-                                                         .setMailBoxProvider(ctx -> new BasicMbox())
+                                                         .setMailBoxProvider(ctx -> new UnboundedMbox())
                                                          .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                          .setReActorName(reactorName)
                                                          .build());

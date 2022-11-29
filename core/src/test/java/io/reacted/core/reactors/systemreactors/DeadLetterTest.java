@@ -14,7 +14,7 @@ import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BasicMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorRef;
@@ -45,7 +45,7 @@ class DeadLetterTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("TR")
                                                    .setDispatcherName(CoreConstants.TEST_DISPATCHER)
-                                                   .setMailBoxProvider(ctx -> new BasicMbox())
+                                                   .setMailBoxProvider(ctx -> new UnboundedMbox())
                                                    .setTypedSubscriptions(TypedSubscription.LOCAL.forType(DeadMessage.class))
                                                    .build();
         reActorSystem.spawn(new MagicTestReActor(2, true, reActorConfig))

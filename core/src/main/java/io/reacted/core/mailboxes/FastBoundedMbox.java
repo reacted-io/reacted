@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 , <Pierre Falda> [ pierre@reacted.io ]
+ * Copyright (c) 2022 , <Pierre Falda> [ pierre@reacted.io ]
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -18,11 +18,11 @@ import javax.annotation.Nonnull;
 import java.util.Objects;
 
 @NonNullByDefault
-public class LowGarbageBoundedBasicMbox implements MailBox {
+public class FastBoundedMbox implements MailBox {
     private final ManyToManyConcurrentArrayQueue<Message> inbox;
     private final int mailboxCapacity;
 
-    public LowGarbageBoundedBasicMbox(int maxMsgs) {
+    public FastBoundedMbox(int maxMsgs) {
         this.mailboxCapacity = ObjectUtils.requiredInRange(maxMsgs, 1, Integer.MAX_VALUE,
                                                            IllegalArgumentException::new);
         this.inbox = new ManyToManyConcurrentArrayQueue<>(mailboxCapacity);
