@@ -38,21 +38,20 @@ public class ReactionTime {
                                                                                                     .setDispatcherThreadsNum(1)
                                                                                                     .build())
                                                                .build()).initReActorSystem();
-        int iterations = 1_0_000_000;
+        int iterations = 1_000_000;
         MessageGrabber actorBody = new MessageGrabber(iterations);
         ReActorRef actor = benchmarkSystem.spawn(actorBody.getReActions(),
                                                  ReActorConfig.newBuilder()
-                                                              //.setMailBoxProvider((ctx) -> new LowGarbageBasicMbox())
+                                                              //.setMailBoxProvider((ctx) -> new FastBasicMbox())
                                                               //.setMailBoxProvider((ctx) -> new TypeCoalescingMailbox())
-                                                              //.setMailBoxProvider((ctx) -> new LowGarbageTypeCoalescingMailbox())
-                                                              //.setMailBoxProvider((ctx) -> new LowGarbageBoundedBasicMbox(30))
+                                                              //.setMailBoxProvider((ctx) -> new FastBoundedBasicMbox(30))
                                                               //.setMailBoxProvider((ctx) -> new BoundedBasicMbox(3000))
                                                               .setReActorName("Interceptor")
                                                               .setDispatcherName("Lonely")
                                                               .build()).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(2);
 
-        long pauseWindowDuration = Duration.ofNanos(2500).toNanos();
+        long pauseWindowDuration = Duration.ofNanos(1500).toNanos();
         long start = System.nanoTime();
         long end = 0;
         long elapsed = 0;

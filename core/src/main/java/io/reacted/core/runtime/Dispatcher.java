@@ -52,6 +52,7 @@ public class Dispatcher {
     public static final String DEFAULT_DISPATCHER_NAME = "ReactorSystemDispatcher";
     public static final int DEFAULT_DISPATCHER_BATCH_SIZE = 10;
     public static final int DEFAULT_DISPATCHER_THREAD_NUM = 2;
+    private static final int MESSAGE_MSG_TYPE = 1;
     private static final String UNCAUGHT_EXCEPTION_IN_DISPATCHER = "Uncaught exception in thread [%s] : ";
     private static final String REACTIONS_EXECUTION_ERROR = "Error for ReActor {} processing " +
                                                             "message type {} with seq num {} and value {} ";
@@ -130,7 +131,7 @@ public class Dispatcher {
     public boolean dispatch(ReActorContext reActor) {
         if (reActor.acquireScheduling()) {
             var rb = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)];
-            boolean scheduled = rb.write(1,reActor.getSchedulationIdBuffer(),0,Long.BYTES);
+            boolean scheduled = rb.write(MESSAGE_MSG_TYPE, reActor.getSchedulationIdBuffer(),0, Long.BYTES);
             if (!scheduled) {
                 reActor.releaseScheduling();
             }
@@ -147,7 +148,7 @@ public class Dispatcher {
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
                                 ReActorSystem reActorSystem, ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
-        long[] schedulationIds = new long[10];
+        long[] schedulationIds = new long[8];
         final AtomicInteger filled = new AtomicInteger(0);
         var processedForDispatcher = 0L;
         long processedInRound;
@@ -157,24 +158,25 @@ public class Dispatcher {
                                                                         BackoffIdleStrategy.DEFAULT_MAX_PARK_PERIOD_NS);
 
         ControlledMessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
-            int positionCounter = filled.getPlain();
-            schedulationIds[positionCounter] = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
-            filled.setPlain(positionCounter + 1);
-            return ControlledMessageHandler.Action.COMMIT;
+            if (msgTypeId == MESSAGE_MSG_TYPE) {
+                int positionCounter = filled.getPlain();
+                schedulationIds[positionCounter] = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
+                filled.setPlain(positionCounter + 1);
+            }
+            return ControlledMessageHandler.Action.CONTINUE;
         });
         while (!Thread.currentThread().isInterrupted()) {
             processedInRound = 0;
+            filled.setPlain(0);
             int ringRecordsProcessed = scheduledList.controlledRead(ringBufferMessageProcessor,
                                                                     schedulationIds.length);
-            int limit = filled.getPlain();
-            for(int schedIdIdx = 0; schedIdIdx < limit; schedIdIdx++) {
+            for(int schedIdIdx = 0; schedIdIdx < ringRecordsProcessed; schedIdIdx++) {
                 ReActorContext scheduledReActor = reActorSystem.getReActorCtx(schedulationIds[schedIdIdx]);
                 if (scheduledReActor != null) {
                     processedInRound += onMessage(scheduledReActor, dispatcherBatchSize, dispatcherLifeCyclePool,
                                                   isExecutionRecorded, devNull, reActorUnregister);
                 }
             }
-            filled.setPlain(0);
             processedForDispatcher += processedInRound;
             ringBufferConsumerPauser.idle(ringRecordsProcessed);
         }
