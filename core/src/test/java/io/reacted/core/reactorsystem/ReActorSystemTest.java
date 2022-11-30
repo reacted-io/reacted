@@ -29,6 +29,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 import java.util.Set;
@@ -40,6 +42,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class ReActorSystemTest {
+    private final Logger LOGGER = LoggerFactory.getLogger(ReActorSystemTest.class);
     private static final String DISPATCHER_NAME = "TestDispatcher";
     public static final String NO_RE_ACTOR_FOUND = "No ReActor found";
     private ReActorSystem reActorSystem;
@@ -137,16 +140,17 @@ class ReActorSystemTest {
     @Test
     void reactorSystemCanSpawnAStoppedReactorHavingTheSameName() {
         long iteration = 0;
+        LOGGER.info("Init cycle");
         do {
             if (iteration > 0 && iteration % 100000 == 0) {
-                System.err.println("Cycle " + iteration);
+                LOGGER.info("Cycle {}",iteration);
             }
             ReActorRef actor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig).orElseSneakyThrow();
             reActorSystem.stop(actor.getReActorId())
                          .map(CompletionStage::toCompletableFuture)
                          .ifPresentOrElse(CompletableFuture::join, () -> Assertions.fail(NO_RE_ACTOR_FOUND));
         } while (iteration++ < 5_00_000L);
-        System.out.println("Cycle completed");
+        LOGGER.info("Cycle completed");
     }
 
     @Test
