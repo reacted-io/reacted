@@ -18,11 +18,11 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 @NonNullByDefault
-public class BoundedBasicMbox implements MailBox {
+public class BoundedMbox implements MailBox {
     private final BlockingQueue<Message> inbox;
     private final int mailboxCapacity;
 
-    public BoundedBasicMbox(int maxMsgs) {
+    public BoundedMbox(int maxMsgs) {
         this.mailboxCapacity = ObjectUtils.requiredInRange(maxMsgs, 1, Integer.MAX_VALUE,
                                                            IllegalArgumentException::new);
         this.inbox = new ArrayBlockingQueue<>(mailboxCapacity);

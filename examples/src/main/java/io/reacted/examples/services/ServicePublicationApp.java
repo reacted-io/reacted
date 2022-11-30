@@ -15,7 +15,7 @@ import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
-import io.reacted.core.mailboxes.BoundedBasicMbox;
+import io.reacted.core.mailboxes.BoundedMbox;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
@@ -91,7 +91,7 @@ public class ServicePublicationApp {
                                               //We can have at maximum 5 pending messages in the
                                               //service mailbox. The exceeding ones will be
                                               //dropped win an error to the sender
-                                              .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
+                                              .setMailBoxProvider(ctx -> new BoundedMbox(5))
                                               //The service will intercept all the Service Discovery Requests
                                               //generated locally to this reactor system
                                               .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class))

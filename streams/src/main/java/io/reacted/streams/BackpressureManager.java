@@ -10,7 +10,7 @@ package io.reacted.streams;
 
 import io.reacted.core.exceptions.DeliveryException;
 import io.reacted.core.mailboxes.BackpressuringMbox;
-import io.reacted.core.mailboxes.BoundedBasicMbox;
+import io.reacted.core.mailboxes.BoundedMbox;
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
@@ -67,7 +67,7 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         this.subscriber = subscriber;
         this.feedGate = Objects.requireNonNull(feedGate);
         this.bpMailboxBuilder = BackpressuringMbox.newBuilder()
-                                                  .setRealMbox(new BoundedBasicMbox(subscription.getBufferSize()))
+                                                  .setRealMbox(new BoundedMbox(subscription.getBufferSize()))
                                                   .setBackpressuringThreshold(subscription.getBufferSize())
                                                   .setAvailableOnStartup(0)
                                                   .setOutOfStreamControl(PublisherComplete.class,

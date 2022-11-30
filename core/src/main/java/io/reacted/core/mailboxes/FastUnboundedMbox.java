@@ -17,7 +17,7 @@ import javax.annotation.Nonnull;
 import java.util.Objects;
 
 @NonNullByDefault
-public class FastBasicMbox implements MailBox {
+public class FastUnboundedMbox implements MailBox {
     private final ManyToOneConcurrentLinkedQueue<Message> inbox = new ManyToOneConcurrentLinkedQueue<>();
     @Override
     public boolean isEmpty() { return inbox.isEmpty() || inbox.peek() == null; }

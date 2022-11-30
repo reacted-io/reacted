@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.ask;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.mailboxes.BoundedBasicMbox;
+import io.reacted.core.mailboxes.BoundedMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.runtime.Dispatcher;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
@@ -36,7 +36,7 @@ public class ReactiveClockApp {
                                                .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                                //Accept at maximum 5 messages in the mailbox at the same time,
                                                //drop the ones in excess causing the delivery to fail
-                                               .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
+                                               .setMailBoxProvider(ctx -> new BoundedMbox(5))
                                                .setReActorName("Reactive Clock")
                                                .setDispatcherName(
                                                    Dispatcher.DEFAULT_DISPATCHER_NAME)

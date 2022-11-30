@@ -11,7 +11,7 @@ package io.reacted.examples.benchmarking;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.mailboxes.FastBasicMbox;
+import io.reacted.core.mailboxes.FastUnboundedMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
@@ -38,11 +38,11 @@ public class ReactionTime {
                                                                                                     .setDispatcherThreadsNum(1)
                                                                                                     .build())
                                                                .build()).initReActorSystem();
-        int iterations = 1_000_000;
+        int iterations = 10_000_000;
         MessageGrabber actorBody = new MessageGrabber(iterations);
         ReActorRef actor = benchmarkSystem.spawn(actorBody.getReActions(),
                                                  ReActorConfig.newBuilder()
-                                                              //.setMailBoxProvider((ctx) -> new FastBasicMbox())
+                                                              //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new TypeCoalescingMailbox())
                                                               //.setMailBoxProvider((ctx) -> new FastBoundedBasicMbox(30))
                                                               //.setMailBoxProvider((ctx) -> new BoundedBasicMbox(3000))
@@ -115,7 +115,7 @@ public class ReactionTime {
         @Override
         public ReActorConfig getConfig() {
             return ReActorConfig.newBuilder()
-                                .setMailBoxProvider((ctx) -> new FastBasicMbox())
+                                .setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                 .setReActorName("Worker")
                                 .setDispatcherName("Lonely")
                                 .build();

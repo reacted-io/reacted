@@ -9,7 +9,7 @@
 package io.reacted.examples.communication.ask;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.mailboxes.BoundedBasicMbox;
+import io.reacted.core.mailboxes.BoundedMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.examples.ExampleUtils;
 
@@ -24,7 +24,7 @@ public class BrokenClockApp {
         var reactiveClockConfig = ReActorConfig.newBuilder()
                                                //Accept at maximum 5 messages in the mailbox at the same time,
                                                //drop the ones in excess causing the delivery to fail
-                                               .setMailBoxProvider(ctx -> new BoundedBasicMbox(5))
+                                               .setMailBoxProvider(ctx -> new BoundedMbox(5))
                                                .setReActorName("Reactive Clock")
                                                .build();
         //We did not set any reaction, this clock is not going to reply to anything

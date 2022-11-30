@@ -26,7 +26,7 @@ import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.exceptions.ReActorRegistrationException;
 import io.reacted.core.exceptions.ReActorSystemInitException;
 import io.reacted.core.exceptions.ReActorSystemStructuralInconsistencyError;
-import io.reacted.core.mailboxes.BoundedBasicMbox;
+import io.reacted.core.mailboxes.BoundedMbox;
 import io.reacted.core.mailboxes.NullMailbox;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
@@ -909,7 +909,7 @@ public class ReActorSystem {
                                                       getSystemSchedulingService()).getReActions(),
                      systemActorsRoot, ReActorConfig.newBuilder()
                                                     .setReActorName("SystemMonitor")
-                                                    .setMailBoxProvider(ctx -> new BoundedBasicMbox(2))
+                                                    .setMailBoxProvider(ctx -> new BoundedMbox(2))
                                                     .build()).orElseSneakyThrow();
     }
 
