@@ -143,7 +143,7 @@ class ReActorSystemTest {
         long iteration = 0;
         LOGGER.info("Init cycle");
         do {
-            if (iteration > 0 && iteration % 5000 == 0) {
+            if (iteration > 0 && iteration % 100000 == 0) {
                 LOGGER.info("Cycle {} {}", iteration, Instant.ofEpochSecond(0, System.nanoTime())
                                                              .toString());
             }
