@@ -159,9 +159,9 @@ public class Dispatcher {
 
         ControlledMessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
             if (msgTypeId == MESSAGE_MSG_TYPE) {
-                int positionCounter = filled.getAcquire();
+                int positionCounter = filled.getPlain();
                 schedulationIds[positionCounter] = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
-                filled.setRelease(positionCounter + 1);
+                filled.setPlain(positionCounter + 1);
             }
             return ControlledMessageHandler.Action.CONTINUE;
         });
@@ -169,7 +169,7 @@ public class Dispatcher {
             processedInRound = 0;
             int ringRecordsProcessed = scheduledList.controlledRead(ringBufferMessageProcessor,
                                                                     schedulationIds.length);
-            int limit = filled.getAcquire();
+            int limit = filled.getPlain();
             for(int schedIdIdx = 0; schedIdIdx < limit; schedIdIdx++) {
                 ReActorContext scheduledReActor = reActorSystem.getReActorCtx(schedulationIds[schedIdIdx]);
                 if (scheduledReActor != null) {
@@ -177,7 +177,7 @@ public class Dispatcher {
                                                   isExecutionRecorded, devNull, reActorUnregister);
                 }
             }
-            filled.setRelease(0);
+            filled.setPlain(0);
             processedForDispatcher += processedInRound;
             ringBufferConsumerPauser.idle(ringRecordsProcessed);
         }
