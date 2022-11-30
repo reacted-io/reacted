@@ -143,8 +143,10 @@ class ReActorSystemTest {
         long iteration = 0;
         LOGGER.info("Init cycle");
         do {
-            LOGGER.info("Cycle {} {}", iteration, Instant.ofEpochSecond(0, System.nanoTime())
-                                                         .toString());
+            if (iteration > 0 && iteration % 5000 == 0) {
+                LOGGER.info("Cycle {} {}", iteration, Instant.ofEpochSecond(0, System.nanoTime())
+                                                             .toString());
+            }
             ReActorRef actor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig).orElseSneakyThrow();
             reActorSystem.stop(actor.getReActorId())
                          .map(CompletionStage::toCompletableFuture)
