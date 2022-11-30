@@ -151,7 +151,7 @@ class ReActorSystemTest {
             reActorSystem.stop(actor.getReActorId())
                          .map(CompletionStage::toCompletableFuture)
                          .ifPresentOrElse(CompletableFuture::join, () -> Assertions.fail(NO_RE_ACTOR_FOUND));
-        } while (iteration++ < 5_00_000L);
+        } while (iteration++ < 5_000_000L);
         LOGGER.info("Cycle completed");
     }
 
