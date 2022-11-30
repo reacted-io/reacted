@@ -148,8 +148,7 @@ public class Dispatcher {
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
                                 ReActorSystem reActorSystem, ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
-        long[] schedulationIds = new long[8];
-        final AtomicInteger filled = new AtomicInteger(0);
+        AtomicLong schedulationId = new AtomicLong();
         var processedForDispatcher = 0L;
         long processedInRound;
         IdleStrategy ringBufferConsumerPauser = new BackoffIdleStrategy(1_000_000_000L,
@@ -159,19 +158,16 @@ public class Dispatcher {
 
         ControlledMessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
             if (msgTypeId == MESSAGE_MSG_TYPE) {
-                int positionCounter = filled.getPlain();
-                schedulationIds[positionCounter] = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
-                filled.setPlain(positionCounter + 1);
+                schedulationId.setPlain(buffer.getLong(index, ByteOrder.BIG_ENDIAN));
             }
-            return ControlledMessageHandler.Action.CONTINUE;
+            return ControlledMessageHandler.Action.COMMIT;
         });
         while (!Thread.currentThread().isInterrupted()) {
             processedInRound = 0;
-            filled.setPlain(0);
-            int ringRecordsProcessed = scheduledList.controlledRead(ringBufferMessageProcessor,
-                                                                    schedulationIds.length);
-            for(int schedIdIdx = 0; schedIdIdx < ringRecordsProcessed; schedIdIdx++) {
-                ReActorContext scheduledReActor = reActorSystem.getReActorCtx(schedulationIds[schedIdIdx]);
+            schedulationId.setPlain(-1);
+            int ringRecordsProcessed = scheduledList.controlledRead(ringBufferMessageProcessor, 1);
+            if (ringRecordsProcessed > 0 && schedulationId.getPlain() != -1) {
+                ReActorContext scheduledReActor = reActorSystem.getReActorCtx(schedulationId.getPlain());
                 if (scheduledReActor != null) {
                     processedInRound += onMessage(scheduledReActor, dispatcherBatchSize, dispatcherLifeCyclePool,
                                                   isExecutionRecorded, devNull, reActorUnregister);
