@@ -136,14 +136,17 @@ class ReActorSystemTest {
 
     @Test
     void reactorSystemCanSpawnAStoppedReactorHavingTheSameName() {
-        int iteration = 0;
+        long iteration = 0;
         do {
+            if (iteration > 0 && iteration % 100000 == 0) {
+                System.err.println("Cycle " + iteration);
+            }
             ReActorRef actor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig).orElseSneakyThrow();
             reActorSystem.stop(actor.getReActorId())
-                    .map(CompletionStage::toCompletableFuture)
-                    .ifPresentOrElse(CompletableFuture::join,
-                                     () -> Assertions.fail(NO_RE_ACTOR_FOUND));
-        } while (iteration++ < 5_00_000);
+                         .map(CompletionStage::toCompletableFuture)
+                         .ifPresentOrElse(CompletableFuture::join, () -> Assertions.fail(NO_RE_ACTOR_FOUND));
+        } while (iteration++ < 5_00_000L);
+        System.out.println("Cycle completed");
     }
 
     @Test
