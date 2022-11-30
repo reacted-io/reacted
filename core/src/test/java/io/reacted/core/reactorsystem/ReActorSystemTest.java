@@ -143,7 +143,7 @@ class ReActorSystemTest {
         long iteration = 0;
         LOGGER.info("Init cycle");
         do {
-            if (iteration > 0 && iteration % 100000 == 0) {
+            if (iteration < 10 || iteration % 10000 == 0) {
                 LOGGER.info("Cycle {} {}", iteration, Instant.ofEpochSecond(0, System.nanoTime())
                                                              .toString());
             }
@@ -151,7 +151,7 @@ class ReActorSystemTest {
             reActorSystem.stop(actor.getReActorId())
                          .map(CompletionStage::toCompletableFuture)
                          .ifPresentOrElse(CompletableFuture::join, () -> Assertions.fail(NO_RE_ACTOR_FOUND));
-        } while (iteration++ < 5_000_000L);
+        } while (iteration++ < 5_00_000L);
         LOGGER.info("Cycle completed");
     }
 
