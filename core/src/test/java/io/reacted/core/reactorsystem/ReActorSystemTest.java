@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -142,9 +143,8 @@ class ReActorSystemTest {
         long iteration = 0;
         LOGGER.info("Init cycle");
         do {
-            if (iteration > 0 && iteration % 100000 == 0) {
-                LOGGER.info("Cycle {}",iteration);
-            }
+            LOGGER.info("Cycle {} {}", iteration, Instant.ofEpochSecond(0, System.nanoTime())
+                                                         .toString());
             ReActorRef actor = reActorSystem.spawn(ReActions.NO_REACTIONS, reActorConfig).orElseSneakyThrow();
             reActorSystem.stop(actor.getReActorId())
                          .map(CompletionStage::toCompletableFuture)
