@@ -139,7 +139,7 @@ class ReActorSystemTest {
                                      Assertions::fail);
     }
 
-    @RepeatedTest(10_000_000)
+    @Test
     void reactorSystemCanSpawnAStoppedReactorHavingTheSameName() {
         long iteration = 0;
         LOGGER.info("Init cycle");

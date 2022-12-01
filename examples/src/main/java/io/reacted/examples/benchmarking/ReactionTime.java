@@ -38,20 +38,20 @@ public class ReactionTime {
                                                                                                     .setDispatcherThreadsNum(1)
                                                                                                     .build())
                                                                .build()).initReActorSystem();
-        int iterations = 10_000_000;
+        int iterations = 1 << 9;
         MessageGrabber actorBody = new MessageGrabber(iterations);
         ReActorRef actor = benchmarkSystem.spawn(actorBody.getReActions(),
                                                  ReActorConfig.newBuilder()
-                                                              .setMailBoxProvider((ctx) -> new FastUnboundedMbox())
+                                                              //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new TypeCoalescingMailbox())
                                                               //.setMailBoxProvider((ctx) -> new FastBoundedBasicMbox(30))
                                                               //.setMailBoxProvider((ctx) -> new BoundedBasicMbox(3000))
                                                               .setReActorName("Interceptor")
                                                               .setDispatcherName("Lonely")
                                                               .build()).orElseSneakyThrow();
-        TimeUnit.SECONDS.sleep(2);
+        //TimeUnit.SECONDS.sleep(1);
 
-        long pauseWindowDuration = Duration.ofNanos(1500).toNanos();
+        long pauseWindowDuration = Duration.ofNanos(20000).toNanos();
         long start = System.nanoTime();
         long end;
         long elapsed = 0;
@@ -69,7 +69,7 @@ public class ReactionTime {
         long[] sortedLatencies = actorBody.getLatencies();
         Arrays.sort(sortedLatencies);
 
-        List<Double> percentiles = List.of(70d, 75d, 80d, 85d, 90d, 95d, 99d, 99.99d, 99.9999d);
+        List<Double> percentiles = List.of(70d, 75d, 80d, 85d, 90d, 95d, 99d, 99.9d, 99.99d, 99.9999d, 100d);
         percentiles.forEach(percentile -> System.out.printf("Msgs: %d Percentile %f Latency: %s%n",
                                                             sortedLatencies.length, percentile,
                                                             getLatencyForPercentile(sortedLatencies, percentile)));
