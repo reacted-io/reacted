@@ -33,9 +33,11 @@ public class DispatcherConfig {
     private DispatcherConfig(Builder builder) {
         this.batchSize = ObjectUtils.requiredInRange(builder.batchSize, 1, Integer.MAX_VALUE,
                                                      () -> new IllegalArgumentException("Dispatcher batch size required"));
-        this.dispatcherThreadsNum = ObjectUtils.requiredInRange(builder.dispatcherThreadsNum, 1,
-                                                                Integer.MAX_VALUE,
-                                                                () -> new IllegalArgumentException("Dispatcher threads must be greater than 0"));
+        this.dispatcherThreadsNum = ObjectUtils.requiredCondition(ObjectUtils.requiredInRange(builder.dispatcherThreadsNum,
+                                                                                              1, Integer.MAX_VALUE,
+                                                                                              () -> new IllegalArgumentException("Dispatcher threads must be greater than 0")),
+                                                                  value -> (value & (value - 1)) == 0,
+                                                                  () -> new IllegalArgumentException("Dispatcher threads must be a power of 2"));
         this.dispatcherName = Objects.requireNonNull(Strings.isNullOrEmpty(builder.dispatcherName)
                                                      ? null
                                                      : builder.dispatcherName,
@@ -77,7 +79,7 @@ public class DispatcherConfig {
          * Default: {@link #DEFAULT_DISPATCHER_THREAD_NUM}
          *
          * @param dispatcherThreadsNum A positive number indicating how many thread should be
-         *                             allocated to this dispatcher
+         *                             allocated to this dispatcher. Must be a power of 2
          * @return this builder
          */
         public final Builder setDispatcherThreadsNum(int dispatcherThreadsNum) {

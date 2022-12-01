@@ -989,18 +989,21 @@ public class ReActorSystem {
         try {
             //If it is already stopped don't process further, otherwise the remove could remove the name
             //of a new reactor with the same name that has just been spawned
-            if (!stopMe.getHierarchyTermination().toCompletableFuture().isDone() &&
-                reactorsByReactorId.remove(stopMe.getSelf().getReActorId()) != null) {
-                reactorsBySchedulationId.remove(stopMe.getReActorSchedulationId());
-                updateMessageInterceptors(stopMe, stopMe.getTypedSubscriptions(),
-                                          TypedSubscription.NO_SUBSCRIPTIONS);
-                Try.ofRunnable(() -> stopMe.reAct(reActorStop))
-                   .ifError(error -> stopMe.logError("Unable to properly stop reactor: ", error));
-                var allChildrenTerminated = allChildrenTerminationFuture(stopMe.getChildren(), this);
-                CompletableFuture<Void> myTerminationHook = stopMe.getHierarchyTermination()
-                                                                  .toCompletableFuture();
-                allChildrenTerminated.thenAcceptAsync(lastChild -> myTerminationHook.complete(null));
-                stopHook = Optional.of(myTerminationHook);
+            if (!stopMe.getHierarchyTermination().toCompletableFuture().isDone()) {
+                if (reactorsByReactorId.remove(stopMe.getSelf()
+                                                     .getReActorId()) != null) {
+                    reactorsBySchedulationId.remove(stopMe.getReActorSchedulationId());
+                    updateMessageInterceptors(stopMe, stopMe.getTypedSubscriptions(), TypedSubscription.NO_SUBSCRIPTIONS);
+                    Try.ofRunnable(() -> stopMe.reAct(reActorStop))
+                       .ifError(error -> stopMe.logError("Unable to properly stop reactor: ", error));
+                    var allChildrenTerminated = allChildrenTerminationFuture(stopMe.getChildren(), this);
+                    CompletableFuture<Void> myTerminationHook = stopMe.getHierarchyTermination()
+                                                                      .toCompletableFuture();
+                    allChildrenTerminated.thenAcceptAsync(lastChild -> myTerminationHook.complete(null));
+                    stopHook = Optional.of(myTerminationHook);
+                } else if (reactorsBySchedulationId.containsKey(stopMe.getReActorSchedulationId())){
+                    System.err.println("Here we are?");
+                }
             }
         } finally {
             stopMe.getStructuralLock().writeLock().unlock();
@@ -1019,7 +1022,7 @@ public class ReActorSystem {
                        .map(ReActorContext::stop)
                        .reduce((firstChild, secondChild) -> firstChild.thenComposeAsync(res -> secondChild))
                        //no children no party
-                       .orElse(CompletableFuture.completedFuture(null));
+                       .orElse(CompletableFuture.completedStage(null));
     }
 
     private boolean registerNewReActor(ReActorContext parentReActorCtx, ReActorContext newActor) {

@@ -77,7 +77,7 @@ public class Dispatcher {
         this.scheduledQueues =  Stream.iterate(new ManyToOneRingBuffer(new UnsafeBuffer(
                                                    ByteBuffer.allocateDirect(ringBufferSize))),
                                               scheduleQueue -> new ManyToOneRingBuffer(new UnsafeBuffer(ByteBuffer.allocateDirect(ringBufferSize))))
-                                     .limit(getDispatcherConfig().getDispatcherThreadsNum())
+                                     .limit(BitUtil.findNextPositivePowerOfTwo(getDispatcherConfig().getDispatcherThreadsNum()))
                                      .toArray(ManyToOneRingBuffer[]::new);
 
     }
@@ -100,7 +100,7 @@ public class Dispatcher {
                                              executorService -> Executors.newFixedThreadPool(1, dispatcherFactory))
                                     .limit(getDispatcherConfig().getDispatcherThreadsNum())
                                     .toArray(ExecutorService[]::new);
-        var lifecyclePoolSize = Integer.max(2, getDispatcherConfig().getDispatcherThreadsNum() >> 2);
+        var lifecyclePoolSize =  Integer.max(2, getDispatcherConfig().getDispatcherThreadsNum() >> 2);
 
         this.dispatcherLifeCyclePool = Executors.newFixedThreadPool(lifecyclePoolSize, lifecycleFactory);
 
@@ -130,7 +130,7 @@ public class Dispatcher {
 
     public boolean dispatch(ReActorContext reActor) {
         if (reActor.acquireScheduling()) {
-            var rb = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() % scheduledQueues.length)];
+            var rb = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() & (scheduledQueues.length - 1))];
             boolean scheduled = rb.write(MESSAGE_MSG_TYPE, reActor.getSchedulationIdBuffer(),0, Long.BYTES);
             if (!scheduled) {
                 reActor.releaseScheduling();
@@ -174,14 +174,8 @@ public class Dispatcher {
                 long schedulationId = schedulationIds[schedIdIdx];
                 ReActorContext scheduledReActor = reActorSystem.getReActorCtx(schedulationId);
                 if (scheduledReActor != null) {
-                    if (scheduledReActor.getReActorSchedulationId() == schedulationId) {
-                        processedInRound += onMessage(scheduledReActor, dispatcherBatchSize, dispatcherLifeCyclePool,
-                                                      isExecutionRecorded, devNull, reActorUnregister);
-                    } else {
-                        System.err.println("CRITIC! Misalignment between {} and schedulation id for reactor {}");
-                        LOGGER.error("CRITIC! Misalignment between {} and schedulation id for reactor {}",
-                                     ReActorContext.class.getSimpleName(), scheduledReActor.getSelf().getReActorId());
-                    }
+                    processedInRound += onMessage(scheduledReActor, dispatcherBatchSize, dispatcherLifeCyclePool,
+                                                  isExecutionRecorded, devNull, reActorUnregister);
                 }
             }
             filled.setPlain(0);
@@ -232,7 +226,7 @@ public class Dispatcher {
         //now this reactor can be scheduled by some other thread if required
         scheduledReActor.releaseScheduling();
         if (scheduledReActor.isStop()) {
-            dispatcherLifeCyclePool.submit(() -> reActorUnregister.apply(scheduledReActor));
+            dispatcherLifeCyclePool.execute(() -> reActorUnregister.apply(scheduledReActor));
         } else if (!scheduledReActor.getMbox().isEmpty()) {
             //If there are other messages to be processed, request another schedulation fo the dispatcher
             if (!dispatch(scheduledReActor)) {

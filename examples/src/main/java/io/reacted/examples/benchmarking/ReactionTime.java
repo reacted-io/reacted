@@ -42,7 +42,7 @@ public class ReactionTime {
         MessageGrabber actorBody = new MessageGrabber(iterations);
         ReActorRef actor = benchmarkSystem.spawn(actorBody.getReActions(),
                                                  ReActorConfig.newBuilder()
-                                                              //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
+                                                              .setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new TypeCoalescingMailbox())
                                                               //.setMailBoxProvider((ctx) -> new FastBoundedBasicMbox(30))
                                                               //.setMailBoxProvider((ctx) -> new BoundedBasicMbox(3000))
@@ -53,7 +53,7 @@ public class ReactionTime {
 
         long pauseWindowDuration = Duration.ofNanos(1500).toNanos();
         long start = System.nanoTime();
-        long end = 0;
+        long end;
         long elapsed = 0;
         for(long cycle = 0; cycle < iterations; cycle++) {
             while (elapsed < pauseWindowDuration) {

@@ -28,6 +28,7 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,7 +139,7 @@ class ReActorSystemTest {
                                      Assertions::fail);
     }
 
-    @Test
+    @RepeatedTest(10_000_000)
     void reactorSystemCanSpawnAStoppedReactorHavingTheSameName() {
         long iteration = 0;
         LOGGER.info("Init cycle");
@@ -151,7 +152,7 @@ class ReActorSystemTest {
             reActorSystem.stop(actor.getReActorId())
                          .map(CompletionStage::toCompletableFuture)
                          .ifPresentOrElse(CompletableFuture::join, () -> Assertions.fail(NO_RE_ACTOR_FOUND));
-        } while (iteration++ < 5_00_000L);
+        } while (iteration++ < 500_000L);
         LOGGER.info("Cycle completed");
     }
 
