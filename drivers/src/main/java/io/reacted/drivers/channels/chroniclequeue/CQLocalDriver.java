@@ -268,6 +268,9 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
     public static UUID readUUID(WireIn in) {
         long least = in.read().int64();
         long most = in.read().int64();
-        return new UUID(most, least);
+        return ReActorId.NO_REACTOR_ID_UUID.getLeastSignificantBits() == least &&
+               ReActorId.NO_REACTOR_ID_UUID.getMostSignificantBits() == most
+               ? ReActorId.NO_REACTOR_ID_UUID
+               : new UUID(most, least);
     }
 }

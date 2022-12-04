@@ -36,6 +36,7 @@ import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
@@ -53,6 +54,7 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -152,7 +154,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public <PayloadT extends Serializable>
     DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                                long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
-                               PayloadT message) {
+                               PayloadT payload) {
         Properties dstChannelIdProperties = destination.getReActorSystemRef().getGateProperties();
         String dstChannelIdName = dstChannelIdProperties.getProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME);
         /*
@@ -199,7 +201,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
          */
         if (dstChannelIdName == null) {
             getLocalReActorSystem().logDebug("Not sending message. Destination channel is no longer available for message {}",
-                                             message.toString());
+                                             payload.toString());
             return DeliveryStatus.NOT_SENT;
         }
 
@@ -216,7 +218,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
         var byteArray = new ByteArrayOutputStream();
 
         try(ObjectOutputStream oos = new ObjectOutputStream(byteArray)) {
-            oos.writeObject(message);
+            oos.writeObject(payload);
             System.err.println("TODO XXX FILL THE PROPER PROTOCOL IN THE DATAGRAM");
             var datagram = ReActedLinkProtocol.ReActedDatagram.newBuilder()
                     .setSequenceNumber(seqNum)
@@ -230,7 +232,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
 
         } catch (Exception error) {
             removeStaleChannel(peerChannelKey);
-            getLocalReActorSystem().logError("Error sending message {}", message.toString(), error);
+            getLocalReActorSystem().logError("Error sending message {}", payload.toString(), error);
             return DeliveryStatus.NOT_SENT;
         }
     }
@@ -331,5 +333,28 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                                       Function<StubT, StreamObserver<InputTypeT>> toLink) {
                 return new SystemLinkContainer<>(channel, toLink.apply(toStub.apply(channel)));
             }
-        }
+    }
+    private static ReActedLinkProtocol.ReActorId toReActorId(ReActorId reActorId) {
+        return reActorId == ReActorId.NO_REACTOR_ID
+               ? ReActedLinkProtocol.ReActorId.newBuilder()
+                       .setNoReActorIdMarker(ReActorId.NO_REACTOR_ID_MARKER)
+                       .build()
+               : ReActedLinkProtocol.ReActorId.newBuilder()
+                       .setNoReActorIdMarker(ReActorId.COMMON_REACTOR_ID_MARKER)
+                       .setReactorName(reActorId.getReActorName())
+                       .setUuid(toUUID(reActorId.getReActorUUID()))
+                       .build();
+    }
+    private static UUID fromUUID(ReActedLinkProtocol.UUID uuid) {
+        return ReActorId.NO_REACTOR_ID_UUID.getLeastSignificantBits() == uuid.getLeastSignificantBits() &&
+               ReActorId.NO_REACTOR_ID_UUID.getMostSignificantBits() == uuid.getMostSignificantBits()
+               ? ReActorId.NO_REACTOR_ID_UUID
+               : new UUID(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits());
+    }
+    private static ReActedLinkProtocol.UUID toUUID(UUID uuid) {
+        return ReActedLinkProtocol.UUID.newBuilder()
+                .setLeastSignificantBits(uuid.getLeastSignificantBits())
+                .setMostSignificantBits(uuid.getMostSignificantBits())
+                .build();
+    }
 }

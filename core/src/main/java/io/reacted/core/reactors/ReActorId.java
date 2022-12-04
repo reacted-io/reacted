@@ -22,9 +22,10 @@ import javax.annotation.concurrent.Immutable;
 
 @Immutable
 public final class ReActorId implements Externalizable {
-    public static final ReActorId NO_REACTOR_ID = new ReActorId(new UUID(0, 0), "Init")
-            .setReActorUUID(new UUID(0, 0))
-            .setHashCode(Objects.hash(new UUID(0, 0), "Init"));
+    public static final UUID NO_REACTOR_ID_UUID = new UUID(0, 0);
+    public static final ReActorId NO_REACTOR_ID = new ReActorId(NO_REACTOR_ID_UUID, "Init")
+            .setReActorUUID(NO_REACTOR_ID_UUID)
+            .setHashCode(Objects.hash(NO_REACTOR_ID_UUID, "Init"));
     public static final int NO_REACTOR_ID_MARKER = 1;
     public static final int COMMON_REACTOR_ID_MARKER = 0;
     @Serial
