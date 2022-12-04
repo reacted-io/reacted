@@ -79,7 +79,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     private EventLoopGroup workerEventLoopGroup;
     @Nullable
     private EventLoopGroup bossEventLoopGroup;
-
+    private DriverCtx grpcDriverCtx;
 
     public GrpcDriver(GrpcDriverConfig grpcDriverConfig) {
         super(grpcDriverConfig);
@@ -89,7 +89,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
 
     @Override
     public void initDriverLoop(ReActorSystem localReActorSystem) {
-        DriverCtx grpcDriverCtx = REACTOR_SYSTEM_CTX.get();
+        this.grpcDriverCtx = REACTOR_SYSTEM_CTX.get();
         this.grpcServerExecutor = Executors.newFixedThreadPool(3, new ThreadFactoryBuilder()
                 .setUncaughtExceptionHandler((thread, throwable) -> localReActorSystem.logError("Uncaught exception in {}",
                                                                                                 thread.getName(), throwable))
@@ -268,9 +268,14 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             return new StreamObserver<>() {
                 @Override
                 public void onNext(ReActedLinkProtocol.ReActedDatagram reActedDatagram) {
-                    try (ObjectInputStream msgSource = new ObjectInputStream(new ByteArrayInputStream(reActedDatagram.getBinaryPayload()
-                                                                                                                     .toByteArray()))) {
-                        thisDriver.offerMessage((Message)msgSource.readObject());
+                    try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(reActedDatagram.getBinaryPayload().toByteArray());
+                         ObjectInputStream msgSource = new ObjectInputStream(byteArrayInputStream)) {
+                        thisDriver.offerMessage(fromReActorRef(reActedDatagram.getSource(), thisDriver.grpcDriverCtx),
+                                                fromReActorRef(reActedDatagram.getDestination(), thisDriver.grpcDriverCtx),
+                                                reActedDatagram.getSequenceNumber(),
+                                                fromReActorSystemId(reActedDatagram.getGeneratorSystem()),
+                                                AckingPolicy.forOrdinal(reActedDatagram.getAckingPolicyOrdinal()),
+                                                (Serializable)msgSource.readObject());
                     } catch (Exception deserializationError) {
                         thisDriver.getLocalReActorSystem()
                                   .logError("Error decoding message", deserializationError);
