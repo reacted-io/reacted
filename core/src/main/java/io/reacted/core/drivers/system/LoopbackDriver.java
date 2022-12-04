@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
 @NonNullByDefault
@@ -36,6 +37,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     private final TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers = this::propagateMessage;
     private final LocalDriver<ConfigT> localDriver;
     private final ReActorSystem localReActorSystem;
+    private final ExecutorService fanOutPool;
 
     public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver<ConfigT> localDriver) {
         super(localDriver.getDriverConfig());
@@ -43,6 +45,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
                                                   "Local driver cannot be null");
         this.localReActorSystem = Objects.requireNonNull(reActorSystem,
                                                          "ReActorSystem cannot be null");
+        this.fanOutPool = localReActorSystem.getMsgFanOutPool();
     }
 
     @Override
@@ -166,13 +169,11 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
         var subscribers = localReActorSystem.getTypedSubscriptionsManager()
                                             .getLocalSubscribers(msgPayload.getClass());
         if (!subscribers.isEmpty()) {
-            try {
-                localReActorSystem.getMsgFanOutPool()
-                                  .execute(() -> propagateToSubscribers(localDriver, subscribers, originalDst,
-                                                                        localReActorSystem, src, msgPayload));
-            } catch (RejectedExecutionException propagationFailed) {
-                localReActorSystem.logError("Error propagating {} towards subscribers",
-                                            msgPayload, propagationFailed);
+            if (subscribers.size() < 6) {
+                propagateToSubscribers(localDriver, subscribers, originalDst, localReActorSystem, src, msgPayload);
+            } else {
+                fanOutPool.execute(() -> propagateToSubscribers(localDriver, subscribers, originalDst,
+                                                                localReActorSystem, src, msgPayload));
             }
         }
     }
