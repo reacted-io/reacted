@@ -334,13 +334,18 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                 return new SystemLinkContainer<>(channel, toLink.apply(toStub.apply(channel)));
             }
     }
+
+    private static ReActorId fromReActorId(ReActedLinkProtocol.ReActorId reActorId) {
+        return reActorId.getDefaultInstanceForType() == reActorId
+               ? ReActorId.NO_REACTOR_ID
+               : new ReActorId().setReActorName(reActorId.getReactorName())
+                                .setReActorUUID(fromUUID(reActorId.getUuid()))
+                                .setHashCode()
+    }
     private static ReActedLinkProtocol.ReActorId toReActorId(ReActorId reActorId) {
         return reActorId == ReActorId.NO_REACTOR_ID
-               ? ReActedLinkProtocol.ReActorId.newBuilder()
-                       .setNoReActorIdMarker(ReActorId.NO_REACTOR_ID_MARKER)
-                       .build()
+               ? ReActedLinkProtocol.ReActorId.getDefaultInstance()
                : ReActedLinkProtocol.ReActorId.newBuilder()
-                       .setNoReActorIdMarker(ReActorId.COMMON_REACTOR_ID_MARKER)
                        .setReactorName(reActorId.getReActorName())
                        .setUuid(toUUID(reActorId.getReActorUUID()))
                        .build();
