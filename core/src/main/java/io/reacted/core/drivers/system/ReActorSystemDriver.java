@@ -189,11 +189,14 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     public abstract  <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
                                                                                               TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message);
 
-    protected void offerMessage(Message message) {
-        getLocalReActorSystem().logError("Invalid message offering {}", message,
+    protected <PayloadT extends Serializable> void offerMessage(ReActorRef source, ReActorRef destination,
+                                                                long sequenceNumber,
+                                                                ReActorSystemId fromReActorSystemId,
+                                                                AckingPolicy ackingPolicy,
+                                                                PayloadT payload) {
+        getLocalReActorSystem().logError("Invalid message offering {}", payload,
                                          new NotImplementedException());
     }
-
     @Nullable
     public CompletionStage<DeliveryStatus> removePendingAckTrigger(long msgSeqNum) {
         var ackTrigger = pendingAcksTriggers.getIfPresent(msgSeqNum);
@@ -257,8 +260,8 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     }
 
     protected static boolean isMessageComingFromLocalReActorSystem(ReActorSystemId localReActorSystemId,
-                                                                   DataLink msgDataLink) {
-        return localReActorSystemId.equals(msgDataLink.getGeneratingReActorSystem());
+                                                                   ReActorSystemId fromReActorSystemId) {
+        return localReActorSystemId.equals(fromReActorSystemId);
     }
 
     protected static DeliveryStatus

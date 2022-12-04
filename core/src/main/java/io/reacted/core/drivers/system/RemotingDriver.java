@@ -17,6 +17,7 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.core.reactorsystem.ReActorSystemRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked.TriConsumer;
@@ -114,19 +115,20 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
      * Forward a message just received by a channel to ReActed for propagating it towards the destination mailbox
      */
     @Override
-    protected void offerMessage(Message message) {
+    protected <PayloadT extends Serializable> void offerMessage(ReActorRef source, ReActorRef destination,
+                                                                long sequenceNumber,
+                                                                ReActorSystemId fromReActorSystemId,
+                                                                AckingPolicy ackingPolicy,
+                                                                PayloadT payload) {
         //We don't have to read the messages published by the local reactor system because they are meant for someone
         //else. This is a remoting driver, this means that several systems are looking at it
         //An example of this scenario might be when producer/consumer reactor systems communicate using the same shared
         //bus (i.e. a chronicle queue file)
         if (isMessageComingFromLocalReActorSystem(getLocalReActorSystem().getLocalReActorSystemId(),
-                                                  message.getDataLink())) {
+                                                  fromReActorSystemId)) {
             return;
         }
 
-        ReActorRef sender = message.getSender();
-        ReActorRef destination = message.getDestination();
-        Serializable payload = message.getPayload();
         Class<? extends Serializable> payloadType = payload.getClass();
         boolean hasBeenSniffed = false;
 
@@ -136,13 +138,14 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                                  destination.getReActorSystemRef().getReActorSystemId())) {
             //If so, this is an ACK confirmation for a message sent with apublish
             if (payloadType == DeliveryStatusUpdate.class) {
-                DeliveryStatusUpdate deliveryStatusUpdate = message.getPayload();
+                DeliveryStatusUpdate deliveryStatusUpdate = (DeliveryStatusUpdate)payload;
 
                 if (messageWasNotSentFromThisDriverInstance(deliveryStatusUpdate)) {
                     /* We are not in the correct driver? This is an asymmetrical ACK, we must forward
                        this message to the proper driver, if any
                      */
-                    forwardMessageToSenderDriverInstance(message, deliveryStatusUpdate);
+                    forwardMessageToSenderDriverInstance(source, destination, sequenceNumber, fromReActorSystemId,
+                                                         ackingPolicy, payload, deliveryStatusUpdate);
                 } else {
                     var pendingAckTrigger = removePendingAckTrigger(
                         deliveryStatusUpdate.getMsgSeqNum());
@@ -154,7 +157,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
                     //only for consistent logging if a logging direct communication local driver is used because in this way
                     //also the ACK will appear in logs
                     getLocalReActorSystem().getSystemSink()
-                                           .publish(message.getSender(), message.getPayload());
+                                           .publish(source, payload);
                 }
                 return;
             }
@@ -169,42 +172,47 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             destination = getLocalReActorSystem().getSystemSink();
             hasBeenSniffed = true;
         }
-        boolean isAckRequired = !hasBeenSniffed &&
-                                message.getDataLink().getAckingPolicy() != AckingPolicy.NONE;
+        boolean isAckRequired = !hasBeenSniffed && ackingPolicy != AckingPolicy.NONE;
         if (isAckRequired) {
-            var deliverAttempt = destination.apublish(sender, payload);
+            var deliverAttempt = destination.apublish(source, payload);
             deliverAttempt.handle((deliveryStatus, deliveryError) -> {
                               DeliveryStatus result = deliveryStatus;
                               if (deliveryError != null) {
                                   result = DeliveryStatus.NOT_DELIVERED;
-                                  getLocalReActorSystem().logInfo("Unable to deliver {} Reason {}",
-                                                                  message, deliveryError);
+                                  getLocalReActorSystem().logInfo("Unable to deliver {} {} {} {} {} {}: Reason {}",
+                                                                  source, destination, sequenceNumber, fromReActorSystemId,
+                                                                  ackingPolicy, payload, deliveryError);
                               }
                               return sendDeliveryAck(getLocalReActorSystem(), getChannelId(), result, message);
                           })
                           .handle((ackDeliveryStatus, ackDeliveryError) -> {
                               if (ackDeliveryError != null || ackDeliveryStatus.isNotSent()) {
-                                  getLocalReActorSystem().logError("Unable to send ack for {}",
-                                                                   message, ackDeliveryError);
+                                  getLocalReActorSystem().logError("Unable to send ack for {} {} {} {} {} {}",
+                                                                   source, destination, sequenceNumber, fromReActorSystemId,
+                                                                   ackingPolicy, payload, ackDeliveryError);
                               }
                               return null;
                           });
         } else {
-            var deliveryAttempt = destination.publish(sender, payload);
+            var deliveryAttempt = destination.publish(source, payload);
             if (!deliveryAttempt.isSent()) {
-                getLocalReActorSystem().logInfo("Unable to deliver {} : {}",
-                                                message, deliveryAttempt);
+                getLocalReActorSystem().logInfo("Unable to deliver {} {} {} {} {} {}: Reason {}",
+                                                source, destination, sequenceNumber, fromReActorSystemId,
+                                                ackingPolicy, payload, deliveryAttempt);
             }
         }
     }
 
-    private void forwardMessageToSenderDriverInstance(Message message,
-                                                      DeliveryStatusUpdate deliveryStatusUpdate) {
+    private <PayloadT extends Serializable> void
+    forwardMessageToSenderDriverInstance(ReActorRef source, ReActorRef destination, long sequenceNumber,
+                                         ReActorSystemId fromReActorSystemId, AckingPolicy ackingPolicy,
+                                         PayloadT payload, DeliveryStatusUpdate deliveryStatusUpdate) {
         ReActorSystemRef gateForDestination = getLocalReActorSystem().findGate(deliveryStatusUpdate.getAckSourceReActorSystem(),
                                                                                deliveryStatusUpdate.getFirstMessageSourceChannelId());
         if (gateForDestination != null) {
             gateForDestination.getBackingDriver()
-                              .offerMessage(message);
+                              .offerMessage(source, destination, sequenceNumber, fromReActorSystemId, ackingPolicy,
+                                            payload);
         }
     }
 
