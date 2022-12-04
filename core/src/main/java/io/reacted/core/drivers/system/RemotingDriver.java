@@ -39,13 +39,11 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     }
 
     @Override
-    public final <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+    public final <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef source, ReActorRef destination,
                                                                         @Nullable TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
         long nextSeqNum = getLocalReActorSystem().getNewSeqNum();
-        return sendMessage(ReActorContext.NO_REACTOR_CTX,
-                           new Message(src, dst, nextSeqNum,
-                                       getLocalReActorSystem().getLocalReActorSystemId(),
-                                       AckingPolicy.NONE, message));
+        return sendMessage(source, ReActorContext.NO_REACTOR_CTX, destination, nextSeqNum,
+                           getLocalReActorSystem().getLocalReActorSystemId(), AckingPolicy.NONE, message);
     }
 
     @Override
@@ -56,8 +54,8 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     /**
      * Sends a message over a remoting channel
      *
-     * @param src          source of the message
-     * @param dst          destination of the message
+     * @param source          source of the message
+     * @param destination          destination of the message
      * @param ackingPolicy Specify if or how we should receive an ACK from the remote reactor system for this message
      * @param message      payload
      * @return A {@link CompletableFuture} that is going to be completed with the outcome of the operation once the message
@@ -65,14 +63,14 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
      */
     @Override
     public <PayloadT extends Serializable>
-    CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+    CompletionStage<DeliveryStatus> apublish(ReActorRef source, ReActorRef destination, AckingPolicy ackingPolicy,
                                              PayloadT message) {
         long nextSeqNum = getLocalReActorSystem().getNewSeqNum();
         var pendingAck = ackingPolicy.isAckRequired() ? newPendingAckTrigger(nextSeqNum) : null;
-        DeliveryStatus sendResult = sendMessage(ReActorContext.NO_REACTOR_CTX,
-                                                new Message(src, dst, nextSeqNum,
-                                                            getLocalReActorSystem().getLocalReActorSystemId(),
-                                                            ackingPolicy, message));
+        DeliveryStatus sendResult = sendMessage(source, ReActorContext.NO_REACTOR_CTX,
+                                                destination, nextSeqNum,
+                                                getLocalReActorSystem().getLocalReActorSystemId(),
+                                                ackingPolicy, message);
         CompletionStage<DeliveryStatus> tellResult = DELIVERY_RESULT_CACHE[sendResult.ordinal()];
         if (ackingPolicy.isAckRequired()) {
             if (sendResult.isSent()) {

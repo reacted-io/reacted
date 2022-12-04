@@ -58,16 +58,17 @@ public class ChannelId implements Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeObject(channelType);
+        out.writeInt(channelType.ordinal());
+        //out.writeObject(channelType);
         out.writeObject(channelName);
-        out.writeInt(hashCode);
+        //out.writeInt(hashCode);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        setChannelType((ChannelType)in.readObject());
+        setChannelType(ChannelType.forOrdinal(in.readInt()));
         setChannelName((String)in.readObject());
-        setHashCode(in.readInt());
+        setHashCode(Objects.hash(getChannelType(), getChannelName()));
     }
 
     public static Optional<ChannelId> fromToString(String inputString) {
@@ -118,6 +119,11 @@ public class ChannelId implements Externalizable {
 
         private static final Map<ChannelType, Map<String, ChannelId>> CHANNEL_ID_CACHE_BY_CHANNEL_TYPE_BY_CHANNEL_NAME = Arrays.stream(ChannelType.values())
             .collect(Collectors.toConcurrentMap(Function.identity(), channelTypeDummy -> new ConcurrentHashMap<>()));
+        private static final ChannelType[] CHANNEL_TYPE_BY_ORDINAL = ChannelType.values();
+
+        public static ChannelType forOrdinal(int channelOrdinal) {
+            return CHANNEL_TYPE_BY_ORDINAL[channelOrdinal];
+        }
         public ChannelId forChannelName(String channelName) {
             Map<String, ChannelId> channelCacheByName = CHANNEL_ID_CACHE_BY_CHANNEL_TYPE_BY_CHANNEL_NAME.get(this);
             ChannelId channelId = channelCacheByName.get(channelName);

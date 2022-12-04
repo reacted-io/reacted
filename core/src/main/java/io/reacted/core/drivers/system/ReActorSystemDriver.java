@@ -90,11 +90,16 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     /**
      * @throws io.reacted.core.exceptions.DeliveryException when a driver specific delivery error occurs
      */
-    public abstract DeliveryStatus sendMessage(ReActorContext destination, Message message);
-    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
-        return DELIVERY_RESULT_CACHE[sendMessage(destination, message).ordinal()];
+    public abstract <PayloadT extends Serializable> DeliveryStatus
+    sendMessage(ReActorRef src, ReActorContext destinationCtx, ReActorRef destination, long seqNum,
+                ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message);
+    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    sendAsyncMessage(ReActorRef src, ReActorContext destinationCtx, ReActorRef destination,
+                     long seqNum, ReActorSystemId reActorSystemId,
+                     AckingPolicy ackingPolicy, PayloadT message) {
+        return DELIVERY_RESULT_CACHE[sendMessage(src, destinationCtx, destination, seqNum, reActorSystemId,
+                                                 ackingPolicy, message).ordinal()];
     }
-
     public ConfigT getDriverConfig() { return driverConfig; }
 
     /**

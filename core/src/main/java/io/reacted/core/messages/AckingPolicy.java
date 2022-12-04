@@ -20,10 +20,11 @@ public enum AckingPolicy {
      * before reaching the ack
      */
     ONE_TO_ONE(true);
-
+    private static final AckingPolicy[] ackingPolicyByOrdinal = AckingPolicy.values();
     private final boolean isAckRequired;
 
     AckingPolicy(boolean isAckRequired) { this.isAckRequired = isAckRequired; }
 
+    public static AckingPolicy forOrdinal(int ordinal) { return ackingPolicyByOrdinal[ordinal]; }
     public boolean isAckRequired() { return isAckRequired; }
 }

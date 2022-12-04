@@ -8,6 +8,43 @@ service ReActedLink {
     rpc Link(stream ReActedDatagram) returns (google.protobuf.Empty) {}
 }
 
+message UUID {
+    int64 leastSignificantBits = 1;
+    int64 mostSignificantBits = 2;
+}
+
+message ReActorId {
+    int32 noReActorIdMarker = 1;
+    UUID uuid = 2;
+    string reactorName = 3;
+}
+
+message ReActorSystemId {
+    int32 noReActorSystemIdMarker = 1;
+    UUID uuid = 2;
+    string reactorSystemIdName = 3;
+}
+
+message ChannelId {
+    int32 channelTypeOrdinal = 1;
+    string channelName = 2;
+}
+
+message ReActorSystemRef {
+    ReActorSystemId reActorSystemId = 1;
+    ChannelId sourceChannelId = 2;
+}
+
+message ReActorRef {
+    ReActorId reActorId = 1;
+    ReActorSystemRef reActorSystemRef = 2;
+}
+
 message ReActedDatagram {
-    bytes binaryPayload = 1;
+    ReActorRef source = 1;
+    ReActorRef destination = 2;
+    ReActorSystemId generatorSystem = 3;
+    int64 sequenceNumber = 4;
+    int32 ackingPolicyOrdinal = 5;
+    bytes binaryPayload = 6;
 }

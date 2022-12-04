@@ -18,6 +18,7 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -110,7 +111,10 @@ public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     }
 
     @Override
-    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+    public <PayloadT extends Serializable> DeliveryStatus
+    sendMessage(ReActorRef source, ReActorContext destinationCtx,
+                ReActorRef destination, long seqNum, ReActorSystemId reActorSystemId,
+                AckingPolicy ackingPolicy, PayloadT message) {
         throw new NoRouteToReActorSystem();
     }
     @Override

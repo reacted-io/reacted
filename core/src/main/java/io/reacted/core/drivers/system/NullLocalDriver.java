@@ -10,11 +10,13 @@ package io.reacted.core.drivers.system;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.NullLocalDriverConfig;
+import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -71,7 +73,10 @@ public class NullLocalDriver extends LocalDriver<NullLocalDriverConfig> {
         return DeliveryStatus.NOT_DELIVERED;
     }
     @Override
-    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+    public <PayloadT extends Serializable>
+    DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
+                               long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
+                               PayloadT message) {
         throw new UnsupportedOperationException();
     }
 

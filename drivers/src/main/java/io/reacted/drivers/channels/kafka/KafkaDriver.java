@@ -10,10 +10,13 @@ package io.reacted.drivers.channels.kafka;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -37,6 +40,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -88,10 +92,16 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getChannelProperties(); }
 
     @Override
-    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+    public <PayloadT extends Serializable>
+    DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
+                               long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
+                               PayloadT message) {
         try {
             Objects.requireNonNull(kafkaProducer)
-                   .send(new ProducerRecord<>(getDriverConfig().getTopic(), message)).get();
+                   .send(new ProducerRecord<>(getDriverConfig().getTopic(),
+                                              new Message(source, destination, seqNum,
+                                                          reActorSystemId, ackingPolicy,
+                                                          message))).get();
             return DeliveryStatus.SENT;
         } catch (Exception sendError) {
             getLocalReActorSystem().logError("Error sending message {}", message.toString(),

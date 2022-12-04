@@ -9,15 +9,21 @@
 package io.reacted.drivers.channels.replay;
 
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.LocalDriver;
+import io.reacted.core.drivers.system.ReActorSystemDriver;
+import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
 import io.reacted.core.messages.reactors.EventExecutionAttempt;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.drivers.channels.chroniclequeue.CQDriverConfig;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -30,6 +36,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
@@ -72,17 +79,24 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
-        if (!(message.getPayload() instanceof DeliveryStatusUpdate)) {
-            spawnedReActors.add(message.getDestination().getReActorId());
-            spawnedReActors.add(message.getSender().getReActorId());
+    public <PayloadT extends Serializable> DeliveryStatus
+    sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
+                long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
+        if (!(message instanceof DeliveryStatusUpdate)) {
+            spawnedReActors.add(destination.getReActorId());
+            spawnedReActors.add(source.getReActorId());
         }
         return DeliveryStatus.SENT;
     }
 
     @Override
-    public CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorContext destination, Message message) {
-        return CompletableFuture.completedFuture(sendMessage(destination, message));
+    public <PayloadT extends Serializable>
+    CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorRef source, ReActorContext destinationCtx,
+                                                     ReActorRef destination, long seqNum,
+                                                     ReActorSystemId reActorSystemId,
+                                                     AckingPolicy ackingPolicy, PayloadT message) {
+        return CompletableFuture.completedFuture(sendMessage(source, destinationCtx, destination,
+                                                             seqNum, reActorSystemId, ackingPolicy, message));
     }
 
     @Override
@@ -94,11 +108,15 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
         Map<Long, Message> emptyMap = new HashMap<>();
         ExcerptTailer chronicleReader = chronicle.createTailer();
         Map<ReActorId, Map<Long, Message>> dstToMessageBySeqNum = new HashMap<>();
-        Pauser pauser = Pauser.balanced();
-
+        DriverCtx ctx = ReActorSystemDriver.getDriverCtx();
+        Consumer<Message> offerForReplay = newMessage -> onNewMessage(localReActorSystem,
+                                                                      emptyMap,
+                                                                      dstToMessageBySeqNum, newMessage);
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
-
+            chronicleReader.readDocument(in -> CQLocalDriver.readMessage(in, ctx, offerForReplay));
+            /*
             try(DocumentContext documentContext = chronicleReader.readingDocument()) {
+
                 if (!documentContext.isPresent()) {
                     pauser.pause();
                     continue;
@@ -110,40 +128,48 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
                     continue;
                 }
                 pauser.reset();
-
-                if (!isForLocalReActorSystem(localReActorSystem, nextMessage)) {
-                    continue;
-                }
-                Serializable payload = nextMessage.getPayload();
-
-                if (!(payload instanceof EventExecutionAttempt executionAttempt)) {
-                    dstToMessageBySeqNum.computeIfAbsent(nextMessage.getDestination().getReActorId(),
-                                                         reActorId -> new HashMap<>())
-                                        .put(nextMessage.getSequenceNumber(), nextMessage);
-                    continue;
-                }
-                while (!isTargetReactorAlreadySpawned(nextMessage)) {
-                    pauser.pause();
-                }
-                pauser.reset();
-
-                var message = dstToMessageBySeqNum.getOrDefault(executionAttempt.getReActorId(), emptyMap)
-                                                           .remove(executionAttempt.getMsgSeqNum());
-                ReActorContext destinationCtx = localReActorSystem.getReActorCtx(executionAttempt.getReActorId());
-
-                if (destinationCtx == null || message == null) {
-                    LOGGER.error("Unable to delivery message {} for ReActor {}",
-                            message, executionAttempt.getReActorId(), new IllegalStateException());
-                } else if (syncForwardMessageToLocalActor(destinationCtx, message).isNotDelivered()) {
-                        LOGGER.error("Unable to delivery message {} for ReActor {}",
-                                message, executionAttempt.getReActorId());
-                }
+                */
+                /*
             } catch (Exception anyError) {
                 LOGGER.error("Error reading message from CQ", anyError);
                 break;
-            }
+            } */
         }
     }
+
+    private void onNewMessage(ReActorSystem localReActorSystem, Map<Long, Message> emptyMap, Map<ReActorId,
+                              Map<Long, Message>> dstToMessageBySeqNum, Message nextMessage) {
+        Pauser pauser = Pauser.balanced();
+
+        if (!isForLocalReActorSystem(localReActorSystem, nextMessage)) {
+            return;
+        }
+        Serializable payload = nextMessage.getPayload();
+
+        if (!(payload instanceof EventExecutionAttempt executionAttempt)) {
+            dstToMessageBySeqNum.computeIfAbsent(nextMessage.getDestination().getReActorId(),
+                                                 reActorId -> new HashMap<>())
+                                .put(nextMessage.getSequenceNumber(), nextMessage);
+            return;
+        }
+        while (!isTargetReactorAlreadySpawned(nextMessage)) {
+            pauser.pause();
+        }
+        pauser.reset();
+
+        var message = dstToMessageBySeqNum.getOrDefault(executionAttempt.getReActorId(), emptyMap)
+                                          .remove(executionAttempt.getMsgSeqNum());
+        ReActorContext destinationCtx = localReActorSystem.getReActorCtx(executionAttempt.getReActorId());
+
+        if (destinationCtx == null || message == null) {
+            LOGGER.error("Unable to delivery message {} for ReActor {}",
+                    message, executionAttempt.getReActorId(), new IllegalStateException());
+        } else if (syncForwardMessageToLocalActor(destinationCtx, message).isNotDelivered()) {
+                LOGGER.error("Unable to delivery message {} for ReActor {}",
+                        message, executionAttempt.getReActorId());
+        }
+    }
+
     private boolean isForLocalReActorSystem(ReActorSystem replayedAs, Message newMessage) {
         return newMessage.getDestination().getReActorSystemRef().equals(replayedAs.getLoopback());
     }

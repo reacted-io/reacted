@@ -87,7 +87,12 @@ class LocalDriverTest {
 
     @Test
     void localDriverDeliversMessagesInMailBox() {
-        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isDelivered());
+        Assertions.assertTrue(localDriver.sendMessage(originalMsg.getSender(), reActorContext,
+                                                      originalMsg.getDestination(),
+                                                      originalMsg.getSequenceNumber(),
+                                                      originalMsg.getDataLink().getGeneratingReActorSystem(),
+                                                      originalMsg.getDataLink().getAckingPolicy(),
+                                                      originalMsg.getPayload()).isDelivered());
 
         Assertions.assertEquals(1, unboundedMbox.getMsgNum());
         Assertions.assertEquals(originalMsg, unboundedMbox.getNextMessage());
@@ -103,7 +108,12 @@ class LocalDriverTest {
 
     @Test
     void localDriverCanSendMessage() {
-        Assertions.assertTrue(localDriver.sendMessage(reActorContext, originalMsg).isDelivered());
+        Assertions.assertTrue(localDriver.sendMessage(originalMsg.getSender(), reActorContext,
+                                                      originalMsg.getDestination(),
+                                                      originalMsg.getSequenceNumber(),
+                                                      originalMsg.getDataLink().getGeneratingReActorSystem(),
+                                                      originalMsg.getDataLink().getAckingPolicy(),
+                                                      originalMsg.getPayload()).isDelivered());
         Assertions.assertEquals(originalMsg, unboundedMbox.getNextMessage());
     }
 }

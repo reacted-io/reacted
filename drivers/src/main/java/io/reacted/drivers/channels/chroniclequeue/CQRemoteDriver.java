@@ -9,14 +9,22 @@
 package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
+import io.reacted.core.drivers.DriverCtx;
+import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+
+import java.io.Serializable;
+import java.sql.DriverManager;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -78,17 +86,21 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getChannelProperties(); }
 
     @Override
-    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+    public <PayloadT extends Serializable>
+    DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
+                               long seqNum, ReActorSystemId reActorSystemId,
+                               AckingPolicy ackingPolicy, PayloadT message) {
         return sendMessage(getLocalReActorSystem(),
-                           Objects.requireNonNull(chronicle)
-                                  .acquireAppender(), getDriverConfig().getTopic(), message);
+                           Objects.requireNonNull(chronicle).acquireAppender(),
+                           source, destination, seqNum, ackingPolicy, message);
     }
 
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {
         Pauser readPauser = Pauser.balanced();
-
+        DriverCtx ctx = ReActorSystemDriver.getDriverCtx();
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
-
+            cqTailer.readDocument(document -> CQLocalDriver.readMessage(document, ctx, this::offerMessage));
+            /*
             Message newMessage = null;
             try(DocumentContext docCtx = cqTailer.readingDocument()) {
                 if (docCtx.isPresent()) {
@@ -106,12 +118,17 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
             }
 
             offerMessage(newMessage);
+            */
         }
     }
-    private static DeliveryStatus sendMessage(ReActorSystem localReActorSystem,
-                                              ExcerptAppender cqAppender, WireKey topic,  Message message) {
+    private static <PayloadT extends Serializable>
+    DeliveryStatus sendMessage(ReActorSystem localReActorSystem, ExcerptAppender cqAppender,
+                               ReActorRef source, ReActorRef destination, long seqNum,
+                               AckingPolicy ackingPolicy, PayloadT message) {
         try {
-            cqAppender.writeMessage(topic, message);
+            cqAppender.writeDocument(document -> CQLocalDriver.writeMessage(document, source, destination,
+                                                                            seqNum, localReActorSystem.getLocalReActorSystemId(),
+                                                                            ackingPolicy, message));
             return DeliveryStatus.SENT;
         } catch (Exception sendError) {
             localReActorSystem.logError("Error sending message {}", message.toString(),

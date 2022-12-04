@@ -29,6 +29,8 @@ import java.util.concurrent.CompletionStage;
 public final class ReActorRef implements Externalizable {
     public static final ReActorRef NO_REACTOR_REF = new ReActorRef(ReActorId.NO_REACTOR_ID,
                                                                    NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF);
+    public static final int NO_REACTOR_REF_MARKER = 1;
+    public static final int COMMON_REACTOR_REF_MARKER = 0;
     @Serial
     private static final long serialVersionUID = 1;
     private static final long REACTOR_ID_OFFSET = SerializationUtils.getFieldOffset(ReActorRef.class, "reActorId")
@@ -229,20 +231,26 @@ public final class ReActorRef implements Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        getReActorId().writeExternal(out);
-        getReActorSystemRef().writeExternal(out);
-        out.writeInt(hashCode);
+        if (this == NO_REACTOR_REF) {
+            out.writeInt(NO_REACTOR_REF_MARKER);
+        } else {
+            out.writeInt(COMMON_REACTOR_REF_MARKER);
+            getReActorId().writeExternal(out);
+            getReActorSystemRef().writeExternal(out);
+        }
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorId receivedReActorId = new ReActorId();
-        receivedReActorId.readExternal(in);
-        setReActorId(receivedReActorId);
-        ReActorSystemRef receivedReActorSystemRef = new ReActorSystemRef();
-        receivedReActorSystemRef.readExternal(in);
-        setReActorSystemRef(receivedReActorSystemRef);
-        setHashCode(in.readInt());
+        if (in.readInt() == COMMON_REACTOR_REF_MARKER) {
+            ReActorId receivedReActorId = new ReActorId();
+            receivedReActorId.readExternal(in);
+            setReActorId(receivedReActorId);
+            ReActorSystemRef receivedReActorSystemRef = new ReActorSystemRef();
+            receivedReActorSystemRef.readExternal(in);
+            setReActorSystemRef(receivedReActorSystemRef);
+            setHashCode(Objects.hash(getReActorId(), getReActorSystemRef()));
+        }
     }
 
     private static <ReplyT extends Serializable, RequestT extends Serializable>
@@ -259,7 +267,8 @@ public final class ReActorRef implements Externalizable {
     private void setReActorSystemRef(ReActorSystemRef reActorSystemRef) {
         SerializationUtils.setObjectField(this, REACTORSYSTEMREF_OFFSET, reActorSystemRef);
     }
-    private void setHashCode(int hashCode) {
+    public ReActorRef setHashCode(int hashCode) {
         SerializationUtils.setIntField(this, HASHCODE_OFFSET, hashCode);
+        return this;
     }
 }

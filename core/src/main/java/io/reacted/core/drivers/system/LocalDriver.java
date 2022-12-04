@@ -67,7 +67,6 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
 
      @Override
      protected final void offerMessage(Message message) {
-          Objects.requireNonNull(message, "Cannot offer() a null message");
           ReActorId destinationId = message.getDestination().getReActorId();
           ReActorContext destinationCtx = getLocalReActorSystem().getReActorCtx(destinationId);
           DeliveryStatus deliveryStatus;

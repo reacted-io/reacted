@@ -11,15 +11,19 @@ package io.reacted.core.drivers.local;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.DirectCommunicationSimplifiedLoggerConfig;
 import io.reacted.core.drivers.system.LocalDriver;
+import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
 import java.io.PrintWriter;
+import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.Properties;
@@ -76,19 +80,21 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+    public <PayloadT extends Serializable> DeliveryStatus
+    sendMessage(ReActorRef src, ReActorContext destinationCtx, ReActorRef destination, long seqNum, ReActorSystemId reActorSystemId,
+                AckingPolicy ackingPolicy, PayloadT message) {
         synchronized (logFile) {
             logFile.printf("[%s] SENDER: %s\t\tDESTINATION: %s\t\t SEQNUM:%d\t\tPAYLOAD TYPE: %s%nPAYLOAD: %s%n%n",
                            Instant.now(),
-                           message.getSender().getReActorId().getReActorName(),
-                           message.getDestination().getReActorId().getReActorName(),
-                           message.getSequenceNumber(),
-                           message.getPayload().getClass().toString(),
-                           message.getPayload());
+                           src.getReActorId().getReActorName(),
+                           destination.getReActorId().getReActorName(),
+                           seqNum,
+                           message.getClass().toString(),
+                           message);
             logFile.flush();
         }
-        return destination.isStop()
-               ? DeliveryStatus.NOT_DELIVERED
-               : localDeliver(destination, message);
+        return SystemLocalDrivers.DIRECT_COMMUNICATION.sendMessage(src, destinationCtx, destination,
+                                                                   seqNum, reActorSystemId,
+                                                                   ackingPolicy, message);
     }
 }

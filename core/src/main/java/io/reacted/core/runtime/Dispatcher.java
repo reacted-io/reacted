@@ -152,7 +152,7 @@ public class Dispatcher {
         final AtomicInteger filled = new AtomicInteger(0);
         var processedForDispatcher = 0L;
         long processedInRound;
-        IdleStrategy ringBufferConsumerPauser = new BackoffIdleStrategy(10_000_000L,
+        IdleStrategy ringBufferConsumerPauser = new BackoffIdleStrategy(100_000_000L,
                                                                         100L,
                                                                         BackoffIdleStrategy.DEFAULT_MIN_PARK_PERIOD_NS,
                                                                         BackoffIdleStrategy.DEFAULT_MAX_PARK_PERIOD_NS);

@@ -11,10 +11,13 @@ package io.reacted.core.drivers.local;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.DirectCommunicationLoggerConfig;
 import io.reacted.core.drivers.system.LocalDriver;
+import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -22,6 +25,7 @@ import io.reacted.patterns.UnChecked;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -73,11 +77,12 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
+    public <PayloadT extends Serializable> DeliveryStatus
+    sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination, long seqNum,
+                ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
         logFile.println(message);
         logFile.flush();
-        return destination.isStop()
-               ? DeliveryStatus.NOT_DELIVERED
-               : localDeliver(destination, message);
+        return SystemLocalDrivers.DIRECT_COMMUNICATION.sendMessage(source, destinationCtx, destination,
+                                                                   seqNum, reActorSystemId, ackingPolicy, message);
     }
 }

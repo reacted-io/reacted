@@ -11,6 +11,8 @@ package io.reacted.examples.benchmarking;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
+import io.reacted.core.mailboxes.BoundedMbox;
+import io.reacted.core.mailboxes.FastBoundedMbox;
 import io.reacted.core.mailboxes.FastUnboundedMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
@@ -18,6 +20,9 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
+import io.reacted.drivers.channels.chroniclequeue.CQDriverConfig;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -26,32 +31,43 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 public class ReactionTime {
     public static void main(String[] args) throws InterruptedException {
         ReActorSystem benchmarkSystem;
         benchmarkSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                .setReactorSystemName(ReactionTime.class.getSimpleName())
+                                                               /*
+                                                    .setLocalDriver(new CQLocalDriver(CQDriverConfig.newBuilder()
+                                                                                              .setTopicName("I")
+                                                                                              .setChannelName("Q")
+                                                                                              .setChronicleFilesDir("/Volumes/RAM Disk")
+                                                                                                    .build())) */
                                                                .addDispatcherConfig(DispatcherConfig.newBuilder()
                                                                                                     .setBatchSize(1_000_000_000)
                                                                                                     .setDispatcherName("Lonely")
                                                                                                     .setDispatcherThreadsNum(1)
                                                                                                     .build())
                                                                .build()).initReActorSystem();
-        int iterations = 1 << 9;
-        MessageGrabber actorBody = new MessageGrabber(iterations);
-        ReActorRef actor = benchmarkSystem.spawn(actorBody.getReActions(),
+        int iterations = 1_000_000;
+        MessageGrabber latencyGrabberBody = new MessageGrabber(iterations);
+        ReActorRef latencyGrabber = benchmarkSystem.spawn(latencyGrabberBody.getReActions(),
                                                  ReActorConfig.newBuilder()
+                                                         //.setMailBoxProvider((ctx) -> new BoundedMbox(iterations))
                                                               //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new TypeCoalescingMailbox())
                                                               //.setMailBoxProvider((ctx) -> new FastBoundedBasicMbox(30))
                                                               //.setMailBoxProvider((ctx) -> new BoundedBasicMbox(3000))
                                                               .setReActorName("Interceptor")
                                                               .setDispatcherName("Lonely")
+                                                              .setTypedSubscriptions(TypedSubscription.LOCAL.forType(Long.class))
                                                               .build()).orElseSneakyThrow();
-        //TimeUnit.SECONDS.sleep(1);
-
-        long pauseWindowDuration = Duration.ofNanos(20000).toNanos();
+        //Warmup
+        //IntStream.range(0, 100_000)
+        //         .forEach(val -> benchmarkSystem.getSystemSink().tell(ReActorRef.NO_REACTOR_REF, ""));
+        TimeUnit.SECONDS.sleep(2);
+        long pauseWindowDuration = Duration.ofNanos(10000).toNanos();
         long start = System.nanoTime();
         long end;
         long elapsed = 0;
@@ -62,11 +78,11 @@ public class ReactionTime {
             }
             elapsed = 0;
             start = System.nanoTime();
-            actor.tell(start);
+            benchmarkSystem.getSystemSink().publish(start);
         }
-        TimeUnit.SECONDS.sleep(2);
-        actorBody.stop().toCompletableFuture().join();
-        long[] sortedLatencies = actorBody.getLatencies();
+        TimeUnit.SECONDS.sleep(3);
+        latencyGrabberBody.stop().toCompletableFuture().join();
+        long[] sortedLatencies = latencyGrabberBody.getLatencies();
         Arrays.sort(sortedLatencies);
 
         List<Double> percentiles = List.of(70d, 75d, 80d, 85d, 90d, 95d, 99d, 99.9d, 99.99d, 99.9999d, 100d);

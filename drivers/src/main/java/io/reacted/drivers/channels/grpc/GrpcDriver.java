@@ -33,10 +33,13 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
+import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
@@ -45,6 +48,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Objects;
@@ -145,8 +149,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public ChannelId getChannelId() { return channelId; }
 
     @Override
-    public DeliveryStatus sendMessage(ReActorContext destination, Message message) {
-        Properties dstChannelIdProperties = message.getDestination().getReActorSystemRef().getGateProperties();
+    public <PayloadT extends Serializable>
+    DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
+                               long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
+                               PayloadT message) {
+        Properties dstChannelIdProperties = destination.getReActorSystemRef().getGateProperties();
         String dstChannelIdName = dstChannelIdProperties.getProperty(ChannelDriverConfig.CHANNEL_ID_PROPERTY_NAME);
         /*
             Fact 1: GRPC links are not bidirectional.
@@ -210,12 +217,14 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
 
         try(ObjectOutputStream oos = new ObjectOutputStream(byteArray)) {
             oos.writeObject(message);
-            var payload = ReActedLinkProtocol.ReActedDatagram.newBuilder()
-                                                             .setBinaryPayload(ByteString.copyFrom(byteArray.toByteArray()))
-                                                             .build();
+            System.err.println("TODO XXX FILL THE PROPER PROTOCOL IN THE DATAGRAM");
+            var datagram = ReActedLinkProtocol.ReActedDatagram.newBuilder()
+                    .setSequenceNumber(seqNum)
+                    .setAckingPolicyOrdinal(ackingPolicy.ordinal())
+                    .setBinaryPayload(ByteString.copyFrom(byteArray.toByteArray())).build();
             //noinspection SynchronizationOnLocalVariableOrMethodParameter
             synchronized (grpcLink) {
-                grpcLink.link.onNext(payload);
+                grpcLink.link.onNext(datagram);
             }
             return DeliveryStatus.SENT;
 
