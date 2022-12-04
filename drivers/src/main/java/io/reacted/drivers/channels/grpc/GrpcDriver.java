@@ -216,15 +216,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                                                                                  ReActedLinkGrpc::newStub,
                                                                                                  stub -> stub.link(getEmptyMessageHandler(getLocalReActorSystem()))));
 
-        var byteArray = new ByteArrayOutputStream();
-
-        try(ObjectOutputStream oos = new ObjectOutputStream(byteArray)) {
+        try(ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(byteArray)) {
             oos.writeObject(payload);
-            System.err.println("TODO XXX FILL THE PROPER PROTOCOL IN THE DATAGRAM");
-            var datagram = ReActedLinkProtocol.ReActedDatagram.newBuilder()
-                    .setSequenceNumber(seqNum)
-                    .setAckingPolicyOrdinal(ackingPolicy.ordinal())
-                    .setBinaryPayload(ByteString.copyFrom(byteArray.toByteArray())).build();
+            var datagram = toReActedDatagram(source, destination, seqNum, reActorSystemId,
+                                             ackingPolicy, ByteString.copyFrom(byteArray.toByteArray()));
             //noinspection SynchronizationOnLocalVariableOrMethodParameter
             synchronized (grpcLink) {
                 grpcLink.link.onNext(datagram);
@@ -336,6 +332,37 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             }
     }
 
+    private static ReActedLinkProtocol.ReActedDatagram toReActedDatagram(ReActorRef source, ReActorRef destination,
+                                                                         long seqNum,
+                                                                         ReActorSystemId localReActorSystemId,
+                                                                         AckingPolicy ackingPolicy,
+                                                                         ByteString payload) {
+        return ReActedLinkProtocol.ReActedDatagram.newBuilder()
+                .setSource(toReActorRef(source))
+                .setDestination(toReActorRef(destination))
+                .setGeneratorSystem(toReActorSystemId(localReActorSystemId))
+                .setSequenceNumber(seqNum)
+                .setAckingPolicyOrdinal(ackingPolicy.ordinal())
+                .setBinaryPayload(payload)
+                .build();
+    }
+    private static ReActorRef fromReActorRef(ReActedLinkProtocol.ReActorRef reActorRef,
+                                             DriverCtx driverCtx) {
+        if (reActorRef == reActorRef.getDefaultInstanceForType()) {
+            return ReActorRef.NO_REACTOR_REF;
+        }
+        return new ReActorRef(fromReActorId(reActorRef.getReActorId()),
+                              fromReActorSystemRef(reActorRef.getReActorSystemRef(), driverCtx));
+    }
+    private static ReActedLinkProtocol.ReActorRef toReActorRef(ReActorRef reActorRef) {
+        if (reActorRef == ReActorRef.NO_REACTOR_REF) {
+            return ReActedLinkProtocol.ReActorRef.getDefaultInstance();
+        }
+        return ReActedLinkProtocol.ReActorRef.newBuilder()
+                                             .setReActorSystemRef(toReActorSystemRef(reActorRef.getReActorSystemRef()))
+                                             .setReActorId(toReActorId(reActorRef.getReActorId()))
+                                             .build();
+    }
     private static ReActorSystemRef fromReActorSystemRef(ReActedLinkProtocol.ReActorSystemRef reActorSystemRef,
                                                          DriverCtx driverCtx) {
         ReActorSystemRef newReActorSystemRef = new ReActorSystemRef();
