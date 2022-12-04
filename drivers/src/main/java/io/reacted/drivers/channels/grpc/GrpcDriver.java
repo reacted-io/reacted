@@ -41,6 +41,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.reactorsystem.ReActorSystemRef;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
@@ -335,12 +336,61 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             }
     }
 
+    private static ReActorSystemRef fromReActorSystemRef(ReActedLinkProtocol.ReActorSystemRef reActorSystemRef,
+                                                         DriverCtx driverCtx) {
+        ReActorSystemRef newReActorSystemRef = new ReActorSystemRef();
+        ReActorSystemId reActorSystemId = fromReActorSystemId(reActorSystemRef.getReActorSystemId());
+        ChannelId channelId = fromChannelId(reActorSystemRef.getSourceChannelId());
+        ReActorSystemRef gateForReActor = driverCtx.getLocalReActorSystem()
+                                                   .findGate(reActorSystemId,
+                                                             channelId.equals(ChannelId.INVALID_CHANNEL_ID)
+                                                             ? driverCtx.getDecodingDriver()
+                                                                        .getChannelId()
+                                                             : channelId);
+        if (gateForReActor != null) {
+            newReActorSystemRef.setBackingDriver(gateForReActor.getBackingDriver());
+            newReActorSystemRef.setGateProperties(gateForReActor.getGateProperties());
+        }
+        newReActorSystemRef.setChannelId(newReActorSystemRef.getBackingDriver().getChannelId());
+        return newReActorSystemRef;
+    }
+    private static ReActedLinkProtocol.ReActorSystemRef toReActorSystemRef(ReActorSystemRef reActorSystemRef) {
+        return ReActedLinkProtocol.ReActorSystemRef.newBuilder()
+                .setReActorSystemId(toReActorSystemId(reActorSystemRef.getReActorSystemId()))
+                .setSourceChannelId(toChannelId(reActorSystemRef.getChannelId()))
+                .build();
+    }
+    private static ReActorSystemId fromReActorSystemId(ReActedLinkProtocol.ReActorSystemId reActorSystemId) {
+        return reActorSystemId == ReActedLinkProtocol.ReActorSystemId.getDefaultInstance()
+               ? ReActorSystemId.NO_REACTORSYSTEM_ID
+               : new ReActorSystemId(reActorSystemId.getReactorSystemIdName());
+    }
+    private static ReActedLinkProtocol.ReActorSystemId toReActorSystemId(ReActorSystemId reActorSystemId) {
+        if (reActorSystemId == ReActorSystemId.NO_REACTORSYSTEM_ID) {
+            return ReActedLinkProtocol.ReActorSystemId.getDefaultInstance();
+        }
+        return ReActedLinkProtocol.ReActorSystemId.newBuilder()
+                .setReactorSystemIdName(reActorSystemId.getReActorSystemName())
+                .build();
+    }
+    private static ChannelId fromChannelId(ReActedLinkProtocol.ChannelId channelId) {
+        return ChannelId.ChannelType.forOrdinal(channelId.getChannelTypeOrdinal())
+                                    .forChannelName(channelId.getChannelName());
+    }
+    private static ReActedLinkProtocol.ChannelId toChannelId(ChannelId channelId) {
+        return ReActedLinkProtocol.ChannelId.newBuilder()
+                .setChannelTypeOrdinal(channelId.getChannelType().ordinal())
+                .setChannelName(channelId.getChannelName())
+                .build();
+    }
     private static ReActorId fromReActorId(ReActedLinkProtocol.ReActorId reActorId) {
-        return reActorId.getDefaultInstanceForType() == reActorId
-               ? ReActorId.NO_REACTOR_ID
-               : new ReActorId().setReActorName(reActorId.getReactorName())
-                                .setReActorUUID(fromUUID(reActorId.getUuid()))
-                                .setHashCode()
+        if (reActorId.getDefaultInstanceForType().equals(reActorId)) {
+            return ReActorId.NO_REACTOR_ID;
+        }
+        var uuid = fromUUID(reActorId.getUuid());
+        return new ReActorId().setReActorName(reActorId.getReactorName())
+                              .setReActorUUID(uuid)
+                              .setHashCode(Objects.hash(uuid, reActorId.getReactorName()));
     }
     private static ReActedLinkProtocol.ReActorId toReActorId(ReActorId reActorId) {
         return reActorId == ReActorId.NO_REACTOR_ID
