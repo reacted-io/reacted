@@ -137,7 +137,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         if (isLocalReActorSystem(getLocalReActorSystem().getLocalReActorSystemId(),
                                  destination.getReActorSystemRef().getReActorSystemId())) {
             //If so, this is an ACK confirmation for a message sent with apublish
-            if (payloadType == DeliveryStatusUpdate.class) {
+            if (payloadType != DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = (DeliveryStatusUpdate)payload;
 
                 if (messageWasNotSentFromThisDriverInstance(deliveryStatusUpdate)) {
@@ -174,21 +174,25 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         }
         boolean isAckRequired = !hasBeenSniffed && ackingPolicy != AckingPolicy.NONE;
         if (isAckRequired) {
+            //Be better java
+            var dst = destination;
             var deliverAttempt = destination.apublish(source, payload);
+
             deliverAttempt.handle((deliveryStatus, deliveryError) -> {
                               DeliveryStatus result = deliveryStatus;
                               if (deliveryError != null) {
                                   result = DeliveryStatus.NOT_DELIVERED;
                                   getLocalReActorSystem().logInfo("Unable to deliver {} {} {} {} {} {}: Reason {}",
-                                                                  source, destination, sequenceNumber, fromReActorSystemId,
+                                                                  source, dst, sequenceNumber, fromReActorSystemId,
                                                                   ackingPolicy, payload, deliveryError);
                               }
-                              return sendDeliveryAck(getLocalReActorSystem(), getChannelId(), result, message);
+                              return sendDeliveryAck(getLocalReActorSystem(), getChannelId(), result, sequenceNumber,
+                                                     fromReActorSystemId);
                           })
                           .handle((ackDeliveryStatus, ackDeliveryError) -> {
                               if (ackDeliveryError != null || ackDeliveryStatus.isNotSent()) {
                                   getLocalReActorSystem().logError("Unable to send ack for {} {} {} {} {} {}",
-                                                                   source, destination, sequenceNumber, fromReActorSystemId,
+                                                                   source, dst, sequenceNumber, fromReActorSystemId,
                                                                    ackingPolicy, payload, ackDeliveryError);
                               }
                               return null;

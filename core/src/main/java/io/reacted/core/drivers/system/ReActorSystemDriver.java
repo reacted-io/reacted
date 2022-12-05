@@ -266,8 +266,9 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
 
     protected static DeliveryStatus
     sendDeliveryAck(ReActorSystem localReActorSystem, ChannelId gateChannelId,
-                    DeliveryStatus deliveryResult, Message originalMessage) {
-        var statusUpdatePayload = new DeliveryStatusUpdate(originalMessage.getSequenceNumber(),
+                    DeliveryStatus deliveryResult, long originalSequenceNumber,
+                    ReActorSystemId fromReActorSystemId) {
+        var statusUpdatePayload = new DeliveryStatusUpdate(originalSequenceNumber,
                                                            deliveryResult,
                                                            localReActorSystem.getLocalReActorSystemId(),
                                                            gateChannelId);
@@ -276,9 +277,7 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
            Here we are supporting asymmetric routes: theoretically this ack could go back to the
            original sender using a different driver
          */
-        var destSystem = localReActorSystem.findGate(originalMessage.getDataLink()
-                                                                    .getGeneratingReActorSystem(),
-                                                     gateChannelId);
+        var destSystem = localReActorSystem.findGate(fromReActorSystemId, gateChannelId);
         if (destSystem == null) {
             destSystem = NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF;
         }

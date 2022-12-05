@@ -16,6 +16,7 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
@@ -66,8 +67,10 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      }
 
      @Override
-     protected final void offerMessage(Message message) {
-          ReActorId destinationId = message.getDestination().getReActorId();
+     protected final <PayloadT extends Serializable> void
+     offerMessage(ReActorRef source, ReActorRef destination, long sequenceNumber, ReActorSystemId fromReActorSystemId,
+                  AckingPolicy ackingPolicy, PayloadT payloadT) {
+          ReActorId destinationId = destination.getReActorId();
           ReActorContext destinationCtx = getLocalReActorSystem().getReActorCtx(destinationId);
           DeliveryStatus deliveryStatus;
 
@@ -78,9 +81,9 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
                getLocalReActorSystem().toDeadLetters(message);
           }
 
-          if (message.getDataLink().getAckingPolicy().isAckRequired()) {
+          if (ackingPolicy.isAckRequired()) {
                CompletionStage<DeliveryStatus> ackTrigger;
-               ackTrigger = removePendingAckTrigger(message.getSequenceNumber());
+               ackTrigger = removePendingAckTrigger(sequenceNumber);
 
                if (ackTrigger != null) {
                     ackTrigger.toCompletableFuture().complete(deliveryStatus);
@@ -88,11 +91,14 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
           }
      }
 
-     protected static DeliveryStatus syncForwardMessageToLocalActor(ReActorContext destination,
-                                                                    Message message) {
+     protected static <PayloadT extends Serializable> DeliveryStatus
+     syncForwardMessageToLocalActor(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
+                                    long sequenceNumber, ReActorSystemId fromReActorSystemId, AckingPolicy ackingPolicy,
+                                    PayloadT payload) {
           return SystemLocalDrivers.DIRECT_COMMUNICATION
-                                   .sendMessage(destination,
-                                                Objects.requireNonNull(message, "Cannot forward a null message"));
+                                   .sendMessage(source, destinationCtx, destination, sequenceNumber,
+                                                fromReActorSystemId, ackingPolicy,
+                                                Objects.requireNonNull(payload, "Cannot forward a null message"));
      }
      protected static DeliveryStatus localDeliver(ReActorContext destination, Message message) {
           DeliveryStatus deliverOperation = destination.getMbox().deliver(message);
