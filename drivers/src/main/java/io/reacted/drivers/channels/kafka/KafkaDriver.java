@@ -137,7 +137,12 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
         while(!Thread.currentThread().isInterrupted()) {
             try {
                 kafkaConsumer.poll(POLL_TIMEOUT)
-                             .forEach(record -> thisDriver.offerMessage(record.value()));
+                             .forEach(record -> thisDriver.offerMessage(record.value().getSender(),
+                                                                        record.value().getDestination(),
+                                                                        record.value().getSequenceNumber(),
+                                                                        record.value().getDataLink().getGeneratingReActorSystem(),
+                                                                        record.value().getDataLink().getAckingPolicy(),
+                                                                        record.value().getPayload()));
             } catch (InterruptException interruptException) {
                 Thread.currentThread().interrupt();
                 break;
