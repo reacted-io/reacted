@@ -101,7 +101,12 @@ class LocalDriverTest {
 
     @Test
     void localDriverForwardsMessageToLocalActor() {
-        Assertions.assertTrue(LocalDriver.syncForwardMessageToLocalActor(reActorContext, originalMsg)
+        Assertions.assertTrue(LocalDriver.syncForwardMessageToLocalActor(originalMsg.getSender(), reActorContext,
+                                                                         originalMsg.getDestination(),
+                                                                         originalMsg.getSequenceNumber(),
+                                                                         originalMsg.getDataLink().getGeneratingReActorSystem(),
+                                                                         originalMsg.getDataLink().getAckingPolicy(),
+                                                                         originalMsg.getPayload())
                                          .isDelivered());
         Assertions.assertEquals(originalMsg, unboundedMbox.getNextMessage());
     }

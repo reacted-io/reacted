@@ -34,7 +34,14 @@ import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
+import net.openhft.chronicle.wire.WireIn;
 import net.openhft.chronicle.wire.WireKey;
+
+import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readAckingPolicy;
+import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readPayload;
+import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readReActorRef;
+import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readReActorSystemId;
+import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readSequenceNumber;
 
 @NonNullByDefault
 public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
@@ -97,28 +104,17 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
 
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {
         Pauser readPauser = Pauser.balanced();
-        DriverCtx ctx = ReActorSystemDriver.getDriverCtx();
+        DriverCtx ctx = Objects.requireNonNull(ReActorSystemDriver.getDriverCtx());
         while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
-            cqTailer.readDocument(document -> CQLocalDriver.readMessage(document, ctx, this::offerMessage));
-            /*
-            Message newMessage = null;
-            try(DocumentContext docCtx = cqTailer.readingDocument()) {
-                if (docCtx.isPresent()) {
-                    newMessage = docCtx.wire().read(getDriverConfig().getTopic())
-                                       .object(Message.class);
+            try {
+                if (cqTailer.readDocument(document -> readMessage(document, ctx))) {
                     readPauser.reset();
+                } else {
+                    readPauser.pause();
                 }
             } catch (Exception anyException) {
                 getLocalReActorSystem().logError("Unable to properly decode message", anyException);
             }
-
-            if (newMessage == null) {
-                readPauser.pause();
-                continue;
-            }
-
-            offerMessage(newMessage);
-            */
         }
     }
     private static <PayloadT extends Serializable>
@@ -135,5 +131,13 @@ public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
                                         sendError);
             return DeliveryStatus.NOT_SENT;
         }
+    }
+    private void readMessage(WireIn in, DriverCtx driverCtx) {
+        in.read("M").marshallable(m -> offerMessage(readReActorRef(in, driverCtx),
+                                                    readReActorRef(in, driverCtx),
+                                                    readSequenceNumber(in),
+                                                    readReActorSystemId(in),
+                                                    readAckingPolicy(in),
+                                                    readPayload(in)));
     }
 }

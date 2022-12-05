@@ -121,37 +121,27 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
 
     private void chronicleMainLoop(ExcerptTailer tailer) {
         var waitForNextMsg = Pauser.balanced();
-        DriverCtx ctx = ReActorSystemDriver.getDriverCtx();
+        DriverCtx ctx = Objects.requireNonNull(ReActorSystemDriver.getDriverCtx());
         while(!Thread.currentThread().isInterrupted()) {
-            while (tailer.readDocument(document -> readMessage(document, ctx, this::offerMessage)) == false) {
-                waitForNextMsg.pause();
-            }
-            waitForNextMsg.reset();
-            /*
-            try(DocumentContext docCtx = tailer.readingDocument()) {
-                if(docCtx.isPresent()) {
-                    Message newMessage = docCtx.wire().read(getDriverConfig().getTopic()).object(Message.class);
-                    if (newMessage != null) {
-                        offerMessage(newMessage);
-                        waitForNextMsg.reset();
-                    } else {
-                        waitForNextMsg.pause();
-                    }
+            try {
+                if (tailer.readDocument(document -> readMessage(document, ctx))) {
+                    waitForNextMsg.reset();
+                } else {
+                    waitForNextMsg.pause();
                 }
             } catch (Exception anyException) {
                 LOGGER.error("Unable to decode data", anyException);
             }
-            */
         }
     }
 
-    public static void readMessage(WireIn in, DriverCtx driverCtx, Consumer<Message> onMessage) {
-        in.read("M").marshallable(m -> onMessage.accept(new Message(readReActorRef(in, driverCtx),
-                                                                             readReActorRef(in, driverCtx),
-                                                                             readSequenceNumber(in),
-                                                                             readReActorSystemId(in),
-                                                                             readAckingPolicy(in),
-                                                                             readPayload(in))));
+    private void readMessage(WireIn in, DriverCtx driverCtx) {
+        in.read("M").marshallable(m -> offerMessage(readReActorRef(in, driverCtx),
+                                                             readReActorRef(in, driverCtx),
+                                                             readSequenceNumber(in),
+                                                             readReActorSystemId(in),
+                                                             readAckingPolicy(in),
+                                                             readPayload(in)));
     }
     public static <PayloadT extends Serializable>
     void writeMessage(WireOut out, ReActorRef source, ReActorRef destination, long seqNum,

@@ -69,16 +69,17 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      @Override
      protected final <PayloadT extends Serializable> void
      offerMessage(ReActorRef source, ReActorRef destination, long sequenceNumber, ReActorSystemId fromReActorSystemId,
-                  AckingPolicy ackingPolicy, PayloadT payloadT) {
+                  AckingPolicy ackingPolicy, PayloadT payload) {
           ReActorId destinationId = destination.getReActorId();
           ReActorContext destinationCtx = getLocalReActorSystem().getReActorCtx(destinationId);
           DeliveryStatus deliveryStatus;
 
           if (destinationCtx != null) {
-               deliveryStatus = syncForwardMessageToLocalActor(destinationCtx, message);
+               deliveryStatus = syncForwardMessageToLocalActor(source, destinationCtx, destination, sequenceNumber,
+                                                               fromReActorSystemId, ackingPolicy, payload);
           } else {
                deliveryStatus = DeliveryStatus.NOT_DELIVERED;
-               getLocalReActorSystem().toDeadLetters(message);
+               getLocalReActorSystem().toDeadLetters(source, payload);
           }
 
           if (ackingPolicy.isAckRequired()) {
@@ -90,7 +91,6 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
                }
           }
      }
-
      protected static <PayloadT extends Serializable> DeliveryStatus
      syncForwardMessageToLocalActor(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                                     long sequenceNumber, ReActorSystemId fromReActorSystemId, AckingPolicy ackingPolicy,

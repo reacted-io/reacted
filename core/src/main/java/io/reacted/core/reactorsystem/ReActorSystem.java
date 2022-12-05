@@ -286,11 +286,6 @@ public class ReActorSystem {
         return toDeadLetters(ReActorRef.NO_REACTOR_REF, payload);
     }
 
-    public DeliveryStatus toDeadLetters(Message message) {
-        return isSystemDeadLetters(message.getSender())
-               ? DeliveryStatus.NOT_SENT
-               : toDeadLetters(message.getSender(), message.getPayload());
-    }
     public DeliveryStatus toDeadLetters(ReActorRef sender, Serializable payload) {
         DeliveryStatus deliveryStatus = Objects.requireNonNull(systemDeadLetters)
                                                .tell(sender, new DeadMessage(payload));
