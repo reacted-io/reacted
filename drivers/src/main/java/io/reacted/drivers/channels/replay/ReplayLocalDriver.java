@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
@@ -146,22 +145,26 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
                                                                  fromReActorSystemId, ackingPolicy, payload));
             return;
         }
-        while (!isTargetReactorAlreadySpawned(source)) {
+        while (!isReactorAlreadySpawned(source)) {
             pauser.pause();
         }
         pauser.reset();
 
-        var message = dstToMessageBySeqNum.getOrDefault(executionAttempt.getReActorId(), emptyMap)
-                                          .remove(executionAttempt.getMsgSeqNum());
+        Message originalMessage = dstToMessageBySeqNum.getOrDefault(executionAttempt.getReActorId(), emptyMap)
+                                                      .remove(executionAttempt.getMsgSeqNum());
         ReActorContext destinationCtx = localReActorSystem.getReActorCtx(executionAttempt.getReActorId());
 
-        if (destinationCtx == null || message == null) {
+        if (destinationCtx == null || originalMessage == null) {
             LOGGER.error("Unable to delivery message {} for ReActor {}",
-                    message, executionAttempt.getReActorId(), new IllegalStateException());
-        } else if (syncForwardMessageToLocalActor(source, destinationCtx, destination, sequenceNumber,
-                                                  fromReActorSystemId, ackingPolicy, payload).isNotDelivered()) {
+                         originalMessage, executionAttempt.getReActorId(), new IllegalStateException());
+        } else if (syncForwardMessageToLocalActor(originalMessage.getSender(), destinationCtx,
+                                                  originalMessage.getDestination(),
+                                                  originalMessage.getSequenceNumber(),
+                                                  originalMessage.getDataLink().getGeneratingReActorSystem(),
+                                                  originalMessage.getDataLink().getAckingPolicy(),
+                                                  originalMessage.getPayload()).isNotDelivered()) {
                 LOGGER.error("Unable to delivery message {} for ReActor {}",
-                        message, executionAttempt.getReActorId());
+                             originalMessage, executionAttempt.getReActorId());
         }
     }
 
@@ -169,7 +172,7 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
         return destination.getReActorSystemRef().equals(replayedAs.getLoopback());
     }
 
-    private boolean isTargetReactorAlreadySpawned(ReActorRef sender) {
+    private boolean isReactorAlreadySpawned(ReActorRef sender) {
         //Every spawned reactor receives an init message, so there must be a send for it
         return spawnedReActors.contains(sender.getReActorId());
     }

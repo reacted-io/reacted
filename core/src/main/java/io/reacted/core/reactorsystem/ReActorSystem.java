@@ -117,12 +117,12 @@ public class ReActorSystem {
     private final ReActorSystemId localReActorSystemId;
     private final int maximumReActorsNumForThisSystem;
 
+    private ExecutorService msgFanOutPool = ForkJoinPool.commonPool();
     /**
      * The fields below can be null only before a successful init completion
      */
     @Nullable
     private ScheduledExecutorService systemSchedulingService;
-    private ExecutorService msgFanOutPool;
     @Nullable
     private ReActorRef reActorSystemRoot;
     @Nullable

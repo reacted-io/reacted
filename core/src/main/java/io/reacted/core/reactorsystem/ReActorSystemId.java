@@ -9,6 +9,8 @@
 package io.reacted.core.reactorsystem;
 
 import io.reacted.core.messages.SerializationUtils;
+import io.reacted.core.reactors.ReActorId;
+
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -36,8 +38,8 @@ public class ReActorSystemId implements Externalizable  {
     private static final long HASHCODE_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemId.class, "hashCode")
                                                                   .orElseSneakyThrow();
     public static final ReActorSystemId NO_REACTORSYSTEM_ID = new ReActorSystemId(NO_REACTORSYSTEM_ID_NAME)
-            .setReActorSystemUUID(new UUID(0, 0))
-            .setHashCode(Objects.hash(new UUID(0, 0), NO_REACTORSYSTEM_ID_NAME));
+            .setReActorSystemUUID(ReActorId.NO_REACTOR_ID_UUID)
+            .setHashCode(Objects.hash(ReActorId.NO_REACTOR_ID_UUID, NO_REACTORSYSTEM_ID_NAME));
     private final UUID reActorSystemUUID;
     private final String reActorSystemName;
     private final int hashCode;
