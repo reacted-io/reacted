@@ -37,7 +37,6 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     private final TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers = this::propagateMessage;
     private final LocalDriver<ConfigT> localDriver;
     private final ReActorSystem localReActorSystem;
-    private final ExecutorService fanOutPool;
 
     public LoopbackDriver(ReActorSystem reActorSystem, LocalDriver<ConfigT> localDriver) {
         super(localDriver.getDriverConfig());
@@ -45,7 +44,6 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
                                                   "Local driver cannot be null");
         this.localReActorSystem = Objects.requireNonNull(reActorSystem,
                                                          "ReActorSystem cannot be null");
-        this.fanOutPool = localReActorSystem.getMsgFanOutPool();
     }
 
     @Override
@@ -172,8 +170,9 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
             if (subscribers.size() < 6) {
                 propagateToSubscribers(localDriver, subscribers, originalDst, localReActorSystem, src, msgPayload);
             } else {
-                fanOutPool.execute(() -> propagateToSubscribers(localDriver, subscribers, originalDst,
-                                                                localReActorSystem, src, msgPayload));
+                localReActorSystem.getMsgFanOutPool()
+                                  .execute(() -> propagateToSubscribers(localDriver, subscribers, originalDst,
+                                                                        localReActorSystem, src, msgPayload));
             }
         }
     }

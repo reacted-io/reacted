@@ -23,9 +23,6 @@ import javax.annotation.concurrent.Immutable;
 @Immutable
 public final class ReActorId implements Externalizable {
     public static final UUID NO_REACTOR_ID_UUID = new UUID(0, 0);
-    public static final ReActorId NO_REACTOR_ID = new ReActorId(NO_REACTOR_ID_UUID, "Init")
-            .setReActorUUID(NO_REACTOR_ID_UUID)
-            .setHashCode(Objects.hash(NO_REACTOR_ID_UUID, "Init"));
     public static final int NO_REACTOR_ID_MARKER = 1;
     public static final int COMMON_REACTOR_ID_MARKER = 0;
     @Serial
@@ -37,6 +34,9 @@ public final class ReActorId implements Externalizable {
                                                                       .orElseSneakyThrow();
     private static final long HASHCODE_OFFSET = SerializationUtils.getFieldOffset(ReActorId.class, "hashCode")
                                                                   .orElseSneakyThrow();
+    public static final ReActorId NO_REACTOR_ID = new ReActorId(NO_REACTOR_ID_UUID, "Init")
+            .setReActorUUID(NO_REACTOR_ID_UUID)
+            .setHashCode(Objects.hash(NO_REACTOR_ID_UUID, "Init"));
     private final UUID reActorUUID;
     private final String reActorName;
     private final int hashCode;

@@ -137,7 +137,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         if (isLocalReActorSystem(getLocalReActorSystem().getLocalReActorSystemId(),
                                  destination.getReActorSystemRef().getReActorSystemId())) {
             //If so, this is an ACK confirmation for a message sent with apublish
-            if (payloadType != DeliveryStatusUpdate.class) {
+            if (payloadType == DeliveryStatusUpdate.class) {
                 DeliveryStatusUpdate deliveryStatusUpdate = (DeliveryStatusUpdate)payload;
 
                 if (messageWasNotSentFromThisDriverInstance(deliveryStatusUpdate)) {
