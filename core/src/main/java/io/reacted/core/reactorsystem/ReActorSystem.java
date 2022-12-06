@@ -72,6 +72,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
@@ -121,8 +122,7 @@ public class ReActorSystem {
      */
     @Nullable
     private ScheduledExecutorService systemSchedulingService;
-    @Nullable
-    private ExecutorService msgFanOutPool;
+    private ExecutorService msgFanOutPool = ForkJoinPool.commonPool();
     @Nullable
     private ReActorRef reActorSystemRoot;
     @Nullable
