@@ -34,7 +34,6 @@ import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.AckingPolicy;
-import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -79,7 +78,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     private EventLoopGroup workerEventLoopGroup;
     @Nullable
     private EventLoopGroup bossEventLoopGroup;
-    private DriverCtx grpcDriverCtx;
+    private DriverCtx grpcDriverCtx = REACTOR_SYSTEM_CTX.get();
 
     public GrpcDriver(GrpcDriverConfig grpcDriverConfig) {
         super(grpcDriverConfig);
@@ -369,22 +368,11 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                              .build();
     }
     private static ReActorSystemRef fromReActorSystemRef(ReActedLinkProtocol.ReActorSystemRef reActorSystemRef,
-                                                         DriverCtx driverCtx) {
+                                                         DriverCtx ctx) {
         ReActorSystemRef newReActorSystemRef = new ReActorSystemRef();
         ReActorSystemId reActorSystemId = fromReActorSystemId(reActorSystemRef.getReActorSystemId());
         ChannelId channelId = fromChannelId(reActorSystemRef.getSourceChannelId());
-        ReActorSystemRef gateForReActor = driverCtx.getLocalReActorSystem()
-                                                   .findGate(reActorSystemId,
-                                                             channelId.equals(ChannelId.INVALID_CHANNEL_ID)
-                                                             ? driverCtx.getDecodingDriver()
-                                                                        .getChannelId()
-                                                             : channelId);
-        if (gateForReActor != null) {
-            newReActorSystemRef.setBackingDriver(gateForReActor.getBackingDriver());
-            newReActorSystemRef.setGateProperties(gateForReActor.getGateProperties());
-        }
-        newReActorSystemRef.setChannelId(newReActorSystemRef.getBackingDriver().getChannelId());
-        newReActorSystemRef.setReActorSystemId(reActorSystemId);
+        ReActorSystemRef.setGateForReActorSystem(newReActorSystemRef, reActorSystemId, channelId, ctx);
         return newReActorSystemRef;
     }
     private static ReActedLinkProtocol.ReActorSystemRef toReActorSystemRef(ReActorSystemRef reActorSystemRef) {

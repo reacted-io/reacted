@@ -13,7 +13,6 @@ import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.AckingPolicy;
-import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
@@ -24,7 +23,6 @@ import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
 import java.io.Serializable;
-import java.sql.DriverManager;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -33,9 +31,7 @@ import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
-import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.WireIn;
-import net.openhft.chronicle.wire.WireKey;
 
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readAckingPolicy;
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readPayload;

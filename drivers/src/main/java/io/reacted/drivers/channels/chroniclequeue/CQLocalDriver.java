@@ -13,7 +13,6 @@ import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
-import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -31,16 +30,12 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.RollCycles;
 import net.openhft.chronicle.threads.Pauser;
-import net.openhft.chronicle.wire.DocumentContext;
-import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.WireIn;
-import net.openhft.chronicle.wire.WireKey;
 import net.openhft.chronicle.wire.WireOut;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -171,28 +166,18 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
                               reActorSystemRef.getChannelId());
     }
 
-    public static ReActorSystemRef readReActorSystemRef(WireIn in, DriverCtx driverCtx) {
+    public static ReActorSystemRef readReActorSystemRef(WireIn in, DriverCtx ctx) {
         ReActorSystemRef reActorSystemRef = new ReActorSystemRef();
         ReActorSystemId reActorSystemId = readReActorSystemId(in);
         ChannelId channelId = readChannelId(in);
-        ReActorSystemRef gateForReActor = driverCtx.getLocalReActorSystem()
-                                                   .findGate(reActorSystemId,
-                                                             channelId.equals(ChannelId.INVALID_CHANNEL_ID)
-                                                                              ? driverCtx.getDecodingDriver()
-                                                                                         .getChannelId()
-                                                                              : channelId);
-        if (gateForReActor != null) {
-            reActorSystemRef.setBackingDriver(gateForReActor.getBackingDriver());
-            reActorSystemRef.setGateProperties(gateForReActor.getGateProperties());
-        }
-        reActorSystemRef.setChannelId(reActorSystemRef.getBackingDriver().getChannelId());
-        reActorSystemRef.setReActorSystemId(reActorSystemId);
+        ReActorSystemRef.setGateForReActorSystem(reActorSystemRef, reActorSystemId, channelId, ctx);
         return reActorSystemRef;
     }
     public static <PayloadT extends Serializable> WireOut writePayload(WireOut wireOut, PayloadT payloadT) {
         return wireOut.write().object(payloadT);
     }
 
+    @SuppressWarnings("unchecked")
     public static <PayloadT extends Serializable> PayloadT readPayload(WireIn in) {
         return (PayloadT)in.read().object();
     }

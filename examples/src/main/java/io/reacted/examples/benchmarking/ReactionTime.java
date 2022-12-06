@@ -27,7 +27,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 
 public class ReactionTime {
     public static void main(String[] args) throws InterruptedException {

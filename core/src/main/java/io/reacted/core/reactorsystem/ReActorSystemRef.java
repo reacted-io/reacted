@@ -140,34 +140,13 @@ public class ReActorSystemRef implements Externalizable {
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         ReActorSystemId reActorSystemId = new ReActorSystemId();
+        ReActorSystemRef currentRef = this;
         reActorSystemId.readExternal(in);
-        setReActorSystemId(reActorSystemId);
-        /* The first time that a ReActorSystemRef is deserialized, the channel id is set by the receiver.
-           In this way the decoding driver can set the channel id where this message has been received.
-           If this message should be sent through a serializing local driver such as chronicle queue and
-           deserialized again, since the channel id has been set at the previous step (reception from the remoting driver),
-           and it will not be changed, leaving the original reference untouched.
-           If the reference should be propagated to other systems, it will always carry the channel id from where it
-           came from.
-           If a driver should not be found given the specified channel id, the system tries to re-route the reference
-           using another channel towards the destination
-         */
         ChannelId sourceChannelId = new ChannelId();
         sourceChannelId.readExternal(in);
-        DriverCtx driverCtx = ReActorSystemDriver.getDriverCtx();
-        if (driverCtx != null) {
-            ReActorSystemRef gateForReActor = driverCtx.getLocalReActorSystem()
-                                                       .findGate(reActorSystemId, sourceChannelId.equals(ChannelId.INVALID_CHANNEL_ID)
-                                                                                  ? driverCtx.getDecodingDriver()
-                                                                                             .getChannelId()
-                                                                                  : sourceChannelId);
-            if (gateForReActor != null) {
-                setBackingDriver(gateForReActor.getBackingDriver());
-                setGateProperties(gateForReActor.getGateProperties());
-            }
-        }
-        setChannelId(getBackingDriver().getChannelId());
+        setGateForReActorSystem(currentRef, reActorSystemId, sourceChannelId, ReActorSystemDriver.getDriverCtx());
     }
+
     public void setReActorSystemId(ReActorSystemId reActorSystemId) {
         SerializationUtils.setObjectField(this, REACTORSYSTEM_ID_OFFSET, reActorSystemId);
     }
@@ -180,5 +159,31 @@ public class ReActorSystemRef implements Externalizable {
 
     public void setGateProperties(Properties gateProperties) {
         SerializationUtils.setObjectField(this, GATE_PROPERTIES_OFFSET, gateProperties);
+    }
+
+    public static void setGateForReActorSystem(ReActorSystemRef targetRef, ReActorSystemId reActorSystemId,
+                                               ChannelId sourceChannelId, DriverCtx ctx) {
+        /* The first time that a ReActorSystemRef is deserialized, the channel id is set by the receiver.
+           In this way the decoding driver can set the channel id where this message has been received.
+           If this message should be sent through a serializing local driver such as chronicle queue and
+           deserialized again, since the channel id has been set at the previous step (reception from the remoting driver),
+           and it will not be changed, leaving the original reference untouched.
+           If the reference should be propagated to other systems, it will always carry the channel id from where it
+           came from.
+           If a driver should not be found given the specified channel id, the system tries to re-route the reference
+           using another channel towards the destination
+         */
+        if (ctx != null) {
+            ReActorSystemRef gateForReActor = ctx.getLocalReActorSystem()
+                                                       .findGate(reActorSystemId, sourceChannelId.equals(ChannelId.INVALID_CHANNEL_ID)
+                                                                                  ? ctx.getDecodingDriver().getChannelId()
+                                                                                  : sourceChannelId);
+            if (gateForReActor != null) {
+                targetRef.setBackingDriver(gateForReActor.getBackingDriver());
+                targetRef.setGateProperties(gateForReActor.getGateProperties());
+            }
+        }
+        targetRef.setReActorSystemId(reActorSystemId);
+        targetRef.setChannelId(targetRef.getBackingDriver().getChannelId());
     }
 }

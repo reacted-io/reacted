@@ -11,7 +11,6 @@ package io.reacted.core.drivers.system;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.NullLocalDriverConfig;
 import io.reacted.core.messages.AckingPolicy;
-import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
