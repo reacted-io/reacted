@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 
 @NonNullByDefault
 public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> extends ReActorSystemDriver<ConfigT> {
+    private static final int SUBSCRIBERS_THRESHOLD_TO_USE_ASYNC_PROPAGATION = 6;
     private final TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers = this::propagateMessage;
     private final LocalDriver<ConfigT> localDriver;
     private final ReActorSystem localReActorSystem;
@@ -168,7 +169,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
         var subscribers = localReActorSystem.getTypedSubscriptionsManager()
                                             .getLocalSubscribers(msgPayload.getClass());
         if (!subscribers.isEmpty()) {
-            if (subscribers.size() < 6) {
+            if (subscribers.size() < SUBSCRIBERS_THRESHOLD_TO_USE_ASYNC_PROPAGATION) {
                 propagateToSubscribers(localDriver, subscribers, originalDst, localReActorSystem, src, msgPayload);
             } else {
                 fanOutPool.execute(() -> propagateToSubscribers(localDriver, subscribers, originalDst,
