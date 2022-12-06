@@ -122,7 +122,7 @@ public class ReActorSystem {
      */
     @Nullable
     private ScheduledExecutorService systemSchedulingService;
-    private ExecutorService msgFanOutPool = ForkJoinPool.commonPool();
+    private ExecutorService msgFanOutPool;
     @Nullable
     private ReActorRef reActorSystemRoot;
     @Nullable

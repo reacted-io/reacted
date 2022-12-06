@@ -384,6 +384,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
             newReActorSystemRef.setGateProperties(gateForReActor.getGateProperties());
         }
         newReActorSystemRef.setChannelId(newReActorSystemRef.getBackingDriver().getChannelId());
+        newReActorSystemRef.setReActorSystemId(reActorSystemId);
         return newReActorSystemRef;
     }
     private static ReActedLinkProtocol.ReActorSystemRef toReActorSystemRef(ReActorSystemRef reActorSystemRef) {

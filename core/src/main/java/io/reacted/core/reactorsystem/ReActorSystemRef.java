@@ -168,7 +168,7 @@ public class ReActorSystemRef implements Externalizable {
         }
         setChannelId(getBackingDriver().getChannelId());
     }
-    private void setReActorSystemId(ReActorSystemId reActorSystemId) {
+    public void setReActorSystemId(ReActorSystemId reActorSystemId) {
         SerializationUtils.setObjectField(this, REACTORSYSTEM_ID_OFFSET, reActorSystemId);
     }
     public void setChannelId(ChannelId channelId) {

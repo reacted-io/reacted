@@ -11,8 +11,6 @@ package io.reacted.examples.benchmarking;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.mailboxes.BoundedMbox;
-import io.reacted.core.mailboxes.FastBoundedMbox;
 import io.reacted.core.mailboxes.FastUnboundedMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
@@ -21,8 +19,6 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
-import io.reacted.drivers.channels.chroniclequeue.CQDriverConfig;
-import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;

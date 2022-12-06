@@ -186,6 +186,7 @@ public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
             reActorSystemRef.setGateProperties(gateForReActor.getGateProperties());
         }
         reActorSystemRef.setChannelId(reActorSystemRef.getBackingDriver().getChannelId());
+        reActorSystemRef.setReActorSystemId(reActorSystemId);
         return reActorSystemRef;
     }
     public static <PayloadT extends Serializable> WireOut writePayload(WireOut wireOut, PayloadT payloadT) {
