@@ -16,8 +16,8 @@ import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.drivers.channels.chroniclequeue.CQDriverConfig;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.drivers.channels.replay.ReplayLocalDriver;
 import io.reacted.examples.ExampleUtils;
 
@@ -28,11 +28,10 @@ public class SystemReplayAskApp {
     //as jvm option
     public static void main(String[] args) {
         String dumpDirectory = args.length == 0 || Strings.isNullOrEmpty(args[0]) ? "/tmp" : args[0];
-        var dumpingLocalDriverCfg = CQDriverConfig.newBuilder()
-                                                  .setChronicleFilesDir(dumpDirectory)
-                                                  .setTopicName("ReplayTest")
-                                                  .setChannelName("ReplayableChannel")
-                                                  .build();
+        var dumpingLocalDriverCfg = CQLocalDriverConfig.newBuilder()
+                                                       .setChronicleFilesDir(dumpDirectory)
+                                                       .setChannelName("ReplayableChannel")
+                                                       .build();
         var dumpingLocalDriver = new CQLocalDriver(dumpingLocalDriverCfg);
         var recordedReactorSystem =
                 new ReActorSystem(ExampleUtils.getDefaultReActorSystemCfg(SystemReplayAskApp.class.getSimpleName(),

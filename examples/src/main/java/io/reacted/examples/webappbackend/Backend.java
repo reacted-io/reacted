@@ -17,8 +17,8 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.config.reactors.ServiceConfig;
-import io.reacted.drivers.channels.chroniclequeue.CQDriverConfig;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.drivers.channels.replay.ReplayLocalDriver;
 import io.reacted.examples.webappbackend.db.DatabaseService;
 
@@ -31,11 +31,10 @@ public class Backend {
     public static final boolean IS_REPLAY = false;
 
     public static void main(String[] args) throws IOException {
-        var chronicleDriverConfig = CQDriverConfig.newBuilder()
-                                                  .setChronicleFilesDir("/tmp/replayable_server")
-                                                  .setChannelName("LocalChannel")
-                                                  .setTopicName("TestSession")
-                                                  .build();
+        var chronicleDriverConfig = CQLocalDriverConfig.newBuilder()
+                                                       .setChronicleFilesDir("/tmp/replayable_server")
+                                                       .setChannelName("LocalChannel")
+                                                       .build();
         var localDriver = IS_REPLAY
                           ? new ReplayLocalDriver(chronicleDriverConfig)
                           : new CQLocalDriver(chronicleDriverConfig);

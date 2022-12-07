@@ -41,14 +41,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @NonNullByDefault
-public class CQLocalDriver extends LocalDriver<CQDriverConfig> {
+public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     private static final Logger LOGGER = LoggerFactory.getLogger(CQLocalDriver.class);
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
     private ExcerptTailer cqTailer;
 
-    public CQLocalDriver(CQDriverConfig driverConfig) {
+    public CQLocalDriver(CQLocalDriverConfig driverConfig) {
         super(driverConfig);
     }
 

@@ -11,49 +11,46 @@ package io.reacted.examples.benchmarking;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.mailboxes.FastUnboundedMbox;
-import io.reacted.core.mailboxes.TypeCoalescingMailbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
-import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 
 public class ReactionTime {
+    private static final String CQ_DIR = "/Volumes/RAM Disk";
     public static void main(String[] args) throws InterruptedException {
         ReActorSystem benchmarkSystem;
         benchmarkSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                .setReactorSystemName(ReactionTime.class.getSimpleName())
-                                                               /*
-                                                    .setLocalDriver(new CQLocalDriver(CQDriverConfig.newBuilder()
-                                                                                              .setTopicName("I")
-                                                                                              .setChannelName("Q")
-                                                                                              .setChronicleFilesDir("/Volumes/RAM Disk")
-                                                                                                    .build())) */
+
+                                                    .setLocalDriver(new CQLocalDriver(CQLocalDriverConfig.newBuilder()
+                                                                                                         .setChannelName("Q")
+                                                                                                         .setChronicleFilesDir(CQ_DIR)
+                                                                                                         .build()))
+
                                                                .addDispatcherConfig(DispatcherConfig.newBuilder()
                                                                                                     .setBatchSize(1_000_000_000)
                                                                                                     .setDispatcherName("Lonely")
                                                                                                     .setDispatcherThreadsNum(1)
                                                                                                     .build())
                                                                .build()).initReActorSystem();
-        int iterations = 10_000_000;
+        int iterations = 100_000_000;
         MessageGrabber latencyGrabberBody = new MessageGrabber(iterations);
         ReActorRef latencyGrabber = benchmarkSystem.spawn(latencyGrabberBody.getReActions(),
                                                  ReActorConfig.newBuilder()
-                                                              .setMailBoxProvider((ctx) -> new FastUnboundedMbox())
+                                                              //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new BoundedMbox(iterations))
                                                               //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new TypeCoalescingMailbox())
@@ -68,7 +65,7 @@ public class ReactionTime {
         //         .forEach(val -> benchmarkSystem.getSystemSink().tell(ReActorRef.NO_REACTOR_REF, ""));
         //TimeUnit.SECONDS.sleep(2);
 
-        long pauseWindowDuration = Duration.ofNanos(1000).toNanos();
+        long pauseWindowDuration = Duration.ofNanos(5000).toNanos();
         long start = System.nanoTime();
         long end;
         long elapsed = 0;
@@ -82,7 +79,7 @@ public class ReactionTime {
             latencyGrabber.tell(start);
             //benchmarkSystem.getSystemSink().publish(start);
         }
-        TimeUnit.SECONDS.sleep(2);
+        TimeUnit.SECONDS.sleep(500);
         latencyGrabberBody.stop().toCompletableFuture().join();
         long[] sortedLatencies = latencyGrabberBody.getLatencies();
         Arrays.sort(sortedLatencies);

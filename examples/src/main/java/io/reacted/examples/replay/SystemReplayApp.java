@@ -15,8 +15,8 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
-import io.reacted.drivers.channels.chroniclequeue.CQDriverConfig;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.drivers.channels.replay.ReplayLocalDriver;
 import io.reacted.examples.ExampleUtils;
 import java.util.concurrent.CompletableFuture;
@@ -29,11 +29,10 @@ public class SystemReplayApp {
     //as jvm option
     public static void main(String[] args) throws InterruptedException {
         String dumpDirectory = args.length == 0 || Strings.isNullOrEmpty(args[0]) ? "/tmp/cq" : args[0];
-        var dumpingLocalDriverCfg = CQDriverConfig.newBuilder()
-                                                  .setChronicleFilesDir(dumpDirectory)
-                                                  .setTopicName("ReplayTest")
-                                                  .setChannelName("ReplayableChannel")
-                                                  .build();
+        var dumpingLocalDriverCfg = CQLocalDriverConfig.newBuilder()
+                                                       .setChronicleFilesDir(dumpDirectory)
+                                                       .setChannelName("ReplayableChannel")
+                                                       .build();
         var dumpingLocalDriver = new CQLocalDriver(dumpingLocalDriverCfg);
 
         var recordedReactorSystem =

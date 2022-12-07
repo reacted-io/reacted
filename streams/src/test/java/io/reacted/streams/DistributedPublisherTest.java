@@ -11,6 +11,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.drivers.channels.chroniclequeue.CQDriverConfig;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.patterns.ObjectUtils;
 import java.io.Serializable;
 import java.util.concurrent.Flow.Subscriber;
@@ -30,11 +31,10 @@ public class DistributedPublisherTest {
   //A Publisher can be sent over the network and used for receiving AND publishing data
   @BeforeAll
   public static void initTests() {
-    var cqCfg = CQDriverConfig.newBuilder()
-        .setChannelName("TestChannel")
-        .setTopicName("DistributedPubSubTest_" +  Runtime.getRuntime().freeMemory())
-        .setChronicleFilesDir("/tmp")
-        .build();
+    var cqCfg = CQLocalDriverConfig.newBuilder()
+                                   .setChannelName("TestChannel")
+                                   .setChronicleFilesDir("/tmp")
+                                   .build();
     system = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                        .setLocalDriver(new CQLocalDriver(cqCfg))
                                                        .setReactorSystemName(DistributedPublisherTest.class.getSimpleName())

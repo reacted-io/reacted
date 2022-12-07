@@ -40,13 +40,13 @@ import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readReAct
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readSequenceNumber;
 
 @NonNullByDefault
-public class CQRemoteDriver extends RemotingDriver<CQDriverConfig> {
+public class CQRemoteDriver extends RemotingDriver<CQRemoteDriverConfig> {
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
     private ExcerptTailer cqTailer;
 
-    public CQRemoteDriver(CQDriverConfig driverConfig) {
+    public CQRemoteDriver(CQRemoteDriverConfig driverConfig) {
         super(driverConfig);
     }
 

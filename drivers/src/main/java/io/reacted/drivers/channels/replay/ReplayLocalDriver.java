@@ -22,7 +22,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
-import io.reacted.drivers.channels.chroniclequeue.CQDriverConfig;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -50,7 +50,7 @@ import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readReAct
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readSequenceNumber;
 
 @NonNullByDefault
-public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
+public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReplayLocalDriver.class);
     private final Set<ReActorId> spawnedReActors;
     @Nullable
@@ -58,7 +58,7 @@ public class ReplayLocalDriver extends LocalDriver<CQDriverConfig> {
     @Nullable
     private ReActorSystem replayedActorSystem;
 
-    public ReplayLocalDriver(CQDriverConfig driverConfig) {
+    public ReplayLocalDriver(CQLocalDriverConfig driverConfig) {
         super(driverConfig);
         this.spawnedReActors = ConcurrentHashMap.newKeySet();
     }
