@@ -20,8 +20,8 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.agrona.BitUtil;
 import org.agrona.concurrent.BackoffIdleStrategy;
-import org.agrona.concurrent.ControlledMessageHandler;
 import org.agrona.concurrent.IdleStrategy;
+import org.agrona.concurrent.MessageHandler;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.agrona.concurrent.ringbuffer.ManyToOneRingBuffer;
 import org.agrona.concurrent.ringbuffer.RingBuffer;
@@ -39,7 +39,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -148,38 +147,25 @@ public class Dispatcher {
                                 ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded,
                                 ReActorSystem reActorSystem, ReActorRef devNull,
                                 Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
-        long[] schedulationIds = new long[8];
-        final AtomicInteger filled = new AtomicInteger(0);
-        var processedForDispatcher = 0L;
-        long processedInRound;
+        var processedForDispatcher = new AtomicLong(0);
+        EventExecutionAttempt recyledMessage = new EventExecutionAttempt();
         IdleStrategy ringBufferConsumerPauser = new BackoffIdleStrategy(100_000_000L,
                                                                         100L,
                                                                         BackoffIdleStrategy.DEFAULT_MIN_PARK_PERIOD_NS,
                                                                         BackoffIdleStrategy.DEFAULT_MAX_PARK_PERIOD_NS);
 
-        ControlledMessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
+        MessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
             if (msgTypeId == MESSAGE_MSG_TYPE) {
-                int positionCounter = filled.getPlain();
-                schedulationIds[positionCounter] = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
-                filled.setPlain(positionCounter + 1);
-            }
-            return ControlledMessageHandler.Action.CONTINUE;
-        });
-        while (!Thread.currentThread().isInterrupted()) {
-            processedInRound = 0;
-            int ringRecordsProcessed = scheduledList.controlledRead(ringBufferMessageProcessor,
-                                                                    schedulationIds.length);
-            int limit = filled.getPlain();
-            for(int schedIdIdx = 0; schedIdIdx < limit; schedIdIdx++) {
-                long schedulationId = schedulationIds[schedIdIdx];
-                ReActorContext scheduledReActor = reActorSystem.getReActorCtx(schedulationId);
-                if (scheduledReActor != null) {
-                    processedInRound += onMessage(scheduledReActor, dispatcherBatchSize, dispatcherLifeCyclePool,
-                                                  isExecutionRecorded, devNull, reActorUnregister);
+                ReActorContext ctx = reActorSystem.getReActorCtx(buffer.getLong(index, ByteOrder.BIG_ENDIAN));
+                if (ctx != null) {
+                    processedForDispatcher.setPlain(onMessage(ctx, dispatcherBatchSize, dispatcherLifeCyclePool,
+                                                              isExecutionRecorded, devNull, reActorUnregister,
+                                                              recyledMessage));
                 }
             }
-            filled.setPlain(0);
-            processedForDispatcher += processedInRound;
+        });
+        while (!Thread.currentThread().isInterrupted()) {
+            int ringRecordsProcessed = scheduledList.read(ringBufferMessageProcessor);
             ringBufferConsumerPauser.idle(ringRecordsProcessed);
         }
         LOGGER.info("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(),
@@ -187,7 +173,8 @@ public class Dispatcher {
     }
     public int onMessage(ReActorContext scheduledReActor, int dispatcherBatchSize,
                          ExecutorService dispatcherLifeCyclePool, boolean isExecutionRecorded, ReActorRef devNull,
-                         Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister) {
+                         Function<ReActorContext, Optional<CompletionStage<Void>>> reActorUnregister,
+                         EventExecutionAttempt recyledMessage) {
         //memory acquire
         scheduledReActor.acquireCoherence();
         int processed = 0;
@@ -212,9 +199,10 @@ public class Dispatcher {
             */
             if (isExecutionRecorded &&
                 devNull.tell(scheduledReActor.getSelf(),
-                             new EventExecutionAttempt(scheduledReActor.getSelf().getReActorId(),
-                                                        scheduledReActor.getNextMsgExecutionId(),
-                                                        newEvent.getSequenceNumber())).isNotSent()) {
+                             recyledMessage.errorIfInvalid()
+                                           .setReActorId(scheduledReActor.getSelf().getReActorId())
+                                           .setMessageSeqNum(newEvent.getSequenceNumber())
+                                           .setExecutionSeqNum(scheduledReActor.getNextMsgExecutionId())).isNotSent()) {
                 LOGGER.error("CRITIC! Unable to send an Execution Attempt for message {} Replay will NOT be possible",
                              newEvent);
             }

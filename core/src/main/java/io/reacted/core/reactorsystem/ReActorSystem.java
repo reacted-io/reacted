@@ -75,10 +75,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
@@ -996,8 +998,6 @@ public class ReActorSystem {
                                                                       .toCompletableFuture();
                     allChildrenTerminated.thenAcceptAsync(lastChild -> myTerminationHook.complete(null));
                     stopHook = Optional.of(myTerminationHook);
-                } else if (reactorsBySchedulationId.containsKey(stopMe.getReActorSchedulationId())){
-                    System.err.println("Here we are?");
                 }
             }
         } finally {

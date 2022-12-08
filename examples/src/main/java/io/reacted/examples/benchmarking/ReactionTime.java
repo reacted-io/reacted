@@ -34,19 +34,19 @@ public class ReactionTime {
         ReActorSystem benchmarkSystem;
         benchmarkSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                .setReactorSystemName(ReactionTime.class.getSimpleName())
-
+/*
                                                     .setLocalDriver(new CQLocalDriver(CQLocalDriverConfig.newBuilder()
                                                                                                          .setChannelName("Q")
                                                                                                          .setChronicleFilesDir(CQ_DIR)
                                                                                                          .build()))
-
+*/
                                                                .addDispatcherConfig(DispatcherConfig.newBuilder()
                                                                                                     .setBatchSize(1_000_000_000)
                                                                                                     .setDispatcherName("Lonely")
                                                                                                     .setDispatcherThreadsNum(1)
                                                                                                     .build())
                                                                .build()).initReActorSystem();
-        int iterations = 100_000_000;
+        int iterations = 10_000_000;
         MessageGrabber latencyGrabberBody = new MessageGrabber(iterations);
         ReActorRef latencyGrabber = benchmarkSystem.spawn(latencyGrabberBody.getReActions(),
                                                  ReActorConfig.newBuilder()
@@ -65,7 +65,7 @@ public class ReactionTime {
         //         .forEach(val -> benchmarkSystem.getSystemSink().tell(ReActorRef.NO_REACTOR_REF, ""));
         //TimeUnit.SECONDS.sleep(2);
 
-        long pauseWindowDuration = Duration.ofNanos(5000).toNanos();
+        long pauseWindowDuration = Duration.ofNanos(10000).toNanos();
         long start = System.nanoTime();
         long end;
         long elapsed = 0;
@@ -79,7 +79,7 @@ public class ReactionTime {
             latencyGrabber.tell(start);
             //benchmarkSystem.getSystemSink().publish(start);
         }
-        TimeUnit.SECONDS.sleep(500);
+        TimeUnit.SECONDS.sleep(5);
         latencyGrabberBody.stop().toCompletableFuture().join();
         long[] sortedLatencies = latencyGrabberBody.getLatencies();
         Arrays.sort(sortedLatencies);

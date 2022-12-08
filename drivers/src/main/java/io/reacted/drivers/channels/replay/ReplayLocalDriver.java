@@ -14,6 +14,7 @@ import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
+import io.reacted.core.messages.Recyclable;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.DeliveryStatusUpdate;
 import io.reacted.core.messages.reactors.EventExecutionAttempt;
@@ -89,6 +90,9 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         if (!(message instanceof DeliveryStatusUpdate)) {
             spawnedReActors.add(destination.getReActorId());
             spawnedReActors.add(source.getReActorId());
+        }
+        if (message instanceof Recyclable recyclable) {
+            recyclable.revalidate();
         }
         return DeliveryStatus.SENT;
     }

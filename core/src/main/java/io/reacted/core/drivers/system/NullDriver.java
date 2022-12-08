@@ -12,6 +12,7 @@ import io.reacted.core.config.ChannelId;
 import io.reacted.core.config.drivers.NullDriverConfig;
 import io.reacted.core.exceptions.NoRouteToReActorSystem;
 import io.reacted.core.messages.AckingPolicy;
+import io.reacted.core.messages.Recyclable;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -87,6 +88,9 @@ public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
 
     @Override
     public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
+        if (message instanceof Recyclable recyclable) {
+            recyclable.revalidate();
+        }
         return DeliveryStatus.NOT_DELIVERED;
     }
 

@@ -8,7 +8,7 @@
 
 package io.reacted.core.messages.reactors;
 
-import io.reacted.core.messages.SerializationUtils;
+import io.reacted.core.messages.Recyclable;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.patterns.NonNullByDefault;
 
@@ -22,22 +22,15 @@ import java.util.Objects;
 
 @Immutable
 @NonNullByDefault
-public class EventExecutionAttempt implements Externalizable {
+public class EventExecutionAttempt implements Externalizable, Recyclable {
 
     @Serial
     private static final long serialVersionUID = 1;
-    private static final long REACTOR_ID_OFFSET = SerializationUtils.getFieldOffset(EventExecutionAttempt.class,
-                                                                          "reActorId")
-                                                                    .orElseSneakyThrow();
-    private static final long EXECUTION_SEQ_NUM_OFFSET = SerializationUtils.getFieldOffset(EventExecutionAttempt.class,
-                                                                                   "executionSeqNum")
-                                                                           .orElseSneakyThrow();
-    private static final long MESSAGE_SEQ_NUM_OFFSET = SerializationUtils.getFieldOffset(EventExecutionAttempt.class,
-                                                                                   "msgSeqNum")
-                                                                         .orElseSneakyThrow();
-    private final ReActorId reActorId;
-    private final long executionSeqNum;
-    private final long msgSeqNum;
+    private ReActorId reActorId;
+    private long executionSeqNum;
+    private long msgSeqNum;
+
+    private boolean isValid = true;
 
     public EventExecutionAttempt() {
         /* Required for Externalizable */
@@ -45,13 +38,6 @@ public class EventExecutionAttempt implements Externalizable {
         this.executionSeqNum = 0;
         this.msgSeqNum = 0;
     }
-
-    public EventExecutionAttempt(ReActorId reActorId, long executionSeqNum, long msgSeqNum) {
-        this.reActorId = reActorId;
-        this.executionSeqNum = executionSeqNum;
-        this.msgSeqNum = msgSeqNum;
-    }
-
     public ReActorId getReActorId() { return reActorId; }
 
     public long getExecutionSeqNum() { return executionSeqNum; }
@@ -86,6 +72,7 @@ public class EventExecutionAttempt implements Externalizable {
         getReActorId().writeExternal(out);
         out.writeLong(getExecutionSeqNum());
         out.writeLong(getMsgSeqNum());
+        revalidate();
     }
 
     @Override
@@ -95,20 +82,43 @@ public class EventExecutionAttempt implements Externalizable {
         setReActorId(receivedReActorId);
         setExecutionSeqNum(in.readLong());
         setMessageSeqNum(in.readLong());
+        revalidate();
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    private EventExecutionAttempt setReActorId(ReActorId reActorId) {
-        return SerializationUtils.setObjectField(this, REACTOR_ID_OFFSET, reActorId);
+    public EventExecutionAttempt setReActorId(ReActorId reActorId) {
+        this.reActorId = reActorId;
+        invalidate();
+        return this;
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    private EventExecutionAttempt setExecutionSeqNum(long executionSeqNum) {
-        return SerializationUtils.setLongField(this, EXECUTION_SEQ_NUM_OFFSET, executionSeqNum);
+    public EventExecutionAttempt setExecutionSeqNum(long executionSeqNum) {
+        this.executionSeqNum = executionSeqNum;
+        invalidate();
+        return this;
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    private EventExecutionAttempt setMessageSeqNum(long messageSeqNum) {
-        return SerializationUtils.setLongField(this, MESSAGE_SEQ_NUM_OFFSET, messageSeqNum);
+    public EventExecutionAttempt setMessageSeqNum(long messageSeqNum) {
+        this.msgSeqNum = messageSeqNum;
+        invalidate();
+        return this;
+    }
+
+    public EventExecutionAttempt errorIfInvalid() {
+        if (!isValid) {
+            throw new IllegalStateException("Attempt to use an invalid recycled object detected");
+        }
+        return this;
+    }
+    @Override
+    public void revalidate() {
+        this.isValid = true;
+    }
+
+    @Override
+    public void invalidate() {
+        this.isValid = false;
     }
 }

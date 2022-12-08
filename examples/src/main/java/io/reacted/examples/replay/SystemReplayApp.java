@@ -57,6 +57,7 @@ public class SystemReplayApp {
                                              .setTypedSubscriptions(TypedSubscription.NO_SUBSCRIPTIONS)
                                              .build();
 
+
         var echoReference = recordedReactorSystem.spawn(echoReActions, echoReActorConfig)
                                                  .orElseSneakyThrow();
 
@@ -71,6 +72,7 @@ public class SystemReplayApp {
         }
 
         TimeUnit.SECONDS.sleep(1);
+
         recordedReactorSystem.shutDown();
         TimeUnit.SECONDS.sleep(1);
 
@@ -86,7 +88,7 @@ public class SystemReplayApp {
         System.out.println("Replay Start!");
         //Once the reactor will be created, the system will notify that and will begin its replay
         replayedReActorSystem.spawn(echoReActions, echoReActorConfig).orElseSneakyThrow();
-        //TimeUnit.SECONDS.sleep(1);
-        //replayedReActorSystem.shutDown();
+        TimeUnit.SECONDS.sleep(1);
+        replayedReActorSystem.shutDown();
     }
 }
