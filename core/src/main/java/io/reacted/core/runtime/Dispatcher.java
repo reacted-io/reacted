@@ -19,7 +19,9 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.agrona.BitUtil;
+import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.BackoffIdleStrategy;
+import org.agrona.concurrent.ControlledMessageHandler;
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.MessageHandler;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -136,6 +138,29 @@ public class Dispatcher {
         }
         return true;
     }
+    public RingBuffer ddispatch(ReActorContext reActor) {
+        if (reActor.acquireScheduling()) {
+            var rb = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() & (scheduledQueues.length - 1))];
+            boolean scheduled = rb.write(MESSAGE_MSG_TYPE, reActor.getSchedulationIdBuffer(),0, Long.BYTES);
+            if (!scheduled) {
+                reActor.releaseScheduling();
+                return rb;
+            }
+            return null;
+        }
+        return null;
+    }
+
+    private void readone(long me, RingBuffer buffer) {
+        AtomicLong out = new AtomicLong();
+        buffer.read(new MessageHandler() {
+            @Override
+            public void onMessage(int msgTypeId, MutableDirectBuffer buffer, int index, int length) {
+                long id = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
+                System.err.printf("Coming from %d found %d%n", me, id);
+            }
+        });
+    }
 
     private ExecutorService getDispatcherLifeCyclePool() {
         return Objects.requireNonNull(dispatcherLifeCyclePool);
@@ -215,7 +240,9 @@ public class Dispatcher {
             dispatcherLifeCyclePool.execute(() -> reActorUnregister.apply(scheduledReActor));
         } else if (!scheduledReActor.getMbox().isEmpty()) {
             //If there are other messages to be processed, request another schedulation fo the dispatcher
-            if (!dispatch(scheduledReActor)) {
+            RingBuffer filled = ddispatch(scheduledReActor);
+            if (filled != null ){
+                readone(scheduledReActor.getReActorSchedulationId(), filled);
                 LOGGER.error("CRITIC! Dispatcher cannot reschedule reactor {} with still {} pending messages",
                              scheduledReActor.getSelf().getReActorId(), scheduledReActor.getMbox().getMsgNum());
             }

@@ -12,7 +12,9 @@ import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
+import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.FastUnboundedMbox;
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -51,7 +53,7 @@ public class MessageTsunami {
     public static void main(String[] args) throws InterruptedException {
 
 
-        String dispatcher_1 = "CruncherThread-1"; int threads_1 = 4;
+        String dispatcher_1 = "CruncherThread-1"; int threads_1 = 2;
         String dispatcher_2 = "CruncherThread-2"; int threads_2 = 1;
         String dispatcher_3 = "CruncherThread-3"; int threads_3 = 1;
 
@@ -167,8 +169,13 @@ public class MessageTsunami {
     }
 
     private static void runTest(Instant start, ReActorRef cruncher_1) {
+        boolean wasBacpressured = false;
+        Duration base_delav = Duration.ofMillis(1);
+        Duration delav = base_delav;
         for(int msg = 0; msg < CYCLES; msg++) {
-            if (cruncher_1.tell(System.nanoTime()).isNotDelivered()) {
+            DeliveryStatus status = cruncher_1.tell(System.nanoTime());
+
+            if (status.isNotDelivered()) {
                 System.err.println("FAILED DELIVERY? ");
                 System.exit(3);
             }
