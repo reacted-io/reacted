@@ -160,6 +160,7 @@ public class Dispatcher {
                 System.err.printf("Coming from %d found %d%n", me, id);
             }
         });
+        System.err.println("Flush complete");
     }
 
     private ExecutorService getDispatcherLifeCyclePool() {
@@ -235,7 +236,9 @@ public class Dispatcher {
         //memory release
         scheduledReActor.releaseCoherence();
         //now this reactor can be scheduled by some other thread if required
-        scheduledReActor.releaseScheduling();
+        if (!scheduledReActor.releaseScheduling()) {
+            LOGGER.error("CRITIC! Failed to release scheduling!?");
+        }
         if (scheduledReActor.isStop()) {
             dispatcherLifeCyclePool.execute(() -> reActorUnregister.apply(scheduledReActor));
         } else if (!scheduledReActor.getMbox().isEmpty()) {

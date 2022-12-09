@@ -120,7 +120,7 @@ public class ReActorContext {
         return isScheduled.compareAndSet(false, true);
     }
 
-    public void releaseScheduling() { isScheduled.compareAndSet(true, false); }
+    public boolean releaseScheduling() { return isScheduled.compareAndSet(true, false); }
 
     @SuppressWarnings("UnusedReturnValue")
     public boolean acquireCoherence() { return !isAcquired; }

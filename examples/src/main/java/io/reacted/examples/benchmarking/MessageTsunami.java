@@ -53,7 +53,7 @@ public class MessageTsunami {
     public static void main(String[] args) throws InterruptedException {
 
 
-        String dispatcher_1 = "CruncherThread-1"; int threads_1 = 2;
+        String dispatcher_1 = "CruncherThread-1"; int threads_1 = 1;
         String dispatcher_2 = "CruncherThread-2"; int threads_2 = 1;
         String dispatcher_3 = "CruncherThread-3"; int threads_3 = 1;
 
