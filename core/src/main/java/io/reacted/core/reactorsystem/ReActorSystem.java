@@ -155,6 +155,7 @@ public class ReActorSystem {
                                                .setLocalDriver(new NullLocalDriver(NullLocalDriverConfig.newBuilder()
                                                                                                         .setChannelName("NO COMMUNICATION DRIVER")
                                                                                                         .build()))
+                                               .setExpectedReActorsNum(1)
                                                .build();
         systemConfig.getLocalDriver().initDriverCtx(this);
         this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,

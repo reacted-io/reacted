@@ -67,10 +67,8 @@ public class Dispatcher {
 
     public Dispatcher(DispatcherConfig config, ReActorSystem reActorSystem) {
         this.reActorSystem = reActorSystem;
-        int ringBufferSize = RingBufferDescriptor.TRAILER_LENGTH +
-                             BitUtil.findNextPositivePowerOfTwo(
-                                 ReActorId.NO_REACTOR_ID.getRawIdSize() * reActorSystem.getSystemConfig()
-                                                                                       .getMaximumReActorsNum());
+        int ringBufferSize = RingBufferDescriptor.TRAILER_LENGTH + BitUtil.findNextPositivePowerOfTwo(Long.BYTES * reActorSystem.getSystemConfig().getMaximumReActorsNum());
+
         this.dispatcherConfig = config;
 
         this.scheduledQueues =  Stream.iterate(new ManyToOneRingBuffer(new UnsafeBuffer(

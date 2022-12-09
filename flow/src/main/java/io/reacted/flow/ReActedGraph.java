@@ -74,8 +74,8 @@ public class ReActedGraph extends ReActiveEntityConfig<ReActedGraph.Builder,
 
     @Nonnull
     @Override
-    public CompletionStage<Try<Void>> run(ReActorSystem localReActorSystem) {
-        CompletableFuture<Try<Void>> graphInited = new CompletableFuture<>();
+    public CompletionStage<Try<Map<String, ReActorRef>>> run(ReActorSystem localReActorSystem) {
+        CompletableFuture<Try<Map<String, ReActorRef>>> graphInited = new CompletableFuture<>();
         var graphController = new GraphController(getFlowName(), operatorsCfgs, graphInited);
         var spawnResult = localReActorSystem.spawn(graphController, this)
                                             .map(controller -> {

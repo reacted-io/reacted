@@ -55,12 +55,12 @@ class GraphController implements ReActiveEntity {
   private final Map<String, Integer> operatorToInitedRoutees;
   private final List<ExecutorService> inputStreamProcessors;
   private final String flowName;
-  private final CompletableFuture<Try<Void>> completeOnInitComplete;
+  private final CompletableFuture<Try<Map<String, ReActorRef>>> completeOnInitComplete;
   private boolean inputStreamsHaveBeenInited = false;
   GraphController(String flowName,
                   Collection<? extends FlowOperatorConfig<? extends Builder<?, ?>,
                       ? extends FlowOperatorConfig<?, ?>>> operatorsCfgs,
-                  CompletableFuture<Try<Void>> completeOnInitComplete) {
+                  CompletableFuture<Try<Map<String, ReActorRef>>> completeOnInitComplete) {
     this.completeOnInitComplete = completeOnInitComplete;
     this.operatorsCfgsByName = ObjectUtils.requiredCondition(Objects.requireNonNull(operatorsCfgs),
                                                              ops -> !ops.isEmpty(),
@@ -119,7 +119,7 @@ class GraphController implements ReActiveEntity {
                                operatorCfg.getValue());
       }
     }
-    completeOnInitComplete.complete(Try.VOID);
+    completeOnInitComplete.complete(Try.of(this::getOperatorsByName));
   }
   private void onStop() {
     inputStreamProcessors.forEach(ExecutorService::shutdownNow);

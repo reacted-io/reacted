@@ -91,7 +91,7 @@ public class ReActorContext {
         this.msgExecutionId = new AtomicLong();
         this.reActions = Objects.requireNonNull(reActorCtxBuilder.reActions);
         this.reActorSchedulationId = ReActorCounter.INSTANCE.nextSchedulationId();
-        var direct = ByteBuffer.allocateDirect(8);
+        var direct = ByteBuffer.allocateDirect(Long.BYTES);
         direct.putLong(getReActorSchedulationId());
         this.schedulationIdBuffer = new UnsafeBuffer(direct);
     }

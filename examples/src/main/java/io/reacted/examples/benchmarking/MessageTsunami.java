@@ -10,6 +10,7 @@ package io.reacted.examples.benchmarking;
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.FastUnboundedMbox;
 import io.reacted.core.reactors.ReActions;
@@ -17,6 +18,13 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.services.LoadBalancingPolicies;
+import io.reacted.core.services.LoadBalancingPolicy;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
+import io.reacted.flow.ReActedGraph;
+import io.reacted.flow.operators.map.MapOperatorConfig;
+import io.reacted.flow.operators.reduce.ReduceOperatorConfig;
+import io.reacted.patterns.UnChecked;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -25,6 +33,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -32,24 +41,19 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 public class MessageTsunami {
-    private static final int CYCLES = 100_000_000;
-    public static void main(String[] args) {
+    private static final int CYCLES = 3_333_333;
+    public static void main(String[] args) throws InterruptedException {
 
 
-        String dispatcher_1 = "CruncherThread-1";
-        int threads_1 = 2;
-        Cruncher body_1 = new Cruncher(dispatcher_1, "Cruncher-1", CYCLES);
-
-        String dispatcher_2 = "CruncherThread-2";
-        int threads_2 = 1;
-        Cruncher body_2 = new Cruncher(dispatcher_2, "Cruncher-2", CYCLES);
-
-        String dispatcher_3 = "CruncherThread-3";
-        int threads_3 = 1;
-        Cruncher body_3 = new Cruncher(dispatcher_3, "Cruncher-3", CYCLES);
-
+        String dispatcher_1 = "CruncherThread-1"; int threads_1 = 4;
+        String dispatcher_2 = "CruncherThread-2"; int threads_2 = 1;
+        String dispatcher_3 = "CruncherThread-3"; int threads_3 = 1;
 
         ReActorSystem messageCruncher = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                              .addDispatcherConfig(DispatcherConfig.newBuilder()
@@ -71,62 +75,92 @@ public class MessageTsunami {
                                                                              .setReactorSystemName("MessageCruncher")
                                                                              .setSystemMonitorRefreshInterval(Duration.ofHours(1))
                                                                              .build()).initReActorSystem();
+        var collector =
+        ReActedGraph.newBuilder()
+                    .setReActorName("Test Statistics Collector")
+                    .setDispatcherName(dispatcher_3)
+                    .addOperator(ReduceOperatorConfig.newBuilder()
+                                                     .setReActorName("LatenciesCollector")
+                                                     .setReductionRules(Map.of(LatenciesSnapshot.class, 3L))
+                                                     .setReducer(payloadsByType -> {
+                                                         List<LatenciesSnapshot> rps = (List<LatenciesSnapshot>)payloadsByType.get(LatenciesSnapshot.class);
+                                                         return getLatenciesForPercentiles(rps.stream()
+                                                                                              .map(snap -> snap.latencies)
+                                                                                              .map(l -> (LongStream)Arrays.stream(l))
+                                                                                              .flatMapToLong(la -> la)
+                                                                                              .sorted()
+                                                                                              .toArray());
+                                                     })
+                                                    .setOutputOperators("Printer")
+                                                    .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(LatenciesSnapshot.class))
+                                                    .build())
+                    .addOperator(ReduceOperatorConfig.newBuilder()
+                                                     .setReActorName("RPSCollector")
+                                                     .setReductionRules(Map.of(RPSSnapshot.class, 3L))
+                                                     .setReducer(payloadsByType -> {
+                                                         List<RPSSnapshot> rps = (List<RPSSnapshot>)payloadsByType.get(RPSSnapshot.class);
+                                                         return List.of(String.format("Processed: %d %d %d -> %d%n",
+                                                                                      rps.get(0).rps, rps.get(1).rps, rps.get(2).rps,
+                                                                                      rps.stream()
+                                                                                         .mapToInt(v -> v.rps)
+                                                                                         .sum()));
+                                                     })
+                                                     .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(RPSSnapshot.class))
+                                                     .setOutputOperators("Printer")
+                                                     .build())
+                    .addOperator(MapOperatorConfig.newBuilder()
+                                                  .setReActorName("Printer")
+                                                  .setConsumer(System.err::println)
+                                                  .build())
+                    .build();
+        collector.run(messageCruncher)
+                 .toCompletableFuture()
+                 .join()
+                 .orElseSneakyThrow();
 
-
-        ReActorRef cruncher_1 = messageCruncher.spawn(body_1)
-                                               .orElseSneakyThrow();
-        ReActorRef cruncher_2 = messageCruncher.spawn(body_2)
-                                               .orElseSneakyThrow();
-        ReActorRef cruncher_3 = messageCruncher.spawn(body_3)
-                                               .orElseSneakyThrow();
+        ReActorRef cruncher_service = messageCruncher.spawnService(ServiceConfig.newBuilder()
+                                                                                .setRouteeProvider(() -> new Cruncher(dispatcher_1, "-worker",
+                                                                                                                      CYCLES))
+                                                                                .setDispatcherName(dispatcher_2)
+                                                                                .setRouteesNum(3)
+                                                                                .setReActorName("CruncherService")
+                                                                                .build()).orElseSneakyThrow();
+        TimeUnit.SECONDS.sleep(1);
         Instant start = Instant.now();
         var diagnosticPrinter =
         messageCruncher.getSystemSchedulingService()
                        .scheduleAtFixedRate(() -> {
-                           int b1 = body_1.getCounted();
-                           int b2 = body_2.getCounted();
-                           int b3 = body_3.getCounted();
-                           System.err.println("Processed: " + b1 + " " + b2 + " " + b3 + " -> " + (b1 + b2 + b3));
+                           messageCruncher.getSystemSink()
+                                          .publish(new DiagnosticRequest());
                        }, 1, 1, TimeUnit.SECONDS);
 
         ExecutorService exec_1 = Executors.newSingleThreadExecutor();
         ExecutorService exec_2 = Executors.newSingleThreadExecutor();
         ExecutorService exec_3 = Executors.newSingleThreadExecutor();
-        ExecutorService exec_4 = Executors.newSingleThreadExecutor();
 
-        exec_1.execute(() -> runTest(start, cruncher_1));
-        exec_2.execute(() -> runTest(start, cruncher_2));
-        exec_3.execute(() -> runTest(start, cruncher_3));
-        //exec_4.execute(() -> runTest(start, cruncher_1));
+        List.of(exec_1.submit(() -> runTest(start, cruncher_service)),
+                exec_2.submit(() -> runTest(start, cruncher_service)),
+                exec_3.submit(() -> runTest(start, cruncher_service))).stream()
+               .forEachOrdered(fut -> UnChecked.supplier(() -> fut.get()).get());
+        cruncher_service.tell(new StopCrunching());
+        cruncher_service.tell(new StopCrunching());
+        cruncher_service.tell(new StopCrunching());
 
-        Optional.ofNullable(messageCruncher.getReActorCtx(cruncher_1.getReActorId()))
-                .map(ReActorContext::getHierarchyTermination)
-                .map(CompletionStage::toCompletableFuture)
-                .ifPresent(CompletableFuture::join);
-
-        Optional.ofNullable(messageCruncher.getReActorCtx(cruncher_2.getReActorId()))
-                .map(ReActorContext::getHierarchyTermination)
-                .map(CompletionStage::toCompletableFuture)
-                .ifPresent(CompletableFuture::join);
-        Optional.ofNullable(messageCruncher.getReActorCtx(cruncher_3.getReActorId()))
-                .map(ReActorContext::getHierarchyTermination)
-                .map(CompletionStage::toCompletableFuture)
-                .ifPresent(CompletableFuture::join);
-
-        diagnosticPrinter.cancel(false);
+        //diagnosticPrinter.cancel(false);
 
         System.err.println("Completed in " + ChronoUnit.SECONDS.between(start, Instant.now()));
 
-        for (Cruncher body : List.of(body_1, body_2, body_3)) {
-            long[] sortedLatencies = body.getLatencies();
-            Arrays.sort(sortedLatencies);
-
-            List<Double> percentiles = List.of(70d, 75d, 80d, 85d, 90d, 95d, 99d, 99.9d, 99.99d, 99.9999d, 100d);
-            percentiles.forEach(percentile -> System.out.printf("Msgs: %d Percentile %f Latency: %s%n", sortedLatencies.length, percentile, getLatencyForPercentile(sortedLatencies, percentile)));
-        }
-        messageCruncher.shutDown();
+        //messageCruncher.shutDown();
     }
 
+    private static List<String> getLatenciesForPercentiles(long[] latencies) {
+        List<Double> percentiles = List.of(70d, 75d, 80d, 85d, 90d, 95d, 99d, 99.9d, 99.99d, 99.9999d, 100d);
+        return percentiles.stream()
+                   .map(percentile -> String.format("Msgs: %d Percentile %f Latency: %s",
+                                                    latencies.length, percentile,
+                                                    getLatencyForPercentile(latencies, percentile)))
+                          .collect(Collectors.toList());
+    }
     private static Duration getLatencyForPercentile(long[] latencies, double percentile) {
         int index = (int) Math.ceil(percentile / 100.0 * latencies.length) - 1;
         return Duration.ofNanos(latencies[index]);
@@ -134,9 +168,11 @@ public class MessageTsunami {
 
     private static void runTest(Instant start, ReActorRef cruncher_1) {
         for(int msg = 0; msg < CYCLES; msg++) {
-            cruncher_1.tell(System.nanoTime());
+            if (cruncher_1.tell(System.nanoTime()).isNotDelivered()) {
+                System.err.println("FAILED DELIVERY? ");
+                System.exit(3);
+            }
         }
-        cruncher_1.tell(new StopCrunching());
         System.err.println("Sent in " + ChronoUnit.SECONDS.between(start, Instant.now()));
     }
 
@@ -155,12 +191,20 @@ public class MessageTsunami {
                     .setMailBoxProvider(ctx -> new FastUnboundedMbox())
                                     .setReActorName(name)
                                     .setDispatcherName(dispatcher)
+                                    .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(DiagnosticRequest.class))
                                     .build();
             this.reActions = ReActions.newBuilder()
                                       .reAct(Long.class, this::onPayload)
                                       .reAct(StopCrunching.class, this::onCrunchStop)
+                                      .reAct(DiagnosticRequest.class, this::onDiagnosticRequest)
                                       .build();
-            this.latencies = new long[iterations];
+            this.latencies = new long[iterations * 2];
+        }
+
+        private void onDiagnosticRequest(ReActorContext reActorContext, DiagnosticRequest payloadT) {
+            reActorContext.getReActorSystem()
+                          .getSystemSink()
+                          .publish(new RPSSnapshot(getCounted()));
         }
 
         public synchronized long[] getLatencies() {
@@ -173,6 +217,8 @@ public class MessageTsunami {
             return cnt;
         }
         private void onCrunchStop(ReActorContext reActorContext, StopCrunching stopCrunching) {
+            reActorContext.getReActorSystem().getSystemSink()
+                          .publish(new LatenciesSnapshot(getLatencies()));
             reActorContext.stop();
         }
         private void onPayload(ReActorContext ctx, Long payLoad) {
@@ -190,5 +236,18 @@ public class MessageTsunami {
         @Override
         public ReActions getReActions() { return reActions; }
 
+    }
+
+    private static final class DiagnosticRequest implements Serializable { }
+
+    private static final class RPSSnapshot implements Serializable {
+        private final int rps;
+        RPSSnapshot(int rps) { this.rps = rps; }
+    }
+    private static final class LatenciesSnapshot implements Serializable {
+        private final long[] latencies;
+        private LatenciesSnapshot(long[] latencies) {
+            this.latencies = latencies;
+        }
     }
 }

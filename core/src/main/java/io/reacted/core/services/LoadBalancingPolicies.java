@@ -33,6 +33,9 @@ public final class LoadBalancingPolicies {
                             @Nonnull Service<ServiceConfigBuilderT, ServiceConfigT> thisService,
                             long msgNum, @Nonnull Serializable message) {
       List<ReActorRef> routees = thisService.getRouteesMap();
+      if (routees.size() == 0) {
+        return null;
+      }
       int routeeIdx = (int) ((msgNum % Integer.MAX_VALUE) % routees.size());
       return routeeIdx < routees.size()
              ? routees.get(routeeIdx)

@@ -148,10 +148,6 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         }
     }
 
-    private boolean routeesCannotBeFedAllTogether(int requestOnStartup) {
-        return requestOnStartup < serviceConfig.getRouteesNum();
-    }
-
     private void serviceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
         if (!request.getSearchFilter().matches(serviceInfo, raCtx.getSelf())) {
             return;
@@ -171,7 +167,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         ReActorRef routee = selectRoutee(raCtx, ++msgReceived, newMessage);
         return routee != null
                ? routee.tell(raCtx.getSender(), newMessage)
-               : DeliveryStatus.NOT_DELIVERED;
+               : DeliveryStatus.NOT_SENT;
     }
 
     @Nullable
@@ -200,7 +196,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         if (routeeCtx == null) {
             throw new IllegalStateException("Unable to find actor (routee) ctx for a newly spawned actor");
         }
-        //when a routee dies, asks the father to be respawn. If the father is stopped (i.e. on system shutdown)
+        //when a routee dies, asks the father to be respawned. If the father is stopped (i.e. on system shutdown)
         //the message will be simply routed to deadletter
         routeeCtx.getHierarchyTermination()
                  .thenAccept(terminated -> { if (routeeCtx.isStop()) {
@@ -233,7 +229,10 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     private static <PayloadT extends Serializable>
     void requestNextMessage(ReActorContext raCtx, PayloadT payload,
                             BiFunction<ReActorContext, PayloadT, DeliveryStatus> realCall) {
-        realCall.apply(raCtx, payload);
+        if (realCall.apply(raCtx, payload).isNotSent()) {
+            raCtx.logError("[Service {}] Unable to re-route message {} towards a routee",
+                           raCtx.getSelf().getReActorId().getReActorName(), payload);
+        }
         raCtx.getMbox().request(1);
     }
 
