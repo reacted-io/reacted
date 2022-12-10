@@ -18,6 +18,7 @@ import io.reacted.patterns.ObjectUtils;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -125,6 +126,9 @@ public class BackpressuringMbox implements MailBox {
         return !notDelayable.get().contains(payloadType);
     }
 
+    public BackpressuringMbox addNonDelayableTypes(Class<? extends Serializable> ...notDelayedToAdd) {
+        return addNonDelayableTypes(Arrays.stream(notDelayedToAdd).collect(Collectors.toSet()));
+    }
     public BackpressuringMbox addNonDelayableTypes(Set<Class<? extends Serializable>> notDelayedToAdd) {
         Set<Class<? extends Serializable>> notDelayedCache;
         Set<Class<? extends Serializable>> notDelayedMerge;

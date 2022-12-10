@@ -140,7 +140,8 @@ public class Dispatcher {
                 selectedRing = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() & (scheduledQueues.length - 1))];
                 claimIdx = selectedRing.tryClaim(MESSAGE_MSG_TYPE, Long.BYTES);
                 if (claimIdx < 1 && (getDispatcherConfig().getDispatcherThreadsNum() < 2 || failures++ > 100)) {
-                    LOGGER.warn("Unable to dispatch reactor {} and no more threads are available for configured dispatcher. " + "Slowpath mode enabled", reActor.getSelf()
+                    LOGGER.warn("Unable to dispatch reactor {} and no more threads are available for configured dispatcher. Slowpath mode enabled",
+                                reActor.getSelf()
                                                                                                                                                                 .getReActorId());
                     if (!slowpathQueue.offer(reActor)) {
                         LOGGER.error("CRITIC! Unable to ativate slowpath mode for {} . Reactor may be stale!", reActor.getSelf()
@@ -158,20 +159,6 @@ public class Dispatcher {
         }
         return true;
     }
-    /*
-    private void readone(long me, RingBuffer buffer) {
-        AtomicLong out = new AtomicLong();
-        int r = buffer.read(new MessageHandler() {
-            @Override
-            public void onMessage(int msgTypeId, MutableDirectBuffer buffer, int index, int length) {
-                long id = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
-                System.err.printf("Coming from %d found %d for type %d%n", me, id, msgTypeId);
-            }
-        });
-        if (r> 0)
-        System.err.println("Flush complete");
-    }
-*/
     private ExecutorService getDispatcherLifeCyclePool() {
         return Objects.requireNonNull(dispatcherLifeCyclePool);
     }
@@ -192,7 +179,8 @@ public class Dispatcher {
                 ReActorContext ctx = reActorSystem.getReActorCtx(buffer.getLong(index));
                 if (ctx != null) {
                     //LOGGER.info("Read {}", ctx.getReActorSchedulationId());
-                    processedForDispatcher.setPlain(onMessage(ctx, dispatcherBatchSize, dispatcherLifeCyclePool,
+                    processedForDispatcher.setPlain(processedForDispatcher.getPlain() +
+                                                    onMessage(ctx, dispatcherBatchSize, dispatcherLifeCyclePool,
                                                               isExecutionRecorded, devNull, reActorUnregister,
                                                               recyledMessage));
                 }

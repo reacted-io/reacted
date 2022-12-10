@@ -123,6 +123,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         var backpressuringMbox = BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox());
         backpressuringMbox.filter(mbox -> !mbox.isDelayable(ReActorInit.class))
                           .ifPresent(mbox -> mbox.request(1));
+        backpressuringMbox.ifPresent(mbox -> mbox.addNonDelayableTypes(getNonDelayedMessageTypes()));
 
         //spawn the minimum number or routees
         for (int currentRoutee = 0; currentRoutee < serviceConfig.getRouteesNum(); currentRoutee++) {

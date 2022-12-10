@@ -14,6 +14,7 @@ import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.FastUnboundedMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
@@ -125,20 +126,24 @@ public class MessageTsunami {
                  .orElseSneakyThrow();
 
         ReActorRef cruncher_service = messageCruncher.spawnService(ServiceConfig.newBuilder()
-                                                                                .setMailBoxProvider(ctx -> new FastUnboundedMbox())
-                                                                                .setRouteeProvider(() -> new Cruncher(dispatcher_2, "-worker",
-                                                                                                                      CYCLES))
+                                                                                .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
+                                                                                                                             .setBackpressuringThreshold(30000)
+                                                                                                                             //.setRealMbox(new FastUnboundedMbox())
+                                                                                                                             .setRealMbox(new UnboundedMbox())
+                                                                                                                             .setRealMailboxOwner(ctx)
+                                                                                                                             .build())
+                                                                                .setRouteeProvider(() -> new Cruncher(dispatcher_2, "-worker", CYCLES))
                                                                                 .setDispatcherName(dispatcher_1)
                                                                                 .setRouteesNum(3)
                                                                                 .setReActorName("CruncherService")
                                                                                 .build()).orElseSneakyThrow();
-        TimeUnit.SECONDS.sleep(1);
+        TimeUnit.SECONDS.sleep(2);
 
         var diagnosticPrinter =
         messageCruncher.getSystemSchedulingService()
                        .scheduleAtFixedRate(() -> {
-                           messageCruncher.getSystemSink()
-                                          .publish(new DiagnosticRequest());
+                           messageCruncher.broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF,
+                                                                       new DiagnosticRequest());
                        }, 1, 1, TimeUnit.SECONDS);
 
         ExecutorService exec_1 = Executors.newSingleThreadExecutor();
@@ -146,11 +151,11 @@ public class MessageTsunami {
         ExecutorService exec_3 = Executors.newSingleThreadExecutor();
 
         Instant start = Instant.now();
-        List.of(exec_1.submit(() -> runTest(start, cruncher_service)),
-                exec_2.submit(() -> runTest(start, cruncher_service)),
-                exec_3.submit(() -> runTest(start, cruncher_service))).stream()
-               .forEachOrdered(fut -> Try.of(() -> fut.get())
-                                         .ifError(Throwable::printStackTrace));
+        List.of(exec_1.submit(UnChecked.runnable(() -> runTest(start, cruncher_service))),
+                exec_2.submit(UnChecked.runnable(() -> runTest(start, cruncher_service))),
+                exec_3.submit(UnChecked.runnable(() -> runTest(start, cruncher_service))))
+               .forEach(fut -> Try.of(() -> fut.get())
+                                  .ifError(Throwable::printStackTrace));
         cruncher_service.tell(new StopCrunching());
         cruncher_service.tell(new StopCrunching());
         cruncher_service.tell(new StopCrunching());
@@ -177,16 +182,20 @@ public class MessageTsunami {
         return Duration.ofNanos(latencies[index]);
     }
 
-    private static void runTest(Instant start, ReActorRef cruncher_1) {
-        boolean wasBacpressured = false;
-        Duration base_delav = Duration.ofMillis(1);
-        Duration delav = base_delav;
+    private static void runTest(Instant start, ReActorRef cruncher_1) throws InterruptedException {
+        long baseNanosDelay = 1_000_000;
+        long delay = baseNanosDelay;
         for(int msg = 0; msg < CYCLES; msg++) {
             DeliveryStatus status = cruncher_1.tell(System.nanoTime());
-
             if (status.isNotDelivered()) {
                 System.err.println("FAILED DELIVERY? ");
                 System.exit(3);
+            }
+            if (status.isBackpressureRequired()) {
+                TimeUnit.NANOSECONDS.sleep(delay);
+                delay = delay << 1;
+            } else {
+                delay = Math.max( (delay / 3) << 1, baseNanosDelay);
             }
         }
         System.err.println("Sent in " + ChronoUnit.SECONDS.between(start, Instant.now()));
@@ -204,7 +213,12 @@ public class MessageTsunami {
 
         private Cruncher(String dispatcher, String name, int iterations) {
             this.cfg = ReActorConfig.newBuilder()
-                    .setMailBoxProvider(ctx -> new FastUnboundedMbox())
+                                    .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
+                                                                                 .setBackpressuringThreshold(30000)
+                                                                                 .setRealMbox(new FastUnboundedMbox())
+                                                                                 .setRealMailboxOwner(ctx)
+                                                                                 .build()
+                                                                                 .addNonDelayableTypes(DiagnosticRequest.class))
                                     .setReActorName(name)
                                     .setDispatcherName(dispatcher)
                                     .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(DiagnosticRequest.class))
@@ -219,8 +233,7 @@ public class MessageTsunami {
 
         private void onDiagnosticRequest(ReActorContext reActorContext, DiagnosticRequest payloadT) {
             reActorContext.getReActorSystem()
-                          .getSystemSink()
-                          .publish(new RPSSnapshot(getCounted()));
+                          .broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF, new RPSSnapshot(getCounted()));
         }
 
         public synchronized long[] getLatencies() {
@@ -235,14 +248,15 @@ public class MessageTsunami {
         private void onCrunchStop(ReActorContext reActorContext, StopCrunching stopCrunching) {
             reActorContext.getReActorSystem().getSystemSink()
                           .publish(new LatenciesSnapshot(getLatencies()));
+            reActorContext.getMbox().request(1);
             reActorContext.stop();
         }
         private void onPayload(ReActorContext ctx, Long payLoad) {
             int pos = counter.getPlain();
             latencies[pos] = System.nanoTime() - payLoad;
             counter.setPlain(pos + 1);
+            ctx.getMbox().request(1);
         }
-
 
         @Nonnull
         @Override
