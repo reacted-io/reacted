@@ -66,7 +66,7 @@ public class ReActorContext {
     private final AtomicLong msgExecutionId;
     private final ReActions reActions;
     private final long reActorSchedulationId;
-    private final DirectBuffer schedulationIdBuffer;
+
     private TypedSubscription[] typedSubscriptions;
 
     private volatile boolean stop = false;
@@ -91,13 +91,6 @@ public class ReActorContext {
         this.msgExecutionId = new AtomicLong();
         this.reActions = Objects.requireNonNull(reActorCtxBuilder.reActions);
         this.reActorSchedulationId = ReActorCounter.INSTANCE.nextSchedulationId();
-        var direct = ByteBuffer.allocateDirect(Long.BYTES);
-        direct.putLong(getReActorSchedulationId());
-        this.schedulationIdBuffer = new UnsafeBuffer(direct);
-    }
-    public DirectBuffer getSchedulationIdBuffer() {
-        schedulationIdBuffer.byteBuffer().rewind();
-        return schedulationIdBuffer;
     }
     public static Builder newBuilder() { return new Builder(); }
 

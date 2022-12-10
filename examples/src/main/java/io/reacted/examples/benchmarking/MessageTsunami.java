@@ -26,7 +26,10 @@ import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.flow.ReActedGraph;
 import io.reacted.flow.operators.map.MapOperatorConfig;
 import io.reacted.flow.operators.reduce.ReduceOperatorConfig;
+import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -49,12 +52,12 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 public class MessageTsunami {
-    private static final int CYCLES = 3_333_333;
+    private static final int CYCLES = 17_000_000;
     public static void main(String[] args) throws InterruptedException {
 
 
         String dispatcher_1 = "CruncherThread-1"; int threads_1 = 1;
-        String dispatcher_2 = "CruncherThread-2"; int threads_2 = 1;
+        String dispatcher_2 = "CruncherThread-2"; int threads_2 = 4;
         String dispatcher_3 = "CruncherThread-3"; int threads_3 = 1;
 
         ReActorSystem messageCruncher = new ReActorSystem(ReActorSystemConfig.newBuilder()
@@ -77,6 +80,7 @@ public class MessageTsunami {
                                                                              .setReactorSystemName("MessageCruncher")
                                                                              .setSystemMonitorRefreshInterval(Duration.ofHours(1))
                                                                              .build()).initReActorSystem();
+
         var collector =
         ReActedGraph.newBuilder()
                     .setReActorName("Test Statistics Collector")
@@ -121,14 +125,15 @@ public class MessageTsunami {
                  .orElseSneakyThrow();
 
         ReActorRef cruncher_service = messageCruncher.spawnService(ServiceConfig.newBuilder()
-                                                                                .setRouteeProvider(() -> new Cruncher(dispatcher_1, "-worker",
+                                                                                .setMailBoxProvider(ctx -> new FastUnboundedMbox())
+                                                                                .setRouteeProvider(() -> new Cruncher(dispatcher_2, "-worker",
                                                                                                                       CYCLES))
-                                                                                .setDispatcherName(dispatcher_2)
+                                                                                .setDispatcherName(dispatcher_1)
                                                                                 .setRouteesNum(3)
                                                                                 .setReActorName("CruncherService")
                                                                                 .build()).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(1);
-        Instant start = Instant.now();
+
         var diagnosticPrinter =
         messageCruncher.getSystemSchedulingService()
                        .scheduleAtFixedRate(() -> {
@@ -140,16 +145,20 @@ public class MessageTsunami {
         ExecutorService exec_2 = Executors.newSingleThreadExecutor();
         ExecutorService exec_3 = Executors.newSingleThreadExecutor();
 
+        Instant start = Instant.now();
         List.of(exec_1.submit(() -> runTest(start, cruncher_service)),
                 exec_2.submit(() -> runTest(start, cruncher_service)),
                 exec_3.submit(() -> runTest(start, cruncher_service))).stream()
-               .forEachOrdered(fut -> UnChecked.supplier(() -> fut.get()).get());
+               .forEachOrdered(fut -> Try.of(() -> fut.get())
+                                         .ifError(Throwable::printStackTrace));
         cruncher_service.tell(new StopCrunching());
         cruncher_service.tell(new StopCrunching());
         cruncher_service.tell(new StopCrunching());
+        //cruncher_service.tell(new StopCrunching());
 
         //diagnosticPrinter.cancel(false);
 
+        //TimeUnit.SECONDS.sleep(1);
         System.err.println("Completed in " + ChronoUnit.SECONDS.between(start, Instant.now()));
 
         //messageCruncher.shutDown();

@@ -20,6 +20,7 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import org.agrona.BitUtil;
 import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.ControlledMessageHandler;
 import org.agrona.concurrent.IdleStrategy;
@@ -37,9 +38,11 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -59,6 +62,7 @@ public class Dispatcher {
                                                             "message type {} with seq num {} and value {} ";
     private static final Logger LOGGER = LoggerFactory.getLogger(Dispatcher.class);
     private final DispatcherConfig dispatcherConfig;
+    private final BlockingQueue<ReActorContext> slowpathQueue = new LinkedBlockingQueue<>();
     @Nullable
     private ExecutorService dispatcherLifeCyclePool;
     @Nullable
@@ -129,40 +133,45 @@ public class Dispatcher {
 
     public boolean dispatch(ReActorContext reActor) {
         if (reActor.acquireScheduling()) {
-            var rb = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() & (scheduledQueues.length - 1))];
-            boolean scheduled = rb.write(MESSAGE_MSG_TYPE, reActor.getSchedulationIdBuffer(),0, Long.BYTES);
-            if (!scheduled) {
-                reActor.releaseScheduling();
+            int failures = 0;
+            int claimIdx = -1;
+            RingBuffer selectedRing = null;
+            while(claimIdx < 1) {
+                selectedRing = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() & (scheduledQueues.length - 1))];
+                claimIdx = selectedRing.tryClaim(MESSAGE_MSG_TYPE, Long.BYTES);
+                if (claimIdx < 1 && (getDispatcherConfig().getDispatcherThreadsNum() < 2 || failures++ > 100)) {
+                    LOGGER.warn("Unable to dispatch reactor {} and no more threads are available for configured dispatcher. " + "Slowpath mode enabled", reActor.getSelf()
+                                                                                                                                                                .getReActorId());
+                    if (!slowpathQueue.offer(reActor)) {
+                        LOGGER.error("CRITIC! Unable to ativate slowpath mode for {} . Reactor may be stale!", reActor.getSelf()
+                                                                                                                      .getReActorId());
+                        reActor.releaseScheduling();
+                        return false;
+                    } else {
+                        return true;
+                    }
+                }
             }
-            return scheduled;
+            var atomicBuffer = selectedRing.buffer();
+            atomicBuffer.putLong(claimIdx, reActor.getReActorSchedulationId());
+            selectedRing.commit(claimIdx);
         }
         return true;
     }
-    public RingBuffer ddispatch(ReActorContext reActor) {
-        if (reActor.acquireScheduling()) {
-            var rb = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() & (scheduledQueues.length - 1))];
-            boolean scheduled = rb.write(MESSAGE_MSG_TYPE, reActor.getSchedulationIdBuffer(),0, Long.BYTES);
-            if (!scheduled) {
-                reActor.releaseScheduling();
-                return rb;
-            }
-            return null;
-        }
-        return null;
-    }
-
+    /*
     private void readone(long me, RingBuffer buffer) {
         AtomicLong out = new AtomicLong();
-        buffer.read(new MessageHandler() {
+        int r = buffer.read(new MessageHandler() {
             @Override
             public void onMessage(int msgTypeId, MutableDirectBuffer buffer, int index, int length) {
                 long id = buffer.getLong(index, ByteOrder.BIG_ENDIAN);
-                System.err.printf("Coming from %d found %d%n", me, id);
+                System.err.printf("Coming from %d found %d for type %d%n", me, id, msgTypeId);
             }
         });
+        if (r> 0)
         System.err.println("Flush complete");
     }
-
+*/
     private ExecutorService getDispatcherLifeCyclePool() {
         return Objects.requireNonNull(dispatcherLifeCyclePool);
     }
@@ -180,8 +189,9 @@ public class Dispatcher {
 
         MessageHandler ringBufferMessageProcessor = ((msgTypeId, buffer, index, length) -> {
             if (msgTypeId == MESSAGE_MSG_TYPE) {
-                ReActorContext ctx = reActorSystem.getReActorCtx(buffer.getLong(index, ByteOrder.BIG_ENDIAN));
+                ReActorContext ctx = reActorSystem.getReActorCtx(buffer.getLong(index));
                 if (ctx != null) {
+                    //LOGGER.info("Read {}", ctx.getReActorSchedulationId());
                     processedForDispatcher.setPlain(onMessage(ctx, dispatcherBatchSize, dispatcherLifeCyclePool,
                                                               isExecutionRecorded, devNull, reActorUnregister,
                                                               recyledMessage));
@@ -190,6 +200,15 @@ public class Dispatcher {
         });
         while (!Thread.currentThread().isInterrupted()) {
             int ringRecordsProcessed = scheduledList.read(ringBufferMessageProcessor);
+            while (!slowpathQueue.isEmpty()) {
+                ReActorContext slowPathActor = slowpathQueue.poll();
+                if (slowPathActor.releaseScheduling()) {
+                    slowPathActor.getDispatcher()
+                                 .dispatch(slowPathActor);
+                } else {
+                    LOGGER.error("CRITIC! Slow path actor not scheduled!? {}", slowPathActor.getSelf().getReActorId());
+                }
+            }
             ringBufferConsumerPauser.idle(ringRecordsProcessed);
         }
         LOGGER.info("Dispatcher Thread {} is terminating. Processed: {}", Thread.currentThread().getName(),
@@ -243,12 +262,7 @@ public class Dispatcher {
             dispatcherLifeCyclePool.execute(() -> reActorUnregister.apply(scheduledReActor));
         } else if (!scheduledReActor.getMbox().isEmpty()) {
             //If there are other messages to be processed, request another schedulation fo the dispatcher
-            RingBuffer filled = ddispatch(scheduledReActor);
-            if (filled != null ){
-                readone(scheduledReActor.getReActorSchedulationId(), filled);
-                LOGGER.error("CRITIC! Dispatcher cannot reschedule reactor {} with still {} pending messages",
-                             scheduledReActor.getSelf().getReActorId(), scheduledReActor.getMbox().getMsgNum());
-            }
+            dispatch(scheduledReActor);
         }
         return processed;
     }
