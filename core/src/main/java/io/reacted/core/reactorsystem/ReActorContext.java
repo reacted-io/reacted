@@ -61,6 +61,7 @@ public class ReActorContext {
     private final ReActorRef parent;
     private final Dispatcher dispatcher;
     private final AtomicBoolean isScheduled;
+    private boolean isNaiveScheduled;
     private final ReadWriteLock structuralLock;
     private final CompletionStage<Void> hierarchyTermination;
     private final AtomicLong msgExecutionId;
@@ -83,6 +84,7 @@ public class ReActorContext {
         this.parent = Objects.requireNonNull(reActorCtxBuilder.parent);
         this.dispatcher = Objects.requireNonNull(reActorCtxBuilder.dispatcher);
         this.isScheduled = new AtomicBoolean(false);
+        this.isNaiveScheduled = false;
         this.structuralLock = new ReentrantReadWriteLock();
         this.typedSubscriptions = Objects.requireNonNull(reActorCtxBuilder.typedSubscriptions).length == 0
                                   ? TypedSubscription.NO_SUBSCRIPTIONS
@@ -109,11 +111,19 @@ public class ReActorContext {
 
     public long getNextMsgExecutionId() { return msgExecutionId.getAndIncrement(); }
 
-    public boolean acquireScheduling() {
-        return isScheduled.compareAndSet(false, true);
+    public synchronized boolean acquireScheduling() {
+        if (isNaiveScheduled) { return false; }
+        this.isNaiveScheduled = true;
+        return true;
+        //return isScheduled.compareAndSet(false, true);
     }
 
-    public boolean releaseScheduling() { return isScheduled.compareAndSet(true, false); }
+    public synchronized boolean releaseScheduling() {
+        if (!isNaiveScheduled) { return false; }
+        this.isNaiveScheduled = false;
+        return true;
+        //return isScheduled.compareAndSet(true, false);
+    }
 
     @SuppressWarnings("UnusedReturnValue")
     public boolean acquireCoherence() { return !isAcquired; }

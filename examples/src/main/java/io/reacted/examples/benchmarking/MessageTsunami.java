@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 public class MessageTsunami {
-    private static final int CYCLES = 6_000_000;
+    private static final int CYCLES = 99999;
     public static void main(String[] args) throws InterruptedException {
 
 
