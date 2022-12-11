@@ -6,15 +6,13 @@ import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.flow.ReActedGraph;
 import io.reacted.flow.operators.map.MapOperatorConfig;
 import io.reacted.flow.operators.reduce.ReduceOperatorConfig;
+import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-import org.apache.commons.lang3.function.TriFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -22,9 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public class StatisticsCollector {
@@ -34,6 +30,16 @@ public class StatisticsCollector {
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsCollector.class);
     private StatisticsCollector() { throw new AssertionError("Never supposed to be called"); }
 
+    public static void initAndWaitForMessageProducersToComplete(Runnable ...messageProducers) {
+        initAsyncMessageProducers(messageProducers)
+                .forEach(fut -> Try.of(fut::get)
+                                   .ifError(Throwable::printStackTrace));
+    }
+    public static List<Future<?>> initAsyncMessageProducers(Runnable ...messageProducers) {
+        return Arrays.stream(messageProducers)
+                     .map(StatisticsCollector::initAsyncMessageProducer)
+                     .collect(Collectors.toUnmodifiableList());
+    }
     static Future<?> initAsyncMessageProducer(Runnable messageGenerator) {
         return initAsyncMessageProducer(messageGenerator, ForkJoinPool.commonPool());
     }
@@ -41,13 +47,11 @@ public class StatisticsCollector {
     static Future<?> initAsyncMessageProducer(Runnable messageGenerator, ExecutorService executor) {
         return executor.submit(messageGenerator);
     }
-    static Runnable backpressureAwareMessageSender(Instant startTime, long messageNum,
-                                                   ReActorRef destination) {
-        return backpressureAwareMessageSender(startTime, messageNum, destination, System::nanoTime);
+    static Runnable backpressureAwareMessageSender(long messageNum, ReActorRef destination) {
+        return backpressureAwareMessageSender(messageNum, destination, System::nanoTime);
     }
 
-    static Runnable backpressureAwareMessageSender(Instant startTime, long messageNum,
-                                                   ReActorRef destination,
+    static Runnable backpressureAwareMessageSender(long messageNum, ReActorRef destination,
                                                    Supplier<? extends Serializable> payloadProducer) {
         Runnable sender = UnChecked.runnable(() -> {
             long baseNanosDelay = 1_000_000;
@@ -65,28 +69,23 @@ public class StatisticsCollector {
                     delay = Math.max((delay / 3) << 1, baseNanosDelay);
                 }
             }
-            LOGGER.info("Sent in {}", ChronoUnit.SECONDS.between(startTime, Instant.now()));
         });
         return sender;
     }
 
-    static Runnable brutalMessageSender(Instant startTime, long messageNum,
-                                        ReActorRef destination) {
-        return brutalMessageSender(startTime, messageNum, destination, System::nanoTime);
+    static Runnable brutalMessageSender(long messageNum, ReActorRef destination) {
+        return brutalMessageSender(messageNum, destination, System::nanoTime);
     }
-    static Runnable brutalMessageSender(Instant startTime, long messageNum, ReActorRef destination,
+    static Runnable brutalMessageSender(long messageNum, ReActorRef destination,
                                         Supplier<? extends Serializable> payloadProducer) {
-        Runnable sender = UnChecked.runnable(() -> {
+        return UnChecked.runnable(() -> {
             for (int msg = 0; msg < messageNum; msg++) {
                 destination.tell(payloadProducer.get());
             }
-            LOGGER.info("Sent in {}", ChronoUnit.SECONDS.between(startTime, Instant.now()));
         });
-        return sender;
     }
 
-    static Runnable constantWindowMessageSender(long messageNum,
-                                                ReActorRef destination, Duration window) {
+    static Runnable constantWindowMessageSender(long messageNum, ReActorRef destination, Duration window) {
         return constantWindowMessageSender(messageNum, destination, window, System::nanoTime);
     }
     static Runnable constantWindowMessageSender(long messageNum,

@@ -75,10 +75,9 @@ public class MessageTsunami {
         TimeUnit.SECONDS.sleep(2);
 
         Instant start = Instant.now();
-        List.of(StatisticsCollector.initAsyncMessageProducer(StatisticsCollector.backpressureAwareMessageSender(start, CYCLES, cruncher_service)),
-                StatisticsCollector.initAsyncMessageProducer(StatisticsCollector.backpressureAwareMessageSender(start, CYCLES, cruncher_service)),
-                StatisticsCollector.initAsyncMessageProducer(StatisticsCollector.backpressureAwareMessageSender(start, CYCLES, cruncher_service)))
-            .forEach(fut -> Try.of(fut::get).ifError(Throwable::printStackTrace));
+        StatisticsCollector.initAndWaitForMessageProducersToComplete(StatisticsCollector.backpressureAwareMessageSender(CYCLES, cruncher_service),
+                                                                     StatisticsCollector.backpressureAwareMessageSender(CYCLES, cruncher_service),
+                                                                     StatisticsCollector.backpressureAwareMessageSender(CYCLES, cruncher_service));
 
         System.err.println("Completed in " + ChronoUnit.SECONDS.between(start, Instant.now()));
 
