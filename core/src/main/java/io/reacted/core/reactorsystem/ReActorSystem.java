@@ -163,7 +163,7 @@ public class ReActorSystem {
         this.newSeqNum = new AtomicLong(Long.MAX_VALUE);
         this.reActorStop = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF,
                                        Long.MIN_VALUE, localReActorSystemId, AckingPolicy.NONE,
-                                       new ReActorStop());
+                                       ReActorStop.STOP);
     }
 
     public ReActorSystem(ReActorSystemConfig config) {
@@ -179,7 +179,7 @@ public class ReActorSystem {
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.newSeqNum = new AtomicLong(0);
         this.reActorStop = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, Long.MIN_VALUE,
-                                       localReActorSystemId, AckingPolicy.NONE, new ReActorStop());
+                                       localReActorSystemId, AckingPolicy.NONE, ReActorStop.STOP);
     }
     /**
      * @return The configuration for the reactor system

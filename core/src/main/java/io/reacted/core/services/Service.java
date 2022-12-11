@@ -231,8 +231,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     void requestNextMessage(ReActorContext raCtx, PayloadT payload,
                             BiFunction<ReActorContext, PayloadT, DeliveryStatus> realCall) {
         if (realCall.apply(raCtx, payload).isNotSent()) {
-            raCtx.logError("[Service {}] Unable to re-route message {} towards a routee",
-                           raCtx.getSelf().getReActorId().getReActorName(), payload);
+            raCtx.getReActorSystem().toDeadLetters(raCtx.getSender(), payload);
         }
         raCtx.getMbox().request(1);
     }

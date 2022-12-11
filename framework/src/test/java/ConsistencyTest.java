@@ -10,6 +10,7 @@ import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.FastUnboundedMbox;
+import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -17,15 +18,16 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 
 import javax.annotation.Nonnull;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
-public class MessageTsunami {
-    private static final int CYCLES = 100_000_000;
+public class ConsistencyTest {
+    private static final int CYCLES = 9_999_999;
     public static void main(String[] args)  {
 
 
-        String worker_dispatcher = "CruncherThread-1"; int worker_dispatcher_threads = 4;;
+        String worker_dispatcher = "CruncherThread-1"; int worker_dispatcher_threads = 2;
 
         ReActorSystem crunchingSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                              .addDispatcherConfig(DispatcherConfig.newBuilder()
@@ -33,7 +35,7 @@ public class MessageTsunami {
                                                                                                                   .setDispatcherName(worker_dispatcher)
                                                                                                                   .setDispatcherThreadsNum(worker_dispatcher_threads)
                                                                                                                   .build())
-                                                                             .setExpectedReActorsNum(50)
+                                                                             .setExpectedReActorsNum(20)
                                                                              .setReactorSystemName("MessageCrunchingSystem")
                                                                              .build()).initReActorSystem();
 
@@ -42,13 +44,13 @@ public class MessageTsunami {
 
         Instant start = Instant.now();
 
-        BenchmarkingUtils.initAndWaitForMessageProducersToCompleteWithDedicatedExecutors(BenchmarkingUtils.nonStopMessageSender(CYCLES, worker),
-                                                                                         BenchmarkingUtils.nonStopMessageSender(CYCLES, worker),
-                                                                                         BenchmarkingUtils.nonStopMessageSender(CYCLES, worker));
+        BenchmarkingUtils.initAndWaitForMessageProducersToCompleteWithDedicatedExecutors(BenchmarkingUtils.constantWindowMessageSender(CYCLES/3, worker, Duration.ofNanos(10000)),
+                                                                                         BenchmarkingUtils.constantWindowMessageSender(CYCLES/3, worker, Duration.ofNanos(500000)),
+                                                                                         BenchmarkingUtils.constantWindowMessageSender(CYCLES/3, worker, Duration.ofNanos(5000)));
 
         System.err.println("Completed in " + ChronoUnit.SECONDS.between(start, Instant.now()));
 
-        if (worker.tell(new BenchmarkingUtils.StopCrunching()).isNotDelivered()) {
+        if (worker.tell(ReActorStop.STOP).isNotDelivered()) {
             System.err.println("CRITIC! Unable to deliver stop!?");
             System.exit(3);
         }
@@ -77,13 +79,13 @@ public class MessageTsunami {
                                     .build();
             this.reActions = ReActions.newBuilder()
                                       .reAct(Long.class, this::onPayload)
-                                      .reAct(BenchmarkingUtils.StopCrunching.class, this::onCrunchStop)
+                                      .reAct(ReActorStop.class, this::onStop)
                                       .build();
         }
 
         private synchronized long getCounter() { return counter; }
 
-        private void onCrunchStop(ReActorContext reActorContext, BenchmarkingUtils.StopCrunching stopCrunching) {
+        private void onStop(ReActorContext reActorContext, ReActorStop stopCrunching) {
             reActorContext.stop();
         }
         private void onPayload(ReActorContext ctx, Long payLoad) {

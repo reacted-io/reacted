@@ -189,8 +189,7 @@ public class Dispatcher {
             }
             while (!slowpathQueue.isEmpty()) {
                 ReActorContext slowPathActor = slowpathQueue.poll();
-                if (!slowPathActor.releaseScheduling() ||
-                    !dispatch(slowPathActor)) {
+                if (!slowPathActor.releaseScheduling() || !dispatch(slowPathActor)) {
                     LOGGER.error("CRITIC! Slow path actor not scheduled!? {}", slowPathActor.getSelf().getReActorId());
                 }
             }

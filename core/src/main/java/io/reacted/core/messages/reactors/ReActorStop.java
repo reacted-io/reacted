@@ -16,6 +16,7 @@ import java.io.ObjectOutput;
 
 @Immutable
 public final class ReActorStop implements Externalizable {
+    public static final ReActorStop STOP = new ReActorStop();
     @Serial
     private static final long serialVersionUID = 1;
 

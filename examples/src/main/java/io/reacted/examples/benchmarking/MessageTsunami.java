@@ -12,7 +12,10 @@ import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.FastUnboundedMbox;
+import io.reacted.core.mailboxes.PriorityMailbox;
+import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.ReActorInit;
+import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -21,21 +24,23 @@ import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 
 import javax.annotation.Nonnull;
+import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 public class MessageTsunami {
-    private static final int CYCLES = 99999;
+    private static final int CYCLES = 99999999;
     public static void main(String[] args) throws InterruptedException {
 
 
-        String dispatcher_1 = "CruncherThread-1"; int threads_1 = 4;
-        String dispatcher_2 = "CruncherThread-2"; int threads_2 = 1;
+        String dispatcher_1 = "CruncherThread-1"; int threads_1 = 1;
+        String dispatcher_2 = "CruncherThread-2"; int threads_2 = 4;
         int workersNum = 3;
 
         ReActorSystem crunchingSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
@@ -49,7 +54,7 @@ public class MessageTsunami {
                                                                                                                   .setDispatcherName(dispatcher_2)
                                                                                                                   .setDispatcherThreadsNum(threads_2)
                                                                                                                   .build())
-                                                                             .setExpectedReActorsNum(50)
+                                                                             .setExpectedReActorsNum(20)
                                                                              .setReactorSystemName("MessageCrunchingSystem")
                                                                              .build()).initReActorSystem();
 
@@ -57,8 +62,9 @@ public class MessageTsunami {
 
         ReActorRef cruncher_service = crunchingSystem.spawnService(ServiceConfig.newBuilder()
                                                                                 .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
-                                                                                                                             .setBackpressuringThreshold(30000)
-                                                                                                                             //.setRealMbox(new FastUnboundedMbox())
+                                                                                                                             .setAvailableOnStartup(10)
+                                                                                                                             .setBackpressuringThreshold(20)
+                                                                                                                             .setRealMbox(new FastUnboundedMbox())
                                                                                                                              .setRealMailboxOwner(ctx)
                                                                                                                              .build())
                                                                                 .setRouteeProvider(() -> new CrunchingWorker(dispatcher_2, "worker", CYCLES))
@@ -78,13 +84,11 @@ public class MessageTsunami {
 
         TimeUnit.SECONDS.sleep(5);
 
-        //cruncher_service.tell("BANANA");
-
-        TimeUnit.SECONDS.sleep(5);
-
         IntStream.range(0, workersNum)
                  .forEach(iter -> cruncher_service.tell(new BenchmarkingUtils.StopCrunching()));
-        //crunchingSystem.shutDown();
+        TimeUnit.SECONDS.sleep(5);
+
+        crunchingSystem.shutDown();
     }
 
     private static class CrunchingWorker implements ReActor {
@@ -97,13 +101,21 @@ public class MessageTsunami {
 
         private CrunchingWorker(String dispatcher, String name, int iterations) {
             this.cfg = ReActorConfig.newBuilder()
-                                    .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
-                                                                                 .setBackpressuringThreshold(30000)
-                                                                                 .setRealMbox(new FastUnboundedMbox())
-                                                                                 .setRealMailboxOwner(ctx)
-                                                                                 .setNonDelayable(BenchmarkingUtils.DiagnosticRequest.class,
-                                                                                                  ReActorInit.class)
-                                                                                 .build())
+                                    .setMailBoxProvider(ctx -> new PriorityMailbox(new Comparator<Message>() {
+                                        @Override
+                                        public int compare(Message o1, Message o2) {
+                                            Class<? extends Serializable> p1 = o1.getPayload().getClass();
+                                            Class<? extends Serializable> p2 = o2.getPayload().getClass();
+                                            if (p1 == p2) { return 0; }
+                                            if (p1 == BenchmarkingUtils.DiagnosticRequest.class) {
+                                                return -1;
+                                            }
+                                            if (p2 == BenchmarkingUtils.DiagnosticRequest.class) {
+                                                return 1;
+                                            }
+                                            return 0;
+                                        }
+                                    }))
                                     .setReActorName(name)
                                     .setDispatcherName(dispatcher)
                                     .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(BenchmarkingUtils.DiagnosticRequest.class),

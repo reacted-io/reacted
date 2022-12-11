@@ -74,7 +74,7 @@ public class BenchmarkingUtils {
     static Runnable backpressureAwareMessageSender(long messageNum, ReActorRef destination,
                                                    Supplier<? extends Serializable> payloadProducer) {
         Runnable sender = UnChecked.runnable(() -> {
-            long baseNanosDelay = 1_000_000;
+            long baseNanosDelay = 100;
             long delay = baseNanosDelay;
             for (int msg = 0; msg < messageNum; msg++) {
                 DeliveryStatus status = destination.tell(payloadProducer.get());
