@@ -74,41 +74,20 @@ public class MessageTsunami {
                                                                                 .build()).orElseSneakyThrow();
         TimeUnit.SECONDS.sleep(2);
 
-
-        ExecutorService exec_1 = Executors.newSingleThreadExecutor();
-        ExecutorService exec_2 = Executors.newSingleThreadExecutor();
-        ExecutorService exec_3 = Executors.newSingleThreadExecutor();
-
         Instant start = Instant.now();
-        List.of(exec_1.submit(UnChecked.runnable(() -> runTest(start, cruncher_service))),
-                exec_2.submit(UnChecked.runnable(() -> runTest(start, cruncher_service))),
-                exec_3.submit(UnChecked.runnable(() -> runTest(start, cruncher_service))))
-               .forEach(fut -> Try.of(() -> fut.get())
-                                  .ifError(Throwable::printStackTrace));
+        List.of(StatisticsCollector.initAsyncMessageProducer(StatisticsCollector.backpressureAwareMessageSender(start, CYCLES, cruncher_service)),
+                StatisticsCollector.initAsyncMessageProducer(StatisticsCollector.backpressureAwareMessageSender(start, CYCLES, cruncher_service)),
+                StatisticsCollector.initAsyncMessageProducer(StatisticsCollector.backpressureAwareMessageSender(start, CYCLES, cruncher_service)))
+            .forEach(fut -> Try.of(fut::get).ifError(Throwable::printStackTrace));
+
         System.err.println("Completed in " + ChronoUnit.SECONDS.between(start, Instant.now()));
+
+
         TimeUnit.SECONDS.sleep(1);
+
         StatisticsCollector.requestsLatenciesFromWorkers(crunchingSystem);
 
         //crunchingSystem.shutDown();
-    }
-
-    private static void runTest(Instant start, ReActorRef cruncher_1) throws InterruptedException {
-        long baseNanosDelay = 1_000_000;
-        long delay = baseNanosDelay;
-        for(int msg = 0; msg < CYCLES; msg++) {
-            DeliveryStatus status = cruncher_1.tell(System.nanoTime());
-            if (status.isNotDelivered()) {
-                System.err.println("FAILED DELIVERY? ");
-                System.exit(3);
-            }
-            if (status.isBackpressureRequired()) {
-                TimeUnit.NANOSECONDS.sleep(delay);
-                delay = delay + (delay / 3);
-            } else {
-                delay = Math.max( (delay / 3) << 1, baseNanosDelay);
-            }
-        }
-        System.err.println("Sent in " + ChronoUnit.SECONDS.between(start, Instant.now()));
     }
 
     private static class CrunchingWorker implements ReActor {
@@ -143,7 +122,8 @@ public class MessageTsunami {
 
         private void onDiagnosticRequest(ReActorContext reActorContext, StatisticsCollector.DiagnosticRequest payloadT) {
             reActorContext.getReActorSystem()
-                          .broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF, new StatisticsCollector.RPISnapshot(getCounted()));
+                          .broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF,
+                                                       new StatisticsCollector.RPISnapshot(getCounted()));
         }
 
         public synchronized long[] getLatencies() {

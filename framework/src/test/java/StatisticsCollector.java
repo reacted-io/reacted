@@ -1,3 +1,4 @@
+import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
@@ -5,15 +6,25 @@ import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.flow.ReActedGraph;
 import io.reacted.flow.operators.map.MapOperatorConfig;
 import io.reacted.flow.operators.reduce.ReduceOperatorConfig;
+import io.reacted.patterns.UnChecked;
+import org.apache.commons.lang3.function.TriFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public class StatisticsCollector {
@@ -23,6 +34,40 @@ public class StatisticsCollector {
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsCollector.class);
     private StatisticsCollector() { throw new AssertionError("Never supposed to be called"); }
 
+    static Future<?> initAsyncMessageProducer(Runnable messageGenerator) {
+        return initAsyncMessageProducer(messageGenerator, ForkJoinPool.commonPool());
+    }
+
+    static Future<?> initAsyncMessageProducer(Runnable messageGenerator, ExecutorService executor) {
+        return executor.submit(messageGenerator);
+    }
+    static Runnable backpressureAwareMessageSender(Instant startTime, long messageNum,
+                                                   ReActorRef destination) {
+        return backpressureAwareMessageSender(startTime, messageNum, destination, System::nanoTime);
+    }
+    static Runnable backpressureAwareMessageSender(Instant startTime, long messageNum,
+                                                   ReActorRef destination,
+                                                   Supplier<? extends Serializable> payloadProducer) {
+        Runnable sender = UnChecked.runnable(() -> {
+            long baseNanosDelay = 1_000_000;
+            long delay = baseNanosDelay;
+            for (int msg = 0; msg < messageNum; msg++) {
+                DeliveryStatus status = destination.tell(payloadProducer.get());
+                if (status.isNotDelivered()) {
+                    LOGGER.error("CRITIC! FAILED DELIVERY!?");
+                    System.exit(3);
+                }
+                if (status.isBackpressureRequired()) {
+                    TimeUnit.NANOSECONDS.sleep(delay);
+                    delay = delay + (delay / 3);
+                } else {
+                    delay = Math.max((delay / 3) << 1, baseNanosDelay);
+                }
+            }
+            LOGGER.info("Sent in {}", ChronoUnit.SECONDS.between(startTime, Instant.now()));
+        });
+        return sender;
+    }
     static void requestsLatenciesFromWorkers(ReActorSystem reActorSystem) {
         reActorSystem.broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF, new StopCrunching());
     }
