@@ -53,7 +53,7 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 public class MessageTsunami {
-    private static final int CYCLES = 17_000_000;
+    private static final int CYCLES = 33_333_333;
     public static void main(String[] args) throws InterruptedException {
 
 
@@ -93,8 +93,7 @@ public class MessageTsunami {
                                                          List<LatenciesSnapshot> rps = (List<LatenciesSnapshot>)payloadsByType.get(LatenciesSnapshot.class);
                                                          return getLatenciesForPercentiles(rps.stream()
                                                                                               .map(snap -> snap.latencies)
-                                                                                              .map(l -> (LongStream)Arrays.stream(l))
-                                                                                              .flatMapToLong(la -> la)
+                                                                                              .flatMapToLong(Arrays::stream)
                                                                                               .sorted()
                                                                                               .toArray());
                                                      })
@@ -193,7 +192,7 @@ public class MessageTsunami {
             }
             if (status.isBackpressureRequired()) {
                 TimeUnit.NANOSECONDS.sleep(delay);
-                delay = delay << 1;
+                delay = delay + (delay / 3);
             } else {
                 delay = Math.max( (delay / 3) << 1, baseNanosDelay);
             }
@@ -210,6 +209,7 @@ public class MessageTsunami {
         private final ReActions reActions;
         private int counted = 0;
         private long[] latencies;
+        private volatile int marker;
 
         private Cruncher(String dispatcher, String name, int iterations) {
             this.cfg = ReActorConfig.newBuilder()
@@ -252,10 +252,18 @@ public class MessageTsunami {
             reActorContext.stop();
         }
         private void onPayload(ReActorContext ctx, Long payLoad) {
+            if (marker != 0) {
+                System.err.println("CRITIC!");
+            }
+            marker = 1;
             int pos = counter.getPlain();
             latencies[pos] = System.nanoTime() - payLoad;
             counter.setPlain(pos + 1);
             ctx.getMbox().request(1);
+            if (marker != 1) {
+                System.err.println("CRITIC!");
+            }
+            marker = 0;
         }
 
         @Nonnull
