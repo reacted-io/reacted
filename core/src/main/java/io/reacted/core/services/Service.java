@@ -232,6 +232,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
                             BiFunction<ReActorContext, PayloadT, DeliveryStatus> realCall) {
         if (realCall.apply(raCtx, payload).isNotSent()) {
             raCtx.getReActorSystem().toDeadLetters(raCtx.getSender(), payload);
+            raCtx.logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER, raCtx.getSelf().getReActorId().getReActorName());
         }
         raCtx.getMbox().request(1);
     }

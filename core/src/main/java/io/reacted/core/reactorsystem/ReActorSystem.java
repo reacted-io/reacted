@@ -844,9 +844,8 @@ public class ReActorSystem {
     }
 
     private void stopFanOutPool() {
-        if (msgFanOutPool != null) {
+        if (msgFanOutPool != ForkJoinPool.commonPool()) {
             msgFanOutPool.shutdownNow();
-            this.msgFanOutPool = null;
         }
     }
 
