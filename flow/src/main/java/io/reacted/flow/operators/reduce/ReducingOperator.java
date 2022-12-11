@@ -39,7 +39,7 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
 
     @Override
     protected CompletionStage<Collection<? extends Serializable>>
-    onNext(Serializable input, ReActorContext raCtx) {
+    onNext(Serializable input, ReActorContext ctx) {
         Collection<? extends Serializable> result = List.of();
         Class<? extends Serializable> inputType = input.getClass();
         if (storage.containsKey(inputType)) {

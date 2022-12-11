@@ -37,7 +37,7 @@ class PingReActor implements ReActor {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
                         .reAct(Pong.class, this::onPong)
-                        .reAct((raCtx, payload) -> {
+                        .reAct((ctx, payload) -> {
                         })
                         .build();
     }
@@ -53,13 +53,13 @@ class PingReActor implements ReActor {
                             .build();
     }
 
-    private void onInit(ReActorContext raCtx, ReActorInit init) {
-        sendPing(raCtx.getSelf(), pingSent++);
+    private void onInit(ReActorContext ctx, ReActorInit init) {
+        sendPing(ctx.getSelf(), pingSent++);
     }
 
-    private void onPong(ReActorContext raCtx, Pong pong) {
+    private void onPong(ReActorContext ctx, Pong pong) {
         System.out.printf("Ping sent %d Pong received %d%n", pingSent, pongReceived++);
-        sendPing(raCtx.getSelf(), pingSent++);
+        sendPing(ctx.getSelf(), pingSent++);
     }
 
     private void sendPing(ReActorRef sender, int pingSeq) {

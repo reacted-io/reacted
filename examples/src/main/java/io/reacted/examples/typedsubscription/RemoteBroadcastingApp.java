@@ -53,7 +53,7 @@ public class RemoteBroadcastingApp {
 
         subscriberSystem.spawn(ReActions.newBuilder()
                                         .reAct(Update.class,
-                                               (raCtx, update) -> raCtx.logInfo("Received {}",
+                                               (ctx, update) -> ctx.logInfo("Received {}",
                                                                                 update.getClass().getSimpleName()))
                                         .build(),
                                ReActorConfig.newBuilder()

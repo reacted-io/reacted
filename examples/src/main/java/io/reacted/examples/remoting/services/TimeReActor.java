@@ -42,29 +42,29 @@ public class TimeReActor implements ReActor {
                         .build();
     }
 
-    private void onInit(ReActorContext raCtx, ReActorInit init) {
-        if (!raCtx.getReActorSystem()
+    private void onInit(ReActorContext ctx, ReActorInit init) {
+        if (!ctx.getReActorSystem()
                             .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                .setServiceName(serviceToQuery)
                                                                                .setSelectionType(SelectionType.DIRECT)
-                                                                               .build(), raCtx.getSelf()).isDelivered()) {
-            raCtx.logError("Error discovering service");
+                                                                               .build(), ctx.getSelf()).isDelivered()) {
+            ctx.logError("Error discovering service");
         }
     }
 
-    private void onServiceDiscoveryReply(ReActorContext raCtx, ServiceDiscoveryReply serviceDiscoveryReply) {
+    private void onServiceDiscoveryReply(ReActorContext ctx, ServiceDiscoveryReply serviceDiscoveryReply) {
         var gate = serviceDiscoveryReply.getServiceGates().stream()
                                         .findAny();
-        gate.ifPresentOrElse(serviceGate -> serviceGate.publish(raCtx.getSelf(), new TimeRequest()),
-                             () -> raCtx.logError("No service discovery response received"));
+        gate.ifPresentOrElse(serviceGate -> serviceGate.publish(ctx.getSelf(), new TimeRequest()),
+                             () -> ctx.logError("No service discovery response received"));
     }
 
-    private void onServiceResponse(ReActorContext raCtx, ZonedDateTime time) {
-        raCtx.logInfo("Received {} response from service: {}", ++received, time.toString());
+    private void onServiceResponse(ReActorContext ctx, ZonedDateTime time) {
+        ctx.logInfo("Received {} response from service: {}", ++received, time.toString());
     }
 
-    private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        raCtx.logInfo("{} is exiting", raCtx.getSelf().getReActorId().getReActorName());
+    private void onStop(ReActorContext ctx, ReActorStop stop) {
+        ctx.logInfo("{} is exiting", ctx.getSelf().getReActorId().getReActorName());
     }
 
     @Nonnull

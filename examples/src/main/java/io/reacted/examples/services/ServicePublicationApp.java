@@ -114,9 +114,9 @@ public class ServicePublicationApp {
                      .thenAccept(dummyReturn -> reActorSystem.shutDown());
     }
 
-    private static void onTimeRequest(ReActorContext raCtx, TimeRequest timeRequest) {
-        raCtx.logInfo("{} received {}", raCtx.getSelf().getReActorId().getReActorName(),
+    private static void onTimeRequest(ReActorContext ctx, TimeRequest timeRequest) {
+        ctx.logInfo("{} received {}", ctx.getSelf().getReActorId().getReActorName(),
                       timeRequest.getClass().getSimpleName());
-        raCtx.reply(ReActorRef.NO_REACTOR_REF, ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+        ctx.reply(ReActorRef.NO_REACTOR_REF, ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
     }
 }

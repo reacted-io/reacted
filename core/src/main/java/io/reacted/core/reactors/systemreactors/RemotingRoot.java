@@ -68,104 +68,104 @@ public class RemotingRoot {
                         .build();
     }
 
-    private static void onDuplicatedPublicationError(ReActorContext raCtx,
+    private static void onDuplicatedPublicationError(ReActorContext ctx,
                                                      DuplicatedPublicationError duplicatedPublicationError) {
-        raCtx.logError("CRITIC! Duplicated ReActor System detected. ReActorSystem names must be unique within" +
+        ctx.logError("CRITIC! Duplicated ReActor System detected. ReActorSystem names must be unique within" +
                        " a cluster. Shutting down reporting driver: {}",
-                       raCtx.getSender().getReActorId().getReActorName());
-        raCtx.getReActorSystem().stop(raCtx.getSender().getReActorId());
+                       ctx.getSender().getReActorId().getReActorName());
+        ctx.getReActorSystem().stop(ctx.getSender().getReActorId());
     }
     @SuppressWarnings("EmptyMethod")
-    private static void onStop(ReActorContext raCtx, ReActorStop stop) { /* Nothing to do */ }
+    private static void onStop(ReActorContext ctx, ReActorStop stop) { /* Nothing to do */ }
 
-    private static void onCancelService(ReActorContext raCtx,
+    private static void onCancelService(ReActorContext ctx,
                                         ServiceCancellationRequest serviceCancellationRequest) {
-        raCtx.getChildren().forEach(serviceRegistryDriver -> serviceRegistryDriver.publish(raCtx.getSelf(),
+        ctx.getChildren().forEach(serviceRegistryDriver -> serviceRegistryDriver.publish(ctx.getSelf(),
                                                                                            serviceCancellationRequest));
     }
 
-    private static void onPublishService(ReActorContext raCtx, ServicePublicationRequest publishService) {
-        if (raCtx.getChildren().isEmpty()) {
-             if (!raCtx.reply(new ServiceRegistryNotAvailable()).isSent()) {
-                 raCtx.logError("Unable to make a service discoverable {}",
+    private static void onPublishService(ReActorContext ctx, ServicePublicationRequest publishService) {
+        if (ctx.getChildren().isEmpty()) {
+             if (!ctx.reply(new ServiceRegistryNotAvailable()).isSent()) {
+                 ctx.logError("Unable to make a service discoverable {}",
                                 publishService.getServiceProperties());
              }
              return;
         }
 
-        raCtx.getChildren().stream()
-             .map(registryDriver -> registryDriver.publish(raCtx.getSelf(), publishService))
+        ctx.getChildren().stream()
+             .map(registryDriver -> registryDriver.publish(ctx.getSelf(), publishService))
              .filter(Predicate.not(DeliveryStatus::isSent))
-             .forEach(registryDriver -> raCtx.logError("Unable to deliver service publication request {}",
+             .forEach(registryDriver -> ctx.logError("Unable to deliver service publication request {}",
                                                        publishService.getServiceProperties()));
     }
 
-    private static void onInitComplete(ReActorContext raCtx,
+    private static void onInitComplete(ReActorContext ctx,
                                        RegistryDriverInitComplete initComplete) {
-        raCtx.reply(new SynchronizationWithServiceRegistryRequest());
+        ctx.reply(new SynchronizationWithServiceRegistryRequest());
     }
 
-    private static void onSpuriousMessage(ReActorContext raCtx, Serializable payload) {
-        raCtx.logError("Spurious message received", new IllegalStateException(payload.toString()));
+    private static void onSpuriousMessage(ReActorContext ctx, Serializable payload) {
+        ctx.logError("Spurious message received", new IllegalStateException(payload.toString()));
     }
 
-    private void onSubscriptionComplete(ReActorContext raCtx,
+    private void onSubscriptionComplete(ReActorContext ctx,
                                         SynchronizationWithServiceRegistryComplete subCompleted) {
         remotingDrivers.stream()
                        .map(remotingDriver -> new ReActorSystemChannelIdPublicationRequest(localReActorSystem,
                                                                                            remotingDriver.getChannelId(),
                                                                                            remotingDriver.getChannelProperties()))
-                       .map(raCtx::reply)
+                       .map(ctx::reply)
                        .filter(Predicate.not(DeliveryStatus::isSent))
-                       .forEach(pubRequest -> raCtx.logError("Unable to publish channel"));
+                       .forEach(pubRequest -> ctx.logError("Unable to publish channel"));
     }
 
-    private static void onRegistryServicePublicationFailure(ReActorContext raCtx,
+    private static void onRegistryServicePublicationFailure(ReActorContext ctx,
                                                             RegistryServicePublicationFailed failure) {
-        raCtx.logError("Error publishing service {}", failure.getServiceName(), failure.getPublicationError());
+        ctx.logError("Error publishing service {}", failure.getServiceName(), failure.getPublicationError());
     }
 
-    private void onRegistryGateUpsert(ReActorContext raCtx, RegistryGateUpserted upsert) {
+    private void onRegistryGateUpsert(ReActorContext ctx, RegistryGateUpserted upsert) {
         //skip self notifications
-        if (!raCtx.getReActorSystem().getLocalReActorSystemId().equals(upsert.getReActorSystemId())) {
-            raCtx.logInfo("Gate added in {} : {} -> {}", raCtx.getReActorSystem().getLocalReActorSystemId()
+        if (!ctx.getReActorSystem().getLocalReActorSystemId().equals(upsert.getReActorSystemId())) {
+            ctx.logInfo("Gate added in {} : {} -> {}", ctx.getReActorSystem().getLocalReActorSystemId()
                                                             .getReActorSystemName(),
                           upsert.getChannelId().toString(), upsert.getReActorSystemId().getReActorSystemName());
-            raCtx.getReActorSystem().unregisterRoute(upsert.getReActorSystemId(), upsert.getChannelId());
-            raCtx.getReActorSystem().registerNewRoute(upsert.getReActorSystemId(), upsert.getChannelId(),
-                                                      upsert.getChannelData(), raCtx.getSender());
+            ctx.getReActorSystem().unregisterRoute(upsert.getReActorSystemId(), upsert.getChannelId());
+            ctx.getReActorSystem().registerNewRoute(upsert.getReActorSystemId(), upsert.getChannelId(),
+                                                      upsert.getChannelData(), ctx.getSender());
         }
     }
 
-    private void onRegistryConnectionLost(ReActorContext raCtx, RegistryConnectionLost connectionLost) {
-        raCtx.getReActorSystem().flushRemoteGatesForDriver(raCtx.getSender());
+    private void onRegistryConnectionLost(ReActorContext ctx, RegistryConnectionLost connectionLost) {
+        ctx.getReActorSystem().flushRemoteGatesForDriver(ctx.getSender());
     }
 
-    private void onRegistryGateRemoval(ReActorContext raCtx, RegistryGateRemoved removed) {
-        if (raCtx.getReActorSystem().getLocalReActorSystemId().equals(removed.getReActorSystem())) {
+    private void onRegistryGateRemoval(ReActorContext ctx, RegistryGateRemoved removed) {
+        if (ctx.getReActorSystem().getLocalReActorSystemId().equals(removed.getReActorSystem())) {
             //if for any reason we got removed from remove service registry, refresh subscription
-            raCtx.getSelf().publish(raCtx.getSender(), new SynchronizationWithServiceRegistryComplete());
+            ctx.getSelf().publish(ctx.getSender(), new SynchronizationWithServiceRegistryComplete());
             return;
         }
-        raCtx.logInfo("Gate removed in {} : {} -> {}",
-                      raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
+        ctx.logInfo("Gate removed in {} : {} -> {}",
+                      ctx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(),
                       removed.getChannelId().toString(), removed.getReActorSystem().getReActorSystemName());
-        raCtx.getReActorSystem().unregisterRoute(removed.getReActorSystem(), removed.getChannelId());
+        ctx.getReActorSystem().unregisterRoute(removed.getReActorSystem(), removed.getChannelId());
     }
 
-    private static void onFilterServiceDiscoveryRequest(ReActorContext raCtx,
+    private static void onFilterServiceDiscoveryRequest(ReActorContext ctx,
                                                         FilterServiceDiscoveryRequest filterThis) {
         var foundServices = filterThis.getServiceDiscoveryResult().stream()
                   .flatMap(filterItem -> ReActorSystem.getRoutedReference(filterItem.serviceGate(),
-                                                                          raCtx.getReActorSystem()).stream()
+                                                                          ctx.getReActorSystem()).stream()
                                                       .map(routedGate -> new FilterItem(routedGate,
                                                                                         filterItem.serviceProperties())))
                   .filter(filterItem -> filterThis.getFilteringRuleToApply().matches(filterItem.serviceProperties(),
                                                                                      filterItem.serviceGate()))
                   .map(FilterItem::serviceGate)
                   .collect(Collectors.toUnmodifiableSet());
-        if (!raCtx.reply(new ServiceDiscoveryReply(foundServices)).isSent()) {
-            raCtx.logError("Unable to answer with a {}",
+        if (!ctx.reply(new ServiceDiscoveryReply(foundServices)).isSent()) {
+            ctx.logError("Unable to answer with a {}",
                            ServiceDiscoveryReply.class.getSimpleName());
         }
     }

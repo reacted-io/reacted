@@ -68,28 +68,28 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
                             .build();
     }
 
-    private void onInit(ReActorContext raCtx, ReActorInit init) {
-        if (!target.publish(raCtx.getSelf(), request).isSent()) {
-            raCtx.stop()
+    private void onInit(ReActorContext ctx, ReActorInit init) {
+        if (!target.publish(ctx.getSelf(), request).isSent()) {
+            ctx.stop()
                  .thenAccept(noVal -> completionTrigger.completeExceptionally(new DeliveryException()));
         } else {
-            raCtx.getReActorSystem()
+            ctx.getReActorSystem()
                  .getSystemSchedulingService()
-                 .schedule(() -> raCtx.stop()
+                 .schedule(() -> ctx.stop()
                                       .thenAccept(noVal -> completionTrigger.completeExceptionally(new TimeoutException())),
                            askTimeout.toMillis(), TimeUnit.MILLISECONDS);
         }
     }
 
-    private void onExpectedReply(ReActorContext raCtx, ReplyT reply) {
-        raCtx.stop()
+    private void onExpectedReply(ReActorContext ctx, ReplyT reply) {
+        ctx.stop()
              .thenAccept(noVal -> completionTrigger.complete(reply));
     }
-    private void onUnexpected(ReActorContext raCtx, Serializable anyType) {
+    private void onUnexpected(ReActorContext ctx, Serializable anyType) {
         var failure = new IllegalArgumentException(String.format("Received %s instead of %s",
                                                                  anyType.getClass().getName(),
                                                                  expectedReplyType.getName()));
-        raCtx.stop()
+        ctx.stop()
              .thenAccept(noVal -> completionTrigger.completeExceptionally(failure));
     }
 }

@@ -49,10 +49,10 @@ class SimpleTestReActor implements ReActor {
                         .build();
     }
 
-    private void onPing(ReActorContext raCtx, String ping) {
-        Try.ofRunnable(() -> raCtx.logInfo("Received ping {} on dispatcher {}", ping.split(splitter)[1].trim(),
+    private void onPing(ReActorContext ctx, String ping) {
+        Try.ofRunnable(() -> ctx.logInfo("Received ping {} on dispatcher {}", ping.split(splitter)[1].trim(),
                                                Thread.currentThread().getName()))
-           .ifError(error -> raCtx.logError("Illegal ping format received", error));
+           .ifError(error -> ctx.logError("Illegal ping format received", error));
         receivedPings++;
     }
 

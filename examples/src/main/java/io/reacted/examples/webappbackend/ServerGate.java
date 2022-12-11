@@ -48,8 +48,8 @@ public class ServerGate implements ReActor, HttpHandler {
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, (raCtx, init) -> onGateInit(raCtx))
-                        .reAct(ReActorStop.class, (raCtx, stop) -> server.stop(0))
+                        .reAct(ReActorInit.class, (ctx, init) -> onGateInit(ctx))
+                        .reAct(ReActorStop.class, (ctx, stop) -> server.stop(0))
                         .reAct(SpawnPostHandler.class, this::spawnPostHandler)
                         .reAct(SpawnGetHandler.class, this::spawnGetHandler)
                         .reAct(SpawnUnknownHandler.class, ServerGate::spawnUnknownHandler)
@@ -74,8 +74,8 @@ public class ServerGate implements ReActor, HttpHandler {
                             ? new SpawnPostHandler(requestId)
                             : new SpawnUnknownHandler(requestId));
     }
-    private void onGateInit(ReActorContext raCtx) {
-        this.thisCtx = raCtx;
+    private void onGateInit(ReActorContext ctx) {
+        this.thisCtx = ctx;
         server.createContext(WRITE_PREDICATE_PATH, this);
         server.createContext(READ_PREDICATE_PATH, this);
         server.setExecutor(serverExecutor);
@@ -87,21 +87,21 @@ public class ServerGate implements ReActor, HttpHandler {
        On replay, this ServerGate reactor regardless if a http request arrives or not will receive a spawn request,
        triggering the handling using the saved logs and initializing the flow
      */
-    private void spawnPostHandler(ReActorContext raCtx, SpawnPostHandler spawnRequest) {
-        raCtx.spawnChild(new Post(this.requestIdToHttpExchange.remove(spawnRequest.requestId),
+    private void spawnPostHandler(ReActorContext ctx, SpawnPostHandler spawnRequest) {
+        ctx.spawnChild(new Post(this.requestIdToHttpExchange.remove(spawnRequest.requestId),
                                   spawnRequest.requestId, asyncService))
-               .ifError(error -> raCtx.logError("Unable to spawn child reactor for request [{}]",
+               .ifError(error -> ctx.logError("Unable to spawn child reactor for request [{}]",
                                                 spawnRequest.requestId, error));
     }
 
-    private void spawnGetHandler(ReActorContext raCtx, SpawnGetHandler spawnRequest) {
-        raCtx.spawnChild(new Get(this.requestIdToHttpExchange.remove(spawnRequest.getRequestId()),
+    private void spawnGetHandler(ReActorContext ctx, SpawnGetHandler spawnRequest) {
+        ctx.spawnChild(new Get(this.requestIdToHttpExchange.remove(spawnRequest.getRequestId()),
                                  spawnRequest.getRequestId(), asyncService))
-               .ifError(error -> raCtx.logError("Unable to spawn child reactor for request [{}]",
+               .ifError(error -> ctx.logError("Unable to spawn child reactor for request [{}]",
                                                 spawnRequest.getRequestId(), error));
     }
-    private static void spawnUnknownHandler(ReActorContext raCtx, SpawnUnknownHandler spawnUnknownRequest) {
-        raCtx.logError("Unknown request type received: ", spawnUnknownRequest.getRequestId());
+    private static void spawnUnknownHandler(ReActorContext ctx, SpawnUnknownHandler spawnUnknownRequest) {
+        ctx.logError("Unknown request type received: ", spawnUnknownRequest.getRequestId());
     }
 
     private static class SpawnPostHandler implements Serializable {

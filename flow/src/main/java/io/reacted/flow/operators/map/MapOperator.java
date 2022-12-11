@@ -32,7 +32,7 @@ public class MapOperator extends FlowOperator<Builder, MapOperatorConfig> {
 
     @Override
     protected CompletionStage<Collection<? extends Serializable>>
-    onNext(Serializable input, ReActorContext raCtx) {
+    onNext(Serializable input, ReActorContext ctx) {
         return CompletableFuture.completedStage(mappingFunction.apply(input));
     }
 }

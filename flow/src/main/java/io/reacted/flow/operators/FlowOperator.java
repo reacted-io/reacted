@@ -62,7 +62,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
         this.ifPredicateOutputOperatorsRefs = List.of();
         this.thenElseOutputOperatorsRefs = List.of();
         this.operatorReactions = ReActions.newBuilder()
-                                          .reAct(RefreshOperatorRequest.class, (raCtx, payload) -> onRefreshOperatorRequest(raCtx))
+                                          .reAct(RefreshOperatorRequest.class, (ctx, payload) -> onRefreshOperatorRequest(ctx))
                                           .reAct(ReActorInit.class, this::onInit)
                                           .reAct(ReActorStop.class, this::onStop)
                                           .reAct(OperatorOutputGatesUpdate.class, this::onServiceGatesUpdate)
@@ -86,13 +86,13 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
         return localReActorSystem.spawnService(config);
     }
     protected abstract CompletionStage<Collection<? extends Serializable>>
-    onNext(Serializable input, ReActorContext raCtx);
-    protected void onLinkError(Throwable error, ReActorContext raCtx, Serializable input) {
-        raCtx.logError("Unable to pass {} to the next stage", input, error);
+    onNext(Serializable input, ReActorContext ctx);
+    protected void onLinkError(Throwable error, ReActorContext ctx, Serializable input) {
+        ctx.logError("Unable to pass {} to the next stage", input, error);
     }
     @SuppressWarnings("EmptyMethod")
-    protected void onInit(ReActorContext raCtx, ReActorInit init) {
-        BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
+    protected void onInit(ReActorContext ctx, ReActorInit init) {
+        BackpressuringMbox.toBackpressuringMailbox(ctx.getMbox())
                           .map(mbox -> mbox.addNonDelayableTypes(Set.of(RefreshOperatorRequest.class,
                                                                         OperatorOutputGatesUpdate.class)))
                           /* If this init is not delayed, an slot of the backpressuring buffer size
@@ -102,76 +102,76 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                           .filter(mbox -> mbox.isDelayable(ReActorInit.class))
                           .ifPresent(mbox -> mbox.request(1));
         // Constantly refresh the gates. The idea is to automatically discover new available operators
-        this.operatorsRefreshTask = raCtx.getReActorSystem()
+        this.operatorsRefreshTask = ctx.getReActorSystem()
             .getSystemSchedulingService()
             .scheduleWithFixedDelay(() -> {
-                if (!raCtx.selfPublish(new RefreshOperatorRequest()).isSent()) {
-                    raCtx.logError("Unable to request refresh of operator outputs");
+                if (!ctx.selfPublish(new RefreshOperatorRequest()).isSent()) {
+                    ctx.logError("Unable to request refresh of operator outputs");
                 }},
                                     0, operatorCfg.getOutputOperatorsRefreshPeriod()
                                                   .toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    protected void onServiceGatesUpdate(ReActorContext raCtx, OperatorOutputGatesUpdate newGates) {
+    protected void onServiceGatesUpdate(ReActorContext ctx, OperatorOutputGatesUpdate newGates) {
         this.ifPredicateOutputOperatorsRefs = newGates.ifPredicateServices;
         this.thenElseOutputOperatorsRefs = newGates.thenElseServices;
         if (isShallAwakeInputStreams()) {
             this.shallAwakeInputStreams = false;
-            broadcastOperatorInitializationComplete(raCtx);
+            broadcastOperatorInitializationComplete(ctx);
         }
     }
-    protected void broadcastOperatorInitializationComplete(ReActorContext raCtx) {
-        raCtx.getReActorSystem()
-             .broadcastToLocalSubscribers(raCtx.getSelf(),
+    protected void broadcastOperatorInitializationComplete(ReActorContext ctx) {
+        ctx.getReActorSystem()
+             .broadcastToLocalSubscribers(ctx.getSelf(),
                                           new OperatorInitComplete(operatorCfg.getFlowName(),
                                                                    operatorCfg.getReActorName(),
-                                                                   raCtx.getSelf()
+                                                                   ctx.getSelf()
                                                                         .getReActorId()
                                                                         .getReActorName()));
     }
 
-    protected void onStop(ReActorContext raCtx, ReActorStop stop) {
+    protected void onStop(ReActorContext ctx, ReActorStop stop) {
         operatorsRefreshTask.cancel(true);
     }
 
-    protected void onRefreshOperatorRequest(ReActorContext raCtx) {
+    protected void onRefreshOperatorRequest(ReActorContext ctx) {
         var ifServices = ReActedUtils.resolveServices(operatorCfg.getIfPredicateOutputOperators(),
-                                                      raCtx.getReActorSystem(),
+                                                      ctx.getReActorSystem(),
                                                       GateSelectorPolicies.RANDOM_GATE,
-                                                      raCtx.getSelf().getReActorId().toString());
+                                                      ctx.getSelf().getReActorId().toString());
         var thenElseServices = ReActedUtils.resolveServices(operatorCfg.getThenElseOutputOperators(),
-                                                            raCtx.getReActorSystem(),
+                                                            ctx.getReActorSystem(),
                                                             GateSelectorPolicies.RANDOM_GATE,
-                                                            raCtx.getSelf().getReActorId().toString());
+                                                            ctx.getSelf().getReActorId().toString());
         ifServices.thenCombine(thenElseServices, OperatorOutputGatesUpdate::new)
                   .thenAccept(operatorOutputGatesUpdate -> {
                       if (isUpdateMatchingRequest(operatorCfg.getIfPredicateOutputOperators().size(),
                                                   operatorCfg.getThenElseOutputOperators().size(),
                                                   operatorOutputGatesUpdate)) {
-                          raCtx.selfPublish(operatorOutputGatesUpdate);
+                          ctx.selfPublish(operatorOutputGatesUpdate);
                       }
                   });
     }
 
-    private void onNext(ReActorContext raCtx, Serializable message) {
-        backpressuredPropagation(onNext(message, raCtx), message, raCtx);
+    private void onNext(ReActorContext ctx, Serializable message) {
+        backpressuredPropagation(onNext(message, ctx), message, ctx);
     }
 
     protected CompletionStage<Void> backpressuredPropagation(CompletionStage<Collection<? extends Serializable>> operatorOutput,
                                                              Serializable inputMessage,
-                                                             ReActorContext raCtx) {
-        return propagate(operatorOutput, inputMessage, raCtx)
-            .thenAccept(lastDelivery -> raCtx.getMbox().request(1));
+                                                             ReActorContext ctx) {
+        return propagate(operatorOutput, inputMessage, ctx)
+            .thenAccept(lastDelivery -> ctx.getMbox().request(1));
     }
 
     protected CompletionStage<DeliveryStatus>
     propagate(CompletionStage<Collection<? extends Serializable>> operatorOutput,
-              Serializable inputMessage, ReActorContext raCtx) {
-        Consumer<Throwable> onDeliveryError = error -> onFailedDelivery(error, raCtx, inputMessage);
+              Serializable inputMessage, ReActorContext ctx) {
+        Consumer<Throwable> onDeliveryError = error -> onFailedDelivery(error, ctx, inputMessage);
         return operatorOutput.thenCompose(messages -> routeOutputMessageAfterFiltering(messages).entrySet().stream()
                                                                                                 .map(msgToDst -> forwardToOperators(onDeliveryError,
                                                                                                                                     msgToDst.getValue(),
-                                                                                                                                    raCtx, msgToDst.getKey()))
+                                                                                                                                    ctx, msgToDst.getKey()))
                                                                                                 .reduce((first, second) -> ReActedUtils.composeDeliveries(first, second, onDeliveryError))
                                                                                                 .orElse(CompletableFuture.completedStage(DeliveryStatus.DELIVERED)));
     }
@@ -186,17 +186,17 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
     protected CompletionStage<DeliveryStatus>
     forwardToOperators(Consumer<Throwable> onDeliveryError,
                        Collection<? extends Serializable> messages,
-                       ReActorContext raCtx, Collection<ReActorRef> nextStages) {
+                       ReActorContext ctx, Collection<ReActorRef> nextStages) {
         return messages.stream()
                        .flatMap(output -> nextStages.stream()
-                                                    .map(dst -> dst.apublish(raCtx.getSelf(), output)))
+                                                    .map(dst -> dst.apublish(ctx.getSelf(), output)))
                        .reduce((first, second) -> composeDeliveries(first, second, onDeliveryError))
                        .orElseGet(() -> CompletableFuture.completedFuture(DeliveryStatus.DELIVERED));
     }
     @SuppressWarnings("SameReturnValue")
     protected  <InputT extends Serializable>
-    DeliveryStatus onFailedDelivery(Throwable error, ReActorContext raCtx, InputT message) {
-        onLinkError(error, raCtx, message);
+    DeliveryStatus onFailedDelivery(Throwable error, ReActorContext ctx, InputT message) {
+        onLinkError(error, ctx, message);
         return DeliveryStatus.NOT_DELIVERED;
     }
 

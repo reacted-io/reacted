@@ -33,11 +33,11 @@ final class GreeterService implements ReActor {
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class,
-                               (raCtx, init) ->
-                                       raCtx.logInfo("{} was born", raCtx.getSelf().getReActorId().getReActorName()))
+                               (ctx, init) ->
+                                       ctx.logInfo("{} was born", ctx.getSelf().getReActorId().getReActorName()))
                         .reAct(GreetingsRequest.class,
-                               (raCtx, greetingsRequest) ->
-                                       raCtx.reply("Hello from " + GreeterService.class.getSimpleName()))
+                               (ctx, greetingsRequest) ->
+                                       ctx.reply("Hello from " + GreeterService.class.getSimpleName()))
                         .build();
     }
     static final class GreetingsRequest implements Serializable { }

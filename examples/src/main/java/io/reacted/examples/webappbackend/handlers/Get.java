@@ -60,57 +60,57 @@ public class Get implements ReActor {
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, (raCtx, init) -> onInit(raCtx))
+                        .reAct(ReActorInit.class, (ctx, init) -> onInit(ctx))
                         .reAct(ProcessGet.class, this::onProcessGet)
                         .reAct(ServiceDiscoveryReply.class, this::onDbServiceDiscoveryReply)
                         .build();
     }
 
-    private void onInit(ReActorContext raCtx) {
+    private void onInit(ReActorContext ctx) {
         if (httpExchange != null) {
             CompletableFuture.runAsync(() -> Try.ofRunnable(() -> httpExchange.sendResponseHeaders(200, 0)), asyncService)
                              .toCompletableFuture()
-                             .thenAccept(noVal -> raCtx.selfPublish(new ProcessGet(httpExchange.getRequestURI()
+                             .thenAccept(noVal -> ctx.selfPublish(new ProcessGet(httpExchange.getRequestURI()
                                                                                                .toString())));
         }
         // start a request in parallel
-        raCtx.getReActorSystem()
+        ctx.getReActorSystem()
              .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                 .setServiceName(Backend.DB_SERVICE_NAME)
-                                                                .build(), raCtx.getSelf());
+                                                                .build(), ctx.getSelf());
     }
 
-    private void onProcessGet(ReActorContext raCtx, ProcessGet getRequest) {
+    private void onProcessGet(ReActorContext ctx, ProcessGet getRequest) {
         try {
             this.requestKey = extractGetFirstParameter(getRequest.getRequest);
             if (dbGate != null) {
-                retrieveEntry(raCtx, requestKey, dbGate);
+                retrieveEntry(ctx, requestKey, dbGate);
             }
         } catch (Exception anyParseException) {
             sendReplyMessage("Invalid request format");
-            raCtx.stop();
+            ctx.stop();
         }
     }
 
-    private void onDbServiceDiscoveryReply(ReActorContext raCtx, ServiceDiscoveryReply serviceDiscoveryReply) {
+    private void onDbServiceDiscoveryReply(ReActorContext ctx, ServiceDiscoveryReply serviceDiscoveryReply) {
         if (serviceDiscoveryReply.getServiceGates().isEmpty()) {
             /* No db to retrieve data from */
             sendReplyMessage("No database could be found");
-            raCtx.stop();
+            ctx.stop();
             return;
         }
         this.dbGate = serviceDiscoveryReply.getServiceGates().iterator().next();
         if (requestKey != null) {
-            retrieveEntry(raCtx, requestKey, dbGate);
+            retrieveEntry(ctx, requestKey, dbGate);
         }
     }
 
-    private void retrieveEntry(ReActorContext raCtx, String key, ReActorRef dbGate) {
-        dbGate.ask(new StorageMessages.QueryRequest(key), StorageMessages.QueryReply.class, raCtx.getSelf().getReActorId().toString())
+    private void retrieveEntry(ReActorContext ctx, String key, ReActorRef dbGate) {
+        dbGate.ask(new StorageMessages.QueryRequest(key), StorageMessages.QueryReply.class, ctx.getSelf().getReActorId().toString())
               .thenComposeAsync(queryReply -> sendReplyMessage(queryReply.payload()),
                                 asyncService)
-              .thenAccept(sendReturn -> { sendReturn.ifError(error -> raCtx.logError("Unable to send back reply", error));
-                                          raCtx.stop(); });
+              .thenAccept(sendReturn -> { sendReturn.ifError(error -> ctx.logError("Unable to send back reply", error));
+                                          ctx.stop(); });
     }
     private static String extractGetFirstParameter(String getRequest) {
         return getRequest.split("\\?")[1].split("=")[1];

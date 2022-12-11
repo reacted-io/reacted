@@ -47,17 +47,17 @@ public class SystemMonitor implements ReActiveEntity {
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, (raCtx, init) -> onInit(raCtx))
-                        .reAct(ReActorStop.class, (raCtx, stop) -> onStop())
+                        .reAct(ReActorInit.class, (ctx, init) -> onInit(ctx))
+                        .reAct(ReActorStop.class, (ctx, stop) -> onStop())
                         .reAct(ReActions::noReAction)
                         .build();
     }
 
-    private void onInit(ReActorContext raCtx) {
-        this.timer = Try.of(() -> timerService.scheduleAtFixedRate(() -> broadcastStatistics(raCtx),
+    private void onInit(ReActorContext ctx) {
+        this.timer = Try.of(() -> timerService.scheduleAtFixedRate(() -> broadcastStatistics(ctx),
                                                                    0, taskPeriod.toMillis(),
                                                                    TimeUnit.MILLISECONDS))
-                        .orElse(null, error -> initRetry(error, raCtx));
+                        .orElse(null, error -> initRetry(error, ctx));
     }
 
     private void onStop() {
@@ -66,12 +66,12 @@ public class SystemMonitor implements ReActiveEntity {
         }
     }
 
-    private void broadcastStatistics(ReActorContext raCtx) {
-        Try.ofRunnable(() -> raCtx.getReActorSystem()
+    private void broadcastStatistics(ReActorContext ctx) {
+        Try.ofRunnable(() -> ctx.getReActorSystem()
                                   .broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF,
                                                                getSystemStatistics(
                                                                    systemDataSource)))
-           .ifError(error -> raCtx.logError("Unable to broadcast statistics update", error));
+           .ifError(error -> ctx.logError("Unable to broadcast statistics update", error));
     }
 
     /*
@@ -84,9 +84,9 @@ public class SystemMonitor implements ReActiveEntity {
                                   .build();
     }
 
-    private static void initRetry(Throwable error, ReActorContext raCtx) {
-        raCtx.logError("Unable to init {} reattempting",
+    private static void initRetry(Throwable error, ReActorContext ctx) {
+        ctx.logError("Unable to init {} reattempting",
                        SystemMonitor.class.getSimpleName(), error);
-        raCtx.selfPublish(new ReActorInit());
+        ctx.selfPublish(new ReActorInit());
     }
 }

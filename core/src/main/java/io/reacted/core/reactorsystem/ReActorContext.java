@@ -43,7 +43,7 @@ import javax.annotation.Nullable;
 @NonNullByDefault
 public class ReActorContext {
     public static final ReActorContext NO_REACTOR_CTX = ReActorContext.newBuilder()
-                                                                      .setMbox(raCtx -> new NullMailbox())
+                                                                      .setMbox(ctx -> new NullMailbox())
                                                                       .setParentActor(ReActorRef.NO_REACTOR_REF)
                                                                       .setReactorRef(ReActorRef.NO_REACTOR_REF)
                                                                       .setReActions(ReActions.NO_REACTIONS)

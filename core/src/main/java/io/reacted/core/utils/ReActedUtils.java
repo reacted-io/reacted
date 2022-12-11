@@ -73,18 +73,18 @@ public final class ReActedUtils {
     public static  <PayloadT extends Serializable>
     void rescheduleIf(BiConsumer<ReActorContext, PayloadT> realCall,
                       BooleanSupplier shouldReschedule, Duration rescheduleInterval,
-                      ReActorContext raCtx, PayloadT message) {
+                      ReActorContext ctx, PayloadT message) {
 
         if (shouldReschedule.getAsBoolean()) {
-            raCtx.rescheduleMessage(message, rescheduleInterval)
-                 .ifError(error -> raCtx.logError("WARNING {} misbehaves. Error attempting a {} " +
+            ctx.rescheduleMessage(message, rescheduleInterval)
+                 .ifError(error -> ctx.logError("WARNING {} misbehaves. Error attempting a {} " +
                                                   "reschedulation. " +
                                                   "System remoting may become unreliable ",
                                                   realCall.toString(),
                                                   message.getClass().getSimpleName(),
                                                   error));
         } else {
-            realCall.accept(raCtx, message);
+            realCall.accept(ctx, message);
         }
     }
 }

@@ -126,83 +126,83 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
     public ReActions getReActions() {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
-                        .reAct(ReActorStop.class, (raCtx, stop) -> onStop(raCtx))
+                        .reAct(ReActorStop.class, (ctx, stop) -> onStop(ctx))
                         .reAct(ZooKeeperRootPathsCreated.class, this::onRootPathsCreated)
                         .reAct(ReActorSystemChannelIdPublicationRequest.class,
-                               (raCtx, systemPubRequest) -> ReActedUtils.rescheduleIf(this::onChannelIdPublicationRequest,
+                               (ctx, systemPubRequest) -> ReActedUtils.rescheduleIf(this::onChannelIdPublicationRequest,
                                                                                       this::isCuratorClientMissing,
                                                                                       getConfig().getReconnectionDelay(),
-                                                                                      raCtx, systemPubRequest))
+                                                                                      ctx, systemPubRequest))
                         .reAct(ReActorSystemChannelIdCancellationRequest.class,
-                               (raCtx, cancRequest) -> ReActedUtils.rescheduleIf(this::onChannelIdCancellationRequest,
+                               (ctx, cancRequest) -> ReActedUtils.rescheduleIf(this::onChannelIdCancellationRequest,
                                                                                  this::isServiceDiscoveryClientMissing,
                                                                                  getConfig().getReconnectionDelay(),
-                                                                                 raCtx, cancRequest))
+                                                                                 ctx, cancRequest))
                         .reAct(SynchronizationWithServiceRegistryRequest.class,
-                               (raCtx, syncRequest) -> ReActedUtils.rescheduleIf(this::onSynchronizationWithRegistryRequest,
+                               (ctx, syncRequest) -> ReActedUtils.rescheduleIf(this::onSynchronizationWithRegistryRequest,
                                                                                  this::isCuratorClientMissing,
                                                                                  getConfig().getReconnectionDelay(),
-                                                                                 raCtx, syncRequest))
+                                                                                 ctx, syncRequest))
                         .reAct(ServicePublicationRequest.class,
-                               (raCtx, servicePubRequest) -> ReActedUtils.rescheduleIf(this::onServicePublicationRequest,
+                               (ctx, servicePubRequest) -> ReActedUtils.rescheduleIf(this::onServicePublicationRequest,
                                                                                        this::isServiceDiscoveryClientMissing,
                                                                                        getConfig().getReconnectionDelay(),
-                                                                                       raCtx, servicePubRequest))
+                                                                                       ctx, servicePubRequest))
                         .reAct(ServiceCancellationRequest.class,
-                               (raCtx, serviceCancRequest) -> ReActedUtils.rescheduleIf(this::onServiceCancellationRequest,
+                               (ctx, serviceCancRequest) -> ReActedUtils.rescheduleIf(this::onServiceCancellationRequest,
                                                                                         this::isServiceDiscoveryClientMissing,
                                                                                         getConfig().getReconnectionDelay(),
-                                                                                        raCtx, serviceCancRequest))
+                                                                                        ctx, serviceCancRequest))
                         .reAct(ServiceDiscoveryRequest.class,
-                               (raCtx, serviceDiscoveryRequest) -> ReActedUtils.rescheduleIf(this::onServiceDiscovery,
+                               (ctx, serviceDiscoveryRequest) -> ReActedUtils.rescheduleIf(this::onServiceDiscovery,
                                                                                              this::isServiceDiscoveryClientMissing,
                                                                                              getConfig().getReconnectionDelay(),
-                                                                                             raCtx, serviceDiscoveryRequest))
+                                                                                             ctx, serviceDiscoveryRequest))
                         .reAct(ZooKeeperDriver::onSpuriousMessage)
                         .build();
     }
-    private void onServiceCancellationRequest(ReActorContext raCtx, ServiceCancellationRequest cancellationRequest) {
+    private void onServiceCancellationRequest(ReActorContext ctx, ServiceCancellationRequest cancellationRequest) {
         runAsync(() -> getServiceInstance(cancellationRequest.getServiceName(),
-                                          raCtx.getReActorSystem().getLocalReActorSystemId(),
+                                          ctx.getReActorSystem().getLocalReActorSystemId(),
                                           (ServicePublicationRequest)null)
                         .ifSuccessOrElse(Objects.requireNonNull(this.serviceDiscovery)::unregisterService,
-                                         error -> raCtx.logError("Unable to unregister service {}",
+                                         error -> ctx.logError("Unable to unregister service {}",
                                                                  cancellationRequest.toString(), error)));
     }
 
-    private void onServicePublicationRequest(ReActorContext raCtx, ServicePublicationRequest serviceInfo) {
+    private void onServicePublicationRequest(ReActorContext ctx, ServicePublicationRequest serviceInfo) {
         String serviceName = serviceInfo.getServiceProperties()
                                         .getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME);
         if (StringUtils.isBlank(serviceName)) {
-            raCtx.logError("Skipping publication attempt of an invalid service name {}", serviceName);
-            raCtx.reply(new RegistryServicePublicationFailed(serviceName,
+            ctx.logError("Skipping publication attempt of an invalid service name {}", serviceName);
+            ctx.reply(new RegistryServicePublicationFailed(serviceName,
                                                              new IllegalArgumentException("Invalid name: blank")));
             return;
         }
-        runAsync(() -> getServiceInstance(serviceName, raCtx.getReActorSystem()
+        runAsync(() -> getServiceInstance(serviceName, ctx.getReActorSystem()
                                                             .getLocalReActorSystemId(), serviceInfo)
                         .ifSuccess(Objects.requireNonNull(this.serviceDiscovery)::registerService)
-                        .ifSuccessOrElse(noVal -> raCtx.logInfo("Service {} published",
+                        .ifSuccessOrElse(noVal -> ctx.logInfo("Service {} published",
                                                                 serviceInfo.getServiceProperties()
                                                                            .getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME)),
-                                         registeringError -> raCtx.reply(new RegistryServicePublicationFailed(serviceName,
+                                         registeringError -> ctx.reply(new RegistryServicePublicationFailed(serviceName,
                                                                                                               registeringError))));
     }
 
-    private void onServiceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
-        ReActorRef discoveryRequester = raCtx.getSender();
-        runAsync(() -> queryZooKeeper(raCtx, Objects.requireNonNull(this.serviceDiscovery), request.getSearchFilter()))
-                .thenAccept(filterItemSet -> raCtx.getReActorSystem().getSystemRemotingRoot()
+    private void onServiceDiscovery(ReActorContext ctx, ServiceDiscoveryRequest request) {
+        ReActorRef discoveryRequester = ctx.getSender();
+        runAsync(() -> queryZooKeeper(ctx, Objects.requireNonNull(this.serviceDiscovery), request.getSearchFilter()))
+                .thenAccept(filterItemSet -> ctx.getReActorSystem().getSystemRemotingRoot()
                                                   .publish(discoveryRequester,
                                                            new FilterServiceDiscoveryRequest(request.getSearchFilter(),
                                                                                           filterItemSet)));
     }
 
-    private static Set<FilterItem> queryZooKeeper(ReActorContext raCtx,
+    private static Set<FilterItem> queryZooKeeper(ReActorContext ctx,
                                                   ServiceDiscovery<ServicePublicationRequest> synchronousServiceDiscovery,
                                                   ServiceDiscoverySearchFilter serviceFilter) {
         var nameMatchingServices = Try.of(() -> synchronousServiceDiscovery.queryForInstances(serviceFilter.getServiceName()))
-           .orElse(List.of(), error -> raCtx.logError("Error discovering service {}",
+           .orElse(List.of(), error -> ctx.logError("Error discovering service {}",
                                                       serviceFilter.getServiceName(), error));
         return nameMatchingServices.stream()
                                    .map(serviceInstance -> new FilterItem(serviceInstance.getPayload().getServiceGate(),
@@ -212,7 +212,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                    .collect(Collectors.toUnmodifiableSet());
     }
 
-    private void onChannelIdCancellationRequest(ReActorContext raCtx,
+    private void onChannelIdCancellationRequest(ReActorContext ctx,
                                                 ReActorSystemChannelIdCancellationRequest cancelRequest) {
         Objects.requireNonNull(asyncClient)
                               .delete()
@@ -220,7 +220,7 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                                                               cancelRequest.getChannelId()));
     }
 
-    private void onChannelIdPublicationRequest(ReActorContext raCtx,
+    private void onChannelIdPublicationRequest(ReActorContext ctx,
                                                ReActorSystemChannelIdPublicationRequest pubRequest) {
         try {
             createPathIfRequired(Objects.requireNonNull(asyncClient),
@@ -231,68 +231,68 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                                  ObjectUtils.toBytes(pubRequest.getChannelIdData()))
                 .toCompletableFuture()
                 .exceptionally(encodeError -> {
-                    raCtx.logError("Permanent error, unable to encode channel properties {}",
+                    ctx.logError("Permanent error, unable to encode channel properties {}",
                                    pubRequest.getChannelIdData(), encodeError);
                     return false;
                 });
         } catch (IOException serializationError) {
-            raCtx.logError("Unable to serialize gate properties {}", pubRequest.getChannelId(), serializationError);
+            ctx.logError("Unable to serialize gate properties {}", pubRequest.getChannelId(), serializationError);
         }
     }
 
-    private void onSynchronizationWithRegistryRequest(ReActorContext raCtx,
+    private void onSynchronizationWithRegistryRequest(ReActorContext ctx,
                                                       SynchronizationWithServiceRegistryRequest subRequest) {
         CompletableFuture<Void> cacheStarted = CompletableFuture.completedFuture(null);
         if (curatorCache == null) {
             this.curatorCache = CuratorCache.builder(Objects.requireNonNull(asyncClient).unwrap(), REACTED_CLUSTER_ROOT)
-                                            .withExceptionHandler(error -> raCtx.logError("ZooKeeper Cache error",
+                                            .withExceptionHandler(error -> ctx.logError("ZooKeeper Cache error",
                                                                                           error))
                                             .build();
             Objects.requireNonNull(curatorCache).listenable()
                         .addListener(CuratorCacheListener.builder()
                                                          .forTreeCache(Objects.requireNonNull(asyncClient).unwrap(),
-                                                                       getTreeListener(raCtx.getReActorSystem(),
-                                                                                       raCtx.getSelf()))
+                                                                       getTreeListener(ctx.getReActorSystem(),
+                                                                                       ctx.getSelf()))
                                                          .build(), getConfig().getAsyncExecutionService());
             cacheStarted = runAsync(() -> Objects.requireNonNull(curatorCache).start());
         }
-        cacheStarted.thenAccept(noVal -> raCtx.getReActorSystem()
+        cacheStarted.thenAccept(noVal -> ctx.getReActorSystem()
                                               .getSystemRemotingRoot()
-                                              .publish(raCtx.getSelf(), new SynchronizationWithServiceRegistryComplete()));
+                                              .publish(ctx.getSelf(), new SynchronizationWithServiceRegistryComplete()));
     }
 
-    private void onStop(ReActorContext raCtx) {
+    private void onStop(ReActorContext ctx) {
 
         Try.ofRunnable(this::shutdownZookeeperConnection)
-           .ifError(error -> raCtx.logError("Error stopping service registry", error));
-        raCtx.getReActorSystem().getSystemRemotingRoot()
-             .publish(raCtx.getSelf(), new RegistryConnectionLost());
+           .ifError(error -> ctx.logError("Error stopping service registry", error));
+        ctx.getReActorSystem().getSystemRemotingRoot()
+             .publish(ctx.getSelf(), new RegistryConnectionLost());
     }
 
-    private void onInit(ReActorContext raCtx, ReActorInit init) {
+    private void onInit(ReActorContext ctx, ReActorInit init) {
         if (asyncClient == null) {
-            this.asyncClient = createCuratorAsyncClient(raCtx);
+            this.asyncClient = createCuratorAsyncClient(ctx);
         }
         asyncClient.unwrap().start();
         try {
             asyncClient.unwrap().blockUntilConnected();
         } catch (InterruptedException interruptedException) {
             Thread.currentThread().interrupt();
-            raCtx.stop();
+            ctx.stop();
             return;
         }
         CompletableFuture.allOf(createPathIfRequired(asyncClient, CreateMode.PERSISTENT, REACTOR_SYSTEMS_PATH, NO_PAYLOAD),
                                 createPathIfRequired(asyncClient, CreateMode.PERSISTENT, SERVICES_PATH, NO_PAYLOAD),
                                 createPathIfRequired(asyncClient, CreateMode.PERSISTENT, REACTOR_SYSTEMS_GATES_PATH, NO_PAYLOAD))
-                         .thenAccept(pathCreated -> raCtx.selfPublish(new ZooKeeperRootPathsCreated()))
+                         .thenAccept(pathCreated -> ctx.selfPublish(new ZooKeeperRootPathsCreated()))
                          .exceptionally(initError -> {
-                             raCtx.logError("Unable to init {} ", ZooKeeperDriver.class.getSimpleName(), initError);
-                             raCtx.rescheduleMessage(init, getConfig().getReconnectionDelay());
+                             ctx.logError("Unable to init {} ", ZooKeeperDriver.class.getSimpleName(), initError);
+                             ctx.rescheduleMessage(init, getConfig().getReconnectionDelay());
                              return null;
                          });
     }
 
-    private AsyncCuratorFramework createCuratorAsyncClient(ReActorContext raCtx) {
+    private AsyncCuratorFramework createCuratorAsyncClient(ReActorContext ctx) {
         var retryPolicy = new ExponentialBackoffRetry((int) getConfig().getReconnectionDelay().toMillis(),
                                                       getConfig().getMaxReconnectionAttempts());
         int sessionTimeout = (int)getConfig().getSessionTimeout().toMillis();
@@ -300,22 +300,22 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
         var curatorClient = CuratorFrameworkFactory.newClient(getConfig().getConnectionString(),
                                                               sessionTimeout, connectionTimeout, retryPolicy);
         curatorClient.getConnectionStateListenable()
-                     .addListener((curator, newState) -> onConnectionStateChange(raCtx, curator, curatorCache,
+                     .addListener((curator, newState) -> onConnectionStateChange(ctx, curator, curatorCache,
                                                                                  newState,
                                                                                  reActorSystemInstanceMarker),
                                   getConfig().getAsyncExecutionService());
         return AsyncCuratorFramework.wrap(curatorClient);
     }
 
-    private void onRootPathsCreated(ReActorContext raCtx, ZooKeeperRootPathsCreated created) {
-        isReActorSystemUnique(raCtx.getReActorSystem().getLocalReActorSystemId(),
+    private void onRootPathsCreated(ReActorContext ctx, ZooKeeperRootPathsCreated created) {
+        isReActorSystemUnique(ctx.getReActorSystem().getLocalReActorSystemId(),
                               Objects.requireNonNull(asyncClient), reActorSystemInstanceMarker)
                 .thenApply(isUnique -> isUnique
                                        ? serviceDiscovery == null
-                                         ? setupServiceDiscovery(raCtx)
-                                         : raCtx.getReActorSystem().getSystemRemotingRoot().publish(raCtx.getSelf(),
+                                         ? setupServiceDiscovery(ctx)
+                                         : ctx.getReActorSystem().getSystemRemotingRoot().publish(ctx.getSelf(),
                                                                                                     new RegistryDriverInitComplete())
-                                       : onDuplicateReactorSystem(raCtx));
+                                       : onDuplicateReactorSystem(ctx));
 
     }
 
@@ -356,21 +356,21 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                   .map(reActorSystemInstanceMarker::equals)
                   .orElse(false);
     }
-    private CompletionStage<DeliveryStatus> setupServiceDiscovery(ReActorContext raCtx) {
+    private CompletionStage<DeliveryStatus> setupServiceDiscovery(ReActorContext ctx) {
         return runAsync(() -> ServiceDiscoveryBuilder.builder(ServicePublicationRequest.class)
                                                      .basePath(SERVICES_PATH)
                                                      .client(Objects.requireNonNull(asyncClient).unwrap())
                                                      .build())
                         .thenAccept(serviceDiscovery -> this.serviceDiscovery = serviceDiscovery)
                         .thenAccept(noVal -> UnChecked.runnable(serviceDiscovery::start).run())
-                        .thenApply(noVal -> raCtx.getReActorSystem()
+                        .thenApply(noVal -> ctx.getReActorSystem()
                                                  .getSystemRemotingRoot()
-                                                 .publish(raCtx.getSelf(), new RegistryDriverInitComplete()));
+                                                 .publish(ctx.getSelf(), new RegistryDriverInitComplete()));
     }
-    private static DeliveryStatus onDuplicateReactorSystem(ReActorContext raCtx) {
-        return raCtx.getReActorSystem()
+    private static DeliveryStatus onDuplicateReactorSystem(ReActorContext ctx) {
+        return ctx.getReActorSystem()
                     .getSystemRemotingRoot()
-                    .publish(raCtx.getSelf(), new DuplicatedPublicationError());
+                    .publish(ctx.getSelf(), new DuplicatedPublicationError());
     }
     private boolean isCuratorClientMissing() { return asyncClient == null; }
 
@@ -398,8 +398,8 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                 .exceptionally(NodeExistsException.class::isInstance);
     }
 
-    private static void onSpuriousMessage(ReActorContext raCtx, Object message) {
-        raCtx.logError("Unrecognized message received in {}", ZooKeeperDriver.class.getSimpleName(),
+    private static void onSpuriousMessage(ReActorContext ctx, Object message) {
+        ctx.logError("Unrecognized message received in {}", ZooKeeperDriver.class.getSimpleName(),
                        new IllegalStateException(message.toString()));
     }
 
@@ -473,21 +473,21 @@ public class ZooKeeperDriver extends ServiceRegistryDriver<ZooKeeperDriverConfig
                         .orElse(DeliveryStatus.NOT_DELIVERED);
     }
 
-    private void onConnectionStateChange(ReActorContext raCtx, CuratorFramework curator,
+    private void onConnectionStateChange(ReActorContext ctx, CuratorFramework curator,
                                          @Nullable CuratorCache curatorCache, ConnectionState newState,
                                          UUID reActorSystemInstanceMarker) {
         switch (newState) {
-            case LOST, SUSPENDED -> raCtx.getReActorSystem()
+            case LOST, SUSPENDED -> ctx.getReActorSystem()
                                          .getSystemRemotingRoot()
-                                         .publish(raCtx.getSelf(), new RegistryConnectionLost());
-            case RECONNECTED -> isReActorSystemUnique(raCtx.getReActorSystem().getLocalReActorSystemId(),
+                                         .publish(ctx.getSelf(), new RegistryConnectionLost());
+            case RECONNECTED -> isReActorSystemUnique(ctx.getReActorSystem().getLocalReActorSystemId(),
                     AsyncCuratorFramework.wrap(curator),
                     reActorSystemInstanceMarker)
                     .thenAccept(isUnique -> {
                         if (isUnique) {
-                            refreshDriverStatus(curatorCache, raCtx);
+                            refreshDriverStatus(curatorCache, ctx);
                         } else {
-                            onDuplicateReactorSystem(raCtx);
+                            onDuplicateReactorSystem(ctx);
                         }
                     });
         }

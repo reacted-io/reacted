@@ -26,7 +26,7 @@ public class ReactiveClockApp {
 
         var reactiveClockReactions = ReActions.newBuilder()
                                               .reAct(TimeRequest.class,
-                                                     (raCtx, request) -> raCtx.getSender()
+                                                     (ctx, request) -> ctx.getSender()
                                                                               .publish(Instant.now()))
                                               //For any other message type simply ignore the message
                                               .reAct((ctx, any) -> {

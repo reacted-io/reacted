@@ -108,11 +108,11 @@ public class DistributedPublisherTest {
                       .build();
     }
 
-    private void onMessage(ReActorContext raCtx, Serializable message) {
+    private void onMessage(ReActorContext ctx, Serializable message) {
       publisher.submit(message);
       subscription.request(1);
     }
-    private void onPublisher(ReActorContext raCtx,ReactedSubmissionPublisher<Serializable> publisher) {
+    private void onPublisher(ReActorContext ctx,ReactedSubmissionPublisher<Serializable> publisher) {
       this.publisher = publisher;
       publisher.subscribe(new Subscriber<>() {
         @Override
@@ -122,13 +122,13 @@ public class DistributedPublisherTest {
         }
 
         @Override
-        public void onNext(Serializable item) { raCtx.selfPublish(item); }
+        public void onNext(Serializable item) { ctx.selfPublish(item); }
 
         @Override
         public void onError(Throwable throwable) { fail(throwable); }
 
         @Override
-        public void onComplete() { subscription.cancel(); raCtx.stop(); }
+        public void onComplete() { subscription.cancel(); ctx.stop(); }
       });
     }
   }

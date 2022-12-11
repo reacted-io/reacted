@@ -69,7 +69,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     @Nonnull
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct((raCtx, message) -> requestNextMessage(raCtx, message, this::routeMessage))
+                        .reAct((ctx, message) -> requestNextMessage(ctx, message, this::routeMessage))
                         .reAct(ServiceRegistryNotAvailable.class, this::onServiceRegistryNotAvailable)
                         .reAct(ServiceDiscoveryRequest.class, this::serviceDiscovery)
                         .reAct(RouteeReSpawnRequest.class, this::respawnRoutee)
@@ -80,47 +80,47 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
                         .build();
     }
 
-    private void onServiceRegistryNotAvailable(ReActorContext raCtx,
+    private void onServiceRegistryNotAvailable(ReActorContext ctx,
                                                ServiceRegistryNotAvailable notAvailable) {
-        raCtx.logInfo("{} makes itself locally discoverable",
+        ctx.logInfo("{} makes itself locally discoverable",
                       serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME));
-        raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class));
+        ctx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(ServiceDiscoveryRequest.class));
     }
 
-    public void onServicePublicationError(ReActorContext raCtx, ServicePublicationRequestError error) {
+    public void onServicePublicationError(ReActorContext ctx, ServicePublicationRequestError error) {
         if (!serviceConfig.isRemoteService()) {
             return;
         }
 
-        Try.of(() -> raCtx.getReActorSystem()
+        Try.of(() -> ctx.getReActorSystem()
                           .getSystemSchedulingService()
-                          .schedule(() -> sendPublicationRequest(raCtx, serviceInfo),
+                          .schedule(() -> sendPublicationRequest(ctx, serviceInfo),
                                     serviceConfig.getServiceRepublishReattemptDelayOnError().toMillis(),
                                     TimeUnit.MILLISECONDS))
-           .peekFailure(failure -> raCtx.logError("Unable to reschedule service publication", failure))
-           .ifError(failure -> raCtx.getSelf().publish(raCtx.getSender(), error));
+           .peekFailure(failure -> ctx.logError("Unable to reschedule service publication", failure))
+           .ifError(failure -> ctx.getSelf().publish(ctx.getSender(), error));
     }
 
     List<ReActorRef> getRouteesMap() { return routeesMap; }
 
-    private void onSystemInfoReport(ReActorContext raCtx, SystemMonitorReport report) {
+    private void onSystemInfoReport(ReActorContext ctx, SystemMonitorReport report) {
         serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_CPU_LOAD, report.getCpuLoad());
         serviceInfo.put(ServiceDiscoverySearchFilter.FIELD_NAME_FREE_MEMORY_SIZE, report.getFreeMemorySize());
-        updateServiceRegistry(raCtx, serviceInfo);
+        updateServiceRegistry(ctx, serviceInfo);
     }
 
-    private void stopService(ReActorContext raCtx, ReActorStop stop) {
-        raCtx.getReActorSystem()
+    private void stopService(ReActorContext ctx, ReActorStop stop) {
+        ctx.getReActorSystem()
              .getSystemRemotingRoot()
-             .publish(raCtx.getSelf(), new ServiceCancellationRequest(raCtx.getReActorSystem().getLocalReActorSystemId(),
+             .publish(ctx.getSelf(), new ServiceCancellationRequest(ctx.getReActorSystem().getLocalReActorSystemId(),
                                                                       serviceConfig.getReActorName()));
     }
 
-    private void initService(ReActorContext raCtx, ReActorInit reActorInit) {
+    private void initService(ReActorContext ctx, ReActorInit reActorInit) {
         //All the services can receive service stats
-        raCtx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class));
+        ctx.addTypedSubscriptions(TypedSubscription.LOCAL.forType(SystemMonitorReport.class));
 
-        var backpressuringMbox = BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox());
+        var backpressuringMbox = BackpressuringMbox.toBackpressuringMailbox(ctx.getMbox());
         backpressuringMbox.filter(mbox -> !mbox.isDelayable(ReActorInit.class))
                           .ifPresent(mbox -> mbox.request(1));
         backpressuringMbox.ifPresent(mbox -> mbox.addNonDelayableTypes(getNonDelayedMessageTypes()));
@@ -139,35 +139,35 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
                 ReActorConfig newRouteeCfg = ReActorConfig.fromConfig(routeeConfig)
                                                           .setReActorName(routeeNewName)
                                                           .build();
-                this.routeesMap.add(spawnRoutee(raCtx, routeeReActions, newRouteeCfg));
+                this.routeesMap.add(spawnRoutee(ctx, routeeReActions, newRouteeCfg));
             } catch (Throwable routeeSpawnError) {
-                raCtx.logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);
+                ctx.logError(ROUTEE_SPAWN_ERROR, routeeSpawnError);
             }
         }
         if (serviceConfig.isRemoteService()) {
-            sendPublicationRequest(raCtx, serviceInfo);
+            sendPublicationRequest(ctx, serviceInfo);
         }
     }
 
-    private void serviceDiscovery(ReActorContext raCtx, ServiceDiscoveryRequest request) {
-        if (!request.getSearchFilter().matches(serviceInfo, raCtx.getSelf())) {
+    private void serviceDiscovery(ReActorContext ctx, ServiceDiscoveryRequest request) {
+        if (!request.getSearchFilter().matches(serviceInfo, ctx.getSelf())) {
             return;
         }
 
         ReActorRef serviceSelection = request.getSearchFilter()
                                                        .getSelectionType() == SelectionType.ROUTED
-                                                ? raCtx.getSelf()
-                                                : selectRoutee(raCtx, msgReceived, request);
+                                                ? ctx.getSelf()
+                                                : selectRoutee(ctx, msgReceived, request);
         if (serviceSelection != null) {
-            raCtx.reply(raCtx.getSelf(), new ServiceDiscoveryReply(serviceSelection));
+            ctx.reply(ctx.getSelf(), new ServiceDiscoveryReply(serviceSelection));
         }
     }
 
-    private DeliveryStatus routeMessage(ReActorContext raCtx,
+    private DeliveryStatus routeMessage(ReActorContext ctx,
                                         Serializable newMessage) {
-        ReActorRef routee = selectRoutee(raCtx, ++msgReceived, newMessage);
+        ReActorRef routee = selectRoutee(ctx, ++msgReceived, newMessage);
         return routee != null
-               ? routee.tell(raCtx.getSender(), newMessage)
+               ? routee.tell(ctx.getSender(), newMessage)
                : DeliveryStatus.NOT_SENT;
     }
 
@@ -177,15 +177,15 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         return serviceConfig.getLoadBalancingPolicy()
                             .selectRoutee(routerCtx, this, msgReceived, message);
     }
-    private void respawnRoutee(ReActorContext raCtx, RouteeReSpawnRequest reSpawnRequest) {
+    private void respawnRoutee(ReActorContext ctx, RouteeReSpawnRequest reSpawnRequest) {
         this.routeesMap.remove(reSpawnRequest.deadRoutee);
         Try.of(() -> Objects.requireNonNull(serviceConfig.getRouteeProvider()
                                                          .apply(serviceConfig)))
-           .map(routee -> spawnRoutee(raCtx, routee.getReActions(),
+           .map(routee -> spawnRoutee(ctx, routee.getReActions(),
                                       ReActorConfig.fromConfig(routee.getConfig())
                                                    .setReActorName(reSpawnRequest.routeeName)
                                                    .build()))
-           .ifSuccessOrElse(this.routeesMap::add, spawnError -> raCtx.logError(ROUTEE_SPAWN_ERROR,
+           .ifSuccessOrElse(this.routeesMap::add, spawnError -> ctx.logError(ROUTEE_SPAWN_ERROR,
                                                                                spawnError));
     }
 
@@ -209,32 +209,32 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
         return routee;
     }
 
-    private void updateServiceRegistry(ReActorContext raCtx, Properties serviceInfo) {
+    private void updateServiceRegistry(ReActorContext ctx, Properties serviceInfo) {
         if (!serviceConfig.isRemoteService()) {
             return;
         }
 
-        if (!sendPublicationRequest(raCtx, serviceInfo).isSent()) {
-            raCtx.logError("Unable to refresh service info {}",
+        if (!sendPublicationRequest(ctx, serviceInfo).isSent()) {
+            ctx.logError("Unable to refresh service info {}",
                            serviceInfo.getProperty(ServiceDiscoverySearchFilter.FIELD_NAME_SERVICE_NAME));
         }
     }
 
-    private static DeliveryStatus sendPublicationRequest(ReActorContext raCtx,
+    private static DeliveryStatus sendPublicationRequest(ReActorContext ctx,
                                                          Properties serviceInfo) {
-        return raCtx.getReActorSystem()
+        return ctx.getReActorSystem()
                     .getSystemRemotingRoot()
-                    .publish(raCtx.getSelf(), new ServicePublicationRequest(raCtx.getSelf(), serviceInfo));
+                    .publish(ctx.getSelf(), new ServicePublicationRequest(ctx.getSelf(), serviceInfo));
     }
 
     private static <PayloadT extends Serializable>
-    void requestNextMessage(ReActorContext raCtx, PayloadT payload,
+    void requestNextMessage(ReActorContext ctx, PayloadT payload,
                             BiFunction<ReActorContext, PayloadT, DeliveryStatus> realCall) {
-        if (realCall.apply(raCtx, payload).isNotSent()) {
-            raCtx.getReActorSystem().toDeadLetters(raCtx.getSender(), payload);
-            raCtx.logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER, raCtx.getSelf().getReActorId().getReActorName());
+        if (realCall.apply(ctx, payload).isNotSent()) {
+            ctx.getReActorSystem().toDeadLetters(ctx.getSender(), payload);
+            ctx.logError(NO_ROUTEE_FOR_SPECIFIED_ROUTER, ctx.getSelf().getReActorId().getReActorName());
         }
-        raCtx.getMbox().request(1);
+        ctx.getMbox().request(1);
     }
 
     //Messages required for the Service management logic cannot be backpressured

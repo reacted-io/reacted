@@ -143,30 +143,30 @@ class MessageStormApp {
                     .build();
         }
 
-        private void onInit(ReActorContext raCtx) {
+        private void onInit(ReActorContext ctx) {
             this.testStart = System.nanoTime();
-            raCtx.selfPublish(NextRecord.INSTANCE);
+            ctx.selfPublish(NextRecord.INSTANCE);
         }
 
-        private void onNextRecord(ReActorContext raCtx) {
+        private void onNextRecord(ReActorContext ctx) {
             if (missingCycles == 0) {
                 System.err.printf("Finished Storm. Time %s%n",
                                   Duration.ofNanos(System.nanoTime() - testStart));
-                raCtx.stop();
+                ctx.stop();
             } else {
                 serverReference.apublish(String.format("Async Message %d", missingCycles--))
                                .toCompletableFuture()
                                .handle((deliveryStatus, error) -> {
                                    if (error != null) {
-                                       raCtx.stop();
+                                       ctx.stop();
                                        error.printStackTrace();
                                    } else {
                                        if (deliveryStatus.isDelivered()) {
-                                           raCtx.selfPublish(NextRecord.INSTANCE);
+                                           ctx.selfPublish(NextRecord.INSTANCE);
                                        } else {
                                            System.err.printf("Unable to deliver loop message: %s%n",
                                                              deliveryStatus);
-                                           raCtx.stop();
+                                           ctx.stop();
                                        }
                                    }
                                    return null;

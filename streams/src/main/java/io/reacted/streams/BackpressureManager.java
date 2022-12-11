@@ -118,66 +118,66 @@ public class BackpressureManager<PayloadT extends Serializable> implements Flow.
         return mboxOwner -> bpMailboxBuilder.setRealMailboxOwner(mboxOwner).build();
     }
 
-    private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(raCtx.getSelf()));
+    private void onStop(ReActorContext ctx, ReActorStop stop) {
+        feedGate.tell(ReActorRef.NO_REACTOR_REF, new UnsubscriptionRequest(ctx.getSelf()));
     }
 
-    private void forwarder(ReActorContext raCtx, Object anyPayload) {
+    private void forwarder(ReActorContext ctx, Object anyPayload) {
         try {
             //noinspection unchecked
             subscriber.onNext((PayloadT) anyPayload);
         } catch (Exception anyException) {
-           errorTermination(raCtx, anyException, subscriber);
+           errorTermination(ctx, anyException, subscriber);
         }
     }
 
-    private void onSubscriptionReply(ReActorContext raCtx, SubscriptionReply payload) {
+    private void onSubscriptionReply(ReActorContext ctx, SubscriptionReply payload) {
         onSubscriptionCompleteTrigger.toCompletableFuture().complete(null);
         if (payload.isSuccess()) {
             Try.ofRunnable(() -> subscriber.onSubscribe(this))
-               .ifError(error -> errorTermination(raCtx, error, subscriber));
+               .ifError(error -> errorTermination(ctx, error, subscriber));
         } else {
-            errorTermination(raCtx, new RemoteRegistrationException(), subscriber);
+            errorTermination(ctx, new RemoteRegistrationException(), subscriber);
         }
     }
 
-    private void onSubscriberError(ReActorContext raCtx, SubscriberError error) {
-        errorTermination(raCtx, error.getError(), subscriber);
+    private void onSubscriberError(ReActorContext ctx, SubscriberError error) {
+        errorTermination(ctx, error.getError(), subscriber);
     }
 
-    private void onPublisherComplete(ReActorContext raCtx, PublisherComplete publisherComplete) {
-        completeTermination(raCtx, subscriber);
+    private void onPublisherComplete(ReActorContext ctx, PublisherComplete publisherComplete) {
+        completeTermination(ctx, subscriber);
     }
 
-    private void onPublisherInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
-        completeTermination(raCtx, subscriber);
+    private void onPublisherInterrupt(ReActorContext ctx, PublisherInterrupt interrupt) {
+        completeTermination(ctx, subscriber);
     }
 
-    private void onInit(ReActorContext raCtx, ReActorInit init) {
-        this.backpressurerCtx = raCtx;
-        this.backpressuringMbox = raCtx.getMbox();
+    private void onInit(ReActorContext ctx, ReActorInit init) {
+        this.backpressurerCtx = ctx;
+        this.backpressuringMbox = ctx.getMbox();
 
         Consumer<Throwable> onSubscriptionError;
         onSubscriptionError = error -> { subscriber.onSubscribe(this);
-                                         errorTermination(raCtx, error, subscriber); };
-        if (feedGate.tell(raCtx.getSelf(), new SubscriptionRequest(raCtx.getSelf())).isNotSent()) {
+                                         errorTermination(ctx, error, subscriber); };
+        if (feedGate.tell(ctx.getSelf(), new SubscriptionRequest(ctx.getSelf())).isNotSent()) {
             onSubscriptionError.accept(new DeliveryException());
         }
     }
 
-    private void completeTermination(ReActorContext raCtx,
+    private void completeTermination(ReActorContext ctx,
                                      Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(localSubscriber::onComplete)
-           .ifError(error -> raCtx.logError("Error in {} onComplete: ",
+           .ifError(error -> ctx.logError("Error in {} onComplete: ",
                                             localSubscriber.getClass().getSimpleName(), error));
     }
 
-    private void errorTermination(ReActorContext raCtx, Throwable handlingError,
+    private void errorTermination(ReActorContext ctx, Throwable handlingError,
                                   Flow.Subscriber<? super PayloadT> localSubscriber) {
         close();
         Try.ofRunnable(() -> localSubscriber.onError(handlingError))
-           .ifError(error -> raCtx.logError("Error in {} onError: ",
+           .ifError(error -> ctx.logError("Error in {} onError: ",
                                             localSubscriber.getClass().getSimpleName(), error));
     }
 }

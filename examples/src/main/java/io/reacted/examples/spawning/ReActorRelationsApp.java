@@ -43,8 +43,8 @@ public class ReActorRelationsApp {
         }
     }
 
-    private static void onStop(ReActorContext raCtx, ReActorStop stop) {
-        raCtx.logInfo(raCtx.getSelf().getReActorId().getReActorName() + " is terminating");
+    private static void onStop(ReActorContext ctx, ReActorStop stop) {
+        ctx.logInfo(ctx.getSelf().getReActorId().getReActorName() + " is terminating");
     }
 
     @NonNullByDefault
@@ -65,22 +65,22 @@ public class ReActorRelationsApp {
         @Override
         public ReActions getReActions() { return fatherReactions; }
 
-        private void onBreedRequest(ReActorContext raCtx, BreedRequest breedRequest) {
+        private void onBreedRequest(ReActorContext ctx, BreedRequest breedRequest) {
             this.requestedChildren = breedRequest.requestedChildren();
 
-            raCtx.logInfo("{} received a {} for {} from {}",
-                           raCtx.getSelf().getReActorId().getReActorName(),
+            ctx.logInfo("{} received a {} for {} from {}",
+                           ctx.getSelf().getReActorId().getReActorName(),
                            breedRequest.getClass().getSimpleName(), breedRequest.requestedChildren(),
-                           raCtx.getSender().getReActorId().getReActorName());
+                           ctx.getSender().getReActorId().getReActorName());
 
             LongStream.range(0, breedRequest.requestedChildren())
-                      .forEachOrdered(childNum -> raCtx.spawnChild(new Child(childNum, raCtx.getSender())));
+                      .forEachOrdered(childNum -> ctx.spawnChild(new Child(childNum, ctx.getSender())));
         }
 
-        private void onThankYou(ReActorContext raCtx, ThankYouFather thanks) {
+        private void onThankYou(ReActorContext ctx, ThankYouFather thanks) {
             if (--requestedChildren == 0) {
-                raCtx.stop()
-                     .thenAcceptAsync(voidVal -> raCtx.reply(ReActorRef.NO_REACTOR_REF, new ByeByeUncle()));
+                ctx.stop()
+                     .thenAcceptAsync(voidVal -> ctx.reply(ReActorRef.NO_REACTOR_REF, new ByeByeUncle()));
             }
         }
     }
@@ -97,13 +97,13 @@ public class ReActorRelationsApp {
         @Override
         public ReActions getReActions() { return UNCLE_REACTIONS; }
 
-        private static void onGreetingsFromChild(ReActorContext raCtx, Greetings greetingsMessage) {
-            raCtx.logInfo("{} received {}. Sending thank you to {}", raCtx.getSelf().getReActorId().getReActorName(),
-                          greetingsMessage.greetingsMessage(), raCtx.getSender().getReActorId().getReActorName());
-            raCtx.reply(new ThankYouFather());
+        private static void onGreetingsFromChild(ReActorContext ctx, Greetings greetingsMessage) {
+            ctx.logInfo("{} received {}. Sending thank you to {}", ctx.getSelf().getReActorId().getReActorName(),
+                          greetingsMessage.greetingsMessage(), ctx.getSender().getReActorId().getReActorName());
+            ctx.reply(new ThankYouFather());
         }
 
-        private static void onByeByeUncle(ReActorContext raCtx, ByeByeUncle timeToDie) { raCtx.stop(); }
+        private static void onByeByeUncle(ReActorContext ctx, ByeByeUncle timeToDie) { ctx.stop(); }
     }
 
     @NonNullByDefault
@@ -131,8 +131,8 @@ public class ReActorRelationsApp {
                             .build();
         }
 
-        private void onInit(ReActorContext raCtx, ReActorInit init) {
-            breedRequester.publish(raCtx.getParent(),
+        private void onInit(ReActorContext ctx, ReActorInit init) {
+            breedRequester.publish(ctx.getParent(),
                                    new Greetings("Hello from " + childConfig.getReActorName()));
         }
     }

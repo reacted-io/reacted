@@ -38,10 +38,10 @@ public class DeadLetter {
     private DeadLetter() { }
 
     private static <PayloadT extends Serializable>
-    void onMessage(ReActorContext raCtx, PayloadT message) {
+    void onMessage(ReActorContext ctx, PayloadT message) {
         LOGGER.info("{} of {}: {} of type {} from {}", DeadLetter.class.getSimpleName(),
-                    raCtx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(), message, message.getClass(),
-                    raCtx.getSender());
+                    ctx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(), message, message.getClass(),
+                    ctx.getSender());
         RECEIVED.incrementAndGet();
     }
 }
