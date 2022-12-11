@@ -45,6 +45,7 @@ public class StatisticsCollector {
                                                    ReActorRef destination) {
         return backpressureAwareMessageSender(startTime, messageNum, destination, System::nanoTime);
     }
+
     static Runnable backpressureAwareMessageSender(Instant startTime, long messageNum,
                                                    ReActorRef destination,
                                                    Supplier<? extends Serializable> payloadProducer) {
@@ -65,6 +66,46 @@ public class StatisticsCollector {
                 }
             }
             LOGGER.info("Sent in {}", ChronoUnit.SECONDS.between(startTime, Instant.now()));
+        });
+        return sender;
+    }
+
+    static Runnable brutalMessageSender(Instant startTime, long messageNum,
+                                        ReActorRef destination) {
+        return brutalMessageSender(startTime, messageNum, destination, System::nanoTime);
+    }
+    static Runnable brutalMessageSender(Instant startTime, long messageNum, ReActorRef destination,
+                                        Supplier<? extends Serializable> payloadProducer) {
+        Runnable sender = UnChecked.runnable(() -> {
+            for (int msg = 0; msg < messageNum; msg++) {
+                destination.tell(payloadProducer.get());
+            }
+            LOGGER.info("Sent in {}", ChronoUnit.SECONDS.between(startTime, Instant.now()));
+        });
+        return sender;
+    }
+
+    static Runnable constantWindowMessageSender(long messageNum,
+                                                ReActorRef destination, Duration window) {
+        return constantWindowMessageSender(messageNum, destination, window, System::nanoTime);
+    }
+    static Runnable constantWindowMessageSender(long messageNum,
+                                                ReActorRef destination, Duration window,
+                                                Supplier<? extends Serializable> payloadProducer) {
+        Runnable sender = UnChecked.runnable(() -> {
+            long pauseWindowDuration = window.toNanos();
+            long start = System.nanoTime();
+            long end;
+            long elapsed = 0;
+            for(long cycle = 0; cycle < messageNum; cycle++) {
+                while (elapsed < pauseWindowDuration) {
+                    end = System.nanoTime();
+                    elapsed = end - start;
+                }
+                elapsed = 0;
+                start = System.nanoTime();
+                destination.tell(payloadProducer.get());
+            }
         });
         return sender;
     }
