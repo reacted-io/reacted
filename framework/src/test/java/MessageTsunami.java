@@ -8,149 +8,95 @@
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.FastUnboundedMbox;
-import io.reacted.core.mailboxes.UnboundedMbox;
-import io.reacted.core.messages.reactors.DeliveryStatus;
-import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
-import io.reacted.patterns.Try;
-import io.reacted.patterns.UnChecked;
 
 import javax.annotation.Nonnull;
-import java.io.Serializable;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class MessageTsunami {
-    private static final int CYCLES = 33_333_333;
-    public static void main(String[] args) throws InterruptedException {
+    private static final int CYCLES = 100_000_000;
+    public static void main(String[] args)  {
 
 
-        String dispatcher_1 = "CruncherThread-1"; int threads_1 = 1;
-        String dispatcher_2 = "CruncherThread-2"; int threads_2 = 4;
-        int workersNum = 3;
+        String worker_dispatcher = "CruncherThread-1"; int worker_dispatcher_threads = 4;;
 
         ReActorSystem crunchingSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                              .addDispatcherConfig(DispatcherConfig.newBuilder()
-                                                                                                                  .setBatchSize(100_000_000)
-                                                                                                                  .setDispatcherName(dispatcher_1)
-                                                                                                                  .setDispatcherThreadsNum(threads_1)
+                                                                                                                  .setBatchSize(CYCLES / worker_dispatcher_threads)
+                                                                                                                  .setDispatcherName(worker_dispatcher)
+                                                                                                                  .setDispatcherThreadsNum(worker_dispatcher_threads)
                                                                                                                   .build())
-                                                                             .addDispatcherConfig(DispatcherConfig.newBuilder()
-                                                                                                                  .setBatchSize(100_000_000)
-                                                                                                                  .setDispatcherName(dispatcher_2)
-                                                                                                                  .setDispatcherThreadsNum(threads_2)
-                                                                                                                  .build())
-                                                                             .setExpectedReActorsNum(100)
+                                                                             .setExpectedReActorsNum(50)
                                                                              .setReactorSystemName("MessageCrunchingSystem")
                                                                              .build()).initReActorSystem();
 
-        StatisticsCollector.initStatisticsCollectorProcessor(crunchingSystem, workersNum);
-
-        ReActorRef cruncher_service = crunchingSystem.spawnService(ServiceConfig.newBuilder()
-                                                                                .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
-                                                                                                                             .setBackpressuringThreshold(30000)
-                                                                                                                             .setRealMbox(new FastUnboundedMbox())
-                                                                                                                             .setRealMailboxOwner(ctx)
-                                                                                                                             .build())
-                                                                                .setRouteeProvider(() -> new CrunchingWorker(dispatcher_2, "worker", CYCLES))
-                                                                                .setDispatcherName(dispatcher_1)
-                                                                                .setRouteesNum(workersNum)
-                                                                                .setReActorName("CruncherService")
-                                                                                .build()).orElseSneakyThrow();
-        TimeUnit.SECONDS.sleep(2);
+        CrunchingWorker workerBody = new CrunchingWorker(worker_dispatcher, "Cruncher");
+        ReActorRef worker = crunchingSystem.spawn(workerBody).orElseSneakyThrow();
 
         Instant start = Instant.now();
-        StatisticsCollector.initAndWaitForMessageProducersToComplete(StatisticsCollector.backpressureAwareMessageSender(CYCLES, cruncher_service),
-                                                                     StatisticsCollector.backpressureAwareMessageSender(CYCLES, cruncher_service),
-                                                                     StatisticsCollector.backpressureAwareMessageSender(CYCLES, cruncher_service));
+
+        BenchmarkingUtils.initAndWaitForMessageProducersToCompleteWithDedicatedExecutors(BenchmarkingUtils.nonStopMessageSender(CYCLES, worker),
+                                                                                         BenchmarkingUtils.nonStopMessageSender(CYCLES, worker),
+                                                                                         BenchmarkingUtils.nonStopMessageSender(CYCLES, worker));
 
         System.err.println("Completed in " + ChronoUnit.SECONDS.between(start, Instant.now()));
 
+        if (worker.tell(new BenchmarkingUtils.StopCrunching()).isNotDelivered()) {
+            System.err.println("CRITIC! Unable to deliver stop!?");
+            System.exit(3);
+        }
 
-        TimeUnit.SECONDS.sleep(1);
+        crunchingSystem.getReActorCtx(worker.getReActorId())
+                       .getHierarchyTermination()
+                       .toCompletableFuture()
+                       .join();
 
-        StatisticsCollector.requestsLatenciesFromWorkers(crunchingSystem);
+        System.err.println("Events received: " + workerBody.getCounter());
 
-        //crunchingSystem.shutDown();
+        crunchingSystem.shutDown();
     }
 
     private static class CrunchingWorker implements ReActor {
-        private final AtomicInteger counter = new AtomicInteger(0);
+        private long counter = 0L;
         private final ReActorConfig cfg;
         private final ReActions reActions;
-        private int counted = 0;
-        private long[] latencies;
         private volatile int marker;
 
-        private CrunchingWorker(String dispatcher, String name, int iterations) {
+        private CrunchingWorker(String dispatcher, String name) {
             this.cfg = ReActorConfig.newBuilder()
-                                    .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
-                                                                                 .setBackpressuringThreshold(30000)
-                                                                                 .setRealMbox(new FastUnboundedMbox())
-                                                                                 .setRealMailboxOwner(ctx)
-                                                                                 .setNonDelayable(StatisticsCollector.DiagnosticRequest.class,
-                                                                                                  ReActorInit.class)
-                                                                                 .build())
+                                    .setMailBoxProvider(ctx -> new FastUnboundedMbox())
                                     .setReActorName(name)
                                     .setDispatcherName(dispatcher)
-                                    .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(StatisticsCollector.DiagnosticRequest.class),
-                                                           TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(StatisticsCollector.StopCrunching.class))
                                     .build();
             this.reActions = ReActions.newBuilder()
                                       .reAct(Long.class, this::onPayload)
-                                      .reAct(StatisticsCollector.StopCrunching.class, this::onCrunchStop)
-                                      .reAct(StatisticsCollector.DiagnosticRequest.class, this::onDiagnosticRequest)
+                                      .reAct(BenchmarkingUtils.StopCrunching.class, this::onCrunchStop)
                                       .build();
-            this.latencies = new long[iterations * 2];
         }
 
-        private void onDiagnosticRequest(ReActorContext reActorContext, StatisticsCollector.DiagnosticRequest payloadT) {
-            reActorContext.getReActorSystem()
-                          .broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF,
-                                                       new StatisticsCollector.RPISnapshot(getCounted()));
-        }
+        private synchronized long getCounter() { return counter; }
 
-        public synchronized long[] getLatencies() {
-            return Arrays.copyOf(latencies, counter.get());
-        }
-        private int getCounted() {
-            int _cnt = counter.getAcquire();
-            int cnt =  _cnt - counted;
-            this.counted = _cnt;
-            return cnt;
-        }
-        private void onCrunchStop(ReActorContext reActorContext, StatisticsCollector.StopCrunching stopCrunching) {
-            reActorContext.getReActorSystem().getSystemSink()
-                          .publish(new StatisticsCollector.LatenciesSnapshot(getLatencies()));
-            reActorContext.getMbox().request(1);
+        private void onCrunchStop(ReActorContext reActorContext, BenchmarkingUtils.StopCrunching stopCrunching) {
             reActorContext.stop();
         }
         private void onPayload(ReActorContext ctx, Long payLoad) {
             if (marker != 0) {
                 System.err.println("CRITIC!");
+                System.exit(1);
             }
             marker = 1;
-            int pos = counter.getPlain();
-            latencies[pos] = System.nanoTime() - payLoad;
-            counter.setPlain(pos + 1);
-            ctx.getMbox().request(1);
+            counter++;
+            BenchmarkingUtils.nanoSleep(100);
             if (marker != 1) {
                 System.err.println("CRITIC!");
+                System.exit(2);
             }
             marker = 0;
         }

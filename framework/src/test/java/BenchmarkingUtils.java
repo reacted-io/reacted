@@ -17,33 +17,51 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-public class StatisticsCollector {
+public class BenchmarkingUtils {
     static final String LATENCIES_COLLECTOR_OPERATOR = "LatenciesCollector";
     static final String REQUESTS_PER_INTERVAL_COLLECTOR_OPERATOR = "RPICollector";
     static final String PRINTER_OPERATOR = "Printer";
-    private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsCollector.class);
-    private StatisticsCollector() { throw new AssertionError("Never supposed to be called"); }
+    private static final Logger LOGGER = LoggerFactory.getLogger(BenchmarkingUtils.class);
+    private BenchmarkingUtils() { throw new AssertionError("Never supposed to be called"); }
 
-    public static void initAndWaitForMessageProducersToComplete(Runnable ...messageProducers) {
+    static void initAndWaitForMessageProducersToComplete(Runnable ...messageProducers) {
         initAsyncMessageProducers(messageProducers)
                 .forEach(fut -> Try.of(fut::get)
                                    .ifError(Throwable::printStackTrace));
     }
-    public static List<Future<?>> initAsyncMessageProducers(Runnable ...messageProducers) {
+
+    static void
+    initAndWaitForMessageProducersToCompleteWithDedicatedExecutors(Runnable ...messageProducers) {
+        ExecutorService[] dedicatedExecutors = IntStream.range(0, messageProducers.length)
+                                                        .mapToObj(idx -> Executors.newSingleThreadExecutor())
+                                                        .toArray(ExecutorService[]::new);
+        initAsyncMessageProducers(dedicatedExecutors, messageProducers)
+                .forEach(fut -> Try.of(fut::get).ifError(Throwable::printStackTrace));
+        Arrays.stream(dedicatedExecutors).forEach(ExecutorService::shutdown);
+    }
+    static List<Future<?>> initAsyncMessageProducers(Runnable ...messageProducers) {
         return Arrays.stream(messageProducers)
-                     .map(StatisticsCollector::initAsyncMessageProducer)
+                     .map(BenchmarkingUtils::initAsyncMessageProducer)
                      .collect(Collectors.toUnmodifiableList());
     }
     static Future<?> initAsyncMessageProducer(Runnable messageGenerator) {
         return initAsyncMessageProducer(messageGenerator, ForkJoinPool.commonPool());
     }
 
+    static List<Future<?>> initAsyncMessageProducers(ExecutorService[] executorServices,
+                                                     Runnable[] messageProducers) {
+        return IntStream.range(0, messageProducers.length)
+                        .mapToObj(idx -> initAsyncMessageProducer(messageProducers[idx], executorServices[idx]))
+                        .collect(Collectors.toUnmodifiableList());
+    }
     static Future<?> initAsyncMessageProducer(Runnable messageGenerator, ExecutorService executor) {
         return executor.submit(messageGenerator);
     }
@@ -63,7 +81,7 @@ public class StatisticsCollector {
                     System.exit(3);
                 }
                 if (status.isBackpressureRequired()) {
-                    TimeUnit.NANOSECONDS.sleep(delay);
+                    nanoSleep(delay);
                     delay = delay + (delay / 3);
                 } else {
                     delay = Math.max((delay / 3) << 1, baseNanosDelay);
@@ -73,11 +91,11 @@ public class StatisticsCollector {
         return sender;
     }
 
-    static Runnable brutalMessageSender(long messageNum, ReActorRef destination) {
-        return brutalMessageSender(messageNum, destination, System::nanoTime);
+    static Runnable nonStopMessageSender(long messageNum, ReActorRef destination) {
+        return nonStopMessageSender(messageNum, destination, System::nanoTime);
     }
-    static Runnable brutalMessageSender(long messageNum, ReActorRef destination,
-                                        Supplier<? extends Serializable> payloadProducer) {
+    static Runnable nonStopMessageSender(long messageNum, ReActorRef destination,
+                                         Supplier<? extends Serializable> payloadProducer) {
         return UnChecked.runnable(() -> {
             for (int msg = 0; msg < messageNum; msg++) {
                 destination.tell(payloadProducer.get());
@@ -145,16 +163,16 @@ public class StatisticsCollector {
                                                             .setReActorName(LATENCIES_COLLECTOR_OPERATOR)
                                                             .setReductionRules(Map.of(LatenciesSnapshot.class,
                                                                                       minDataPointsForProcessing))
-                                                            .setReducer(StatisticsCollector::fromLatenciesSnapshotsToPrintableOutput)
+                                                            .setReducer(BenchmarkingUtils::fromLatenciesSnapshotsToPrintableOutput)
                                                             .setOutputOperators(PRINTER_OPERATOR)
-                                                            .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(StatisticsCollector.LatenciesSnapshot.class))
+                                                            .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(BenchmarkingUtils.LatenciesSnapshot.class))
                                                             .build())
                            .addOperator(ReduceOperatorConfig.newBuilder()
                                                             .setReActorName(REQUESTS_PER_INTERVAL_COLLECTOR_OPERATOR)
-                                                            .setReductionRules(Map.of(StatisticsCollector.RPISnapshot.class,
+                                                            .setReductionRules(Map.of(BenchmarkingUtils.RPISnapshot.class,
                                                                                       minDataPointsForProcessing))
-                                                            .setReducer(StatisticsCollector::fromRequestsPerIntervalSnapshotsToPrintableOutput)
-                                                            .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(StatisticsCollector.RPISnapshot.class))
+                                                            .setReducer(BenchmarkingUtils::fromRequestsPerIntervalSnapshotsToPrintableOutput)
+                                                            .setTypedSubscriptions(TypedSubscription.TypedSubscriptionPolicy.LOCAL.forType(BenchmarkingUtils.RPISnapshot.class))
                                                             .setOutputOperators(PRINTER_OPERATOR)
                                                             .build())
                     .addOperator(MapOperatorConfig.newBuilder()
@@ -206,6 +224,16 @@ public class StatisticsCollector {
     static Duration getLatencyForPercentile(long[] sortedLatencies, double percentile) {
         int index = (int) Math.ceil(percentile / 100.0 * sortedLatencies.length) - 1;
         return Duration.ofNanos(sortedLatencies[index]);
+    }
+
+    static void nanoSleep(long nanos) {
+        long start = System.nanoTime();
+        long end;
+        long elapsed = 0;
+        while (elapsed < nanos) {
+            end = System.nanoTime();
+            elapsed = end - start;
+        }
     }
 
     record LatencyForPercentile(double percentile, Duration latency) implements Serializable { }

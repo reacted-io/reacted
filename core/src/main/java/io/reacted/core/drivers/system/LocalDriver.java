@@ -102,7 +102,7 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      }
      protected static DeliveryStatus localDeliver(ReActorContext destination, Message message) {
           DeliveryStatus deliverOperation = destination.getMbox().deliver(message);
-          if (deliverOperation.isDelivered()) {
+          if (deliverOperation.isRescheduleRequired() ) {
                destination.reschedule();
           }
           return deliverOperation;

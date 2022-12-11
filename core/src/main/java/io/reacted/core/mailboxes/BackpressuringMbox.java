@@ -104,17 +104,20 @@ public class BackpressuringMbox implements MailBox {
 
     @Override
     public void request(long messagesNum) {
+        boolean isReschedRequired = false;
         synchronized (this) {
             updateAllowedMessages(messagesNum);
             while(isAnotherMessageAllowed() && !bufferQueue.isEmpty()) {
                 Message payload = bufferQueue.removeFirst();
-                realMbox.deliver(payload);
+                isReschedRequired |= realMbox.deliver(payload).isRescheduleRequired();
                 if (!outOfStreamControl.contains(payload.getPayload().getClass())) {
                     decreaseAllowedMessages();
                 }
             }
         }
-        realMailboxOwner.reschedule();
+        if (isReschedRequired) {
+            realMailboxOwner.reschedule();
+        }
     }
 
     public static Optional<BackpressuringMbox> toBackpressuringMailbox(MailBox mailBox) {

@@ -35,5 +35,5 @@ public class NullMailbox implements MailBox {
 
     @Nonnull
     @Override
-    public DeliveryStatus deliver(Message message) { return DeliveryStatus.DELIVERED; }
+    public DeliveryStatus deliver(Message message) { return DeliveryStatus.DELIVERED_BUT_DO_NO_RESCHED; }
 }

@@ -140,11 +140,8 @@ public class Dispatcher {
                 selectedRing = scheduledQueues[(int) (nextDispatchIdx.getAndIncrement() & (scheduledQueues.length - 1))];
                 claimIdx = selectedRing.tryClaim(MESSAGE_MSG_TYPE, Long.BYTES);
                 if (claimIdx < 1 && (getDispatcherConfig().getDispatcherThreadsNum() < 2 || failures++ > 100)) {
-                    LOGGER.warn("Unable to dispatch reactor {} and no more threads are available for configured dispatcher. Slowpath mode enabled",
-                                reActor.getSelf()
-                                                                                                                                                                .getReActorId());
                     if (!slowpathQueue.offer(reActor)) {
-                        LOGGER.error("CRITIC! Unable to ativate slowpath mode for {} . Reactor may be stale!", reActor.getSelf()
+                        LOGGER.error("CRITIC! Unable to activate slowpath mode for {} . Reactor may be stale!", reActor.getSelf()
                                                                                                                       .getReActorId());
                         reActor.releaseScheduling();
                         return false;
@@ -178,7 +175,6 @@ public class Dispatcher {
             if (msgTypeId == MESSAGE_MSG_TYPE) {
                 ReActorContext ctx = reActorSystem.getReActorCtx(buffer.getLong(index));
                 if (ctx != null) {
-                    //LOGGER.info("Read {}", ctx.getReActorSchedulationId());
                     processedForDispatcher.setPlain(processedForDispatcher.getPlain() +
                                                     onMessage(ctx, dispatcherBatchSize, dispatcherLifeCyclePool,
                                                               isExecutionRecorded, devNull, reActorUnregister,
@@ -188,6 +184,9 @@ public class Dispatcher {
         });
         while (!Thread.currentThread().isInterrupted()) {
             int ringRecordsProcessed = scheduledList.read(ringBufferMessageProcessor);
+            if (!slowpathQueue.isEmpty()) {
+                LOGGER.warn("Slowpath mode has been enabled with size " + slowpathQueue.size());
+            }
             while (!slowpathQueue.isEmpty()) {
                 ReActorContext slowPathActor = slowpathQueue.poll();
                 if (slowPathActor.releaseScheduling()) {

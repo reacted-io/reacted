@@ -12,14 +12,19 @@ public enum DeliveryStatus {
     SENT,
     NOT_SENT,
     DELIVERED,
+    DELIVERED_BUT_DO_NO_RESCHED,
     NOT_DELIVERED,
     BACKPRESSURE_REQUIRED;
 
-    public boolean isDelivered() { return this == DELIVERED || this == BACKPRESSURE_REQUIRED; }
+    public boolean isDelivered() { return this == DELIVERED || this == BACKPRESSURE_REQUIRED || this == DELIVERED_BUT_DO_NO_RESCHED; }
     public boolean isNotSent() { return this == NOT_SENT; }
     public boolean isNotDelivered() { return this == NOT_SENT || this == NOT_DELIVERED; }
 
     public boolean isSent() { return this == SENT || isDelivered(); }
     public boolean isBackpressureRequired() { return this == BACKPRESSURE_REQUIRED; }
+
+    public boolean isRescheduleRequired() {
+        return isDelivered() && this != DELIVERED_BUT_DO_NO_RESCHED;
+    }
 
 }
