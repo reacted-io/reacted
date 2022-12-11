@@ -9,11 +9,12 @@
 package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
+import io.reacted.patterns.NonNullByDefault;
 
-import javax.annotation.Nonnull;
 import java.util.Objects;
 import java.util.Properties;
 
+@NonNullByDefault
 public abstract class CQDriverConfig<BuilderT extends ChannelDriverConfig.Builder<BuilderT, BuiltT>,
         BuiltT extends ChannelDriverConfig<BuilderT, BuiltT>> extends ChannelDriverConfig<BuilderT, BuiltT> {
     public static final String CQ_FILES_DIRECTORY = "chronicleFilesDir";
@@ -26,7 +27,7 @@ public abstract class CQDriverConfig<BuilderT extends ChannelDriverConfig.Builde
     }
 
     public String getChronicleFilesDir() { return chronicleFilesDir; }
-    @Nonnull
+
     @Override
     public Properties getChannelProperties() {
         Properties properties = super.getChannelProperties();
@@ -35,6 +36,7 @@ public abstract class CQDriverConfig<BuilderT extends ChannelDriverConfig.Builde
     }
 
     public abstract static class Builder<BuilderT, BuiltT> extends ChannelDriverConfig.Builder<BuilderT, BuiltT> {
+        @SuppressWarnings("NotNullFieldNotInitialized")
         private String chronicleFilesDir;
         protected Builder() { }
 

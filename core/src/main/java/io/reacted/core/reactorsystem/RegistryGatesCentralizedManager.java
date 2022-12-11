@@ -133,10 +133,8 @@ class RegistryGatesCentralizedManager {
     }
 
     public synchronized void unregisterSource(@Nonnull ReActorRef registryDriver) {
-        var reActorSystems = this.serviceRegistryToReActorSystemId.removeAll(registryDriver);
-        if (reActorSystems != null) {
-            reActorSystems.forEach(this.reActorSystemIdToSourceServiceRegistry::remove);
-        }
+        this.serviceRegistryToReActorSystemId.removeAll(registryDriver)
+                                             .forEach(this.reActorSystemIdToSourceServiceRegistry::remove);
     }
 
     public synchronized void unregisterTarget(@Nonnull ReActorSystemId reActorSystemId) {

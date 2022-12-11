@@ -17,8 +17,6 @@ import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
-import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;

@@ -86,7 +86,7 @@ public abstract class Try<T> {
     public abstract T get();
 
     /**
-     * @return An optional containing a non null value on Try success, empty otherwise
+     * @return An optional containing a non-null value on Try success, empty otherwise
      */
     public Optional<T> toOptional() {
         return isSuccess() ? Optional.ofNullable(get()) : Optional.empty();

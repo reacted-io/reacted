@@ -41,7 +41,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
         super(new TestEnvironment(250, 250, false));
         var rasCfg = ReActorSystemConfig.newBuilder()
                 .setLocalDriver(SystemLocalDrivers.DIRECT_COMMUNICATION)
-                .setRecordExecution(true)
+                .setRecordExecution(false)
                 .setMsgFanOutPoolSize(1)
                 .setReactorSystemName("TckValidationRAS")
                 .build();

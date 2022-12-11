@@ -121,7 +121,6 @@ class StreamProxy<T> implements Stream<T> {
   @Override
   public Object[] toArray() { return sourceStream.toArray(); }
 
-  @SuppressWarnings("SuspiciousToArrayCall")
   @Override
   public <A> A[] toArray(IntFunction<A[]> generator) { return sourceStream.toArray(generator); }
 
