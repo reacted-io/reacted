@@ -99,9 +99,9 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
         try {
             Objects.requireNonNull(kafkaProducer)
                    .send(new ProducerRecord<>(getDriverConfig().getTopic(),
-                                              new Message(source, destination, seqNum,
-                                                          reActorSystemId, ackingPolicy,
-                                                          message))).get();
+                                              Message.forParams(source, destination, seqNum,
+                                                                reActorSystemId, ackingPolicy,
+                                                                message))).get();
             return DeliveryStatus.SENT;
         } catch (Exception sendError) {
             getLocalReActorSystem().logError("Error sending message {}", message.toString(),

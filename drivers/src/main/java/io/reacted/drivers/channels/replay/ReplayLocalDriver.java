@@ -145,8 +145,9 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
 
         if (!(payload instanceof EventExecutionAttempt executionAttempt)) {
             dstToMessageBySeqNum.computeIfAbsent(destination.getReActorId(), reActorId -> new HashMap<>())
-                                .put(sequenceNumber, new Message(source, destination, sequenceNumber,
-                                                                 fromReActorSystemId, ackingPolicy, payload));
+                                .put(sequenceNumber,
+                                     Message.forParams(source, destination, sequenceNumber,
+                                                       fromReActorSystemId, ackingPolicy, payload));
             return;
         }
         while (!isReactorAlreadySpawned(source)) {

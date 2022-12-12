@@ -62,8 +62,8 @@ class LoopbackDriverTest {
 
         destReActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))
                                       .orElseSneakyThrow();
-        message = new Message(ReActorRef.NO_REACTOR_REF, destReActorRef, 0, reActorSystem.getLocalReActorSystemId(),
-                              AckingPolicy.NONE, "payload");
+        message = Message.forParams(ReActorRef.NO_REACTOR_REF, destReActorRef, 0, reActorSystem.getLocalReActorSystemId(),
+                                    AckingPolicy.NONE, "payload");
     }
 
     @AfterEach

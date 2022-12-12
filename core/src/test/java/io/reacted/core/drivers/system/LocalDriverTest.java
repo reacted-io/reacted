@@ -81,8 +81,8 @@ class LocalDriverTest {
                 .setReActions(mock(ReActions.class))
                 .build();
 
-        originalMsg = new Message(ReActorRef.NO_REACTOR_REF, reActorRef, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
-                AckingPolicy.NONE, CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
+        originalMsg = Message.forParams(ReActorRef.NO_REACTOR_REF, reActorRef, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
+                                        AckingPolicy.NONE, CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
     }
 
     @Test

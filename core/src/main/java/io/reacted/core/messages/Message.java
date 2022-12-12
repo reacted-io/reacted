@@ -25,28 +25,14 @@ import java.util.Objects;
 public final class Message implements Externalizable {
     @Serial
     private static final long serialVersionUID = 1;
-    private static final long SENDER_OFFSET = SerializationUtils.getFieldOffset(Message.class, "sender")
-                                                                .orElseSneakyThrow();
-    private static final long DESTINATION_OFFSET = SerializationUtils.getFieldOffset(Message.class, "destination")
-                                                                     .orElseSneakyThrow();
-    private static final long SEQ_NUM_OFFSET = SerializationUtils.getFieldOffset(Message.class, "sequenceNumber")
-                                                                 .orElseSneakyThrow();
-    private static final long PAYLOAD_OFFSET = SerializationUtils.getFieldOffset(Message.class, "payload")
-                                                                 .orElseSneakyThrow();
-    private static final long GENERATING_REACTORSYSTEM_OFFSET = SerializationUtils.getFieldOffset(Message.class,
-                                                                                                  "generatingReActorSystem")
-                                                                                  .orElseSneakyThrow();
-    private static final long ACKING_POLICY_OFFSET = SerializationUtils.getFieldOffset(Message.class, "ackingPolicy")
-                                                                       .orElseSneakyThrow();
+    private ReActorRef sender;
+    private ReActorRef destination;
+    private long sequenceNumber;
+    private ReActorSystemId generatingReActorSystem;
+    private AckingPolicy ackingPolicy;
+    private Serializable payload;
 
-    private final ReActorRef sender;
-    private final ReActorRef destination;
-    private final long sequenceNumber;
-    private final ReActorSystemId generatingReActorSystem;
-    private final AckingPolicy ackingPolicy;
-    private final Serializable payload;
-
-    public Message() {
+    private Message() {
         /* Required by Externalizable */
         this.sender = ReActorRef.NO_REACTOR_REF;
         this.destination = ReActorRef.NO_REACTOR_REF;
@@ -56,28 +42,16 @@ public final class Message implements Externalizable {
         this.ackingPolicy = AckingPolicy.NONE;
     }
 
-    public Message(ReActorRef sender, ReActorRef dest, long seqNum, ReActorSystemId generatingReActorSystem,
-                   AckingPolicy ackingPolicy, Serializable payload) {
-        this.sender = sender;
-        this.destination = dest;
-        this.sequenceNumber = seqNum;
-        this.generatingReActorSystem = generatingReActorSystem;
-        this.ackingPolicy = ackingPolicy;
-        this.payload = payload;
+    public static Message forParams(ReActorRef sender, ReActorRef dest, long seqNum, ReActorSystemId generatingReActorSystem,
+                                    AckingPolicy ackingPolicy, Serializable payload) {
+        Message message = new Message();
+        return message.setSender(sender)
+                      .setDestination(dest)
+                      .setSequenceNumber(seqNum)
+                      .setGeneratingReActorSystem(generatingReActorSystem)
+                      .setAckingPolicy(ackingPolicy)
+                      .setPayload(payload);
     }
-
-    public ReActorRef getSender() { return sender; }
-
-    public ReActorRef getDestination() { return destination; }
-
-    @SuppressWarnings("unchecked")
-    public <PayloadT extends Serializable> PayloadT getPayload() { return (PayloadT)payload; }
-
-    public long getSequenceNumber() { return sequenceNumber; }
-
-    public ReActorSystemId getGeneratingReActorSystem() { return generatingReActorSystem; }
-
-    public AckingPolicy getAckingPolicy() { return ackingPolicy; }
 
     @Override
     public boolean equals(@Nullable Object o) {
@@ -134,32 +108,43 @@ public final class Message implements Externalizable {
         }
     }
 
-    @SuppressWarnings("UnusedReturnValue")
-    private Message setSender(ReActorRef sender) {
-        return SerializationUtils.setObjectField(this, SENDER_OFFSET, sender);
+    public ReActorRef getSender() { return sender; }
+
+    public ReActorRef getDestination() { return destination; }
+
+    public long getSequenceNumber() { return sequenceNumber; }
+
+    public ReActorSystemId getGeneratingReActorSystem() { return generatingReActorSystem; }
+
+    public AckingPolicy getAckingPolicy() { return ackingPolicy; }
+
+    public <PayloadT extends Serializable> PayloadT getPayload() { return (PayloadT)payload; }
+    public Message setSender(ReActorRef sender) {
+        this.sender = sender;
+        return this;
     }
 
-    @SuppressWarnings("UnusedReturnValue")
-    private Message setDestination(ReActorRef destination) {
-        return SerializationUtils.setObjectField(this, DESTINATION_OFFSET, destination);
+    public Message setDestination(ReActorRef destination) {
+        this.destination = destination;
+        return this;
     }
 
-    @SuppressWarnings("UnusedReturnValue")
-    private void setGeneratingReActorSystem(ReActorSystemId generatingReActorSystem) {
-        SerializationUtils.setObjectField(this, GENERATING_REACTORSYSTEM_OFFSET, generatingReActorSystem);
+    public Message setSequenceNumber(long sequenceNumber) {
+        this.sequenceNumber = sequenceNumber;
+        return this;
     }
 
-    private void setAckingPolicy(AckingPolicy ackingPolicy) {
-        SerializationUtils.setObjectField(this, ACKING_POLICY_OFFSET, ackingPolicy);
+    public Message setGeneratingReActorSystem(ReActorSystemId generatingReActorSystem) {
+        this.generatingReActorSystem = generatingReActorSystem;
+        return this;
     }
 
-    @SuppressWarnings("UnusedReturnValue")
-    private Message setSequenceNumber(long sequenceNumber) {
-        return SerializationUtils.setLongField(this, SEQ_NUM_OFFSET, sequenceNumber);
+    public Message setAckingPolicy(AckingPolicy ackingPolicy) {
+        this.ackingPolicy = ackingPolicy;
+        return this;
     }
-
-    @SuppressWarnings("UnusedReturnValue")
-    private Message setPayload(Serializable payload) {
-        return SerializationUtils.setObjectField(this, PAYLOAD_OFFSET, payload);
+    public Message setPayload(Serializable payload) {
+        this.payload = payload;
+        return this;
     }
 }

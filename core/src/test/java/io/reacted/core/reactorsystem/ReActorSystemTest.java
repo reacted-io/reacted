@@ -191,9 +191,9 @@ class ReActorSystemTest {
                                                                        .setReActorName("2nd reactor name")
                                                                        .build()));
 
-        Message originalMsg = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, 0x31337,
-                                          reActorSystem.getLocalReActorSystemId(), AckingPolicy.NONE,
-                                          CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
+        Message originalMsg = Message.forParams(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, 0x31337,
+                                                reActorSystem.getLocalReActorSystemId(), AckingPolicy.NONE,
+                                                CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
 
         reActorSystem.broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF, originalMsg);
 
