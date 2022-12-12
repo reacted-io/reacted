@@ -140,8 +140,8 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
                              .forEach(record -> thisDriver.offerMessage(record.value().getSender(),
                                                                         record.value().getDestination(),
                                                                         record.value().getSequenceNumber(),
-                                                                        record.value().getDataLink().getGeneratingReActorSystem(),
-                                                                        record.value().getDataLink().getAckingPolicy(),
+                                                                        record.value().getGeneratingReActorSystem(),
+                                                                        record.value().getAckingPolicy(),
                                                                         record.value().getPayload()));
             } catch (InterruptException interruptException) {
                 Thread.currentThread().interrupt();

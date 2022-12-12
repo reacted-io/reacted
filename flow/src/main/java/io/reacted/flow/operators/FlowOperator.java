@@ -44,8 +44,7 @@ import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 @NonNullByDefault
 @Unstable
 public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builder<CfgBuilderT, CfgT>,
-                                   CfgT extends FlowOperatorConfig<CfgBuilderT, CfgT>>
-    implements ReActor {
+                                   CfgT extends FlowOperatorConfig<CfgBuilderT, CfgT>> implements ReActor {
     public static final Collection<? extends Serializable> NO_OUTPUT = List.of();
     private final ReActions operatorReactions;
     private final CfgT operatorCfg;

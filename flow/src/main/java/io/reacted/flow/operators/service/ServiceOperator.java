@@ -34,8 +34,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
-public class ServiceOperator extends FlowOperator<Builder,
-                                                  ServiceOperatorConfig> {
+public class ServiceOperator extends FlowOperator<Builder, ServiceOperatorConfig> {
   private final ReActions reActions;
   private final ExecutorService executorService;
   private final boolean shallStopExecutorService;
@@ -144,6 +143,5 @@ public class ServiceOperator extends FlowOperator<Builder,
     }
   }
 
-  private record RefreshServiceUpdate(Collection<ReActorRef> serviceGates) implements Serializable {
-  }
+  private record RefreshServiceUpdate(Collection<ReActorRef> serviceGates) implements Serializable { }
 }

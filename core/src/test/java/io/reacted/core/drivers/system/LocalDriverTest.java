@@ -90,8 +90,8 @@ class LocalDriverTest {
         Assertions.assertTrue(localDriver.sendMessage(originalMsg.getSender(), reActorContext,
                                                       originalMsg.getDestination(),
                                                       originalMsg.getSequenceNumber(),
-                                                      originalMsg.getDataLink().getGeneratingReActorSystem(),
-                                                      originalMsg.getDataLink().getAckingPolicy(),
+                                                      originalMsg.getGeneratingReActorSystem(),
+                                                      originalMsg.getAckingPolicy(),
                                                       originalMsg.getPayload()).isDelivered());
 
         Assertions.assertEquals(1, unboundedMbox.getMsgNum());
@@ -104,8 +104,8 @@ class LocalDriverTest {
         Assertions.assertTrue(LocalDriver.syncForwardMessageToLocalActor(originalMsg.getSender(), reActorContext,
                                                                          originalMsg.getDestination(),
                                                                          originalMsg.getSequenceNumber(),
-                                                                         originalMsg.getDataLink().getGeneratingReActorSystem(),
-                                                                         originalMsg.getDataLink().getAckingPolicy(),
+                                                                         originalMsg.getGeneratingReActorSystem(),
+                                                                         originalMsg.getAckingPolicy(),
                                                                          originalMsg.getPayload())
                                          .isDelivered());
         Assertions.assertEquals(originalMsg, unboundedMbox.getNextMessage());
@@ -116,8 +116,8 @@ class LocalDriverTest {
         Assertions.assertTrue(localDriver.sendMessage(originalMsg.getSender(), reActorContext,
                                                       originalMsg.getDestination(),
                                                       originalMsg.getSequenceNumber(),
-                                                      originalMsg.getDataLink().getGeneratingReActorSystem(),
-                                                      originalMsg.getDataLink().getAckingPolicy(),
+                                                      originalMsg.getGeneratingReActorSystem(),
+                                                      originalMsg.getAckingPolicy(),
                                                       originalMsg.getPayload()).isDelivered());
         Assertions.assertEquals(originalMsg, unboundedMbox.getNextMessage());
     }

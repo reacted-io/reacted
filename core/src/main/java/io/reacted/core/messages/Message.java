@@ -33,13 +33,18 @@ public final class Message implements Externalizable {
                                                                  .orElseSneakyThrow();
     private static final long PAYLOAD_OFFSET = SerializationUtils.getFieldOffset(Message.class, "payload")
                                                                  .orElseSneakyThrow();
-    private static final long DATALINK_OFFSET = SerializationUtils.getFieldOffset(Message.class, "dataLink")
-                                                                  .orElseSneakyThrow();
+    private static final long GENERATING_REACTORSYSTEM_OFFSET = SerializationUtils.getFieldOffset(Message.class,
+                                                                                                  "generatingReActorSystem")
+                                                                                  .orElseSneakyThrow();
+    private static final long ACKING_POLICY_OFFSET = SerializationUtils.getFieldOffset(Message.class, "ackingPolicy")
+                                                                       .orElseSneakyThrow();
+
     private final ReActorRef sender;
     private final ReActorRef destination;
     private final long sequenceNumber;
+    private final ReActorSystemId generatingReActorSystem;
+    private final AckingPolicy ackingPolicy;
     private final Serializable payload;
-    private final DataLink dataLink;
 
     public Message() {
         /* Required by Externalizable */
@@ -47,7 +52,8 @@ public final class Message implements Externalizable {
         this.destination = ReActorRef.NO_REACTOR_REF;
         this.sequenceNumber = 0;
         this.payload = SerializationUtils.NO_PAYLOAD;
-        this.dataLink = DataLink.NO_DATALINK;
+        this.generatingReActorSystem = ReActorSystemId.NO_REACTORSYSTEM_ID;
+        this.ackingPolicy = AckingPolicy.NONE;
     }
 
     public Message(ReActorRef sender, ReActorRef dest, long seqNum, ReActorSystemId generatingReActorSystem,
@@ -55,7 +61,8 @@ public final class Message implements Externalizable {
         this.sender = sender;
         this.destination = dest;
         this.sequenceNumber = seqNum;
-        this.dataLink = new DataLink(generatingReActorSystem, ackingPolicy);
+        this.generatingReActorSystem = generatingReActorSystem;
+        this.ackingPolicy = ackingPolicy;
         this.payload = payload;
     }
 
@@ -68,7 +75,9 @@ public final class Message implements Externalizable {
 
     public long getSequenceNumber() { return sequenceNumber; }
 
-    public DataLink getDataLink() { return dataLink; }
+    public ReActorSystemId getGeneratingReActorSystem() { return generatingReActorSystem; }
+
+    public AckingPolicy getAckingPolicy() { return ackingPolicy; }
 
     @Override
     public boolean equals(@Nullable Object o) {
@@ -99,7 +108,8 @@ public final class Message implements Externalizable {
     public void writeExternal(ObjectOutput out) throws IOException {
         Objects.requireNonNull(sender).writeExternal(out);
         Objects.requireNonNull(destination).writeExternal(out);
-        Objects.requireNonNull(dataLink).writeExternal(out);
+        Objects.requireNonNull(generatingReActorSystem).writeExternal(out);
+        out.writeInt(ackingPolicy.ordinal());
         out.writeLong(sequenceNumber);
         out.writeObject(payload);
     }
@@ -112,9 +122,10 @@ public final class Message implements Externalizable {
         var destinationRef = new ReActorRef();
         destinationRef.readExternal(in);
         setDestination(destinationRef);
-        var datalink = new DataLink();
-        datalink.readExternal(in);
-        setDataLink(datalink);
+        var receivedGeneratingReActorSystem = new ReActorSystemId();
+        receivedGeneratingReActorSystem.readExternal(in);
+        setGeneratingReActorSystem(receivedGeneratingReActorSystem);
+        setAckingPolicy(AckingPolicy.forOrdinal(in.readInt()));
         setSequenceNumber(in.readLong());
         try {
             setPayload((Serializable)in.readObject());
@@ -134,8 +145,12 @@ public final class Message implements Externalizable {
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    private Message setDataLink(DataLink dataLink) {
-        return SerializationUtils.setObjectField(this, DATALINK_OFFSET, dataLink);
+    private void setGeneratingReActorSystem(ReActorSystemId generatingReActorSystem) {
+        SerializationUtils.setObjectField(this, GENERATING_REACTORSYSTEM_OFFSET, generatingReActorSystem);
+    }
+
+    private void setAckingPolicy(AckingPolicy ackingPolicy) {
+        SerializationUtils.setObjectField(this, ACKING_POLICY_OFFSET, ackingPolicy);
     }
 
     @SuppressWarnings("UnusedReturnValue")

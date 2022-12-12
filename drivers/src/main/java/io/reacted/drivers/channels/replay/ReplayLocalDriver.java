@@ -164,8 +164,8 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         } else if (syncForwardMessageToLocalActor(originalMessage.getSender(), destinationCtx,
                                                   originalMessage.getDestination(),
                                                   originalMessage.getSequenceNumber(),
-                                                  originalMessage.getDataLink().getGeneratingReActorSystem(),
-                                                  originalMessage.getDataLink().getAckingPolicy(),
+                                                  originalMessage.getGeneratingReActorSystem(),
+                                                  originalMessage.getAckingPolicy(),
                                                   originalMessage.getPayload()).isNotDelivered()) {
                 LOGGER.error("Unable to delivery message {} for ReActor {}",
                              originalMessage, executionAttempt.getReActorId());
