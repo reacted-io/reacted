@@ -159,9 +159,9 @@ public class ReActorSystem {
         this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
                                                                            new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
         this.newSeqNum = new AtomicLong(Long.MAX_VALUE);
-        this.reActorStop = Message.forParams(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF,
-                                             Long.MIN_VALUE, localReActorSystemId, AckingPolicy.NONE,
-                                             ReActorStop.STOP);
+        this.reActorStop = Message.of(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF,
+                                      Long.MIN_VALUE, localReActorSystemId, AckingPolicy.NONE,
+                                      ReActorStop.STOP);
     }
 
     public ReActorSystem(ReActorSystemConfig config) {
@@ -176,8 +176,8 @@ public class ReActorSystem {
         this.typedSubscriptionsManager = new TypedSubscriptionsManager();
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.newSeqNum = new AtomicLong(0);
-        this.reActorStop = Message.forParams(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, Long.MIN_VALUE,
-                                             localReActorSystemId, AckingPolicy.NONE, ReActorStop.STOP);
+        this.reActorStop = Message.of(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, Long.MIN_VALUE,
+                                      localReActorSystemId, AckingPolicy.NONE, ReActorStop.STOP);
     }
     /**
      * @return The configuration for the reactor system

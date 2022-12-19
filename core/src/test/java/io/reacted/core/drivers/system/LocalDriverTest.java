@@ -57,7 +57,7 @@ class LocalDriverTest {
         localDriver = SystemLocalDrivers.DIRECT_COMMUNICATION;
         localDriver.initDriverLoop(reActorSystem);
 
-        TypedSubscription subscribedTypes = TypedSubscription.LOCAL.forType(Message.class);
+        TypedSubscription subscribedTypes = TypedSubscription.LOCAL.forType(String.class);
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName(CoreConstants.REACTOR_NAME)
                                                    .setDispatcherName("Dispatcher")
@@ -81,8 +81,8 @@ class LocalDriverTest {
                 .setReActions(mock(ReActions.class))
                 .build();
 
-        originalMsg = Message.forParams(ReActorRef.NO_REACTOR_REF, reActorRef, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
-                                        AckingPolicy.NONE, CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
+        originalMsg = Message.of(ReActorRef.NO_REACTOR_REF, reActorRef, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
+                                 AckingPolicy.NONE, CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
     }
 
     @Test
@@ -90,7 +90,7 @@ class LocalDriverTest {
         Assertions.assertTrue(localDriver.sendMessage(originalMsg.getSender(), reActorContext,
                                                       originalMsg.getDestination(),
                                                       originalMsg.getSequenceNumber(),
-                                                      originalMsg.getGeneratingReActorSystem(),
+                                                      originalMsg.getCreatingReactorSystemId(),
                                                       originalMsg.getAckingPolicy(),
                                                       originalMsg.getPayload()).isDelivered());
 
@@ -104,7 +104,7 @@ class LocalDriverTest {
         Assertions.assertTrue(LocalDriver.syncForwardMessageToLocalActor(originalMsg.getSender(), reActorContext,
                                                                          originalMsg.getDestination(),
                                                                          originalMsg.getSequenceNumber(),
-                                                                         originalMsg.getGeneratingReActorSystem(),
+                                                                         originalMsg.getCreatingReactorSystemId(),
                                                                          originalMsg.getAckingPolicy(),
                                                                          originalMsg.getPayload())
                                          .isDelivered());
@@ -116,7 +116,7 @@ class LocalDriverTest {
         Assertions.assertTrue(localDriver.sendMessage(originalMsg.getSender(), reActorContext,
                                                       originalMsg.getDestination(),
                                                       originalMsg.getSequenceNumber(),
-                                                      originalMsg.getGeneratingReActorSystem(),
+                                                      originalMsg.getCreatingReactorSystemId(),
                                                       originalMsg.getAckingPolicy(),
                                                       originalMsg.getPayload()).isDelivered());
         Assertions.assertEquals(originalMsg, unboundedMbox.getNextMessage());

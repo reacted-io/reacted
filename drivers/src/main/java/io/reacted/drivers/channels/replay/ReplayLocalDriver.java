@@ -146,8 +146,8 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         if (!(payload instanceof EventExecutionAttempt executionAttempt)) {
             dstToMessageBySeqNum.computeIfAbsent(destination.getReActorId(), reActorId -> new HashMap<>())
                                 .put(sequenceNumber,
-                                     Message.forParams(source, destination, sequenceNumber,
-                                                       fromReActorSystemId, ackingPolicy, payload));
+                                     Message.of(source, destination, sequenceNumber,
+                                                fromReActorSystemId, ackingPolicy, payload));
             return;
         }
         while (!isReactorAlreadySpawned(source)) {
@@ -165,7 +165,7 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         } else if (syncForwardMessageToLocalActor(originalMessage.getSender(), destinationCtx,
                                                   originalMessage.getDestination(),
                                                   originalMessage.getSequenceNumber(),
-                                                  originalMessage.getGeneratingReActorSystem(),
+                                                  originalMessage.getCreatingReactorSystemId(),
                                                   originalMessage.getAckingPolicy(),
                                                   originalMessage.getPayload()).isNotDelivered()) {
                 LOGGER.error("Unable to delivery message {} for ReActor {}",

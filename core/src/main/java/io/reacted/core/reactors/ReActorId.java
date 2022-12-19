@@ -90,7 +90,7 @@ public final class ReActorId implements Externalizable {
         if (this == NO_REACTOR_ID) {
             out.writeInt(NO_REACTOR_ID_MARKER);
         } else {
-            out.writeInt(0);
+            out.writeInt(COMMON_REACTOR_ID_MARKER);
             out.writeObject(getReActorUUID());
             out.writeObject(reActorName);
         }

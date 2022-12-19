@@ -28,7 +28,6 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,6 @@ import java.util.concurrent.CompletionStage;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class ReActorSystemTest {
     private final Logger LOGGER = LoggerFactory.getLogger(ReActorSystemTest.class);
@@ -182,7 +180,7 @@ class ReActorSystemTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("TR")
                                                    .setDispatcherName("TestDispatcher")
-                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(String.class))
                                                    .build();
 
         reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig));
@@ -191,11 +189,11 @@ class ReActorSystemTest {
                                                                        .setReActorName("2nd reactor name")
                                                                        .build()));
 
-        Message originalMsg = Message.forParams(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, 0x31337,
-                                                reActorSystem.getLocalReActorSystemId(), AckingPolicy.NONE,
-                                                CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
+        Message originalMsg = Message.of(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, 0x31337,
+                                         reActorSystem.getLocalReActorSystemId(), AckingPolicy.NONE,
+                                         CoreConstants.DE_SERIALIZATION_SUCCESSFUL);
 
-        reActorSystem.broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF, originalMsg);
+        reActorSystem.broadcastToLocalSubscribers(ReActorRef.NO_REACTOR_REF, originalMsg.getPayload());
 
         Awaitility.await()
                   .until(MagicTestReActor.RECEIVED::intValue, CoreMatchers.equalTo(2));

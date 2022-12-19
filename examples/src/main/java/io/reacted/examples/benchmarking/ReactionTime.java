@@ -11,6 +11,9 @@ package io.reacted.examples.benchmarking;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
+import io.reacted.core.mailboxes.FastBoundedMbox;
+import io.reacted.core.mailboxes.FastUnboundedMbox;
+import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
@@ -44,11 +47,11 @@ public class ReactionTime {
                                                                                                     .setDispatcherThreadsNum(1)
                                                                                                     .build())
                                                                .build()).initReActorSystem();
-        int iterations = 10_000_000;
+        int iterations = 5_000_000;
         MessageGrabber latencyGrabberBody = new MessageGrabber(iterations);
         ReActorRef latencyGrabber = benchmarkSystem.spawn(latencyGrabberBody.getReActions(),
                                                  ReActorConfig.newBuilder()
-                                                              //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
+                                                              .setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new BoundedMbox(iterations))
                                                               //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new TypeCoalescingMailbox())
@@ -68,10 +71,12 @@ public class ReactionTime {
         long end;
         long elapsed = 0;
         for(long cycle = 0; cycle < iterations; cycle++) {
+
             while (elapsed < pauseWindowDuration) {
                 end = System.nanoTime();
                 elapsed = end - start;
             }
+
             elapsed = 0;
             start = System.nanoTime();
             latencyGrabber.tell(start);

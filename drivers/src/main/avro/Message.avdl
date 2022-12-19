@@ -1,0 +1,49 @@
+@namespace("io.reacted.drivers.channels.kafka.avro")
+protocol ReactedMessageProtocol {
+	record Message {
+		ReActorRef? source;
+		ReActorRef? destination;
+		long sequence_number;
+		ReactorSystemId creator_reactor_system;
+		AckingPolicy acking_policy;
+		bytes payload;
+	}
+
+	record AckingPolicy {
+		int acking_policy_ordinal;
+	}
+
+	record ReActorRef {
+		ReActorId reactor_id;
+		ReactorSystemRef reactor_system_ref;
+	}
+
+	record ReactorSystemRef {
+		ReactorSystemId reactor_system_id;
+		ChannelId channel_id;
+	}
+
+	record ReactorSystemId {
+		UUID reactor_system_id;
+		string reactor_system_name;
+	}
+
+	record ChannelId {
+		ChannelType channel_type;
+		string channel_name;
+	}
+
+	record ChannelType {
+		int channel_type_ordinal;
+	}
+
+	record ReActorId {
+		UUID id;
+		string name;
+	}
+
+	record UUID {
+		long most_significant = 0;
+		long least_significant = 0;
+	}
+}

@@ -20,6 +20,7 @@ import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+import org.apache.avro.Protocol;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -57,9 +58,9 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     private static final byte[] NO_SERIALIZED_PAYLOAD = null;
     private static final Duration POLL_TIMEOUT = Duration.ofSeconds(1);
     @Nullable
-    private Consumer<Long, Message> kafkaConsumer;
+    private Consumer<Long, Protocol.Message> kafkaConsumer;
     @Nullable
-    private Producer<Long, Message> kafkaProducer;
+    private Producer<Long, Protocol.Message> kafkaProducer;
 
     public KafkaDriver(KafkaDriverConfig config) {
         super(config);
@@ -94,23 +95,24 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     @Override
     public <PayloadT extends Serializable>
     DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
-                               long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
-                               PayloadT message) {
+                               long sequenceNumber, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
+                               PayloadT payload) {
+
         try {
             Objects.requireNonNull(kafkaProducer)
                    .send(new ProducerRecord<>(getDriverConfig().getTopic(),
-                                              Message.forParams(source, destination, seqNum,
-                                                                reActorSystemId, ackingPolicy,
-                                                                message))).get();
+                                              KafkaUtils.toKafkaMessage(source, destination, sequenceNumber,
+                                                                        reActorSystemId, ackingPolicy, payload)))
+                   .get();
             return DeliveryStatus.SENT;
         } catch (Exception sendError) {
-            getLocalReActorSystem().logError("Error sending message {}", message.toString(),
+            getLocalReActorSystem().logError("Error sending message {}", payload.toString(),
                                              sendError);
             return DeliveryStatus.NOT_SENT;
         }
     }
 
-    private static Consumer<Long, Message> createConsumer(KafkaDriverConfig driverConfig) {
+    private static Consumer<Long, Protocol.Message> createConsumer(KafkaDriverConfig driverConfig) {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, driverConfig.getBootstrapEndpoint());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, driverConfig.getGroupId());
@@ -119,12 +121,12 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
         props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, driverConfig.getMaxPollRecords());
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-        Consumer<Long, Message> consumer = new KafkaConsumer<>(props);
+        Consumer<Long, Protocol.Message> consumer = new KafkaConsumer<>(props);
         consumer.subscribe(List.of(driverConfig.getTopic()));
         return consumer;
     }
 
-    public static Producer<Long, Message> createProducer(KafkaDriverConfig driverConfig) {
+    public static Producer<Long, Protocol.Message> createProducer(KafkaDriverConfig driverConfig) {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, driverConfig.getBootstrapEndpoint());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
@@ -132,7 +134,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
         return new KafkaProducer<>(props);
     }
 
-    private static void kafkaDriverLoop(Consumer<Long, Message> kafkaConsumer, KafkaDriver thisDriver,
+    private static void kafkaDriverLoop(Consumer<Long, Protocol.Message> kafkaConsumer, KafkaDriver thisDriver,
                                         ReActorSystem localReActorSystem) {
         while(!Thread.currentThread().isInterrupted()) {
             try {
@@ -140,7 +142,7 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
                              .forEach(record -> thisDriver.offerMessage(record.value().getSender(),
                                                                         record.value().getDestination(),
                                                                         record.value().getSequenceNumber(),
-                                                                        record.value().getGeneratingReActorSystem(),
+                                                                        record.value().getCreatingReactorSystemId(),
                                                                         record.value().getAckingPolicy(),
                                                                         record.value().getPayload()));
             } catch (InterruptException interruptException) {

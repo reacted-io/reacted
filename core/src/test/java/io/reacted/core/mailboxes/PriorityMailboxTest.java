@@ -35,8 +35,8 @@ class PriorityMailboxTest {
         testMsgSrc = ReactorHelper.generateReactor(CoreConstants.SOURCE);
         testMsgDst = ReactorHelper.generateReactor(CoreConstants.DESTINATION);
 
-        originalMsg = Message.forParams(testMsgSrc, testMsgDst, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
-                                        AckingPolicy.NONE, "De/Serialization Successful!");
+        originalMsg = Message.of(testMsgSrc, testMsgDst, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
+                                 AckingPolicy.NONE, "De/Serialization Successful!");
     }
 
     @BeforeEach
@@ -90,8 +90,8 @@ class PriorityMailboxTest {
                 ReactorHelper.generateReactor(CoreConstants.DESTINATION + PRIORITY_2);
 
         Message message4 =
-                Message.forParams(highPrioMsgSrc2, highPrioMsgDest2, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
-                        AckingPolicy.NONE, CoreConstants.HIGH_PRIORITY);
+                Message.of(highPrioMsgSrc2, highPrioMsgDest2, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
+                           AckingPolicy.NONE, CoreConstants.HIGH_PRIORITY);
 
         priorityMailbox1.deliver(message1);
         priorityMailbox1.deliver(message2);
@@ -105,8 +105,8 @@ class PriorityMailboxTest {
     }
 
     private Message createMessage(String payload) {
-        return Message.forParams(testMsgSrc, testMsgDst, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
-                                 AckingPolicy.NONE, payload);
+        return Message.of(testMsgSrc, testMsgDst, 0x31337, ReactorHelper.TEST_REACTOR_SYSTEM_ID,
+                          AckingPolicy.NONE, payload);
     }
 
     private final static Comparator<? super Message> PAYLOAD_COMPARATOR =

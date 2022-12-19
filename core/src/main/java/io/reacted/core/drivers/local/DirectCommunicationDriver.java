@@ -69,6 +69,6 @@ public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCo
         return destinationCtx.isStop()
                ? DeliveryStatus.NOT_DELIVERED
                : localDeliver(destinationCtx,
-                              Message.forParams(source, destination, seqNum, reActorSystemId, ackingPolicy, message));
+                              Message.of(source, destination, seqNum, reActorSystemId, ackingPolicy, message));
     }
 }

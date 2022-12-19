@@ -22,7 +22,7 @@ import javax.annotation.Nonnull;
 
 public class SingleChannel {
     public static void main(String[] args) {
-        final int cycles = 1_000_000_000;
+        final int cycles = 1_00_000_000;
         ReActorSystem singleChanelSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                                 .setExpectedReActorsNum(256)
                                                                                 .setReactorSystemName(SingleChannel.class.getSimpleName())

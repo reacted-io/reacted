@@ -57,13 +57,13 @@ class LoopbackDriverTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("ReActorName")
                                                    .setDispatcherName(testDispatcher)
-                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(String.class))
                                                    .build();
 
         destReActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))
                                       .orElseSneakyThrow();
-        message = Message.forParams(ReActorRef.NO_REACTOR_REF, destReActorRef, 0, reActorSystem.getLocalReActorSystemId(),
-                                    AckingPolicy.NONE, "payload");
+        message = Message.of(ReActorRef.NO_REACTOR_REF, destReActorRef, 0, reActorSystem.getLocalReActorSystemId(),
+                             AckingPolicy.NONE, "payload");
     }
 
     @AfterEach
@@ -71,7 +71,8 @@ class LoopbackDriverTest {
 
     @Test
     void loopbackDriverCanTellMessageToReactor() throws ExecutionException, InterruptedException {
-        Assertions.assertTrue(loopbackDriver.publish(ReActorRef.NO_REACTOR_REF, destReActorRef, message).isDelivered());
+        Assertions.assertTrue(loopbackDriver.publish(ReActorRef.NO_REACTOR_REF, destReActorRef,
+                                                     message.getPayload()).isDelivered());
         // as we have a dispatcher the message was dispatched & it cannot be found in destination mbox
         Awaitility.await().until(() -> MagicTestReActor.RECEIVED.sum() == 1);
     }

@@ -48,7 +48,7 @@ public class MagicTestReActor implements ReActor {
         this.reActorConfig = reActorConfig;
         this.reActions = ReActions.newBuilder()
                                   .reAct(DeadMessage.class, this::onDeadMessage)
-                                  .reAct(Message.class, this::onMessage)
+                                  .reAct(String.class, this::onMessage)
                                   .build();
     }
 
@@ -58,9 +58,9 @@ public class MagicTestReActor implements ReActor {
         DEADMSG.increment();
     }
 
-    public void onMessage(ReActorContext ctx, Message message) {
-        System.err.printf("Dispatcher used [%s] Payload: %s%n", ctx.getDispatcher()
-                                                                   .getName(), message.getPayload());
+    public void onMessage(ReActorContext ctx, String  message) {
+        System.err.printf("Dispatcher used [%s] Payload: %s%n",
+                          ctx.getDispatcher().getName(), message);
         RECEIVED.increment();
     }
 

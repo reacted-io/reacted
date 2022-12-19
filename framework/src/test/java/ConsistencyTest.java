@@ -23,7 +23,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 public class ConsistencyTest {
-    private static final int CYCLES = 9_999_999;
+    private static final int CYCLES = 999_999_999;
     public static void main(String[] args)  {
 
 
@@ -44,9 +44,9 @@ public class ConsistencyTest {
 
         Instant start = Instant.now();
 
-        BenchmarkingUtils.initAndWaitForMessageProducersToCompleteWithDedicatedExecutors(BenchmarkingUtils.constantWindowMessageSender(CYCLES/3, worker, Duration.ofNanos(10000)),
-                                                                                         BenchmarkingUtils.constantWindowMessageSender(CYCLES/3, worker, Duration.ofNanos(500000)),
-                                                                                         BenchmarkingUtils.constantWindowMessageSender(CYCLES/3, worker, Duration.ofNanos(5000)));
+        BenchmarkingUtils.initAndWaitForMessageProducersToCompleteWithDedicatedExecutors(BenchmarkingUtils.nonStopMessageSender(CYCLES/3, worker), //Duration.ofNanos(10000)),
+                                                                                         BenchmarkingUtils.nonStopMessageSender(CYCLES/3, worker), //Duration.ofNanos(500000)),
+                                                                                         BenchmarkingUtils.nonStopMessageSender(CYCLES/3, worker)); //, Duration.ofNanos(5000)));
 
         System.err.println("Completed in " + ChronoUnit.SECONDS.between(start, Instant.now()));
 
@@ -95,7 +95,7 @@ public class ConsistencyTest {
             }
             marker = 1;
             counter++;
-            BenchmarkingUtils.nanoSleep(100);
+            //BenchmarkingUtils.nanoSleep(100);
             if (marker != 1) {
                 System.err.println("CRITIC!");
                 System.exit(2);
