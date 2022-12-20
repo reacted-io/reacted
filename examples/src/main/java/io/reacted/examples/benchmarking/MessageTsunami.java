@@ -13,7 +13,6 @@ import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.mailboxes.BackpressuringMbox;
 import io.reacted.core.mailboxes.FastUnboundedMbox;
 import io.reacted.core.mailboxes.PriorityMailbox;
-import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
@@ -26,7 +25,6 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -93,25 +91,22 @@ public class MessageTsunami {
         private final ReActorConfig cfg;
         private final ReActions reActions;
         private int counted = 0;
-        private long[] latencies;
+        private final long[] latencies;
         private volatile int marker;
 
         private CrunchingWorker(String dispatcher, String name, int iterations) {
             this.cfg = ReActorConfig.newBuilder()
-                                    .setMailBoxProvider(ctx -> new PriorityMailbox(new Comparator<Message>() {
-                                        @Override
-                                        public int compare(Message o1, Message o2) {
-                                            Class<? extends Serializable> p1 = o1.getPayload().getClass();
-                                            Class<? extends Serializable> p2 = o2.getPayload().getClass();
-                                            if (p1 == p2) { return 0; }
-                                            if (p1 == BenchmarkingUtils.DiagnosticRequest.class) {
-                                                return -1;
-                                            }
-                                            if (p2 == BenchmarkingUtils.DiagnosticRequest.class) {
-                                                return 1;
-                                            }
-                                            return 0;
+                                    .setMailBoxProvider(ctx -> new PriorityMailbox((o1, o2) -> {
+                                        Class<? extends Serializable> p1 = o1.getPayload().getClass();
+                                        Class<? extends Serializable> p2 = o2.getPayload().getClass();
+                                        if (p1 == p2) { return 0; }
+                                        if (p1 == BenchmarkingUtils.DiagnosticRequest.class) {
+                                            return -1;
                                         }
+                                        if (p2 == BenchmarkingUtils.DiagnosticRequest.class) {
+                                            return 1;
+                                        }
+                                        return 0;
                                     }))
                                     .setReActorName(name)
                                     .setDispatcherName(dispatcher)

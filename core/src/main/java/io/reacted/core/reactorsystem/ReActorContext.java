@@ -21,6 +21,8 @@ import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
@@ -38,7 +40,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class ReActorContext {
@@ -108,18 +109,12 @@ public class ReActorContext {
 
     public long getNextMsgExecutionId() { return msgExecutionId.getAndIncrement(); }
 
-    public synchronized boolean acquireScheduling() {
-        if (isNaiveScheduled) { return false; }
-        this.isNaiveScheduled = true;
-        return true;
-        //return isScheduled.compareAndSet(false, true);
+    public boolean acquireScheduling() {
+       return isScheduled.compareAndSet(false, true);
     }
 
-    public synchronized boolean releaseScheduling() {
-        if (!isNaiveScheduled) { return false; }
-        this.isNaiveScheduled = false;
-        return true;
-        //return isScheduled.compareAndSet(true, false);
+    public boolean releaseScheduling() {
+        return isScheduled.compareAndSet(true, false);
     }
 
     @SuppressWarnings("UnusedReturnValue")

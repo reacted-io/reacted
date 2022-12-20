@@ -129,7 +129,8 @@ public class BackpressuringMbox implements MailBox {
         return !notDelayable.get().contains(payloadType);
     }
 
-    public BackpressuringMbox addNonDelayableTypes(Class<? extends Serializable> ...notDelayedToAdd) {
+    @SafeVarargs
+    public final BackpressuringMbox addNonDelayableTypes(Class<? extends Serializable>... notDelayedToAdd) {
         return addNonDelayableTypes(Arrays.stream(notDelayedToAdd).collect(Collectors.toSet()));
     }
     public BackpressuringMbox addNonDelayableTypes(Set<Class<? extends Serializable>> notDelayedToAdd) {

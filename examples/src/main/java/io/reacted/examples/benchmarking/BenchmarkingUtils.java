@@ -73,7 +73,7 @@ public class BenchmarkingUtils {
 
     static Runnable backpressureAwareMessageSender(long messageNum, ReActorRef destination,
                                                    Supplier<? extends Serializable> payloadProducer) {
-        Runnable sender = UnChecked.runnable(() -> {
+        return UnChecked.runnable(() -> {
             long baseNanosDelay = 100;
             long delay = baseNanosDelay;
             for (int msg = 0; msg < messageNum; msg++) {
@@ -90,7 +90,6 @@ public class BenchmarkingUtils {
                 }
             }
         });
-        return sender;
     }
 
     static Runnable nonStopMessageSender(long messageNum, ReActorRef destination) {
@@ -184,6 +183,7 @@ public class BenchmarkingUtils {
                     .build();
     }
 
+    @SuppressWarnings("unchecked")
     static List<String>
     fromRequestsPerIntervalSnapshotsToPrintableOutput(Map<Class<? extends Serializable>, List<? extends Serializable>> payloadByType) {
         List<RPISnapshot> requestsPerInterval = (List<RPISnapshot>)payloadByType.get(RPISnapshot.class);

@@ -320,21 +320,6 @@
                 <artifactId>avro-ipc</artifactId>
                 <version>${avro.maven.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.apache.avro</groupId>
-                <artifactId>avro</artifactId>
-                <version>${avro.maven.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.avro</groupId>
-                <artifactId>avro-compiler</artifactId>
-                <version>${avro.maven.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.avro</groupId>
-                <artifactId>avro-ipc</artifactId>
-                <version>${avro.maven.version}</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
