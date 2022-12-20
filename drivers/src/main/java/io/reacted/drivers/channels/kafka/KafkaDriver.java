@@ -99,8 +99,8 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
 
             Objects.requireNonNull(kafkaProducer)
                    .send(new ProducerRecord<>(getDriverConfig().getTopic(),
-                                              KafkaUtils.toKafkaMessage(source, destination, sequenceNumber,
-                                                                        reActorSystemId, ackingPolicy, payload)))
+                                              KafkaUtils.toAvroMessage(source, destination, sequenceNumber,
+                                                                       reActorSystemId, ackingPolicy, payload)))
                    .get();
             return DeliveryStatus.SENT;
         } catch (Exception sendError) {
@@ -138,11 +138,11 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
         while(!Thread.currentThread().isInterrupted()) {
             try {
                 for(var record : kafkaConsumer.poll(POLL_TIMEOUT)) {
-                    thisDriver.offerMessage(KafkaUtils.toReActorRef(record.value().getSource(), driverCtx),
-                                            KafkaUtils.toReActorRef(record.value().getDestination(), driverCtx),
+                    thisDriver.offerMessage(KafkaUtils.fromAvroReActorRef(record.value().getSource(), driverCtx),
+                                            KafkaUtils.fromAvroReActorRef(record.value().getDestination(), driverCtx),
                                             record.value().getSequenceNumber(),
-                                            KafkaUtils.toReActorSystemId(record.value().getCreatorReactorSystem()),
-                                            KafkaUtils.toAckingPolicy(record.value().getAckingPolicy()),
+                                            KafkaUtils.fromAvroReActorSystemId(record.value().getCreatorReactorSystem()),
+                                            KafkaUtils.fromAvroAckingPolicy(record.value().getAckingPolicy()),
                                             KafkaUtils.fromSerializedPayload(record.value().getPayload()));
 
                 }

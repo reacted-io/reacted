@@ -34,18 +34,18 @@ final class KafkaUtils {
 
     @Nullable
     static <PayloadT extends Serializable>
-    Message toKafkaMessage(ReActorRef source, ReActorRef destination, long sequenceNumber,
-                           ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
-                           PayloadT payload) throws IOException {
+    Message toAvroMessage(ReActorRef source, ReActorRef destination, long sequenceNumber,
+                          ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
+                          PayloadT payload) throws IOException {
         Message.Builder avroMessageBuilder = Message.newBuilder()
                 .setSequenceNumber(sequenceNumber)
-                .setAckingPolicy(fromAckingPolicy(ackingPolicy))
-                .setCreatorReactorSystem(fromReActorSystemId(reActorSystemId));
+                .setAckingPolicy(toAvroAckingPolicy(ackingPolicy))
+                .setCreatorReactorSystem(toAvroReActorSystemId(reActorSystemId));
         if (!source.equals(ReActorRef.NO_REACTOR_REF)) {
-            avroMessageBuilder.setSource(fromReActorRef(source));
+            avroMessageBuilder.setSource(toAvroReActorRef(source));
         }
         if (!destination.equals(ReActorRef.NO_REACTOR_REF)) {
-            avroMessageBuilder.setDestination(fromReActorRef(destination));
+            avroMessageBuilder.setDestination(toAvroReActorRef(destination));
         }
         avroMessageBuilder.setPayload(toSerializedPayload(payload));
         return avroMessageBuilder.build();
@@ -66,95 +66,95 @@ final class KafkaUtils {
         }
     }
 
-    static ReActorRef toReActorRef(@Nullable io.reacted.drivers.channels.kafka.avro.ReActorRef reActorRef,
-                                   DriverCtx driverCtx) {
+    static ReActorRef fromAvroReActorRef(@Nullable io.reacted.drivers.channels.kafka.avro.ReActorRef reActorRef,
+                                         DriverCtx driverCtx) {
         if (reActorRef == null) {
             return ReActorRef.NO_REACTOR_REF;
         }
-        return new ReActorRef(toReActorId(reActorRef.getReactorId()),
-                              toReActorSystemRef(reActorRef.getReactorSystemRef(), driverCtx));
+        return new ReActorRef(fromAvroReActorId(reActorRef.getReactorId()),
+                              fromAvroReActorSystemRef(reActorRef.getReactorSystemRef(), driverCtx));
     }
 
-    static AckingPolicy toAckingPolicy(io.reacted.drivers.channels.kafka.avro.AckingPolicy ackingPolicy) {
+    static AckingPolicy fromAvroAckingPolicy(io.reacted.drivers.channels.kafka.avro.AckingPolicy ackingPolicy) {
         return AckingPolicy.forOrdinal(ackingPolicy.getAckingPolicyOrdinal());
     }
-    private static io.reacted.drivers.channels.kafka.avro.AckingPolicy fromAckingPolicy(AckingPolicy ackingPolicy) {
+
+    static ReActorSystemId fromAvroReActorSystemId(io.reacted.drivers.channels.kafka.avro.ReActorSystemId reactorSystemId) {
+        return new ReActorSystemId(reactorSystemId.getReactorSystemName().toString());
+    }
+
+    private static io.reacted.drivers.channels.kafka.avro.AckingPolicy toAvroAckingPolicy(AckingPolicy ackingPolicy) {
         return io.reacted.drivers.channels.kafka.avro.AckingPolicy.newBuilder()
                                                                   .setAckingPolicyOrdinal(ackingPolicy.ordinal())
                                                                   .build();
     }
-
-    private static io.reacted.drivers.channels.kafka.avro.ReActorRef fromReActorRef(ReActorRef reActorRef) {
+    private static io.reacted.drivers.channels.kafka.avro.ReActorRef toAvroReActorRef(ReActorRef reActorRef) {
         return io.reacted.drivers.channels.kafka.avro.ReActorRef.newBuilder()
-                                                                .setReactorId(fromReActorId(reActorRef.getReActorId()))
-                                                                .setReactorSystemRef(fromReActorSystemRef(reActorRef.getReActorSystemRef()))
+                                                                .setReactorId(toAvroReActorId(reActorRef.getReActorId()))
+                                                                .setReactorSystemRef(toAvroReActorSystemRef(reActorRef.getReActorSystemRef()))
                                                                 .build();
     }
-
-    private static ReActorSystemRef toReActorSystemRef(io.reacted.drivers.channels.kafka.avro.ReActorSystemRef reActorSystemRef,
-                                                       DriverCtx driverCtx) {
+    private static ReActorSystemRef fromAvroReActorSystemRef(io.reacted.drivers.channels.kafka.avro.ReActorSystemRef reActorSystemRef,
+                                                             DriverCtx driverCtx) {
         var newRef = new ReActorSystemRef();
-        var reActorSystemId = toReActorSystemId(reActorSystemRef.getReactorSystemId());
-        var channelId = toChannelId(reActorSystemRef.getChannelId());
+        var reActorSystemId = fromAvroReActorSystemId(reActorSystemRef.getReactorSystemId());
+        var channelId = fromAvroChannelId(reActorSystemRef.getChannelId());
         ReActorSystemRef.setGateForReActorSystem(newRef, reActorSystemId, channelId, driverCtx);
         return newRef;
     }
-    private static io.reacted.drivers.channels.kafka.avro.ReActorSystemRef fromReActorSystemRef(ReActorSystemRef reActorSystemRef) {
+    private static io.reacted.drivers.channels.kafka.avro.ReActorSystemRef toAvroReActorSystemRef(ReActorSystemRef reActorSystemRef) {
         return io.reacted.drivers.channels.kafka.avro.ReActorSystemRef.newBuilder()
-                                                                      .setChannelId(fromChannelId(reActorSystemRef.getChannelId()))
-                                                                      .setReactorSystemId(fromReActorSystemId(reActorSystemRef.getReActorSystemId()))
+                                                                      .setChannelId(toAvroChannelId(reActorSystemRef.getChannelId()))
+                                                                      .setReactorSystemId(toAvroReActorSystemId(reActorSystemRef.getReActorSystemId()))
                                                                       .build();
     }
-
-    private static io.reacted.core.reactors.ReActorId toReActorId(ReActorId reActorId) {
-        java.util.UUID uuid = toUUID(reActorId.getId());
+    private static io.reacted.core.reactors.ReActorId fromAvroReActorId(ReActorId reActorId) {
+        java.util.UUID uuid = fromAvroUUID(reActorId.getId());
         String reActorName = reActorId.getName().toString();
         return new io.reacted.core.reactors.ReActorId()
                 .setReActorName(reActorName)
                 .setReActorUUID(uuid)
                 .setHashCode(Objects.hash(uuid, reActorName));
     }
-    private static ReActorId fromReActorId(io.reacted.core.reactors.ReActorId reActorId) {
+
+    private static ReActorId toAvroReActorId(io.reacted.core.reactors.ReActorId reActorId) {
         return ReActorId.newBuilder()
-                        .setId(fromUUID(reActorId.getReActorUUID()))
+                        .setId(toAvroUUID(reActorId.getReActorUUID()))
                         .setName(reActorId.getReActorName())
                         .build();
     }
 
-    static ReActorSystemId toReActorSystemId(io.reacted.drivers.channels.kafka.avro.ReActorSystemId reactorSystemId) {
-        return new ReActorSystemId(reactorSystemId.getReactorSystemName().toString());
-    }
-    private static io.reacted.drivers.channels.kafka.avro.ReActorSystemId fromReActorSystemId(ReActorSystemId reActorSystemId) {
+    private static io.reacted.drivers.channels.kafka.avro.ReActorSystemId toAvroReActorSystemId(ReActorSystemId reActorSystemId) {
         return io.reacted.drivers.channels.kafka.avro.ReActorSystemId.newBuilder()
                                                                      .setReactorSystemName(reActorSystemId.getReActorSystemName())
                                                                      .build();
     }
 
-    private static io.reacted.core.config.ChannelId toChannelId(ChannelId channelId) {
-        return toChannelType(channelId.getChannelType()).forChannelName(channelId.getChannelName().toString());
+    private static io.reacted.core.config.ChannelId fromAvroChannelId(ChannelId channelId) {
+        return fromAvroChannelType(channelId.getChannelType()).forChannelName(channelId.getChannelName().toString());
     }
-    private static ChannelId fromChannelId(io.reacted.core.config.ChannelId channelId) {
+    private static ChannelId toAvroChannelId(io.reacted.core.config.ChannelId channelId) {
         return ChannelId.newBuilder()
                         .setChannelName(channelId.getChannelName())
-                        .setChannelType(fromChannelType(channelId.getChannelType()))
+                        .setChannelType(toAvroChannelType(channelId.getChannelType()))
                         .build();
     }
 
-    private static io.reacted.core.config.ChannelId.ChannelType toChannelType(ChannelType channelType) {
+    private static io.reacted.core.config.ChannelId.ChannelType fromAvroChannelType(ChannelType channelType) {
         return io.reacted.core.config.ChannelId.ChannelType.forOrdinal(channelType.getChannelTypeOrdinal());
     }
 
-    private static ChannelType fromChannelType(io.reacted.core.config.ChannelId.ChannelType channelType) {
+    private static ChannelType toAvroChannelType(io.reacted.core.config.ChannelId.ChannelType channelType) {
         return ChannelType.newBuilder()
                           .setChannelTypeOrdinal(channelType.ordinal())
                           .build();
     }
 
-    private static java.util.UUID toUUID(UUID uuid) {
+    private static java.util.UUID fromAvroUUID(UUID uuid) {
         return new java.util.UUID(uuid.getMostSignificant(),
                                   uuid.getLeastSignificant());
     }
-    private static UUID fromUUID(java.util.UUID uuid) {
+    private static UUID toAvroUUID(java.util.UUID uuid) {
         return UUID.newBuilder()
                    .setMostSignificant(uuid.getMostSignificantBits())
                    .setLeastSignificant(uuid.getLeastSignificantBits())
