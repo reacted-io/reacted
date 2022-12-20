@@ -4,7 +4,7 @@ protocol ReactedMessageProtocol {
 		ReActorRef? source;
 		ReActorRef? destination;
 		long sequence_number;
-		ReactorSystemId creator_reactor_system;
+		ReActorSystemId creator_reactor_system;
 		AckingPolicy acking_policy;
 		bytes payload;
 	}
@@ -15,16 +15,16 @@ protocol ReactedMessageProtocol {
 
 	record ReActorRef {
 		ReActorId reactor_id;
-		ReactorSystemRef reactor_system_ref;
+		ReActorSystemRef reactor_system_ref;
 	}
 
-	record ReactorSystemRef {
-		ReactorSystemId reactor_system_id;
+	record ReActorSystemRef {
+		ReActorSystemId reactor_system_id;
 		ChannelId channel_id;
 	}
 
-	record ReactorSystemId {
-		UUID reactor_system_id;
+	record ReActorSystemId {
+		UUID? reactor_system_id;
 		string reactor_system_name;
 	}
 
@@ -38,7 +38,7 @@ protocol ReactedMessageProtocol {
 	}
 
 	record ReActorId {
-		UUID id;
+		UUID? id;
 		string name;
 	}
 
