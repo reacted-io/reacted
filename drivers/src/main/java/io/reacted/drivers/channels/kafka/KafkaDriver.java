@@ -15,7 +15,6 @@ import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.AckingPolicy;
-import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
@@ -34,8 +33,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -48,11 +45,6 @@ import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
 public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaDriver.class);
-    @Nullable
-    private static final Message NO_VALID_PAYLOAD = null;
-    @Nullable
-    private static final byte[] NO_SERIALIZED_PAYLOAD = null;
     private static final Duration POLL_TIMEOUT = Duration.ofSeconds(1);
     @Nullable
     private Consumer<String, io.reacted.drivers.channels.kafka.avro.Message> kafkaConsumer;
@@ -119,6 +111,8 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
         props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, driverConfig.getMaxPollRecords());
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        props.put("schema.registry.url", driverConfig.getAvroSchemaRegistryUrl());
+        props.put("schema.registry.url", driverConfig.getAvroSchemaRegistryUrl());
         Consumer<String, io.reacted.drivers.channels.kafka.avro.Message> consumer = new KafkaConsumer<>(props);
         consumer.subscribe(List.of(driverConfig.getTopic()));
         return consumer;
@@ -129,6 +123,8 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, driverConfig.getBootstrapEndpoint());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
+        props.put("schema.registry.url", driverConfig.getAvroSchemaRegistryUrl());
+        props.put("schema.registry.url", driverConfig.getAvroSchemaRegistryUrl());
         return new KafkaProducer<>(props);
     }
 

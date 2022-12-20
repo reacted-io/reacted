@@ -9,8 +9,8 @@
 package io.reacted.drivers.channels.kafka;
 
 import io.reacted.core.config.drivers.ChannelDriverConfig;
-import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 
 import java.util.Objects;
 import java.util.Properties;
@@ -21,10 +21,13 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
     public static final String KAFKA_TOPIC = "topic";
     public static final String KAFKA_GROUP_ID = "groupId";
     public static final String KAFKA_MAX_POLL_RECORDS = "maxPollRecords";
+    public static final String AVRO_SCHEMA_REGISTRY_DEFAULT_URL = "http://localhost:8081";
     private final String bootstrapEndpoint;
     private final String topic;
     private final String groupId;
     private final int maxPollRecords;
+
+    private final String avroSchemaRegistryUrl;
 
     private KafkaDriverConfig(Builder builder) {
         super(builder);
@@ -36,6 +39,8 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
                                               "Group id cannot be null");
         this.maxPollRecords = ObjectUtils.requiredInRange(builder.maxPollRecords, 1, Integer.MAX_VALUE,
                                                           IllegalArgumentException::new);
+        this.avroSchemaRegistryUrl = Objects.requireNonNull(builder.avroSchemaRegistryUrl,
+                                                            "Avro schema registry cannot be null");
     }
 
     public String getBootstrapEndpoint() { return bootstrapEndpoint; }
@@ -45,6 +50,8 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
     public String getGroupId() { return groupId; }
 
     public int getMaxPollRecords() { return maxPollRecords; }
+
+    public String getAvroSchemaRegistryUrl() { return avroSchemaRegistryUrl; }
 
     public static Builder newBuilder() { return new Builder(); }
 
@@ -66,6 +73,7 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
         @SuppressWarnings("NotNullFieldNotInitialized")
         private String groupId;
         private int maxPollRecords;
+        private String avroSchemaRegistryUrl = AVRO_SCHEMA_REGISTRY_DEFAULT_URL;
 
         private Builder() { }
 
@@ -89,6 +97,10 @@ public class KafkaDriverConfig extends ChannelDriverConfig<KafkaDriverConfig.Bui
             return this;
         }
 
+        public final Builder setAvroSchemaRegistryUrl(String avroSchemaRegistryUrl) {
+            this.avroSchemaRegistryUrl = avroSchemaRegistryUrl;
+            return this;
+        }
         public KafkaDriverConfig build() {
             return new KafkaDriverConfig(this);
         }

@@ -127,6 +127,7 @@ final class KafkaUtils {
     private static io.reacted.drivers.channels.kafka.avro.ReActorSystemId toAvroReActorSystemId(ReActorSystemId reActorSystemId) {
         return io.reacted.drivers.channels.kafka.avro.ReActorSystemId.newBuilder()
                                                                      .setReactorSystemName(reActorSystemId.getReActorSystemName())
+                                                                     .setReactorSystemId(toAvroUUID(reActorSystemId.getReActorSystemUUID()))
                                                                      .build();
     }
 
