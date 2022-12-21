@@ -20,7 +20,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 @NonNullByDefault
-public final class Message {
+public final class Message implements Serializable {
     private static final long SENDER_OFFSET = SerializationUtils.getFieldOffset(Message.class, "sender")
                                                                 .orElseSneakyThrow();
     private static final long DESTINATION_OFFSET = SerializationUtils.getFieldOffset(Message.class, "destination")
@@ -40,7 +40,7 @@ public final class Message {
     private final AckingPolicy ackingPolicy;
     private final Serializable payload;
 
-    private Message() {
+    public Message() {
         this(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, 0L,
              ReActorSystemId.NO_REACTORSYSTEM_ID, AckingPolicy.NONE, SerializationUtils.NO_PAYLOAD);
     }
