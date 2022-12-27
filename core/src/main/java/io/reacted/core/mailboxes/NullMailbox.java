@@ -9,6 +9,7 @@
 package io.reacted.core.mailboxes;
 
 import io.reacted.core.messages.Message;
+import io.reacted.core.messages.Recyclable;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.patterns.NonNullByDefault;
 
@@ -35,5 +36,10 @@ public class NullMailbox implements MailBox {
 
     @Nonnull
     @Override
-    public DeliveryStatus deliver(Message message) { return DeliveryStatus.DELIVERED_BUT_DO_NO_RESCHED; }
+    public DeliveryStatus deliver(Message message) {
+        if (message.getPayload() instanceof Recyclable recyclable) {
+            recyclable.revalidate();
+        }
+        return DeliveryStatus.DELIVERED_BUT_DO_NO_RESCHED;
+    }
 }
