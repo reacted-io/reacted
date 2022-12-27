@@ -11,15 +11,15 @@ package io.reacted.core.messages.serviceregistry;
 import com.google.common.base.Objects;
 import io.reacted.core.messages.services.FilterItem;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 import java.util.Collection;
 
 @NonNullByDefault
 @Immutable
-public class FilterServiceDiscoveryRequest implements Serializable {
+public class FilterServiceDiscoveryRequest implements ReActedMessage {
     private final ServiceDiscoverySearchFilter filteringRuleToApply;
     private final Collection<FilterItem> serviceDiscoveryResult;
 

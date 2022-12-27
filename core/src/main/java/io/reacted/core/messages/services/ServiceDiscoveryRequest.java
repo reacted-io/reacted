@@ -8,13 +8,14 @@
 
 package io.reacted.core.messages.services;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
+
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 
 @Immutable
 @NonNullByDefault
-public class ServiceDiscoveryRequest implements Serializable {
+public class ServiceDiscoveryRequest implements ReActedMessage {
     private final ServiceDiscoverySearchFilter searchFilter;
     public ServiceDiscoveryRequest(ServiceDiscoverySearchFilter searchFilter) {
         this.searchFilter = searchFilter;

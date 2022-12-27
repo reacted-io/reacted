@@ -8,9 +8,9 @@
 
 package io.reacted.examples.communication.tell.pingpong;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
 
-class Pong implements Serializable {
+class Pong implements ReActedMessage {
     private final int pongValue;
 
     Pong(int pongValue) {

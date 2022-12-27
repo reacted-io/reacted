@@ -10,10 +10,10 @@ package io.reacted.core.mailboxes;
 
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
-import java.io.Serializable;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,9 +24,9 @@ import java.util.concurrent.LinkedBlockingDeque;
 @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
 @NonNullByDefault
 public class TypeCoalescingMailbox implements MailBox {
-    private final Map<Class<? extends Serializable>, Message> latestByPayloadType;
-    private final Set<Class<? extends Serializable>> pendingUpdatedTypes;
-    private final Deque<Class<? extends Serializable>> lastAdded;
+    private final Map<Class<? extends ReActedMessage>, Message> latestByPayloadType;
+    private final Set<Class<? extends ReActedMessage>> pendingUpdatedTypes;
+    private final Deque<Class<? extends ReActedMessage>> lastAdded;
 
     public TypeCoalescingMailbox() {
         this.latestByPayloadType = new HashMap<>();

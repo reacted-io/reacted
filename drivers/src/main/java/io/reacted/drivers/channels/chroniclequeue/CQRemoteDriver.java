@@ -18,20 +18,20 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-
-import java.io.Serializable;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import javax.annotation.Nullable;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.WireIn;
+
+import javax.annotation.Nullable;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readAckingPolicy;
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readPayload;
@@ -89,7 +89,7 @@ public class CQRemoteDriver extends RemotingDriver<CQRemoteDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getChannelProperties(); }
 
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                                long seqNum, ReActorSystemId reActorSystemId,
                                AckingPolicy ackingPolicy, PayloadT message) {
@@ -113,7 +113,7 @@ public class CQRemoteDriver extends RemotingDriver<CQRemoteDriverConfig> {
             }
         }
     }
-    private static <PayloadT extends Serializable>
+    private static <PayloadT extends ReActedMessage>
     DeliveryStatus sendMessage(ReActorSystem localReActorSystem, ExcerptAppender cqAppender,
                                ReActorRef source, ReActorRef destination, long seqNum,
                                AckingPolicy ackingPolicy, PayloadT message) {

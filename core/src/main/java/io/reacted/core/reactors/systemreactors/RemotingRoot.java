@@ -32,9 +32,9 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -105,7 +105,7 @@ public class RemotingRoot {
         ctx.reply(new SynchronizationWithServiceRegistryRequest());
     }
 
-    private static void onSpuriousMessage(ReActorContext ctx, Serializable payload) {
+    private static void onSpuriousMessage(ReActorContext ctx, ReActedMessage payload) {
         ctx.logError("Spurious message received", new IllegalStateException(payload.toString()));
     }
 

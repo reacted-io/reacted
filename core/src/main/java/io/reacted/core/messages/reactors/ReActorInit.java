@@ -8,27 +8,15 @@
 
 package io.reacted.core.messages.reactors;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serial;
 import javax.annotation.concurrent.Immutable;
-import java.io.Externalizable;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+
 
 @Immutable
 @NonNullByDefault
-public final class ReActorInit implements Externalizable {
-
-    @Serial
-    private static final long serialVersionUID = 1;
-
-    @Override
-    public void writeExternal(ObjectOutput out) { /* No fields */ }
-
-    @Override
-    public void readExternal(ObjectInput in) { /* No fields */ }
-
+public final class ReActorInit implements ReActedMessage {
     @Override
     public String toString() {
         return "ReActorInit{}";

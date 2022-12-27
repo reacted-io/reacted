@@ -17,12 +17,12 @@ import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.examples.webappbackend.handlers.Get;
 import io.reacted.examples.webappbackend.handlers.Post;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
-import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -104,7 +104,7 @@ public class ServerGate implements ReActor, HttpHandler {
         ctx.logError("Unknown request type received: ", spawnUnknownRequest.getRequestId());
     }
 
-    private static class SpawnPostHandler implements Serializable {
+    private static class SpawnPostHandler implements ReActedMessage {
         private final String requestId;
         private SpawnPostHandler(String requestId) { this.requestId = requestId; }
 

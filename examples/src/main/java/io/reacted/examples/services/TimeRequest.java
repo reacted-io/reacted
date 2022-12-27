@@ -8,6 +8,6 @@
 
 package io.reacted.examples.services;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
 
-public class TimeRequest implements Serializable {}
+public class TimeRequest implements ReActedMessage {}

@@ -8,6 +8,6 @@
 
 package io.reacted.examples.communication.ask;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
 
-record TimeRequest() implements Serializable { }
+record TimeRequest() implements ReActedMessage { }

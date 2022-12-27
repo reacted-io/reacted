@@ -16,15 +16,20 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher;
 import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -38,10 +43,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @NonNullByDefault
 public class ReactiveServer {
@@ -300,6 +301,6 @@ public class ReactiveServer {
         ctx.logInfo("Stopping {}", ctx.getSelf().getReActorId().getReActorName());
     }
 
-    private record PublishRequest(Duration backpressureDelay) implements Serializable { }
-    private record InternalError(Throwable anyError) implements Serializable { }
+    private record PublishRequest(Duration backpressureDelay) implements ReActedMessage { }
+    private record InternalError(Throwable anyError) implements ReActedMessage { }
 }

@@ -19,6 +19,7 @@ import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.examples.webappbackend.Backend;
 import io.reacted.examples.webappbackend.db.StorageMessages;
 import io.reacted.patterns.Try;
@@ -27,7 +28,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
@@ -146,15 +146,15 @@ public class Post implements ReActor {
                 ? nextSend
                 : DeliveryStatus.BACKPRESSURE_REQUIRED;
     }
-    private static Serializable getNextDataChunk(BufferedReader requestStream) {
+    private static ReActedMessage getNextDataChunk(BufferedReader requestStream) {
         return Try.of(requestStream::readLine)
                   .filter(Objects::nonNull)
-                  .map(string -> (Serializable)new DataChunkPush(string))
+                  .map(string -> (ReActedMessage)new DataChunkPush(string))
                   .orElse(new DataChunksCompleted());
     }
 
-    private record DataChunkPush(String lineRead) implements Serializable {
+    private record DataChunkPush(String lineRead) implements ReActedMessage {
     }
 
-    private static final class DataChunksCompleted implements Serializable {}
+    private static final class DataChunksCompleted implements ReActedMessage {}
 }

@@ -9,27 +9,28 @@
 package io.reacted.core.typedsubscriptions;
 
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.typedsubscriptions.TypedSubscription.TypedSubscriptionPolicy;
-import java.io.Serializable;
-import java.util.List;
+
 import javax.annotation.Nonnull;
 import javax.annotation.ParametersAreNonnullByDefault;
+import java.util.List;
 
 @ParametersAreNonnullByDefault
 public interface SubscriptionsManager {
 
-  default void addSubscription(Class<? extends Serializable> payloadType,
+  default void addSubscription(Class<? extends ReActedMessage> payloadType,
                                TypedSubscriptionPolicy subscriptionPolicy,
                                ReActorContext subscriber) { }
 
-  default void removeSubscription(Class<? extends Serializable> payloadType,
+  default void removeSubscription(Class<? extends ReActedMessage> payloadType,
                                   TypedSubscriptionPolicy subscriptionPolicy,
                                   ReActorContext subscriber) { }
 
-  default boolean hasFullSubscribers(Class<? extends Serializable> payloadType) { return false; }
+  default boolean hasFullSubscribers(Class<? extends ReActedMessage> payloadType) { return false; }
 
   @Nonnull
-  default List<ReActorContext> getLocalSubscribers(Class<? extends Serializable> payloadType) {
+  default List<ReActorContext> getLocalSubscribers(Class<? extends ReActedMessage> payloadType) {
     return List.of();
   }
 }

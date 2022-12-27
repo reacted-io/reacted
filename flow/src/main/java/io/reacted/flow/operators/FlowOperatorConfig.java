@@ -13,13 +13,13 @@ import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.UnChecked.TriConsumer;
 import io.reacted.patterns.annotations.unstable.Unstable;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
@@ -36,9 +36,9 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
                                          BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>>
     extends ReActorServiceConfig<BuilderT, BuiltT> {
   public static final Duration DEFAULT_OUTPUT_OPERATORS_REFRESH = Duration.ofMinutes(1);
-  public static final Predicate<Serializable> NO_FILTERING = element -> true;
+  public static final Predicate<ReActedMessage> NO_FILTERING = element -> true;
   public static final Collection<ServiceDiscoverySearchFilter> NO_OUTPUT = List.of();
-  public static final Collection<Stream<? extends Serializable>> NO_INPUT_STREAMS = List.of();
+  public static final Collection<Stream<? extends ReActedMessage>> NO_INPUT_STREAMS = List.of();
   public static final TriConsumer<ReActorSystem,
                                  ? extends FlowOperatorConfig<? extends ReActorServiceConfig.Builder<?, ?>,
                                                               ? extends ReActorServiceConfig<?, ?>>,
@@ -51,10 +51,10 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
                                                                                    .build();
   private static final String FLOW_NAME_MISSING = "FLOW NAME MISSING";
   private final TriConsumer<ReActorSystem, BuiltT, ? super Throwable> inputStreamErrorHandler;
-  private final Predicate<Serializable> ifPredicate;
+  private final Predicate<ReActedMessage> ifPredicate;
   private final Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators;
   private final Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators;
-  private final Collection<Stream<? extends Serializable>> inputStreams;
+  private final Collection<Stream<? extends ReActedMessage>> inputStreams;
   private final ReActorConfig routeeConfig;
   private final String flowName;
 
@@ -79,7 +79,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     this.outputOperatorsRefreshPeriod = ObjectUtils.checkNonNullPositiveTimeInterval(builder.outputOperatorsRefreshPeriod);
   }
 
-  public Predicate<Serializable> getIfPredicate() {
+  public Predicate<ReActedMessage> getIfPredicate() {
     return ifPredicate;
   }
 
@@ -91,7 +91,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
     return thenElseOutputOperators;
   }
 
-  public Collection<Stream<? extends Serializable>> getInputStreams() { return inputStreams; }
+  public Collection<Stream<? extends ReActedMessage>> getInputStreams() { return inputStreams; }
 
   public ReActorConfig getRouteeConfig() { return routeeConfig; }
 
@@ -108,8 +108,8 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
                                        BuiltT extends ReActorServiceConfig<BuilderT, BuiltT>> extends ReActorServiceConfig.Builder<BuilderT, BuiltT> {
     protected Collection<ServiceDiscoverySearchFilter> ifPredicateOutputOperators = NO_OUTPUT;
     protected Collection<ServiceDiscoverySearchFilter> thenElseOutputOperators = NO_OUTPUT;
-    protected Predicate<Serializable> ifPredicate = NO_FILTERING;
-    protected Collection<Stream<? extends Serializable>> inputStreams = NO_INPUT_STREAMS;
+    protected Predicate<ReActedMessage> ifPredicate = NO_FILTERING;
+    protected Collection<Stream<? extends ReActedMessage>> inputStreams = NO_INPUT_STREAMS;
     protected ReActorConfig operatorRouteeCfg = DEFAULT_OPERATOR_ROUTEE_CONFIG;
     protected Duration outputOperatorsRefreshPeriod = DEFAULT_OUTPUT_OPERATORS_REFRESH;
     @SuppressWarnings("unchecked")
@@ -119,7 +119,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
 
     protected Builder() { /* No implementation required */ }
 
-    public final BuilderT setIfOutputPredicate(Predicate<Serializable> ifPredicate) {
+    public final BuilderT setIfOutputPredicate(Predicate<ReActedMessage> ifPredicate) {
       this.ifPredicate = ifPredicate;
       return getThis();
     }
@@ -148,7 +148,7 @@ public abstract class FlowOperatorConfig<BuilderT extends ReActorServiceConfig.B
       return getThis();
     }
 
-    public final BuilderT setInputStreams(Collection<Stream<? extends Serializable>> inputStreams) {
+    public final BuilderT setInputStreams(Collection<Stream<? extends ReActedMessage>> inputStreams) {
       this.inputStreams = inputStreams;
       return getThis();
     }

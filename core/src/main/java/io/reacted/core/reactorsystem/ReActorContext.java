@@ -17,6 +17,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
@@ -145,14 +146,14 @@ public class ReActorContext {
 
     public boolean reschedule() { return getDispatcher().dispatch(this); }
 
-    public DeliveryStatus reply(Serializable anyPayload) { return reply(getSelf(), anyPayload); }
+    public DeliveryStatus reply(ReActedMessage anyPayload) { return reply(getSelf(), anyPayload); }
 
-    public DeliveryStatus reply(ReActorRef sender, Serializable anyPayload) {
+    public DeliveryStatus reply(ReActorRef sender, ReActedMessage anyPayload) {
         return getSender().publish(sender, anyPayload);
     }
 
     public Try<ScheduledFuture<DeliveryStatus>>
-    rescheduleMessage(Serializable messageToBeRescheduled, Duration inHowLong) {
+    rescheduleMessage(ReActedMessage messageToBeRescheduled, Duration inHowLong) {
         ReActorRef sender = getSender();
         return Try.of(() -> getReActorSystem().getSystemSchedulingService()
                                               .schedule(() -> getSelf().tell(sender, messageToBeRescheduled),
@@ -160,31 +161,31 @@ public class ReActorContext {
     }
 
     /**
-     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#apublish(Serializable)}
+     * Reply sending a message to the sender of the last message processed by this reactor using {@link ReActorRef#apublish(ReActedMessage)}
      * @param anyPayload payload to be sent
-     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#apublish(ReActorRef, Serializable)}
+     * @return a {@link CompletionStage}&lt;{@link Try}&lt;{@link DeliveryStatus}&gt;&gt; returned by {@link ReActorRef#apublish(ReActorRef, ReActedMessage)}
      */
-    public CompletionStage<DeliveryStatus> areply(Serializable anyPayload) {
+    public CompletionStage<DeliveryStatus> areply(ReActedMessage anyPayload) {
         return getSender().apublish(anyPayload);
     }
 
     /**
-     * {@link ReActorRef#publish(Serializable)} to the current reactor the specified message setting itself as sender for the message
+     * {@link ReActorRef#publish(ReActedMessage)} to the current reactor the specified message setting itself as sender for the message
      * @param anyPayload message that should be self-sent
      * @return A {@link DeliveryStatus}
      * complete
      */
-    public DeliveryStatus selfPublish(Serializable anyPayload) {
+    public DeliveryStatus selfPublish(ReActedMessage anyPayload) {
         return getSelf().publish(getSelf(), anyPayload);
     }
 
     /**
-     * {@link ReActorRef#tell(Serializable)} to the current reactor the specified message setting itself as sender for the message
+     * {@link ReActorRef#tell(ReActedMessage)} to the current reactor the specified message setting itself as sender for the message
      * @param anyPayload message that should be self-sent
      * @return A {@link DeliveryStatus}
      * complete
      */
-    public DeliveryStatus selfTell(Serializable anyPayload) {
+    public DeliveryStatus selfTell(ReActedMessage anyPayload) {
         return getSelf().tell(getSelf(), anyPayload);
     }
 
@@ -282,7 +283,7 @@ public class ReActorContext {
 
     public void reAct(Message msg) {
         this.lastMsgSender = msg.getSender();
-        BiConsumer<ReActorContext, Serializable> reAction = reActions.getReAction(msg.getPayload());
+        BiConsumer<ReActorContext, ReActedMessage> reAction = reActions.getReAction(msg.getPayload());
         reAction.accept(this, msg.getPayload());
     }
 

@@ -19,6 +19,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.core.utils.ReActedUtils;
 import io.reacted.flow.operators.messages.OperatorInitComplete;
@@ -27,7 +28,6 @@ import io.reacted.patterns.Try;
 import io.reacted.patterns.annotations.unstable.Unstable;
 
 import javax.annotation.Nonnull;
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +45,7 @@ import static io.reacted.core.utils.ReActedUtils.composeDeliveries;
 @Unstable
 public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builder<CfgBuilderT, CfgT>,
                                    CfgT extends FlowOperatorConfig<CfgBuilderT, CfgT>> implements ReActor {
-    public static final Collection<? extends Serializable> NO_OUTPUT = List.of();
+    public static final Collection<? extends ReActedMessage> NO_OUTPUT = List.of();
     private final ReActions operatorReactions;
     private final CfgT operatorCfg;
     private final ReActorConfig routeeCfg;
@@ -84,9 +84,9 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
     protected static Try<ReActorRef> of(ReActorSystem localReActorSystem, ServiceConfig config) {
         return localReActorSystem.spawnService(config);
     }
-    protected abstract CompletionStage<Collection<? extends Serializable>>
-    onNext(Serializable input, ReActorContext ctx);
-    protected void onLinkError(Throwable error, ReActorContext ctx, Serializable input) {
+    protected abstract CompletionStage<Collection<? extends ReActedMessage>>
+    onNext(ReActedMessage input, ReActorContext ctx);
+    protected void onLinkError(Throwable error, ReActorContext ctx, ReActedMessage input) {
         ctx.logError("Unable to pass {} to the next stage", input, error);
     }
     @SuppressWarnings("EmptyMethod")
@@ -152,20 +152,20 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                   });
     }
 
-    private void onNext(ReActorContext ctx, Serializable message) {
+    private void onNext(ReActorContext ctx, ReActedMessage message) {
         backpressuredPropagation(onNext(message, ctx), message, ctx);
     }
 
-    protected CompletionStage<Void> backpressuredPropagation(CompletionStage<Collection<? extends Serializable>> operatorOutput,
-                                                             Serializable inputMessage,
+    protected CompletionStage<Void> backpressuredPropagation(CompletionStage<Collection<? extends ReActedMessage>> operatorOutput,
+                                                             ReActedMessage inputMessage,
                                                              ReActorContext ctx) {
         return propagate(operatorOutput, inputMessage, ctx)
             .thenAccept(lastDelivery -> ctx.getMbox().request(1));
     }
 
     protected CompletionStage<DeliveryStatus>
-    propagate(CompletionStage<Collection<? extends Serializable>> operatorOutput,
-              Serializable inputMessage, ReActorContext ctx) {
+    propagate(CompletionStage<Collection<? extends ReActedMessage>> operatorOutput,
+              ReActedMessage inputMessage, ReActorContext ctx) {
         Consumer<Throwable> onDeliveryError = error -> onFailedDelivery(error, ctx, inputMessage);
         return operatorOutput.thenCompose(messages -> routeOutputMessageAfterFiltering(messages).entrySet().stream()
                                                                                                 .map(msgToDst -> forwardToOperators(onDeliveryError,
@@ -174,8 +174,8 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                                                                                                 .reduce((first, second) -> ReActedUtils.composeDeliveries(first, second, onDeliveryError))
                                                                                                 .orElse(CompletableFuture.completedStage(DeliveryStatus.DELIVERED)));
     }
-    protected Map<Collection<ReActorRef>, ? extends Collection<? extends Serializable>>
-    routeOutputMessageAfterFiltering(Collection<? extends Serializable> outputMessages) {
+    protected Map<Collection<ReActorRef>, ? extends Collection<? extends ReActedMessage>>
+    routeOutputMessageAfterFiltering(Collection<? extends ReActedMessage> outputMessages) {
         return outputMessages.stream()
                       .collect(Collectors.groupingBy(message -> operatorCfg.getIfPredicate()
                                                                            .test(message)
@@ -184,7 +184,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
     }
     protected CompletionStage<DeliveryStatus>
     forwardToOperators(Consumer<Throwable> onDeliveryError,
-                       Collection<? extends Serializable> messages,
+                       Collection<? extends ReActedMessage> messages,
                        ReActorContext ctx, Collection<ReActorRef> nextStages) {
         return messages.stream()
                        .flatMap(output -> nextStages.stream()
@@ -193,7 +193,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                        .orElseGet(() -> CompletableFuture.completedFuture(DeliveryStatus.DELIVERED));
     }
     @SuppressWarnings("SameReturnValue")
-    protected  <InputT extends Serializable>
+    protected  <InputT extends ReActedMessage>
     DeliveryStatus onFailedDelivery(Throwable error, ReActorContext ctx, InputT message) {
         onLinkError(error, ctx, message);
         return DeliveryStatus.NOT_DELIVERED;
@@ -206,7 +206,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
                update.thenElseServices.size() == expectedThenElseServices;
     }
 
-    private static class RefreshOperatorRequest implements Serializable {
+    private static class RefreshOperatorRequest implements ReActedMessage {
 
         @Override
         public String toString() {
@@ -215,7 +215,7 @@ public abstract class FlowOperator<CfgBuilderT extends FlowOperatorConfig.Builde
     }
 
     private record OperatorOutputGatesUpdate(Collection<ReActorRef> ifPredicateServices,
-                                             Collection<ReActorRef> thenElseServices) implements Serializable {
+                                             Collection<ReActorRef> thenElseServices) implements ReActedMessage {
         @Override
             public String toString() {
                 return "OperatorOutputGatesUpdate{" +

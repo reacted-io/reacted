@@ -14,6 +14,7 @@ import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.utils.ReActedUtils;
 import io.reacted.flow.operators.FlowOperator;
 import io.reacted.flow.operators.service.ServiceOperatorConfig.Builder;
@@ -22,7 +23,6 @@ import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -66,8 +66,8 @@ public class ServiceOperator extends FlowOperator<Builder, ServiceOperatorConfig
   public ReActions getReActions() { return reActions; }
 
   @Override
-  protected final CompletionStage<Collection<? extends Serializable>>
-  onNext(Serializable input, ReActorContext ctx) {
+  protected final CompletionStage<Collection<? extends ReActedMessage>>
+  onNext(ReActedMessage input, ReActorContext ctx) {
 
     return AsyncUtils.asyncForeach(request -> service.apublish(ctx.getSelf(), request),
                                    getOperatorCfg().getToServiceRequests().apply(input).iterator(),
@@ -130,18 +130,18 @@ public class ServiceOperator extends FlowOperator<Builder, ServiceOperatorConfig
       }
     }
   }
-  private <PayloadT extends Serializable> void onReply(ReActorContext ctx, PayloadT reply) {
+  private <PayloadT extends ReActedMessage> void onReply(ReActorContext ctx, PayloadT reply) {
     propagate(CompletableFuture.supplyAsync(() -> getOperatorCfg().getFromServiceResponse()
                                                                   .apply(reply), executorService),
               reply, ctx);
   }
 
-  private static class RefreshServiceRequest implements Serializable {
+  private static class RefreshServiceRequest implements ReActedMessage {
     @Override
     public String toString() {
       return "RefreshServiceRequest{}";
     }
   }
 
-  private record RefreshServiceUpdate(Collection<ReActorRef> serviceGates) implements Serializable { }
+  private record RefreshServiceUpdate(Collection<ReActorRef> serviceGates) implements ReActedMessage { }
 }

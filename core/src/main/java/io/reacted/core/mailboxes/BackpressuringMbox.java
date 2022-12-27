@@ -13,11 +13,11 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 
 import javax.annotation.Nonnull;
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
@@ -32,8 +32,8 @@ import java.util.stream.Stream;
 public class BackpressuringMbox implements MailBox {
     public static final long DEFAULT_MESSAGES_REQUESTED_ON_STARTUP = 1L;
     private final MailBox realMbox;
-    private final AtomicReference<Set<Class<? extends Serializable>>> notDelayable;
-    private final Set<? extends Serializable> outOfStreamControl;
+    private final AtomicReference<Set<Class<? extends ReActedMessage>>> notDelayable;
+    private final Set<Class<? extends ReActedMessage>> outOfStreamControl;
     private final ReActorContext realMailboxOwner;
     private final long backpressuringThreshold;
     private final BlockingDeque<Message> bufferQueue = new LinkedBlockingDeque<>();
@@ -125,17 +125,17 @@ public class BackpressuringMbox implements MailBox {
                ? Optional.of((BackpressuringMbox)mailBox)
                : Optional.empty();
     }
-    public boolean isDelayable(Class<? extends Serializable> payloadType) {
+    public boolean isDelayable(Class<? extends ReActedMessage> payloadType) {
         return !notDelayable.get().contains(payloadType);
     }
 
     @SafeVarargs
-    public final BackpressuringMbox addNonDelayableTypes(Class<? extends Serializable>... notDelayedToAdd) {
+    public final BackpressuringMbox addNonDelayableTypes(Class<? extends ReActedMessage>... notDelayedToAdd) {
         return addNonDelayableTypes(Arrays.stream(notDelayedToAdd).collect(Collectors.toSet()));
     }
-    public BackpressuringMbox addNonDelayableTypes(Set<Class<? extends Serializable>> notDelayedToAdd) {
-        Set<Class<? extends Serializable>> notDelayedCache;
-        Set<Class<? extends Serializable>> notDelayedMerge;
+    public BackpressuringMbox addNonDelayableTypes(Set<Class<? extends ReActedMessage>> notDelayedToAdd) {
+        Set<Class<? extends ReActedMessage>> notDelayedCache;
+        Set<Class<? extends ReActedMessage>> notDelayedMerge;
         do {
             notDelayedCache = notDelayable.get();
             notDelayedMerge = Stream.concat(notDelayedCache.stream(),
@@ -161,9 +161,9 @@ public class BackpressuringMbox implements MailBox {
 
         @SuppressWarnings("NotNullFieldNotInitialized")
         private ReActorContext realMailboxOwner;
-        private Set<Class<? extends Serializable>> notDelayable = Set.of(ReActorInit.class,
+        private Set<Class<? extends ReActedMessage>> notDelayable = Set.of(ReActorInit.class,
                                                                          ReActorStop.class);
-        private Set<Class<? extends Serializable>> outOfStreamControl = Set.of();
+        private Set<Class<? extends ReActedMessage>> outOfStreamControl = Set.of();
 
         private Builder() { }
 
@@ -177,7 +177,7 @@ public class BackpressuringMbox implements MailBox {
          * @return this {@link Builder}
          */
         @SafeVarargs
-        public final Builder setOutOfStreamControl(Class<? extends Serializable> ...notRegulatedByStreamControl) {
+        public final Builder setOutOfStreamControl(Class<? extends ReActedMessage> ...notRegulatedByStreamControl) {
             this.outOfStreamControl = Set.of(notRegulatedByStreamControl);
             return this;
         }
@@ -229,7 +229,7 @@ public class BackpressuringMbox implements MailBox {
          * @return this {@link Builder}
          */
         @SafeVarargs
-        public final Builder setNonDelayable(Class<? extends Serializable> ...notDelayable) {
+        public final Builder setNonDelayable(Class<? extends ReActedMessage> ...notDelayable) {
             this.notDelayable = Set.of(notDelayable);
             return this;
         }

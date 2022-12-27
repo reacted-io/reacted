@@ -11,7 +11,8 @@ package io.reacted.core.services;
 import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -21,5 +22,5 @@ public interface LoadBalancingPolicy {
    ServiceConfigT extends ReActorServiceConfig<ServiceConfigBuilderT, ServiceConfigT>>
   ReActorRef selectRoutee(@Nonnull ReActorContext routerCtx,
                           @Nonnull Service<ServiceConfigBuilderT, ServiceConfigT> thisService,
-                          long msgNum, @Nonnull Serializable message);
+                          long msgNum, @Nonnull ReActedMessage message);
 }

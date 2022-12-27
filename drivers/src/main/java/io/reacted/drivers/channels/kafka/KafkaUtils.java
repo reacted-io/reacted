@@ -13,6 +13,7 @@ import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.core.reactorsystem.ReActorSystemRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.drivers.channels.kafka.avro.ChannelId;
 import io.reacted.drivers.channels.kafka.avro.ChannelType;
 import io.reacted.drivers.channels.kafka.avro.Message;
@@ -25,7 +26,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -33,7 +33,7 @@ final class KafkaUtils {
     private KafkaUtils() { throw new AssertionError("We are not supposed to be called"); }
 
     @Nullable
-    static <PayloadT extends Serializable>
+    static <PayloadT extends ReActedMessage>
     Message toAvroMessage(ReActorRef source, ReActorRef destination, long sequenceNumber,
                           ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
                           PayloadT payload) throws IOException {
@@ -51,7 +51,7 @@ final class KafkaUtils {
         return avroMessageBuilder.build();
     }
 
-    static ByteBuffer toSerializedPayload(Serializable payload) throws IOException {
+    static ByteBuffer toSerializedPayload(ReActedMessage payload) throws IOException {
         try(ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
             ObjectOutputStream oos = new ObjectOutputStream(byteArray)) {
             oos.writeObject(payload);
@@ -59,10 +59,10 @@ final class KafkaUtils {
         }
     }
 
-    static Serializable fromSerializedPayload(ByteBuffer serializedPayload) throws IOException, ClassNotFoundException {
+    static ReActedMessage fromSerializedPayload(ByteBuffer serializedPayload) throws IOException, ClassNotFoundException {
         try (var bais = new ByteArrayInputStream(serializedPayload.array());
              var inputStream = new ObjectInputStream(bais)) {
-            return (Serializable) inputStream.readObject();
+            return (ReActedMessage) inputStream.readObject();
         }
     }
 

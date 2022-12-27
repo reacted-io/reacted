@@ -10,15 +10,15 @@ package io.reacted.core.reactorsystem;
 
 import io.reacted.core.mailboxes.MailBox;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
 import java.util.Objects;
 import java.util.Set;
 
 @NonNullByDefault
 public class ReActorCtxConfig {
-    private final Set<Class<? extends Serializable>> subscribedTypes;
+    private final Set<Class<? extends ReActedMessage>> subscribedTypes;
     private final Dispatcher dispatcher;
     private final MailBox mailBox;
 
@@ -28,7 +28,7 @@ public class ReActorCtxConfig {
         this.dispatcher = Objects.requireNonNull(actorCtxConfigBuilder.dispatcher);
     }
 
-    Set<Class<? extends Serializable>> getSubscribedTypes() { return subscribedTypes; }
+    Set<Class<? extends ReActedMessage>> getSubscribedTypes() { return subscribedTypes; }
 
     Dispatcher getDispatcher() { return dispatcher; }
 
@@ -36,11 +36,11 @@ public class ReActorCtxConfig {
 
     @SuppressWarnings("NotNullFieldNotInitialized")
     public static class Builder {
-        private Set<Class<? extends Serializable>> subscribedTypes;
+        private Set<Class<? extends ReActedMessage>> subscribedTypes;
         private MailBox reactorMailbox;
         private Dispatcher dispatcher;
 
-        public final Builder setSubscribedTypes(Set<Class<? extends Serializable>> subscribedTypes) {
+        public final Builder setSubscribedTypes(Set<Class<? extends ReActedMessage>> subscribedTypes) {
             this.subscribedTypes = subscribedTypes;
             return this;
         }

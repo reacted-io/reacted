@@ -10,16 +10,16 @@ package io.reacted.core.messages.serviceregistry;
 
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
 import java.io.Serial;
-import java.io.Serializable;
 import java.util.Objects;
 import java.util.Properties;
 
 
 @NonNullByDefault
-public class ServicePublicationRequest implements Serializable {
+public class ServicePublicationRequest implements ReActedMessage {
 
     @Serial
     private static final long serialVersionUID = 1;

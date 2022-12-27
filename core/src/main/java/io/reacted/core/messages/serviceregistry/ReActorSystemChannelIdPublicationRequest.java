@@ -10,14 +10,15 @@ package io.reacted.core.messages.serviceregistry;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
-import java.io.Serializable;
-import java.util.Properties;
+
 import javax.annotation.concurrent.Immutable;
+import java.util.Properties;
 
 @Immutable
 @NonNullByDefault
-public class ReActorSystemChannelIdPublicationRequest implements Serializable {
+public class ReActorSystemChannelIdPublicationRequest implements ReActedMessage {
     private final ReActorSystemId reActorSystemId;
     private final ChannelId channelId;
     private final Properties channelIdData;

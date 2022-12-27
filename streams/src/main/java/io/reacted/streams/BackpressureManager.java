@@ -18,6 +18,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
@@ -30,18 +31,17 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
-import java.util.concurrent.Flow.Subscriber;
-import java.util.function.Consumer;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.concurrent.Flow.Subscriber;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 @NonNullByDefault
-public class BackpressureManager<PayloadT extends Serializable> implements Flow.Subscription,
+public class BackpressureManager<PayloadT extends ReActedMessage> implements Flow.Subscription,
                                                                            AutoCloseable,
                                                                            ReActiveEntity {
     private final Flow.Subscriber<? super PayloadT> subscriber;

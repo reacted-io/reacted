@@ -8,6 +8,6 @@
 
 package io.reacted.streams.messages;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
 
-public class PublisherShutdown implements Serializable { }
+public class PublisherShutdown implements ReActedMessage { }

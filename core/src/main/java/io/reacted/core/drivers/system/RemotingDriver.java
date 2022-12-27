@@ -18,13 +18,14 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.core.reactorsystem.ReActorSystemRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked.TriConsumer;
-import java.io.Serializable;
+
+import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import javax.annotation.Nullable;
 
 @NonNullByDefault
 public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>>
@@ -32,22 +33,22 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     protected RemotingDriver(ConfigT config) { super(config); }
 
     @Override
-    public final <PayloadT extends Serializable>
+    public final <PayloadT extends ReActedMessage>
     DeliveryStatus publish(ReActorRef src, ReActorRef dst, PayloadT message) {
         //While sending towards a remote peer, propagation towards subscribers never takes place
         return publish(src, dst, DO_NOT_PROPAGATE, message);
     }
 
     @Override
-    public final <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef source, ReActorRef destination,
-                                                                        @Nullable TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+    public final <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef source, ReActorRef destination,
+                                                                        @Nullable TriConsumer<ReActorId, ReActedMessage, ReActorRef> propagateToSubscribers, PayloadT message) {
         long nextSeqNum = getLocalReActorSystem().getNewSeqNum();
         return sendMessage(source, ReActorContext.NO_REACTOR_CTX, destination, nextSeqNum,
                            getLocalReActorSystem().getLocalReActorSystemId(), AckingPolicy.NONE, message);
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
+    public <PayloadT extends ReActedMessage> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
         return publish(src, dst, DO_NOT_PROPAGATE, message);
     }
 
@@ -62,7 +63,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
      * has been delivered into the target's mailbox and has been ACK-ed accordingly with the specified policy
      */
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     CompletionStage<DeliveryStatus> apublish(ReActorRef source, ReActorRef destination, AckingPolicy ackingPolicy,
                                              PayloadT message) {
         long nextSeqNum = getLocalReActorSystem().getNewSeqNum();
@@ -83,14 +84,14 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     }
 
     @Override
-    public final <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                                                                          TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+    public final <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                                                                          TriConsumer<ReActorId, ReActedMessage, ReActorRef> propagateToSubscribers, PayloadT message) {
         //While sending towards a remote peer, propagation towards subscribers never takes place
         return apublish(src, dst, ackingPolicy, message);
     }
 
     @Override
-    public final <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+    public final <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
         //While sending towards a remote peer, propagation towards subscribers never takes place,
         //so tell and publish behave in the same way
         return apublish(src, dst, ackingPolicy, message);
@@ -114,7 +115,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
      * Forward a message just received by a channel to ReActed for propagating it towards the destination mailbox
      */
     @Override
-    protected <PayloadT extends Serializable> void offerMessage(ReActorRef source, ReActorRef destination,
+    protected <PayloadT extends ReActedMessage> void offerMessage(ReActorRef source, ReActorRef destination,
                                                                 long sequenceNumber,
                                                                 ReActorSystemId fromReActorSystemId,
                                                                 AckingPolicy ackingPolicy,
@@ -128,7 +129,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
             return;
         }
 
-        Class<? extends Serializable> payloadType = payload.getClass();
+        Class<? extends ReActedMessage> payloadType = payload.getClass();
         boolean hasBeenSniffed = false;
 
         //If the message destination is within reactor system. We might have just intercepted a message for some other
@@ -206,7 +207,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
         }
     }
 
-    private <PayloadT extends Serializable> void
+    private <PayloadT extends ReActedMessage> void
     forwardMessageToSenderDriverInstance(ReActorRef source, ReActorRef destination, long sequenceNumber,
                                          ReActorSystemId fromReActorSystemId, AckingPolicy ackingPolicy,
                                          PayloadT payload, DeliveryStatusUpdate deliveryStatusUpdate) {
@@ -224,7 +225,7 @@ public abstract class RemotingDriver<ConfigT extends ChannelDriverConfig<?, Conf
     }
 
     private static boolean isTypeSubscribed(ReActorSystem localReActorSystem,
-                                            Class<? extends Serializable> payloadType) {
+                                            Class<? extends ReActedMessage> payloadType) {
         return localReActorSystem.getTypedSubscriptionsManager().hasFullSubscribers(payloadType);
     }
 }

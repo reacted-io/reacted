@@ -21,6 +21,9 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
@@ -31,11 +34,6 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Iterator;
 import java.util.Objects;
@@ -51,8 +49,8 @@ import java.util.concurrent.TimeUnit;
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
-public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
-                                                                                  AutoCloseable, Externalizable {
+public class ReactedSubmissionPublisher<PayloadT extends ReActedMessage> implements Flow.Publisher<PayloadT>,
+                                                                                  AutoCloseable, ReActedMessage {
     private static final Duration BACKPRESSURE_DELAY_BASE = Duration.ofMillis(1);
     private static final String SUBSCRIPTION_NAME_FORMAT = "Backpressure Manager [%s] Subscription [%s]";
     private static final long FEED_GATE_OFFSET = SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class,
@@ -68,7 +66,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     /**
      * Creates a location oblivious data publisher with automatic backpressure. Subscribers can slow down
-     * the producer. Publisher is Serializable, so it can be sent to any reactor over any gate
+     * the producer. Publisher is ReActedMessage, so it can be sent to any reactor over any gate
      * and subscribers can simply join the stream.
      * This publisher is reactive-streams compliant
      * @see <a href=https://www.reactive-streams.org>https://www.reactive-streams.org/</a>
@@ -116,15 +114,16 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.localReActorSystem = ReActorSystem.NO_REACTOR_SYSTEM;
     }
 
+
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        feedGate.writeExternal(out);
+    public void encode(Serializer serializer) {
+        feedGate.encode(serializer);
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+    public void decode(Deserializer deserializer) {
         ReActorRef gate = new ReActorRef();
-        gate.readExternal(in);
+        gate.decode(deserializer);
         DriverCtx driverCtx = ReActorSystemDriver.getDriverCtx();
         if (driverCtx == null) {
             throw new IllegalStateException("No Driver Context For Driver");
@@ -234,7 +233,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return feedGate.publish(message);
     }
 
-    private void forwardToSubscribers(ReActorContext ctx, Serializable payload) {
+    private void forwardToSubscribers(ReActorContext ctx, ReActedMessage payload) {
         if (subscribers.isEmpty()) {
             return;
         }

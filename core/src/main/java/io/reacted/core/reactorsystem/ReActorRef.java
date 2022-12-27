@@ -13,20 +13,19 @@ import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.Ask;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.patterns.NonNullByDefault;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+
 import java.io.Serial;
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
-public final class ReActorRef implements Externalizable {
+public final class ReActorRef implements ReActedMessage {
     public static final ReActorRef NO_REACTOR_REF = new ReActorRef(ReActorId.NO_REACTOR_ID,
                                                                    NullReActorSystemRef.NULL_REACTOR_SYSTEM_REF);
     public static final int NO_REACTOR_REF_MARKER = 1;
@@ -82,12 +81,12 @@ public final class ReActorRef implements Externalizable {
      * Sends a message to this ReActor using {@link ReActorSystem#getSystemSink()} as source
      *
      * @param messagePayload payload
-     * @param <PayloadT> Any {@link Serializable} object
+     * @param <PayloadT> Any {@link ReActedMessage} object
      * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
      * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
      * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public <PayloadT extends Serializable> DeliveryStatus publish(PayloadT messagePayload) {
+    public <PayloadT extends ReActedMessage> DeliveryStatus publish(PayloadT messagePayload) {
         return reActorSystemRef.publish(ReActorRef.NO_REACTOR_REF, this,
                                         Objects.requireNonNull(messagePayload));
     }
@@ -97,12 +96,12 @@ public final class ReActorRef implements Externalizable {
      *
      * @param msgSender      source of the message
      * @param messagePayload payload
-     * @param <PayloadT> Any {@link Serializable} object
+     * @param <PayloadT> Any {@link ReActedMessage} object
      * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
      * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
      * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef msgSender,
+    public <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef msgSender,
                                                                   PayloadT messagePayload) {
         return reActorSystemRef.publish(Objects.requireNonNull(msgSender), this,
                                         Objects.requireNonNull(messagePayload));
@@ -114,12 +113,12 @@ public final class ReActorRef implements Externalizable {
      *
      * @param msgSender      source of the message
      * @param messagePayload payload
-     * @param <PayloadT> Any {@link Serializable} object
+     * @param <PayloadT> Any {@link ReActedMessage} object
      * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
      * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
      * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef msgSender, PayloadT messagePayload) {
+    public <PayloadT extends ReActedMessage> DeliveryStatus tell(ReActorRef msgSender, PayloadT messagePayload) {
         return reActorSystemRef.tell(Objects.requireNonNull(msgSender), this,
                                      Objects.requireNonNull(messagePayload));
     }
@@ -130,12 +129,12 @@ public final class ReActorRef implements Externalizable {
      * @see io.reacted.core.typedsubscriptions.TypedSubscription
      *
      * @param messagePayload payload
-     * @param <PayloadT> Any {@link Serializable} object
+     * @param <PayloadT> Any {@link ReActedMessage} object
      * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
      * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
      * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public <PayloadT extends Serializable> DeliveryStatus  tell(PayloadT messagePayload) {
+    public <PayloadT extends ReActedMessage> DeliveryStatus  tell(PayloadT messagePayload) {
         return reActorSystemRef.tell(ReActorRef.NO_REACTOR_REF, this,
                                      Objects.requireNonNull(messagePayload));
     }
@@ -147,11 +146,11 @@ public final class ReActorRef implements Externalizable {
      *
      * @param msgSender      message source
      * @param messagePayload message payload
-     * @param <PayloadT> Any {@link Serializable} object
+     * @param <PayloadT> Any {@link ReActedMessage} object
      * @return A {@link CompletionStage} that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef msgSender, PayloadT messagePayload) {
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> atell(ReActorRef msgSender, PayloadT messagePayload) {
         return reActorSystemRef.atell(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
                                       Objects.requireNonNull(messagePayload));
     }
@@ -161,11 +160,11 @@ public final class ReActorRef implements Externalizable {
      * mailbox. The sender of the message is going to be the system sink
      *
      * @param messagePayload message payload
-     * @param <PayloadT> Any {@link Serializable} object
+     * @param <PayloadT> Any {@link ReActedMessage} object
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(PayloadT messagePayload) {
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(PayloadT messagePayload) {
         return reActorSystemRef.apublish(ReActorRef.NO_REACTOR_REF, this, AckingPolicy.ONE_TO_ONE,
                                          Objects.requireNonNull(messagePayload));
     }
@@ -176,11 +175,11 @@ public final class ReActorRef implements Externalizable {
      *
      * @param msgSender      message source
      * @param messagePayload message payload
-     * @param <PayloadT> Any {@link Serializable} object
+     * @param <PayloadT> Any {@link ReActedMessage} object
      * @return A completable future that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef msgSender,
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef msgSender,
                                                                                     PayloadT messagePayload) {
         return reActorSystemRef.apublish(Objects.requireNonNull(msgSender), this, AckingPolicy.ONE_TO_ONE,
                                          Objects.requireNonNull(messagePayload));
@@ -193,12 +192,12 @@ public final class ReActorRef implements Externalizable {
      * @param expectedReply expected message type as reply to this request
      * @param requestName   name of the request. It must be unique reactor name in the reactor system as long as this
      *                      ask is alive
-     * @param <ReplyT> Any {@link Serializable} object
-     * @param <RequestT> Any {@link Serializable} object
+     * @param <ReplyT> Any {@link ReActedMessage} object
+     * @param <RequestT> Any {@link ReActedMessage} object
      * @return A {@link CompletionStage} that is going to be completed once an answer for the request has been received.
      * On failure, the {@link CompletionStage} will be a failed {@link CompletionStage} contain the cause of the failure
      */
-    public <ReplyT extends Serializable, RequestT extends Serializable>
+    public <ReplyT extends ReActedMessage, RequestT extends ReActedMessage>
     CompletionStage<ReplyT> ask(RequestT request, Class<ReplyT> expectedReply,
                                 String requestName) {
         return ask(getReActorSystemRef().getBackingDriver().getLocalReActorSystem(), this,
@@ -214,12 +213,12 @@ public final class ReActorRef implements Externalizable {
      * @param expireTimeout mark this request as completed and failed after this timeout
      * @param requestName   name of the request. It must be unique reactor name in the reactor system as long as this
      *                      ask is alive
-     * @param <ReplyT> Any {@link Serializable} object
-     * @param <RequestT> Any {@link Serializable} object
+     * @param <ReplyT> Any {@link ReActedMessage} object
+     * @param <RequestT> Any {@link ReActedMessage} object
      * @return A {@link CompletionStage} that is going to be completed once an answer for the request has been received.
      * On failure, the {@link CompletionStage} will be a failed {@link CompletionStage} contain the cause of the failure
      */
-    public <ReplyT extends Serializable, RequestT extends Serializable>
+    public <ReplyT extends ReActedMessage, RequestT extends ReActedMessage>
     CompletionStage<ReplyT> ask(RequestT request, Class<ReplyT> expectedReply, Duration expireTimeout,
                                 String requestName) {
         return ask(Objects.requireNonNull(getReActorSystemRef().getBackingDriver().getLocalReActorSystem()),
@@ -230,30 +229,30 @@ public final class ReActorRef implements Externalizable {
     public ReActorId getReActorId() { return reActorId; }
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
+    public void encode(Serializer serializer) {
         if (this == NO_REACTOR_REF) {
-            out.writeInt(NO_REACTOR_REF_MARKER);
+            serializer.put(NO_REACTOR_REF_MARKER);
         } else {
-            out.writeInt(COMMON_REACTOR_REF_MARKER);
-            getReActorId().writeExternal(out);
-            getReActorSystemRef().writeExternal(out);
+            serializer.put(COMMON_REACTOR_REF_MARKER);
+            getReActorId().encode(serializer);
+            getReActorSystemRef().encode(serializer);
         }
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        if (in.readInt() == COMMON_REACTOR_REF_MARKER) {
+    public void decode(Deserializer deserializer) {
+        if (deserializer.getInt() == COMMON_REACTOR_REF_MARKER) {
             ReActorId receivedReActorId = new ReActorId();
-            receivedReActorId.readExternal(in);
+            receivedReActorId.decode(deserializer);
             setReActorId(receivedReActorId);
             ReActorSystemRef receivedReActorSystemRef = new ReActorSystemRef();
-            receivedReActorSystemRef.readExternal(in);
+            receivedReActorSystemRef.decode(deserializer);
             setReActorSystemRef(receivedReActorSystemRef);
             setHashCode(Objects.hash(getReActorId(), getReActorSystemRef()));
         }
     }
 
-    private static <ReplyT extends Serializable, RequestT extends Serializable>
+    private static <ReplyT extends ReActedMessage, RequestT extends ReActedMessage>
     CompletionStage<ReplyT> ask(ReActorSystem localReActorSystem, ReActorRef target, RequestT request,
                                 Class<ReplyT> expectedReplyType, Duration askTimeout, String requestName) {
         CompletableFuture<ReplyT> returnValue = new CompletableFuture<>();

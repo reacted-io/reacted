@@ -10,15 +10,15 @@ package io.reacted.core.messages.serviceregistry;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 import java.util.Objects;
 
 @Immutable
 @NonNullByDefault
-public class RegistryGateRemoved implements Serializable {
+public class RegistryGateRemoved implements ReActedMessage {
     private final ReActorSystemId removedReActorSystem;
     private final ChannelId channelId;
     public RegistryGateRemoved(String reActorSystemName, ChannelId channelId) {

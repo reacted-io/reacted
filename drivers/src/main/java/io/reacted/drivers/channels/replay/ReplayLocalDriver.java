@@ -23,11 +23,19 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-import java.io.Serializable;
+import net.openhft.chronicle.queue.ChronicleQueue;
+import net.openhft.chronicle.queue.ExcerptTailer;
+import net.openhft.chronicle.threads.Pauser;
+import net.openhft.chronicle.wire.WireIn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -36,13 +44,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.annotation.Nullable;
-import net.openhft.chronicle.queue.ChronicleQueue;
-import net.openhft.chronicle.queue.ExcerptTailer;
-import net.openhft.chronicle.threads.Pauser;
-import net.openhft.chronicle.wire.WireIn;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readAckingPolicy;
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readPayload;
@@ -84,7 +85,7 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
+    public <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                 long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
         if (!(message instanceof DeliveryStatusUpdate)) {
@@ -98,7 +99,7 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     }
 
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorRef source, ReActorContext destinationCtx,
                                                      ReActorRef destination, long seqNum,
                                                      ReActorSystemId reActorSystemId,
@@ -132,7 +133,7 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         }
     }
 
-    private <PayloadT extends Serializable>
+    private <PayloadT extends ReActedMessage>
     void onNewMessage(ReActorSystem localReActorSystem, Map<Long, Message> emptyMap, Map<ReActorId,
                       Map<Long, Message>> dstToMessageBySeqNum, ReActorRef source, ReActorRef destination,
                       long sequenceNumber, ReActorSystemId fromReActorSystemId, AckingPolicy ackingPolicy,

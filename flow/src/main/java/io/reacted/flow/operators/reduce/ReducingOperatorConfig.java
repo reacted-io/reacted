@@ -8,10 +8,11 @@
 
 package io.reacted.flow.operators.reduce;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.annotations.unstable.Unstable;
-import java.io.Serializable;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -26,10 +27,10 @@ public abstract class ReducingOperatorConfig<OperatorConfigBuilderT extends Flow
                                              OperatorConfigT extends FlowOperatorConfig<OperatorConfigBuilderT, OperatorConfigT>>
     extends FlowOperatorConfig<OperatorConfigBuilderT, OperatorConfigT> {
 
-  private final Function<Map<Class<? extends Serializable>,
-                             List<? extends Serializable>>,
-                         Collection<? extends Serializable>> reducer;
-  private final Map<Class<? extends Serializable>, Long> reductionRules;
+  private final Function<Map<Class<? extends ReActedMessage>,
+                             List<? extends ReActedMessage>>,
+                         Collection<? extends ReActedMessage>> reducer;
+  private final Map<Class<? extends ReActedMessage>, Long> reductionRules;
   protected ReducingOperatorConfig(Builder<OperatorConfigBuilderT, OperatorConfigT> builder) {
     super(builder);
     this.reducer = Objects.requireNonNull(builder.reducer, "Reducer function cannot be null");
@@ -41,27 +42,27 @@ public abstract class ReducingOperatorConfig<OperatorConfigBuilderT extends Flow
     }
   }
 
-  public Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
-                  Collection<? extends Serializable>> getReducer() { return reducer; }
+  public Function<Map<Class<? extends ReActedMessage>, List<? extends ReActedMessage>>,
+                  Collection<? extends ReActedMessage>> getReducer() { return reducer; }
 
-  public Map<Class<? extends Serializable>, Long> getReductionRules() { return reductionRules; }
+  public Map<Class<? extends ReActedMessage>, Long> getReductionRules() { return reductionRules; }
   @SuppressWarnings("NotNullFieldNotInitialized")
   protected abstract static class Builder<BuilderT extends FlowOperatorConfig.Builder<BuilderT, BuiltT>,
                                           BuiltT extends FlowOperatorConfig<BuilderT, BuiltT>>
       extends FlowOperatorConfig.Builder<BuilderT, BuiltT> {
-    private Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
-                     Collection<? extends Serializable>> reducer;
-    private Map<Class<? extends Serializable>, Long> reductionRules;
+    private Function<Map<Class<? extends ReActedMessage>, List<? extends ReActedMessage>>,
+                     Collection<? extends ReActedMessage>> reducer;
+    private Map<Class<? extends ReActedMessage>, Long> reductionRules;
 
     protected Builder() { }
 
     @SafeVarargs
-    public final BuilderT setReductionRules(Class<? extends Serializable> ...requiredTypes) {
+    public final BuilderT setReductionRules(Class<? extends ReActedMessage> ...requiredTypes) {
       return setReductionRules(Arrays.stream(requiredTypes)
                                      .collect(Collectors.toUnmodifiableList()));
     }
 
-    public final BuilderT setReductionRules(List<Class<? extends Serializable>> reductionRules) {
+    public final BuilderT setReductionRules(List<Class<? extends ReActedMessage>> reductionRules) {
       var rules = reductionRules.stream()
                                 .collect(Collectors.collectingAndThen(Collectors.groupingBy(Function.identity(),
                                                                                             Collectors.counting()),
@@ -69,12 +70,12 @@ public abstract class ReducingOperatorConfig<OperatorConfigBuilderT extends Flow
       return setReductionRules(rules);
     }
 
-    public final BuilderT setReductionRules(Map<Class<? extends Serializable>, Long> typeToRequiredInstances) {
+    public final BuilderT setReductionRules(Map<Class<? extends ReActedMessage>, Long> typeToRequiredInstances) {
       this.reductionRules = typeToRequiredInstances;
       return getThis();
     }
-    public final BuilderT setReducer(Function<Map<Class<? extends Serializable>, List<? extends Serializable>>,
-                                              Collection<? extends Serializable>> reducer) {
+    public final BuilderT setReducer(Function<Map<Class<? extends ReActedMessage>, List<? extends ReActedMessage>>,
+                                              Collection<? extends ReActedMessage>> reducer) {
       this.reducer = reducer;
       return getThis();
     }

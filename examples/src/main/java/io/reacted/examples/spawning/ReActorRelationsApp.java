@@ -10,12 +10,12 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.LongStream;
 
@@ -138,7 +138,7 @@ public class ReActorRelationsApp {
     }
 
     @Immutable
-        private record BreedRequest(long requestedChildren) implements Serializable {
+        private record BreedRequest(long requestedChildren) implements ReActedMessage {
             private BreedRequest(long requestedChildren) {
                 this.requestedChildren = ObjectUtils.requiredInRange(requestedChildren, 1L, Long.MAX_VALUE,
                         IllegalArgumentException::new);
@@ -147,12 +147,12 @@ public class ReActorRelationsApp {
 
     @NonNullByDefault
         @Immutable
-        private record Greetings(String greetingsMessage) implements Serializable {
+        private record Greetings(String greetingsMessage) implements ReActedMessage {
     }
 
     @Immutable
-    private static final class ThankYouFather implements Serializable { private ThankYouFather() { } }
+    private static final class ThankYouFather implements ReActedMessage { private ThankYouFather() { } }
 
     @Immutable
-    private static final class ByeByeUncle implements Serializable { private ByeByeUncle() { } }
+    private static final class ByeByeUncle implements ReActedMessage { private ByeByeUncle() { } }
 }

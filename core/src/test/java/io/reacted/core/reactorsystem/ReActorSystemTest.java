@@ -21,6 +21,7 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.Try;
 import org.awaitility.Awaitility;
@@ -37,9 +38,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 
 class ReActorSystemTest {
     private final Logger LOGGER = LoggerFactory.getLogger(ReActorSystemTest.class);
@@ -180,7 +178,7 @@ class ReActorSystemTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("TR")
                                                    .setDispatcherName("TestDispatcher")
-                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(String.class))
+                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ReActedMessage.StringMessage.class))
                                                    .build();
 
         reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig));

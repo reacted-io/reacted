@@ -9,12 +9,11 @@
 package io.reacted.streams.messages;
 
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
-
 @NonNullByDefault
-public record SubscriptionRequest(ReActorRef subscriptionBackpressuringManager) implements Serializable {
+public record SubscriptionRequest(ReActorRef subscriptionBackpressuringManager) implements ReActedMessage {
 
     @Override
     public String toString() {

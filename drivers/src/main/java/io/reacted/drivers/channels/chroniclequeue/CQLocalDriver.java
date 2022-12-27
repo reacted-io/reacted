@@ -20,17 +20,10 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.core.reactorsystem.ReActorSystemRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-
-import java.io.Serializable;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import javax.annotation.Nullable;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.RollCycles;
@@ -39,6 +32,13 @@ import net.openhft.chronicle.wire.WireIn;
 import net.openhft.chronicle.wire.WireOut;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
 public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
@@ -74,7 +74,7 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getChannelProperties(); }
 
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorRef source, ReActorContext destinationCtx,
                                                      ReActorRef destination, long seqNum,
                                                      ReActorSystemId reActorSystemId,
@@ -95,7 +95,7 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
+    public <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination, long seqNum,
                 ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
         try {
@@ -138,7 +138,7 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
                                                              readAckingPolicy(in),
                                                              readPayload(in)));
     }
-    public static <PayloadT extends Serializable>
+    public static <PayloadT extends ReActedMessage>
     void writeMessage(WireOut out, ReActorRef source, ReActorRef destination, long seqNum,
                       ReActorSystemId localReActorSystemId, AckingPolicy ackingPolicy, PayloadT payload) {
         out.write("M")
@@ -173,12 +173,12 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         ReActorSystemRef.setGateForReActorSystem(reActorSystemRef, reActorSystemId, channelId, ctx);
         return reActorSystemRef;
     }
-    public static <PayloadT extends Serializable> WireOut writePayload(WireOut wireOut, PayloadT payloadT) {
+    public static <PayloadT extends ReActedMessage> WireOut writePayload(WireOut wireOut, PayloadT payloadT) {
         return wireOut.write().object(payloadT);
     }
 
     @SuppressWarnings("unchecked")
-    public static <PayloadT extends Serializable> PayloadT readPayload(WireIn in) {
+    public static <PayloadT extends ReActedMessage> PayloadT readPayload(WireIn in) {
         return (PayloadT)in.read().object();
     }
     public static WireOut writeSequenceNumber(WireOut out, long sequenceNumber) {

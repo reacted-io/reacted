@@ -8,10 +8,11 @@
 
 package io.reacted.flow.operators.map;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.flow.operators.map.MapOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
-import java.io.Serializable;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -21,7 +22,7 @@ import java.util.function.Function;
 @NonNullByDefault
 public class MapOperatorConfig extends FlowOperatorConfig<Builder,
                                                           MapOperatorConfig> {
-  private final Function<Object, Collection<? extends Serializable>> mapper;
+  private final Function<Object, Collection<? extends ReActedMessage>> mapper;
   private final Builder builder;
   private MapOperatorConfig(Builder builder) {
     super(builder);
@@ -30,7 +31,7 @@ public class MapOperatorConfig extends FlowOperatorConfig<Builder,
     this.builder = builder;
   }
 
-  public Function<Object, Collection<? extends Serializable>> getMapper() {
+  public Function<Object, Collection<? extends ReActedMessage>> getMapper() {
     return mapper;
   }
 
@@ -39,11 +40,11 @@ public class MapOperatorConfig extends FlowOperatorConfig<Builder,
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, MapOperatorConfig> {
     @SuppressWarnings("NotNullFieldNotInitialized")
-    private Function<Object, Collection<? extends Serializable>> mapper;
+    private Function<Object, Collection<? extends ReActedMessage>> mapper;
     private Builder() {
       super.setRouteeProvider(MapOperator::new);
     }
-    public final Builder setMapper(Function<Object, Collection<? extends Serializable>> mapper) {
+    public final Builder setMapper(Function<Object, Collection<? extends ReActedMessage>> mapper) {
       this.mapper = mapper;
       return this;
     }

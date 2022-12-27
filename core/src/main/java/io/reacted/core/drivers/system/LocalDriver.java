@@ -17,11 +17,11 @@ import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -34,40 +34,40 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
      }
 
      @Override
-     public final <PayloadT extends Serializable>
+     public final <PayloadT extends ReActedMessage>
      DeliveryStatus publish(ReActorRef src, ReActorRef dst, PayloadT message) {
           throw new UnsupportedOperationException();
      }
 
      @Override
-     public final <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
-                                                                         @Nullable TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+     public final <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+                                                                         @Nullable TriConsumer<ReActorId, ReActedMessage, ReActorRef> propagateToSubscribers, PayloadT message) {
           throw new UnsupportedOperationException();
      }
 
      @Override
-     public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
+     public <PayloadT extends ReActedMessage> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
           throw new UnsupportedOperationException();
      }
 
      @Override
-     public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+     public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
           return CompletableFuture.failedStage(new UnsupportedOperationException());
      }
 
      @Override
-     public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                                                                     TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+     public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                                                                     TriConsumer<ReActorId, ReActedMessage, ReActorRef> propagateToSubscribers, PayloadT message) {
           return CompletableFuture.failedStage(new UnsupportedOperationException());
      }
 
      @Override
-     public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+     public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
           return CompletableFuture.failedStage(new UnsupportedOperationException());
      }
 
      @Override
-     protected final <PayloadT extends Serializable> void
+     protected final <PayloadT extends ReActedMessage> void
      offerMessage(ReActorRef source, ReActorRef destination, long sequenceNumber, ReActorSystemId fromReActorSystemId,
                   AckingPolicy ackingPolicy, PayloadT payload) {
           ReActorId destinationId = destination.getReActorId();
@@ -91,7 +91,7 @@ public abstract class LocalDriver<ConfigT extends ChannelDriverConfig<?, ConfigT
                }
           }
      }
-     protected static <PayloadT extends Serializable> DeliveryStatus
+     protected static <PayloadT extends ReActedMessage> DeliveryStatus
      syncForwardMessageToLocalActor(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                                     long sequenceNumber, ReActorSystemId fromReActorSystemId, AckingPolicy ackingPolicy,
                                     PayloadT payload) {

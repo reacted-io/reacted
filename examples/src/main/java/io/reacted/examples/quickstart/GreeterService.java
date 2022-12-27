@@ -12,10 +12,10 @@ import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
-import java.io.Serializable;
 
 @NonNullByDefault
 final class GreeterService implements ReActor {
@@ -40,5 +40,5 @@ final class GreeterService implements ReActor {
                                        ctx.reply("Hello from " + GreeterService.class.getSimpleName()))
                         .build();
     }
-    static final class GreetingsRequest implements Serializable { }
+    static final class GreetingsRequest implements ReActedMessage { }
 }

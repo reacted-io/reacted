@@ -8,8 +8,6 @@
 
 package io.reacted.core.drivers.system;
 
-import static org.mockito.Mockito.mock;
-
 import io.reacted.core.CoreConstants;
 import io.reacted.core.ReactorHelper;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
@@ -25,10 +23,13 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import static org.mockito.Mockito.mock;
 
 class LocalDriverTest {
     static ReActorSystem reActorSystem;
@@ -57,7 +58,7 @@ class LocalDriverTest {
         localDriver = SystemLocalDrivers.DIRECT_COMMUNICATION;
         localDriver.initDriverLoop(reActorSystem);
 
-        TypedSubscription subscribedTypes = TypedSubscription.LOCAL.forType(String.class);
+        TypedSubscription subscribedTypes = TypedSubscription.LOCAL.forType(ReActedMessage.StringMessage.class);
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName(CoreConstants.REACTOR_NAME)
                                                    .setDispatcherName("Dispatcher")

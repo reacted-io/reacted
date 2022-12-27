@@ -27,6 +27,7 @@ import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
@@ -35,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -164,7 +164,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     }
 
     private DeliveryStatus routeMessage(ReActorContext ctx,
-                                        Serializable newMessage) {
+                                        ReActedMessage newMessage) {
         ReActorRef routee = selectRoutee(ctx, ++msgReceived, newMessage);
         return routee != null
                ? routee.tell(ctx.getSender(), newMessage)
@@ -173,7 +173,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
 
     @Nullable
     private ReActorRef selectRoutee(ReActorContext routerCtx, long msgReceived,
-                                              Serializable message) {
+                                              ReActedMessage message) {
         return serviceConfig.getLoadBalancingPolicy()
                             .selectRoutee(routerCtx, this, msgReceived, message);
     }
@@ -227,7 +227,7 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
                     .publish(ctx.getSelf(), new ServicePublicationRequest(ctx.getSelf(), serviceInfo));
     }
 
-    private static <PayloadT extends Serializable>
+    private static <PayloadT extends ReActedMessage>
     void requestNextMessage(ReActorContext ctx, PayloadT payload,
                             BiFunction<ReActorContext, PayloadT, DeliveryStatus> realCall) {
         if (realCall.apply(ctx, payload).isNotSent()) {
@@ -238,13 +238,13 @@ public class Service<ServiceCfgBuilderT extends ReActorServiceConfig.Builder<Ser
     }
 
     //Messages required for the Service management logic cannot be backpressured
-    private static Set<Class<? extends Serializable>> getNonDelayedMessageTypes() {
+    private static Set<Class<? extends ReActedMessage>> getNonDelayedMessageTypes() {
         return Set.of(ServiceRegistryNotAvailable.class,
                       ServiceDiscoveryRequest.class, RouteeReSpawnRequest.class,
                       ServicePublicationRequestError.class, SystemMonitorReport.class);
     }
 
-    public static class RouteeReSpawnRequest implements Serializable {
+    public static class RouteeReSpawnRequest implements ReActedMessage {
         private final ReActorRef deadRoutee;
         private final String routeeName;
         public RouteeReSpawnRequest(ReActorRef deadRoutee, String routeeName) {

@@ -10,14 +10,14 @@ package io.reacted.core.messages.serviceregistry;
 
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 
 @Immutable
 @NonNullByDefault
-public class ReActorSystemChannelIdCancellationRequest implements Serializable {
+public class ReActorSystemChannelIdCancellationRequest implements ReActedMessage {
     private final ReActorSystemId reActorSystemId;
     private final ChannelId channelId;
 

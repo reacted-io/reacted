@@ -11,7 +11,6 @@ package io.reacted.core.reactors.systemreactors;
 import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.UnboundedMbox;
@@ -19,9 +18,12 @@ import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.reactors.ReActorId;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
-import java.util.concurrent.TimeUnit;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.TimeUnit;
 
 class DeadLetterTest {
 
@@ -51,7 +53,8 @@ class DeadLetterTest {
         reActorSystem.spawn(new MagicTestReActor(2, true, reActorConfig))
                      .orElseSneakyThrow();
         new ReActorRef(new ReActorId(ReActorId.NO_REACTOR_ID, CoreConstants.REACTOR_NAME),
-                       reActorSystem.getLoopback()).publish(ReActorRef.NO_REACTOR_REF, "message");
+                       reActorSystem.getLoopback()).publish(ReActorRef.NO_REACTOR_REF,
+                                                            ReActedMessage.of("message"));
         TimeUnit.SECONDS.sleep(1);
         Assertions.assertEquals(1, DeadLetter.RECEIVED.get());
     }

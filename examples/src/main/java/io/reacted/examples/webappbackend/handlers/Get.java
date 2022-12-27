@@ -17,6 +17,7 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.examples.webappbackend.Backend;
 import io.reacted.examples.webappbackend.db.StorageMessages;
 import io.reacted.patterns.ObjectUtils;
@@ -28,7 +29,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -131,6 +131,6 @@ public class Get implements ReActor {
         return ObjectUtils.VOID;
     }
 
-    private record ProcessGet(String getRequest) implements Serializable {
+    private record ProcessGet(String getRequest) implements ReActedMessage {
     }
 }

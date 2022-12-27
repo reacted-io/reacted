@@ -16,12 +16,12 @@ import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import org.bson.Document;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -73,7 +73,7 @@ public class DatabaseService implements ReActor {
                        .first().subscribe(new MongoSubscribers.MongoQuerySubscriber(ctx.getSelf(),
                                                                                     ctx.getSender()));
     }
-    private <PayloadT extends Serializable>
+    private <PayloadT extends ReActedMessage>
     void ifNotReplaying(BiConsumer<ReActorContext, PayloadT> realCall, ReActorContext ctx, PayloadT anyPayload) {
         if (mongoClient != null) {
             realCall.accept(ctx, anyPayload);

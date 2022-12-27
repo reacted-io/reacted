@@ -8,6 +8,6 @@
 
 package io.reacted.examples.communication.tell.ping;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
 
-record PreparationRequest() implements Serializable {}
+record PreparationRequest() implements ReActedMessage {}

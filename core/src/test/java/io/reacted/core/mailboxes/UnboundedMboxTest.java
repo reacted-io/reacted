@@ -13,6 +13,7 @@ import io.reacted.core.ReactorHelper;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,7 +83,8 @@ class UnboundedMboxTest {
         ReActorRef testMsgDst2 = ReactorHelper.generateReactor("destination2");
 
         Message originalMsg2 = Message.of(testMsgSrc2, testMsgDst2, 0x31337,
-                                          ReactorHelper.TEST_REACTOR_SYSTEM_ID, AckingPolicy.NONE, "De/Serialization Successful!");
+                                          ReactorHelper.TEST_REACTOR_SYSTEM_ID, AckingPolicy.NONE,
+                                          ReActedMessage.of("De/Serialization Successful!"));
 
         unboundedMbox.deliver(originalMsg2);
         Assertions.assertEquals(2, unboundedMbox.getMsgNum());

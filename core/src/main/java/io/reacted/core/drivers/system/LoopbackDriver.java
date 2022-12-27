@@ -17,13 +17,13 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -33,7 +33,7 @@ import java.util.concurrent.ExecutorService;
 @NonNullByDefault
 public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> extends ReActorSystemDriver<ConfigT> {
     private static final int SUBSCRIBERS_THRESHOLD_TO_USE_ASYNC_PROPAGATION = 6;
-    private final TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers = this::propagateMessage;
+    private final TriConsumer<ReActorId, ReActedMessage, ReActorRef> propagateToSubscribers = this::propagateMessage;
     private final LocalDriver<ConfigT> localDriver;
     private final ReActorSystem localReActorSystem;
     private final ExecutorService fanOutPool;
@@ -49,12 +49,13 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst, PayloadT payload) {
+    public <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef src, ReActorRef dst, PayloadT payload) {
         return publish(src, dst, propagateToSubscribers, payload);
     }
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef source, ReActorRef destination,
-                                                                  @Nullable TriConsumer<ReActorId, Serializable, ReActorRef> toSubscribers, PayloadT payload){
+    public <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef source, ReActorRef destination,
+                                                                    @Nullable TriConsumer<ReActorId, ReActedMessage, ReActorRef> toSubscribers,
+                                                                    PayloadT payload){
         ReActorContext dstCtx = localReActorSystem.getReActorCtx(destination.getReActorId());
         DeliveryStatus tellResult;
         long seqNum = localReActorSystem.getNewSeqNum();
@@ -80,23 +81,23 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT payload) {
+    public <PayloadT extends ReActedMessage> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT payload) {
         return publish(src, dst, DO_NOT_PROPAGATE, payload);
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
         return apublish(src, dst, ackingPolicy, propagateToSubscribers, payload);
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT payload) {
         return apublish(src, dst, ackingPolicy, DO_NOT_PROPAGATE, payload);
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef source, ReActorRef destnation, AckingPolicy ackingPolicy,
-                                                                                    TriConsumer<ReActorId, Serializable, ReActorRef> toSubscribers, PayloadT payload) {
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef source, ReActorRef destnation, AckingPolicy ackingPolicy,
+                                                                                    TriConsumer<ReActorId, ReActedMessage, ReActorRef> toSubscribers, PayloadT payload) {
         ReActorContext destinationContext = localReActorSystem.getReActorCtx(destnation.getReActorId());
         CompletionStage<DeliveryStatus> tellResult;
         long seqNum = localReActorSystem.getNewSeqNum();
@@ -157,7 +158,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     public final ChannelId getChannelId() { return localDriver.getChannelId(); }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
+    public <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef src, ReActorContext destinationCtx, ReActorRef destination, long seqNum,
                 ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
         throw new UnsupportedOperationException();
@@ -165,7 +166,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
     @Override
     public Properties getChannelProperties() { return localDriver.getChannelProperties(); }
 
-    private void propagateMessage(ReActorId originalDst, Serializable msgPayload, ReActorRef src) {
+    private void propagateMessage(ReActorId originalDst, ReActedMessage msgPayload, ReActorRef src) {
         var subscribers = localReActorSystem.getTypedSubscriptionsManager()
                                             .getLocalSubscribers(msgPayload.getClass());
         if (!subscribers.isEmpty()) {
@@ -180,7 +181,7 @@ public class LoopbackDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> ext
 
     private void propagateToSubscribers(LocalDriver<ConfigT> localDriver, List<ReActorContext> subscribers,
                                         ReActorId originalDestination, ReActorSystem localReActorSystem,
-                                        ReActorRef source, Serializable payload) {
+                                        ReActorRef source, ReActedMessage payload) {
         for (ReActorContext ctx : subscribers) {
             if (!ctx.getSelf().getReActorId().equals(originalDestination)) {
                 localDriver.sendMessage(source, ctx, ctx.getSelf(), localReActorSystem.getNewSeqNum(),

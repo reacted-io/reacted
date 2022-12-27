@@ -13,11 +13,12 @@ import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.services.Service;
-import java.io.Serializable;
-import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DeadLetter {
     private static final Logger LOGGER = LoggerFactory.getLogger(DeadLetter.class);
@@ -37,7 +38,7 @@ public class DeadLetter {
 
     private DeadLetter() { }
 
-    private static <PayloadT extends Serializable>
+    private static <PayloadT extends ReActedMessage>
     void onMessage(ReActorContext ctx, PayloadT message) {
         LOGGER.info("{} of {}: {} of type {} from {}", DeadLetter.class.getSimpleName(),
                     ctx.getReActorSystem().getLocalReActorSystemId().getReActorSystemName(), message, message.getClass(),

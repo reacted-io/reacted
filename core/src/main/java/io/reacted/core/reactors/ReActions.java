@@ -10,9 +10,9 @@ package io.reacted.core.reactors;
 
 import com.google.common.collect.ImmutableMap;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -21,9 +21,9 @@ import java.util.function.BiConsumer;
 public class ReActions {
     public static final ReActions NO_REACTIONS = ReActions.newBuilder().build();
 
-    private final Map<Class<? extends Serializable>,
-                      BiConsumer<ReActorContext, ? extends Serializable>> behaviors;
-    private final BiConsumer<ReActorContext, Serializable> defaultReaction;
+    private final Map<Class<? extends ReActedMessage>,
+                      BiConsumer<ReActorContext, ? extends ReActedMessage>> behaviors;
+    private final BiConsumer<ReActorContext, ReActedMessage> defaultReaction;
 
     private ReActions(Builder builder) {
         this.behaviors = builder.callbacks.build();
@@ -32,31 +32,31 @@ public class ReActions {
     }
 
     @SuppressWarnings("unchecked")
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     BiConsumer<ReActorContext, PayloadT> getReAction(PayloadT payload) {
         return (BiConsumer<ReActorContext, PayloadT>) behaviors.getOrDefault(payload.getClass(),
                                                                              defaultReaction);
     }
 
     public static Builder newBuilder() { return new Builder(); }
-    private Map<Class<? extends Serializable>, BiConsumer<ReActorContext, ? extends Serializable>>
+    private Map<Class<? extends ReActedMessage>, BiConsumer<ReActorContext, ? extends ReActedMessage>>
     getBehaviors() { return behaviors; }
 
     public static class Builder {
-        private final ImmutableMap.Builder<Class<? extends Serializable>,
-                                           BiConsumer<ReActorContext, ? extends Serializable>> callbacks;
-        private BiConsumer<ReActorContext, Serializable> anyType = ReActions::noReAction;
+        private final ImmutableMap.Builder<Class<? extends ReActedMessage>,
+                                           BiConsumer<ReActorContext, ? extends ReActedMessage>> callbacks;
+        private BiConsumer<ReActorContext, ReActedMessage> anyType = ReActions::noReAction;
 
         private Builder() {
             this.callbacks = ImmutableMap.builder();
         }
 
-        public final Builder reAct(BiConsumer<ReActorContext, Serializable> defaultReaction) {
+        public final Builder reAct(BiConsumer<ReActorContext, ReActedMessage> defaultReaction) {
             this.anyType = defaultReaction;
             return this;
         }
 
-        public final <PayloadT extends Serializable>
+        public final <PayloadT extends ReActedMessage>
         Builder reAct(Class<PayloadT> payloadType, BiConsumer<ReActorContext, PayloadT> behavior) {
             callbacks.put(Objects.requireNonNull(payloadType, "Message type cannot be null"),
                           Objects.requireNonNull(behavior, "Message callback cannot be null"));
@@ -76,6 +76,6 @@ public class ReActions {
     }
 
     @SuppressWarnings("EmptyMethod")
-    public static <PayloadT extends Serializable>
+    public static <PayloadT extends ReActedMessage>
     void noReAction(ReActorContext ctx, PayloadT payload) { /* No Reactions */ }
 }

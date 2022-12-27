@@ -14,9 +14,9 @@ import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
@@ -70,7 +70,7 @@ public final class ReActedUtils {
         return deliveryAttempt;
     }
 
-    public static  <PayloadT extends Serializable>
+    public static  <PayloadT extends ReActedMessage>
     void rescheduleIf(BiConsumer<ReActorContext, PayloadT> realCall,
                       BooleanSupplier shouldReschedule, Duration rescheduleInterval,
                       ReActorContext ctx, PayloadT message) {
