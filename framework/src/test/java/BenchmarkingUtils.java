@@ -66,7 +66,8 @@ public class BenchmarkingUtils {
         return executor.submit(messageGenerator);
     }
     static Runnable backpressureAwareMessageSender(long messageNum, ReActorRef destination) {
-        return backpressureAwareMessageSender(messageNum, destination, System::nanoTime);
+        return backpressureAwareMessageSender(messageNum, destination,
+                                              () -> new ReActedMessage.LongMessage(System.nanoTime()));
     }
 
     static Runnable backpressureAwareMessageSender(long messageNum, ReActorRef destination,
@@ -92,7 +93,8 @@ public class BenchmarkingUtils {
     }
 
     static Runnable nonStopMessageSender(long messageNum, ReActorRef destination) {
-        return nonStopMessageSender(messageNum, destination, System::nanoTime);
+        return nonStopMessageSender(messageNum, destination,
+                                    () -> new ReActedMessage.LongMessage(System.nanoTime()));
     }
     static Runnable nonStopMessageSender(long messageNum, ReActorRef destination,
                                          Supplier<? extends ReActedMessage> payloadProducer) {
@@ -104,7 +106,8 @@ public class BenchmarkingUtils {
     }
 
     static Runnable constantWindowMessageSender(long messageNum, ReActorRef destination, Duration window) {
-        return constantWindowMessageSender(messageNum, destination, window, System::nanoTime);
+        return constantWindowMessageSender(messageNum, destination, window,
+                                           () -> new ReActedMessage.LongMessage(System.nanoTime()));
     }
     static Runnable constantWindowMessageSender(long messageNum,
                                                 ReActorRef destination, Duration window,
@@ -182,7 +185,7 @@ public class BenchmarkingUtils {
                     .build();
     }
 
-    static List<String>
+    static List<ReActedMessage.StringMessage>
     fromRequestsPerIntervalSnapshotsToPrintableOutput(Map<Class<? extends ReActedMessage>, List<? extends ReActedMessage>> payloadByType) {
         List<RPISnapshot> requestsPerInterval = (List<RPISnapshot>)payloadByType.get(RPISnapshot.class);
         long totalRequests = requestsPerInterval.stream()
@@ -193,9 +196,9 @@ public class BenchmarkingUtils {
             output.append(String.format("%d ", rpi.requestsPerInterval()));
         }
         output.append(String.format("-> %d%n", totalRequests));
-        return List.of(output.toString());
+        return List.of(new ReActedMessage.StringMessage(output.toString()));
     }
-    static List<String>
+    static List<ReActedMessage.StringMessage>
     fromLatenciesSnapshotsToPrintableOutput(Map<Class<? extends ReActedMessage>, List<? extends ReActedMessage>> payloadByType) {
         List<LatenciesSnapshot> snapshots = (List<LatenciesSnapshot>)payloadByType.get(LatenciesSnapshot.class);
         long[] latencies = snapshots.stream()
@@ -204,11 +207,12 @@ public class BenchmarkingUtils {
                               .toArray();
         return computeLatenciesOutput(latencies);
     }
-    static List<String> computeLatenciesOutput(long[] latencies) {
+    static List<ReActedMessage.StringMessage> computeLatenciesOutput(long[] latencies) {
         return computeLatencies(latencies).stream()
                 .map(percentile -> String.format("Msgs: %d Percentile %f Latency: %s",
                                                  latencies.length, percentile.percentile,
                                                  percentile.latency))
+                .map(ReActedMessage.StringMessage::new)
                 .collect(Collectors.toUnmodifiableList());
     }
 

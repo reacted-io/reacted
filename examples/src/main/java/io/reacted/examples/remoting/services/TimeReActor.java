@@ -22,7 +22,6 @@ import io.reacted.core.services.SelectionType;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 
 import javax.annotation.Nonnull;
-import java.time.ZonedDateTime;
 
 public class TimeReActor implements ReActor {
     private final String serviceToQuery;
@@ -37,7 +36,7 @@ public class TimeReActor implements ReActor {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
                         .reAct(ServiceDiscoveryReply.class, this:: onServiceDiscoveryReply)
-                        .reAct(ZonedDateTime.class, this::onServiceResponse)
+                        .reAct(TimeMessages.TimeReply.class, this::onServiceResponse)
                         .reAct(ReActorStop.class, this::onStop)
                         .build();
     }
@@ -55,11 +54,11 @@ public class TimeReActor implements ReActor {
     private void onServiceDiscoveryReply(ReActorContext ctx, ServiceDiscoveryReply serviceDiscoveryReply) {
         var gate = serviceDiscoveryReply.getServiceGates().stream()
                                         .findAny();
-        gate.ifPresentOrElse(serviceGate -> serviceGate.publish(ctx.getSelf(), new TimeRequest()),
+        gate.ifPresentOrElse(serviceGate -> serviceGate.publish(ctx.getSelf(), new TimeMessages.TimeRequest()),
                              () -> ctx.logError("No service discovery response received"));
     }
 
-    private void onServiceResponse(ReActorContext ctx, ZonedDateTime time) {
+    private void onServiceResponse(ReActorContext ctx, TimeMessages.TimeReply time) {
         ctx.logInfo("Received {} response from service: {}", ++received, time.toString());
     }
 

@@ -9,10 +9,10 @@
 package io.reacted.examples.remoting.services;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
@@ -32,8 +32,8 @@ public class ClockReActor implements ReActor {
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(TimeRequest.class,
-                               (ctx, timeRequest) -> ctx.reply(ctx.getParent(), ZonedDateTime.now()))
+                        .reAct(TimeMessages.TimeRequest.class,
+                               (ctx, timeRequest) -> ctx.reply(ctx.getParent(), new TimeMessages.TimeReply(ZonedDateTime.now())))
                         .reAct(ReActions::noReAction)
                         .build();
     }

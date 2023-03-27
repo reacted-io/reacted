@@ -11,13 +11,20 @@ package io.reacted.core.serialization;
 import java.io.Serializable;
 
 public interface Deserializer {
+    <T extends Enum<T>> T getEnum(Class<T> type);
+
     long getLong();
-    long[] getLongs();
+    int getLongs(long[] target);
+
     int getInt();
 
-    int[] getInts();
+    int getInts(int[] target);
+
     String getString();
     byte getByte();
     byte[] getBytes();
-    Serializable getObject();
+
+    <T extends Serializable> T getObject();
+
+    Serializable getObject(Serializable target);
 }

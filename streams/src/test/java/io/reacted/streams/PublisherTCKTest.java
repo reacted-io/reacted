@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Test
-public class PublisherTCKTest extends FlowPublisherVerification<Long> {
+public class PublisherTCKTest extends FlowPublisherVerification<ReActedMessage.LongMessage> {
     private static final Logger LOGGER = LoggerFactory.getLogger(PublisherTCKTest.class);
     private final AtomicLong counter = new AtomicLong(0);
     private final ReActorSystem localReActorSystem;
@@ -51,7 +51,7 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     }
 
     @Override
-    public Flow.Publisher<Long> createFlowPublisher(long l) {
+    public Flow.Publisher<ReActedMessage.LongMessage> createFlowPublisher(long l) {
         var publisher = new ReactedSubmissionPublisher<ReActedMessage.LongMessage>(localReActorSystem, 10_000,
                                                              "TckFeed-" + counter.getAndIncrement());
         generatedFlows.add(publisher);
@@ -60,8 +60,8 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
     }
 
     @Override
-    public Flow.Publisher<Long> createFailedFlowPublisher() {
-        var publisher = new ReactedSubmissionPublisher<Long>(localReActorSystem, 10_000,
+    public Flow.Publisher<ReActedMessage.LongMessage> createFailedFlowPublisher() {
+        var publisher = new ReactedSubmissionPublisher<ReActedMessage.LongMessage>(localReActorSystem, 10_000,
                                                              "FailedTckFeed-" + counter.getAndIncrement());
         publisher.close();
         Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(20))
@@ -98,13 +98,15 @@ public class PublisherTCKTest extends FlowPublisherVerification<Long> {
         localReActorSystem.shutDown();
     }
 
-    private void asyncPublishMessages(ReactedSubmissionPublisher<Long> publisher,
+    private void asyncPublishMessages(ReactedSubmissionPublisher<ReActedMessage.LongMessage> publisher,
                                       long messagesNum) {
         submitterThread.submit(() -> {
             //The subscription handshake needs some time to complete
             Try.ofRunnable(() -> TimeUnit.MILLISECONDS.sleep(50));
             for(long cycle = 0; cycle < messagesNum && !Thread.currentThread().isInterrupted(); cycle++) {
-                if (publisher.submit(cycle).isNotSent()) {
+                ReActedMessage.LongMessage payload = new ReActedMessage.LongMessage();
+                payload.setPayload(cycle);
+                if (publisher.submit(payload).isNotSent()) {
                     LOGGER.error("Critic! Message {} not sent!", cycle);
                 }
             }

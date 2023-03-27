@@ -40,10 +40,14 @@ public interface ReActedMessage extends Serializable {
         return msg;
     }
 
-    private static ReActedMessage of(Throwable payload) {
+    static ReActedMessage of(Throwable payload) {
         var msg = new ThrowableMessage();
         msg.value = payload;
         return msg;
+    }
+
+    static <T extends Enum<T>, R extends ReActedMessage> R of(T payload) {
+        return (R) new EnumMessage<T>(payload);
     }
 
     class ByteArrayMessage implements ReActedMessage {
@@ -58,8 +62,37 @@ public interface ReActedMessage extends Serializable {
             this.payload = deserializer.getBytes();
         }
     }
+
+    class EnumMessage<T extends Enum<T>> implements ReActedMessage {
+
+        private T payload = null;
+
+        public EnumMessage(T value) {
+            this.payload = value;
+        }
+
+        public EnumMessage() { }
+
+        public EnumMessage<T> setPayload(T payload) {
+            this.payload = payload;
+            return this;
+        }
+        @Override
+        public void encode(Serializer serializer) {
+            serializer.put(payload);
+        }
+
+        @Override
+        public void decode(Deserializer deserializer) {
+            ReActedMessage.super.decode(deserializer);
+        }
+    }
     class LongMessage implements ReActedMessage {
         private Long payload = null;
+
+        public LongMessage() { }
+
+        public LongMessage(long payload) { this.payload = payload; }
         public Long getPayload() { return payload; }
 
         public void setPayload(long payload) { this.payload = payload; }
@@ -79,16 +112,23 @@ public interface ReActedMessage extends Serializable {
         public long[] getPayload() { return payload; }
         @Override
         public void encode(Serializer serializer) {
+            serializer.put(payload.length);
             serializer.put(payload);
         }
         @Override
         public void decode(Deserializer deserializer) {
-            this.payload = deserializer.getLongs();
+            this.payload = new long[deserializer.getInt()];
+            deserializer.getLongs(payload);
         }
     }
 
     class IntMessage implements ReActedMessage {
         private Integer payload = null;
+
+        public IntMessage() { }
+
+        public IntMessage(int payload) { this.payload = payload; }
+        public int getPayload() { return payload; }
         @Override
         public void encode(Serializer serializer) {
             serializer.put(payload);
@@ -103,16 +143,22 @@ public interface ReActedMessage extends Serializable {
         private int[] payload = null;
         @Override
         public void encode(Serializer serializer) {
+            serializer.put(payload.length);
             serializer.put(payload);
         }
         @Override
         public void decode(Deserializer deserializer) {
-            this.payload = deserializer.getInts();
+            this.payload = new int[deserializer.getInt()];
+            deserializer.getInts(payload);
         }
     }
 
     class StringMessage implements ReActedMessage {
         protected String payload = null;
+
+        public StringMessage() { }
+
+        public StringMessage(String payload) { this.payload = payload; }
         @Override
         public void encode(Serializer serializer) {
             serializer.put(payload);

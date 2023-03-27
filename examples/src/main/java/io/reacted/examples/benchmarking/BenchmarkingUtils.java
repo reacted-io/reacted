@@ -257,12 +257,14 @@ public class BenchmarkingUtils {
         public long[] getLatencies() { return latencies; }
         @Override
         public void encode(Serializer serializer) {
+            serializer.put(latencies.length);
             serializer.put(latencies);
         }
 
         @Override
         public void decode(Deserializer deserializer) {
-            this.latencies = deserializer.getLongs();
+            this.latencies = new long[deserializer.getInt()];
+            deserializer.getLongs(latencies);
         }
     }
 

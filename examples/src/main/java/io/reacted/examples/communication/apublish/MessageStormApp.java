@@ -19,6 +19,7 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
@@ -138,14 +139,14 @@ class MessageStormApp {
         public ReActions getReActions() {
             return ReActions.newBuilder()
                     .reAct(ReActorInit.class, (ctx, init) -> onInit(ctx))
-                    .reAct(NextRecord.class, (ctx, nextRecord) -> onNextRecord(ctx))
+                    .reAct(ReActedMessage.EnumMessage.class, (ctx, nextRecord) -> onNextRecord(ctx))
                     .reAct(ReActions::noReAction)
                     .build();
         }
 
         private void onInit(ReActorContext ctx) {
             this.testStart = System.nanoTime();
-            ctx.selfPublish(NextRecord.INSTANCE);
+            ctx.selfPublish(ReActedMessage.of(NextRecord.INSTANCE));
         }
 
         private void onNextRecord(ReActorContext ctx) {
@@ -154,7 +155,7 @@ class MessageStormApp {
                                   Duration.ofNanos(System.nanoTime() - testStart));
                 ctx.stop();
             } else {
-                serverReference.apublish(String.format("Async Message %d", missingCycles--))
+                serverReference.apublish(ReActedMessage.of(String.format("Async Message %d", missingCycles--)))
                                .toCompletableFuture()
                                .handle((deliveryStatus, error) -> {
                                    if (error != null) {
@@ -162,7 +163,7 @@ class MessageStormApp {
                                        error.printStackTrace();
                                    } else {
                                        if (deliveryStatus.isDelivered()) {
-                                           ctx.selfPublish(NextRecord.INSTANCE);
+                                           ctx.selfPublish(ReActedMessage.of(NextRecord.INSTANCE));
                                        } else {
                                            System.err.printf("Unable to deliver loop message: %s%n",
                                                              deliveryStatus);

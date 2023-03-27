@@ -16,9 +16,9 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 
 import javax.annotation.Nonnull;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
@@ -78,7 +78,7 @@ public class ConsistencyTest {
                                     .setDispatcherName(dispatcher)
                                     .build();
             this.reActions = ReActions.newBuilder()
-                                      .reAct(Long.class, this::onPayload)
+                                      .reAct(ReActedMessage.LongMessage.class, this::onPayload)
                                       .reAct(ReActorStop.class, this::onStop)
                                       .build();
         }
@@ -88,7 +88,7 @@ public class ConsistencyTest {
         private void onStop(ReActorContext reActorContext, ReActorStop stopCrunching) {
             reActorContext.stop();
         }
-        private void onPayload(ReActorContext ctx, Long payLoad) {
+        private void onPayload(ReActorContext ctx, ReActedMessage.LongMessage payLoad) {
             if (marker != 0) {
                 System.err.println("CRITIC!");
                 System.exit(1);

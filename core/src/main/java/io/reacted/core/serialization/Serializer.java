@@ -11,22 +11,26 @@ package io.reacted.core.serialization;
 import java.io.Serializable;
 
 public interface Serializer {
-    void putLong(long value);
-    void putLongs(long[] value);
-    void putInt(int value);
+    <T extends Enum<T>> Serializer putEnum(T value);
 
-    void putInts(int[] value);
-    void putString(String value);
-    void putByte(byte value);
-    void putBytes(byte[] value);
+    Serializer putLong(long value);
+    Serializer putLongs(long[] value);
+    Serializer putInt(int value);
 
-    void putObject(Serializable value);
-    default void put(String value) { putString(value);}
-    default void put(long value) { putLong(value); }
-    default void put(int value) { putInt(value); }
-    default void put(byte value) { putByte(value); }
-    default void put(byte[] value) { putBytes(value); }
+    Serializer putInts(int[] value);
+    Serializer putString(String value);
+    Serializer putByte(byte value);
+    Serializer putBytes(byte[] value);
 
-    default void put(int[] value) { putInts(value);}
-    default void put(long[] value) { putLongs(value); }
+    Serializer putObject(Serializable value);
+    default Serializer put(String value) { return putString(value);}
+    default Serializer put(long value) { return putLong(value); }
+    default Serializer put(int value) { return putInt(value); }
+    default Serializer put(byte value) { return putByte(value); }
+    default Serializer put(byte[] value) { return putBytes(value); }
+
+    default Serializer put(int[] value) { return putInts(value);}
+    default Serializer put(long[] value) { return putLongs(value); }
+
+    default <T extends Enum<T>> Serializer put(T value) { return putEnum(value); }
 }
