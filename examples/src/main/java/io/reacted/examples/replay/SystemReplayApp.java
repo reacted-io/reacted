@@ -14,11 +14,13 @@ import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.drivers.channels.replay.ReplayLocalDriver;
 import io.reacted.examples.ExampleUtils;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
@@ -62,7 +64,7 @@ public class SystemReplayApp {
                                                  .orElseSneakyThrow();
 
         if (IntStream.range(0, 5)
-                     .mapToObj(cycle -> "Message number " + cycle)
+                     .mapToObj(cycle -> ReActedMessage.of("Message number " + cycle))
                      .map(echoReference::apublish)
                      .map(CompletionStage::toCompletableFuture)
                      .map(CompletableFuture::join)

@@ -131,7 +131,7 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     }
 
     private void readMessage(WireIn in, DriverCtx driverCtx) {
-        in.read("M").marshallable(m -> offerMessage(readReActorRef(in, driverCtx),
+        in.read().marshallable(m -> offerMessage(readReActorRef(in, driverCtx),
                                                              readReActorRef(in, driverCtx),
                                                              readSequenceNumber(in),
                                                              readReActorSystemId(in),
@@ -141,7 +141,7 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     public static <PayloadT extends ReActedMessage>
     void writeMessage(WireOut out, ReActorRef source, ReActorRef destination, long seqNum,
                       ReActorSystemId localReActorSystemId, AckingPolicy ackingPolicy, PayloadT payload) {
-        out.write("M")
+        out.write()
            .marshallable(m -> writePayload(writeAckingPolicy(writeReActorSystemId(writeSequenceNumber(writeReActorRef(writeReActorRef(m, source),
                                                                                                                       destination),
                                                                                                       seqNum),

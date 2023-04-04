@@ -37,7 +37,7 @@ final class GreeterService implements ReActor {
                                        ctx.logInfo("{} was born", ctx.getSelf().getReActorId().getReActorName()))
                         .reAct(GreetingsRequest.class,
                                (ctx, greetingsRequest) ->
-                                       ctx.reply("Hello from " + GreeterService.class.getSimpleName()))
+                                       ctx.reply(ReActedMessage.of("Hello from " + GreeterService.class.getSimpleName())))
                         .build();
     }
     static final class GreetingsRequest implements ReActedMessage { }

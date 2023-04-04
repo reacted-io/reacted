@@ -66,7 +66,8 @@ public final class LoadBalancingPolicies {
   };
 
   private LoadBalancingPolicies() { /* No implementation required */ }
-  public static LoadBalancingPolicy partitionBy(ToIntFunction<ReActedMessage> partitioner) {
+  public static LoadBalancingPolicy
+  partitionBy(ToIntFunction<ReActedMessage> partitioner) {
     return new LoadBalancingPolicy() {
       @Nullable
       @Override

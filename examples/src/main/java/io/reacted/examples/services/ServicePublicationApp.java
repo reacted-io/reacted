@@ -10,21 +10,21 @@ package io.reacted.examples.services;
 
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
-import io.reacted.core.services.LoadBalancingPolicies;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
+import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.mailboxes.BoundedMbox;
+import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.messages.services.ServiceDiscoveryRequest;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
-import io.reacted.core.config.reactors.ServiceConfig;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.services.LoadBalancingPolicies;
 import io.reacted.core.services.SelectionType;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.UnChecked;
 
 import javax.annotation.Nonnull;
@@ -107,7 +107,7 @@ public class ServicePublicationApp {
                      //get the first gate available
                      .thenApply(services -> services.iterator().next())
                      //Ask the service for the time
-                     .thenCompose(gate -> gate.ask(new TimeRequest(), ZonedDateTime.class, "Request the time"))
+                     .thenCompose(gate -> gate.ask(new TimeRequest(), TimeMessage.class, "Request the time"))
                      //print the answer
                      .thenAcceptAsync(System.out::println)
                      //kill the reactor system
@@ -117,6 +117,7 @@ public class ServicePublicationApp {
     private static void onTimeRequest(ReActorContext ctx, TimeRequest timeRequest) {
         ctx.logInfo("{} received {}", ctx.getSelf().getReActorId().getReActorName(),
                       timeRequest.getClass().getSimpleName());
-        ctx.reply(ReActorRef.NO_REACTOR_REF, ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+        ctx.reply(ReActorRef.NO_REACTOR_REF,
+                  new TimeMessage(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault())));
     }
 }

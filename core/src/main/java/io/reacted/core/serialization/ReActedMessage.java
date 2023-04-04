@@ -187,7 +187,7 @@ public interface ReActedMessage extends Serializable {
         }
 
         @Override
-        public String toString() { return "StringMessage{" + "payload='" + payload + '\'' + '}'; }
+        public String toString() { return payload; }
     }
 
     class ThrowableMessage extends SerializableMessage { }

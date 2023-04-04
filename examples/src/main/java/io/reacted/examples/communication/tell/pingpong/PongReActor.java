@@ -46,11 +46,11 @@ public class PongReActor implements ReActor {
     }
 
     public void onPing(ReActorContext ctx, Ping ping) {
-        System.out.printf("Pong received a ping for seq %d%n", ping.pingValue());
+        System.out.printf("Pong received a ping for seq %d%n", ping.pingValue);
         //Schedule a reply after 1 second
         pongTimer.schedule(new TimerTask() {
             @Override
-            public void run() { ctx.reply(new Pong(ping.pingValue())); }
+            public void run() { ctx.reply(new Pong(ping.pingValue)); }
         }, 1000);
     }
 

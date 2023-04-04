@@ -9,6 +9,7 @@
 package io.reacted.examples.communication.tell.ping;
 
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.examples.ExampleUtils;
 
 import java.io.FileNotFoundException;
@@ -43,7 +44,7 @@ class SendMessagesApp {
                  .parallel()
                  //Tell and apublish are functionally the same if we do not care about the return value
                  //apublish brings more overhead because of the acking system
-                 .forEach(msgNum -> newReActorReference.apublish("Ping Request" + pingDelim + msgNum));
+                 .forEach(msgNum -> newReActorReference.apublish(ReActedMessage.of("Ping Request" + pingDelim + msgNum)));
         TimeUnit.SECONDS.sleep(1);
         simpleReActorSystem.shutDown();
     }

@@ -30,8 +30,26 @@ public final class StorageMessages {
             }
         }
 
-    public static class StoreError extends Throwable {
-        public StoreError(Throwable anyError) { super(anyError); }
+    public static class StoreError implements ReActedMessage {
+        private Throwable error;
+        public StoreError() { }
+        public StoreError(Throwable anyError) { this.error = anyError; }
+
+        @Override
+        public Class<? extends ReActedMessage> getMessageType() { return StoreError.class; }
+
+        @Override
+        public void encode(Serializer serializer) {
+            serializer.putObject(error);
+        }
+
+        @Override
+        public void decode(Deserializer deserializer) {
+            this.error = deserializer.getObject();
+        }
+
+        @Override
+        public String toString() { return "StoreError{" + "error=" + error + '}'; }
     }
 
     public static class StoreReply implements ReActedMessage { }

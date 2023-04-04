@@ -102,7 +102,7 @@ public final class Message implements ReActedMessage {
         setCreatingReactorSystemId(receivedGeneratingReActorSystem);
         setAckingPolicy(AckingPolicy.forOrdinal(deserializer.getInt()));
         setSequenceNumber(deserializer.getLong());
-        setPayload((ReActedMessage)deserializer.getObject());
+        setPayload(deserializer.getObject());
     }
     public ReActorRef getSender() { return sender; }
 

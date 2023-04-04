@@ -11,6 +11,7 @@ package io.reacted.examples.quickstart;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.messages.services.BasicServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.drivers.channels.kafka.KafkaDriver;
 import io.reacted.drivers.channels.kafka.KafkaDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
@@ -47,9 +48,9 @@ public class QuickstartClient {
             showOffClientSystem.logInfo("No services found, exiting");
         } else {
             var serviceGate = serviceDiscoveryReply.getServiceGates().iterator().next();
-            showOffClientSystem.logInfo(serviceGate.ask(new GreeterService.GreetingsRequest(), String.class, "Request to service")
+            showOffClientSystem.logInfo(serviceGate.ask(new GreeterService.GreetingsRequest(), ReActedMessage.StringMessage.class, "Request to service")
                        .toCompletableFuture()
-                       .join());
+                       .join().toString());
         }
         showOffClientSystem.shutDown();
     }

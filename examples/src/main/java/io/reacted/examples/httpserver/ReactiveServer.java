@@ -148,15 +148,16 @@ public class ReactiveServer {
                .ifError(error -> handleError(ctx, error));
         }
 
-        private void onDataPublisher(ReActorContext ctx, ReactedSubmissionPublisher<String> publisher) {
-            publisher.subscribe(ReActedSubscriptionConfig.<String>newBuilder()
-                                                         .setSubscriberName("sub_" + ctx.getSender().getReActorId().getReActorName())
-                                                         .setBufferSize(ReactiveServer.BATCH_BUFFER_SIZE)
-                                                         .build(), getNexDataConsumer(ctx))
+        private void onDataPublisher(ReActorContext ctx, ReactedSubmissionPublisher<ReActedMessage.StringMessage> publisher) {
+            var publisherCfg = ReActedSubscriptionConfig.<ReActedMessage.StringMessage>newBuilder()
+                                                        .setSubscriberName("sub_" + ctx.getSender().getReActorId().getReActorName())
+                                                        .setBufferSize(ReactiveServer.BATCH_BUFFER_SIZE)
+                                                        .build();
+            publisher.subscribe(publisherCfg, getNexDataConsumer(ctx))
                      .thenAccept(noVal -> ctx.reply(new PublishRequest(Duration.ofNanos(1))));
         }
 
-        private Flow.Subscriber<String> getNexDataConsumer(ReActorContext ctx) {
+        private Flow.Subscriber<ReActedMessage.StringMessage> getNexDataConsumer(ReActorContext ctx) {
             return new Flow.Subscriber<>() {
                 @Nullable
                 private Flow.Subscription subscription;
@@ -167,9 +168,9 @@ public class ReactiveServer {
                 }
 
                 @Override
-                public void onNext(String item) {
+                public void onNext(ReActedMessage.StringMessage item) {
                     try {
-                        sendData(item);
+                        sendData(item.toString());
                         Objects.requireNonNull(subscription).request(1);
                     } catch (Exception exc) {
                             onError(exc);
@@ -222,7 +223,7 @@ public class ReactiveServer {
     private static class ReadFileWorker implements ReActor {
         private final ReActions readFileWorkerBehavior;
         private final ReActorConfig readFileWorkerCfg;
-        private final ReactedSubmissionPublisher<String> dataPublisher;
+        private final ReactedSubmissionPublisher<ReActedMessage.StringMessage> dataPublisher;
 
         @Nullable
         private InputStreamReader fileLines;
@@ -285,7 +286,7 @@ public class ReactiveServer {
                     dataPublisher.close();
                     return;
                 }
-                if (dataPublisher.submit(new String(buffer, 0, read)).isBackpressureRequired()) {
+                if (dataPublisher.submit(new ReActedMessage.StringMessage(new String(buffer, 0, read))).isBackpressureRequired()) {
                     ctx.rescheduleMessage(new PublishRequest(backpressureDelay.multipliedBy(2)),
                                             backpressureDelay.multipliedBy(2));
                 } else {
