@@ -9,8 +9,6 @@
 package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.drivers.DriverCtx;
-import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
@@ -18,29 +16,29 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.Deserializer;
 import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import net.openhft.chronicle.queue.ChronicleQueue;
-import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
-import net.openhft.chronicle.wire.WireIn;
+import net.openhft.chronicle.wire.DocumentContext;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
-import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readAckingPolicy;
-import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readPayload;
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readReActorRef;
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readReActorSystemId;
-import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readSequenceNumber;
 
 @NonNullByDefault
 public class CQRemoteDriver extends RemotingDriver<CQRemoteDriverConfig> {
+    private final ThreadLocal<Serializer> serializerThreadLocal = ThreadLocal.withInitial(() -> null);
+
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
@@ -93,34 +91,43 @@ public class CQRemoteDriver extends RemotingDriver<CQRemoteDriverConfig> {
     DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                                long seqNum, ReActorSystemId reActorSystemId,
                                AckingPolicy ackingPolicy, PayloadT message) {
-        return sendMessage(getLocalReActorSystem(),
-                           Objects.requireNonNull(chronicle).acquireAppender(),
+        Serializer serializer = serializerThreadLocal.get();
+        if (serializer == null) {
+            serializer = new CQSerializer(Objects.requireNonNull(chronicle.acquireAppender()
+                                                                          .wire()));
+            serializerThreadLocal.set(serializer);
+        }
+        return sendMessage(getLocalReActorSystem(), serializer,
                            source, destination, seqNum, ackingPolicy, message);
     }
 
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {
         Pauser readPauser = Pauser.balanced();
-        DriverCtx ctx = Objects.requireNonNull(ReActorSystemDriver.getDriverCtx());
-        while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
-            try {
-                if (cqTailer.readDocument(document -> readMessage(document, ctx))) {
-                    readPauser.reset();
-                } else {
-                    readPauser.pause();
+        try(DocumentContext documentContext = cqTailer.readingDocument()) {
+            Deserializer deserializer = new CQDeserializer(Objects.requireNonNull(documentContext.wire()));
+            while (!Thread.currentThread()
+                          .isInterrupted() && !chronicle.isClosed()) {
+                try {
+                    if (documentContext.isPresent()) {
+                        readMessage(deserializer);
+                        readPauser.reset();
+                    } else {
+                        readPauser.pause();
+                    }
+                } catch (Exception anyException) {
+                    getLocalReActorSystem().logError("Unable to properly decode message", anyException);
                 }
-            } catch (Exception anyException) {
-                getLocalReActorSystem().logError("Unable to properly decode message", anyException);
             }
         }
     }
     private static <PayloadT extends ReActedMessage>
-    DeliveryStatus sendMessage(ReActorSystem localReActorSystem, ExcerptAppender cqAppender,
+    DeliveryStatus sendMessage(ReActorSystem localReActorSystem, Serializer serializer,
                                ReActorRef source, ReActorRef destination, long seqNum,
                                AckingPolicy ackingPolicy, PayloadT message) {
         try {
-            cqAppender.writeDocument(document -> CQLocalDriver.writeMessage(document, source, destination,
-                                                                            seqNum, localReActorSystem.getLocalReActorSystemId(),
-                                                                            ackingPolicy, message));
+            CQLocalDriver.writeMessage(serializer, source, destination,
+                                       seqNum, localReActorSystem.getLocalReActorSystemId(),
+                                       ackingPolicy, message);
             return DeliveryStatus.SENT;
         } catch (Exception sendError) {
             localReActorSystem.logError("Error sending message {}", message.toString(),
@@ -128,12 +135,8 @@ public class CQRemoteDriver extends RemotingDriver<CQRemoteDriverConfig> {
             return DeliveryStatus.NOT_SENT;
         }
     }
-    private void readMessage(WireIn in, DriverCtx driverCtx) {
-        in.read("M").marshallable(m -> offerMessage(readReActorRef(in, driverCtx),
-                                                    readReActorRef(in, driverCtx),
-                                                    readSequenceNumber(in),
-                                                    readReActorSystemId(in),
-                                                    readAckingPolicy(in),
-                                                    readPayload(in)));
+    private void readMessage(Deserializer in) {
+        offerMessage(readReActorRef(in), readReActorRef(in), in.getLong(), readReActorSystemId(in),
+                     in.getEnum(AckingPolicy.class), in.getObject());
     }
 }
