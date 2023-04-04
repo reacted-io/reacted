@@ -9,6 +9,8 @@
 package io.reacted.core.serialization;
 
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public interface ReActedMessage extends Serializable {
     default Class<? extends ReActedMessage> getMessageType() {
@@ -86,6 +88,9 @@ public interface ReActedMessage extends Serializable {
         public void decode(Deserializer deserializer) {
             ReActedMessage.super.decode(deserializer);
         }
+
+        @Override
+        public String toString() { return "EnumMessage{" + "payload=" + payload + '}'; }
     }
     class LongMessage implements ReActedMessage {
         private Long payload = null;
@@ -104,6 +109,9 @@ public interface ReActedMessage extends Serializable {
         public void decode(Deserializer deserializer) {
             this.payload = deserializer.getLong();
         }
+
+        @Override
+        public String toString() { return "LongMessage{" + "payload=" + payload + '}'; }
     }
 
     class LongsMessage implements ReActedMessage {
@@ -120,10 +128,14 @@ public interface ReActedMessage extends Serializable {
             this.payload = new long[deserializer.getInt()];
             deserializer.getLongs(payload);
         }
+
+        @Override
+        public String toString() { return "LongsMessage{" + "payload=" + Arrays.toString(payload) + '}'; }
     }
 
     class IntMessage implements ReActedMessage {
-        private Integer payload = null;
+        public static final Comparator<IntMessage> COMPARATOR = Comparator.comparingInt(m -> m.payload);
+        private int payload;
 
         public IntMessage() { }
 
@@ -137,6 +149,9 @@ public interface ReActedMessage extends Serializable {
         public void decode(Deserializer deserializer) {
             this.payload = deserializer.getInt();
         }
+
+        @Override
+        public String toString() { return "IntMessage{" + "payload=" + payload + '}'; }
     }
 
     class IntsMessage implements ReActedMessage {
@@ -151,6 +166,9 @@ public interface ReActedMessage extends Serializable {
             this.payload = new int[deserializer.getInt()];
             deserializer.getInts(payload);
         }
+
+        @Override
+        public String toString() { return "IntsMessage{" + "payload=" + Arrays.toString(payload) + '}'; }
     }
 
     class StringMessage implements ReActedMessage {
@@ -167,6 +185,9 @@ public interface ReActedMessage extends Serializable {
         public void decode(Deserializer deserializer) {
             this.payload = deserializer.getString();
         }
+
+        @Override
+        public String toString() { return "StringMessage{" + "payload='" + payload + '\'' + '}'; }
     }
 
     class ThrowableMessage extends SerializableMessage { }

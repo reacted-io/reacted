@@ -8,9 +8,12 @@
 
 package io.reacted.examples.streams;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
+import org.awaitility.Awaitility;
+
 import java.io.FileNotFoundException;
 import java.time.Duration;
 import java.util.Comparator;
@@ -19,7 +22,6 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.IntStream;
-import org.awaitility.Awaitility;
 
 @NonNullByDefault
 class StreamToMultipleSubscribersApp {
@@ -27,11 +29,12 @@ class StreamToMultipleSubscribersApp {
     public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         var reactorSystem =
                 ExampleUtils.getDefaultInitedReActorSystem(StreamToMultipleSubscribersApp.class.getSimpleName());
-        var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem, 10_000,
+        var streamPublisher = new ReactedSubmissionPublisher<ReActedMessage.IntMessage>(reactorSystem, 10_000,
                                                                       StreamToMultipleSubscribersApp.class.getSimpleName() + "-Publisher");
-        var subscriber = new TestSubscriber<>(-1, Integer::compareTo);
-        var subscriber2 = new TestSubscriber<>(-1, Integer::compareTo);
-        var subscriber3 = new TestSubscriber<>(-1, Integer::compareTo);
+        var baseMessage = new ReActedMessage.IntMessage(-1);
+        var subscriber = new TestSubscriber<>(baseMessage, ReActedMessage.IntMessage.COMPARATOR);
+        var subscriber2 = new TestSubscriber<>(baseMessage, ReActedMessage.IntMessage.COMPARATOR);
+        var subscriber3 = new TestSubscriber<>(baseMessage, ReActedMessage.IntMessage.COMPARATOR);
         streamPublisher.subscribe(subscriber);
         streamPublisher.subscribe(subscriber2);
         streamPublisher.subscribe(subscriber3);
@@ -40,6 +43,7 @@ class StreamToMultipleSubscribersApp {
         var msgNum = 1_000_000;
         //Produce a stream of updates
         IntStream.range(0, msgNum)
+                .mapToObj(ReActedMessage.IntMessage::new)
                  //Propagate them to every consumer, regardless of the location
                  //NOTE: in this example we are not slowing down the producer if a consumer cannot
                  //keep up with the update speed. Delivery guarantee is still valid, but pending
