@@ -107,7 +107,7 @@
         <kafka.client.version>3.3.1</kafka.client.version>
         <apache.commons.lang.version>3.12.0</apache.commons.lang.version>
         <reactive.streams.version>1.0.4</reactive.streams.version>
-        <testng.version>7.1.0</testng.version>
+        <testng.version>7.7.0</testng.version>
         <jmh.version>1.35</jmh.version>
     </properties>
     <modules>
