@@ -72,7 +72,7 @@ public abstract class Try<T> {
     /**
      * @return Return the cause of a failure
      */
-    public abstract Throwable getCause();
+    public abstract <ThrowableT extends Throwable> ThrowableT getCause();
 
     /**
      * This get will return the success value of a successful Try. Be aware that if the success
@@ -703,7 +703,7 @@ public abstract class Try<T> {
      * Try
      */
     public <X extends Throwable> Try<T> recover(Class<X> exception,
-                                                TryMapper<? super Throwable, ? extends T> alternativeMapper) {
+                                                TryMapper<? super X, ? extends T> alternativeMapper) {
         try {
             if (isSuccess() ||
                 !Objects.requireNonNull(exception).isAssignableFrom(getCause().getClass())) {

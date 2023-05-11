@@ -21,6 +21,8 @@ import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
@@ -31,14 +33,12 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class ReActorContext {
@@ -57,7 +57,6 @@ public class ReActorContext {
     private final Set<ReActorRef> children;
     private final ReActorRef parent;
     private final Dispatcher dispatcher;
-    private final AtomicBoolean isScheduled;
     private boolean isNaiveScheduled;
     private final ReadWriteLock structuralLock;
     private final CompletionStage<Void> hierarchyTermination;
@@ -80,7 +79,6 @@ public class ReActorContext {
         this.children = ConcurrentHashMap.newKeySet();
         this.parent = Objects.requireNonNull(reActorCtxBuilder.parent);
         this.dispatcher = Objects.requireNonNull(reActorCtxBuilder.dispatcher);
-        this.isScheduled = new AtomicBoolean(false);
         this.isNaiveScheduled = false;
         this.structuralLock = new ReentrantReadWriteLock();
         this.typedSubscriptions = Objects.requireNonNull(reActorCtxBuilder.typedSubscriptions).length == 0
