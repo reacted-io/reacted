@@ -32,6 +32,7 @@ import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
+import net.openhft.chronicle.wire.ReadMarshallable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,11 +117,15 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         Map<ReActorId, Map<Long, Message>> dstToMessageBySeqNum = new HashMap<>();
         Pauser pauser = Pauser.balanced();
         try(DocumentContext documentContext = chronicleReader.readingDocument()) {
-            Deserializer deserializer = new CQDeserializer(Objects.requireNonNull(documentContext.wire()));
+            var deserializer = new CQDeserializer();
+            ReadMarshallable reader = wireIn -> {
+                deserializer.setDeserializerInput(wireIn);
+                readMessage(deserializer, localReActorSystem, emptyMap, dstToMessageBySeqNum);
+            };
             while (!Thread.currentThread()
                           .isInterrupted() && !chronicle.isClosed()) {
                 try {
-                    if (documentContext.isPresent()) {
+                    if (chronicleReader.readDocument(reader)
                         readMessage(deserializer, localReActorSystem, emptyMap, dstToMessageBySeqNum);
                         pauser.reset();
                     } else {

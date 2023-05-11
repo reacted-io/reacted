@@ -18,7 +18,7 @@ import java.io.Serializable;
 public class CQDeserializer implements Deserializer {
     private WireIn input;
 
-    public CQDeserializer(WireIn input) { setDeserializerInput(input); }
+    public CQDeserializer() {  }
 
     CQDeserializer setDeserializerInput(WireIn input) { this.input = input; return this; }
 

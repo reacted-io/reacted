@@ -29,6 +29,7 @@ import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.RollCycles;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
+import net.openhft.chronicle.wire.ReadMarshallable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,9 +122,14 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     private void chronicleMainLoop(ExcerptTailer tailer) {
         var waitForNextMsg = Pauser.balanced();
         try(DocumentContext documentContext = tailer.readingDocument()) {
-            Deserializer deserializer = new CQDeserializer(Objects.requireNonNull(documentContext.wire()));
+            var deserializer = new CQDeserializer();
+            ReadMarshallable reader = wireIn -> {
+                deserializer.setDeserializerInput(wireIn);
+                readMessage(deserializer);
+            };
             while (!Thread.currentThread().isInterrupted()) {
                 try {
+                    tailer.readDocument(reader);
                     if (documentContext.isPresent()) {
                         readMessage(deserializer);
                         waitForNextMsg.reset();
@@ -154,7 +160,7 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         out.put(seqNum);
         localReActorSystemId.encode(out);
         out.putEnum(ackingPolicy);
-        out.putObject(payload);
+        payload.encode(out);
     }
 
     public static ReActorRef readReActorRef(Deserializer in) {
