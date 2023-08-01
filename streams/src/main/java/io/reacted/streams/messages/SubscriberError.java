@@ -8,11 +8,12 @@
 
 package io.reacted.streams.messages;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
+
 import javax.annotation.concurrent.Immutable;
 
 @Immutable
-public class SubscriberError implements Serializable {
+public class SubscriberError implements ReActedMessage {
     private final Throwable error;
     public SubscriberError(Throwable error) {
         this.error = error;

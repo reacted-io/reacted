@@ -9,10 +9,9 @@
 package io.reacted.streams.messages;
 
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 
-import java.io.Serializable;
-
-public record UnsubscriptionRequest(ReActorRef subscriptionBackpressuringManager) implements Serializable {
+public record UnsubscriptionRequest(ReActorRef subscriptionBackpressuringManager) implements ReActedMessage {
 
     @Override
     public String toString() {

@@ -8,6 +8,6 @@
 
 package io.reacted.core.messages.serviceregistry;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
 
-public class DuplicatedPublicationError implements Serializable {}
+public class DuplicatedPublicationError implements ReActedMessage {}

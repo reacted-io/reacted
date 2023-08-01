@@ -16,7 +16,7 @@ import java.io.Serializable;
 @Immutable
 @NonNullByDefault
 public class ReActedError extends LogMessage {
-    public ReActedError(String format, Serializable... arguments) {
+    public ReActedError(String format, Serializable ...arguments) {
         super(format, arguments);
     }
 }

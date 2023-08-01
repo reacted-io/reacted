@@ -9,9 +9,8 @@
 package io.reacted.core.typedsubscriptions;
 
 import com.google.common.base.Objects;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
-
-import java.io.Serializable;
 
 @NonNullByDefault
 public class TypedSubscription {
@@ -20,17 +19,17 @@ public class TypedSubscription {
     public static final TypedSubscriptionPolicy FULL = TypedSubscriptionPolicy.FULL;
 
     private final TypedSubscriptionPolicy typedSubscriptionPolicy;
-    private final Class<? extends Serializable> payloadType;
+    private final Class<? extends ReActedMessage> payloadType;
 
     public TypedSubscription(TypedSubscriptionPolicy typedSubscriptionPolicy,
-                             Class<? extends Serializable> sniffedPayloadType) {
+                             Class<? extends ReActedMessage> sniffedPayloadType) {
         this.typedSubscriptionPolicy = typedSubscriptionPolicy;
         this.payloadType = sniffedPayloadType;
     }
 
     public TypedSubscriptionPolicy getSubscriptionPolicy() { return typedSubscriptionPolicy; }
 
-    public Class<? extends Serializable> getPayloadType() { return payloadType; }
+    public Class<? extends ReActedMessage> getPayloadType() { return payloadType; }
 
     @Override
     public boolean equals(Object o) {
@@ -52,7 +51,7 @@ public class TypedSubscription {
         public boolean isLocal() { return this != FULL; }
         public boolean isFull() { return this != LOCAL; }
 
-        public TypedSubscription forType(Class<? extends Serializable> payloadType) {
+        public TypedSubscription forType(Class<? extends ReActedMessage> payloadType) {
             return new TypedSubscription(this, payloadType);
         }
     }

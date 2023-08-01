@@ -10,19 +10,18 @@ package io.reacted.core.messages.reactors;
 
 import io.reacted.core.messages.Recyclable;
 import io.reacted.core.reactors.ReActorId;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import java.io.Serial;
 import java.util.Objects;
 
 @Immutable
 @NonNullByDefault
-public class EventExecutionAttempt implements Externalizable, Recyclable {
+public class EventExecutionAttempt implements ReActedMessage, Recyclable {
 
     @Serial
     private static final long serialVersionUID = 1;
@@ -68,20 +67,20 @@ public class EventExecutionAttempt implements Externalizable, Recyclable {
     }
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        getReActorId().writeExternal(out);
-        out.writeLong(getExecutionSeqNum());
-        out.writeLong(getMsgSeqNum());
+    public void encode(Serializer serializer) {
+        getReActorId().encode(serializer);
+        serializer.put(getExecutionSeqNum());
+        serializer.put(getMsgSeqNum());
         revalidate();
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+    public void decode(Deserializer deserializer) {
         var receivedReActorId = new ReActorId();
-        receivedReActorId.readExternal(in);
+        receivedReActorId.decode(deserializer);
         setReActorId(receivedReActorId);
-        setExecutionSeqNum(in.readLong());
-        setMessageSeqNum(in.readLong());
+        setExecutionSeqNum(deserializer.getLong());
+        setMessageSeqNum(deserializer.getLong());
         revalidate();
     }
 

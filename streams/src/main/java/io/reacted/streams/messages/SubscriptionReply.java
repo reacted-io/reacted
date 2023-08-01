@@ -8,11 +8,12 @@
 
 package io.reacted.streams.messages;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
+
 import javax.annotation.concurrent.Immutable;
 
 @Immutable
-public class SubscriptionReply implements Serializable {
+public class SubscriptionReply implements ReActedMessage {
     private final boolean success;
     public SubscriptionReply(boolean isSuccess) {
         this.success = isSuccess;

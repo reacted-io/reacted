@@ -21,6 +21,9 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
@@ -31,11 +34,6 @@ import io.reacted.streams.messages.SubscriptionReply;
 import io.reacted.streams.messages.SubscriptionRequest;
 import io.reacted.streams.messages.UnsubscriptionRequest;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Iterator;
 import java.util.Objects;
@@ -51,8 +49,8 @@ import java.util.concurrent.TimeUnit;
 import static io.reacted.core.utils.ReActedUtils.ifNotDelivered;
 
 @NonNullByDefault
-public class ReactedSubmissionPublisher<PayloadT extends Serializable> implements Flow.Publisher<PayloadT>,
-                                                                                  AutoCloseable, Externalizable {
+public class ReactedSubmissionPublisher<PayloadT extends ReActedMessage> implements Flow.Publisher<PayloadT>,
+                                                                                  AutoCloseable, ReActedMessage {
     private static final Duration BACKPRESSURE_DELAY_BASE = Duration.ofMillis(1);
     private static final String SUBSCRIPTION_NAME_FORMAT = "Backpressure Manager [%s] Subscription [%s]";
     private static final long FEED_GATE_OFFSET = SerializationUtils.getFieldOffset(ReactedSubmissionPublisher.class,
@@ -68,7 +66,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
 
     /**
      * Creates a location oblivious data publisher with automatic backpressure. Subscribers can slow down
-     * the producer. Publisher is Serializable, so it can be sent to any reactor over any gate
+     * the producer. Publisher is ReActedMessage, so it can be sent to any reactor over any gate
      * and subscribers can simply join the stream.
      * This publisher is reactive-streams compliant
      * @see <a href=https://www.reactive-streams.org>https://www.reactive-streams.org/</a>
@@ -98,7 +96,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
                                        .build();
         this.feedGate = localReActorSystem.spawn(ReActions.newBuilder()
                                                           .reAct(ReActorInit.class, ReActions::noReAction)
-                                                          .reAct(PublisherShutdown.class, (raCtx, shutdown) -> raCtx.stop())
+                                                          .reAct(PublisherShutdown.class, (ctx, shutdown) -> ctx.stop())
                                                           .reAct(PublisherInterrupt.class, this::onInterrupt)
                                                           .reAct(ReActorStop.class, this::onStop)
                                                           .reAct(SubscriptionRequest.class, this::onSubscriptionRequest)
@@ -116,15 +114,16 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         this.localReActorSystem = ReActorSystem.NO_REACTOR_SYSTEM;
     }
 
+
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        feedGate.writeExternal(out);
+    public void encode(Serializer serializer) {
+        feedGate.encode(serializer);
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+    public void decode(Deserializer deserializer) {
         ReActorRef gate = new ReActorRef();
-        gate.readExternal(in);
+        gate.decode(deserializer);
         DriverCtx driverCtx = ReActorSystemDriver.getDriverCtx();
         if (driverCtx == null) {
             throw new IllegalStateException("No Driver Context For Driver");
@@ -234,7 +233,7 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         return feedGate.publish(message);
     }
 
-    private void forwardToSubscribers(ReActorContext raCtx, Serializable payload) {
+    private void forwardToSubscribers(ReActorContext ctx, ReActedMessage payload) {
         if (subscribers.isEmpty()) {
             return;
         }
@@ -245,23 +244,23 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         Iterator<ReActorRef> subscribersIterator = subscribers.iterator();
         for (int subscriberIdx = 0; subscribersIterator.hasNext(); subscriberIdx++) {
             subscribersRefs[subscriberIdx] = subscribersIterator.next();
-            deliveries[subscriberIdx] = subscribersRefs[subscriberIdx].apublish(raCtx.getSelf(), payload);
+            deliveries[subscriberIdx] = subscribersRefs[subscriberIdx].apublish(ctx.getSelf(), payload);
         }
         CompletionStage<DeliveryStatus> result = deliveries[0];
         for(int subscriberIdx = 1; subscriberIdx < deliveries.length; subscriberIdx++) {
-            result = combineStages(raCtx.getSelf(),
+            result = combineStages(ctx.getSelf(),
                                    result, subscribersRefs[subscriberIdx - 1],
                                    deliveries[subscriberIdx], subscribersRefs[subscriberIdx]);
         }
         result.handle((deliveryStatus, error) -> {
             if (deliveryStatus.isBackpressureRequired()) {
-                raCtx.getReActorSystem().getSystemSchedulingService()
-                     .schedule(() -> raCtx.getMbox().request(1),
+                ctx.getReActorSystem().getSystemSchedulingService()
+                     .schedule(() -> ctx.getMbox().request(1),
                                streamBackpressureTimeout.toMillis(),
                                TimeUnit.MILLISECONDS);
                 streamBackpressureTimeout = streamBackpressureTimeout.multipliedBy(2);
             } else {
-                raCtx.getMbox().request(1);
+                ctx.getMbox().request(1);
                 if (streamBackpressureTimeout.compareTo(BACKPRESSURE_DELAY_BASE) > 0) {
                     this.streamBackpressureTimeout = Duration.ofMillis(Math.max(BACKPRESSURE_DELAY_BASE.toMillis(),
                                                                                 streamBackpressureTimeout.toMillis()/2));
@@ -293,30 +292,30 @@ public class ReactedSubmissionPublisher<PayloadT extends Serializable> implement
         }));
     }
 
-    private void onInterrupt(ReActorContext raCtx, PublisherInterrupt interrupt) {
-        subscribers.forEach(subscriber -> subscriber.publish(raCtx.getSelf(), interrupt));
+    private void onInterrupt(ReActorContext ctx, PublisherInterrupt interrupt) {
+        subscribers.forEach(subscriber -> subscriber.publish(ctx.getSelf(), interrupt));
         subscribers.clear();
-        raCtx.stop();
+        ctx.stop();
     }
 
-    private void onStop(ReActorContext raCtx, ReActorStop stop) {
+    private void onStop(ReActorContext ctx, ReActorStop stop) {
         subscribers.forEach(subscriber -> {
-                       if(subscriber.tell(raCtx.getSelf(), new PublisherComplete()).isNotSent()) {
-                           raCtx.logError("Unable to stop subscriber {}", subscriber);
+                       if(subscriber.tell(ctx.getSelf(), new PublisherComplete()).isNotSent()) {
+                           ctx.logError("Unable to stop subscriber {}", subscriber);
                        }
                    });
         subscribers.clear();
     }
 
-    private void onSubscriptionRequest(ReActorContext raCtx, SubscriptionRequest subscription) {
+    private void onSubscriptionRequest(ReActorContext ctx, SubscriptionRequest subscription) {
         var backpressuringManager = subscription.subscriptionBackpressuringManager();
-        ifNotDelivered(backpressuringManager.apublish(raCtx.getSelf(),
+        ifNotDelivered(backpressuringManager.apublish(ctx.getSelf(),
                                                       new SubscriptionReply(subscribers.add(backpressuringManager))),
-                    error -> raCtx.logError("Unable to deliver subscription confirmation to {}",
+                    error -> ctx.logError("Unable to deliver subscription confirmation to {}",
                                             subscription.subscriptionBackpressuringManager(), error));
     }
 
-    private void onUnSubscriptionRequest(ReActorContext raCtx, UnsubscriptionRequest unsubscriptionRequest) {
+    private void onUnSubscriptionRequest(ReActorContext ctx, UnsubscriptionRequest unsubscriptionRequest) {
         subscribers.remove(unsubscriptionRequest.subscriptionBackpressuringManager());
     }
 

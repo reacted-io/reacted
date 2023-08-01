@@ -19,13 +19,13 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import io.reacted.patterns.UnChecked.TriConsumer;
 
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -75,19 +75,19 @@ public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+    public <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
                                                                   PayloadT message) {
         return DeliveryStatus.NOT_DELIVERED;
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
-                                                                  @Nullable TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message) {
+    public <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+                                                                  @Nullable TriConsumer<ReActorId, ReActedMessage, ReActorRef> propagateToSubscribers, PayloadT message) {
         return DeliveryStatus.NOT_DELIVERED;
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
+    public <PayloadT extends ReActedMessage> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
         if (message instanceof Recyclable recyclable) {
             recyclable.revalidate();
         }
@@ -95,26 +95,26 @@ public class NullDriver extends ReActorSystemDriver<NullDriverConfig> {
     }
 
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
                                              PayloadT message) {
         return CompletableFuture.failedStage(new NoRouteToReActorSystem());
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                                                                    TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers,
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                                                                    TriConsumer<ReActorId, ReActedMessage, ReActorRef> propagateToSubscribers,
                                                                                     PayloadT message) {
         return CompletableFuture.failedStage(new NoRouteToReActorSystem());
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message) {
         return CompletableFuture.failedStage(new NoRouteToReActorSystem());
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
+    public <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef source, ReActorContext destinationCtx,
                 ReActorRef destination, long seqNum, ReActorSystemId reActorSystemId,
                 AckingPolicy ackingPolicy, PayloadT message) {

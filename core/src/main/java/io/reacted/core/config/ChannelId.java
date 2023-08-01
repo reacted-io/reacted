@@ -9,14 +9,13 @@
 package io.reacted.core.config;
 
 import io.reacted.core.messages.SerializationUtils;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -27,7 +26,7 @@ import java.util.stream.Collectors;
 
 @Immutable
 @NonNullByDefault
-public class ChannelId implements Externalizable {
+public class ChannelId implements ReActedMessage {
     public static final ChannelId NO_CHANNEL_ID = ChannelType.NULL_CHANNEL_TYPE.forChannelName("");
     public static final ChannelId INVALID_CHANNEL_ID = ChannelType.INVALID_CHANNEL_TYPE
                                                                   .forChannelName("INVALID CHANNEL NAME");
@@ -57,20 +56,17 @@ public class ChannelId implements Externalizable {
     }
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeInt(channelType.ordinal());
-        //out.writeObject(channelType);
-        out.writeObject(channelName);
-        //out.writeInt(hashCode);
+    public void encode(Serializer serializer) {
+        serializer.put(channelType.ordinal());
+        serializer.put(channelName);
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        setChannelType(ChannelType.forOrdinal(in.readInt()));
-        setChannelName((String)in.readObject());
+    public void decode(Deserializer deserializer) {
+        setChannelType(ChannelType.forOrdinal(deserializer.getInt()));
+        setChannelName(deserializer.getString());
         setHashCode(Objects.hash(getChannelType(), getChannelName()));
     }
-
     public static Optional<ChannelId> fromToString(String inputString) {
         return Try.of(() -> inputString.split(SEPARATOR))
                   .map(split -> new ChannelId(ChannelType.valueOf(split[0]), split[1]))

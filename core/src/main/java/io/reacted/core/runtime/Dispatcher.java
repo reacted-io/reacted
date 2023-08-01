@@ -136,8 +136,8 @@ public class Dispatcher {
                 claimIdx = selectedRing.tryClaim(MESSAGE_MSG_TYPE, Long.BYTES);
                 if (claimIdx < 1 && (getDispatcherConfig().getDispatcherThreadsNum() < 2 || failures++ > 100)) {
                     if (!slowpathQueue.offer(reActor)) {
-                        LOGGER.error("CRITIC! Unable to activate slowpath mode for {} . Reactor may be stale!", reActor.getSelf()
-                                                                                                                      .getReActorId());
+                        LOGGER.error("CRITIC! Unable to activate slowpath mode for {} . Reactor may be stale!",
+                                     reActor.getSelf().getReActorId());
                         reActor.releaseScheduling();
                         return false;
                     } else {

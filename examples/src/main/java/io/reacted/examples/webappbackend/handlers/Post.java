@@ -19,6 +19,7 @@ import io.reacted.core.messages.services.ServiceDiscoveryReply;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.examples.webappbackend.Backend;
 import io.reacted.examples.webappbackend.db.StorageMessages;
 import io.reacted.patterns.Try;
@@ -27,7 +28,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
@@ -50,9 +50,9 @@ public class Post implements ReActor {
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, (raCtx, init) -> onRequestHandlingInit(raCtx))
+                        .reAct(ReActorInit.class, (ctx, init) -> onRequestHandlingInit(ctx))
                         .reAct(DataChunkPush.class, this::onNewDataChunk)
-                        .reAct(DataChunksCompleted.class, (raCtx, complete) -> onPostComplete(raCtx))
+                        .reAct(DataChunksCompleted.class, (ctx, complete) -> onPostComplete(ctx))
                         .reAct(StorageMessages.StoreReply.class, this::onStoreReply)
                         .reAct(StorageMessages.StoreError.class, this::onStoreError)
                         .build();
@@ -63,98 +63,98 @@ public class Post implements ReActor {
     public ReActorConfig getConfig() {
         return ReActorConfig.newBuilder()
                             .setReActorName(requestId)
-                            .setMailBoxProvider(raCtx -> BackpressuringMbox.newBuilder()
-                                                                           .setRealMailboxOwner(raCtx)
+                            .setMailBoxProvider(ctx -> BackpressuringMbox.newBuilder()
+                                                                           .setRealMailboxOwner(ctx)
                                                                            .setAvailableOnStartup(1)
                                                                            .setRealMbox(new UnboundedMbox())
                                                                            .build())
                             .build();
     }
 
-    private void onPostComplete(ReActorContext raCtx) {
-        raCtx.getMbox().request(1);
-        raCtx.getReActorSystem()
+    private void onPostComplete(ReActorContext ctx) {
+        ctx.getMbox().request(1);
+        ctx.getReActorSystem()
              .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                 .setServiceName(Backend.DB_SERVICE_NAME)
                                                                 .build())
-             .thenAccept(serviceDiscovery -> onDbServiceReply(raCtx, serviceDiscovery));
+             .thenAccept(serviceDiscovery -> onDbServiceReply(ctx, serviceDiscovery));
     }
 
-    private void onDbServiceReply(ReActorContext raCtx, ServiceDiscoveryReply services) {
-        raCtx.getMbox().request(1);
+    private void onDbServiceReply(ReActorContext ctx, ServiceDiscoveryReply services) {
+        ctx.getMbox().request(1);
         if (!services.getServiceGates().isEmpty()) {
             services.getServiceGates().iterator().next()
-                    .publish(raCtx.getSelf(),
+                    .publish(ctx.getSelf(),
                              new StorageMessages.StoreRequest(String.valueOf(Instant.now().toEpochMilli()),
                                                            payloadBuilder.toString()));
         } else {
-            raCtx.selfPublish(new StorageMessages.StoreError(new RuntimeException("No database found")));
+            ctx.selfPublish(new StorageMessages.StoreError(new RuntimeException("No database found")));
         }
     }
 
-    private void onStoreReply(ReActorContext raCtx, StorageMessages.StoreReply storeReply) {
-        raCtx.getMbox().request(1);
+    private void onStoreReply(ReActorContext ctx, StorageMessages.StoreReply storeReply) {
+        ctx.getMbox().request(1);
         if (httpExchange != null) {
             Try.ofRunnable(() -> httpExchange.getResponseBody().close())
-               .ifError(error -> raCtx.logError("Error closing output stream", error));
+               .ifError(error -> ctx.logError("Error closing output stream", error));
         }
-        raCtx.stop();
+        ctx.stop();
     }
 
-    private void onStoreError(ReActorContext raCtx, StorageMessages.StoreError error) {
-        raCtx.logError("Error storing payload: ", error);
+    private void onStoreError(ReActorContext ctx, StorageMessages.StoreError error) {
+        ctx.logError("Error storing payload: ", error);
         if (httpExchange != null) {
             Try.ofRunnable(() -> { httpExchange.getResponseBody().write(error.toString().getBytes());
                                    httpExchange.getResponseBody().close(); })
-               .ifError(replyError -> raCtx.logError("Error closing output stream", replyError));
+               .ifError(replyError -> ctx.logError("Error closing output stream", replyError));
         }
-        raCtx.stop();
+        ctx.stop();
     }
 
-    private void onNewDataChunk(ReActorContext raCtx, DataChunkPush newChunk) {
-        raCtx.getMbox().request(1);
+    private void onNewDataChunk(ReActorContext ctx, DataChunkPush newChunk) {
+        ctx.getMbox().request(1);
         payloadBuilder.append(newChunk.lineRead);
     }
 
-    private void onRequestHandlingInit(ReActorContext raCtx) {
+    private void onRequestHandlingInit(ReActorContext ctx) {
         if (httpExchange == null) {
             return;
         }
         ioAsyncExecutor.submit(() -> Try.ofRunnable(() -> httpExchange.sendResponseHeaders(200, 0))
-                                        .ifError(error -> { raCtx.logError("Unable to send response headers", error);
-                                                            raCtx.stop(); }));
-        readPostDataStream(raCtx);
+                                        .ifError(error -> { ctx.logError("Unable to send response headers", error);
+                                                            ctx.stop(); }));
+        readPostDataStream(ctx);
     }
 
     /* Backpressured async read from the remote stream */
-    private void readPostDataStream(ReActorContext raCtx) {
+    private void readPostDataStream(ReActorContext ctx) {
         var requestStream = Objects.requireNonNull(httpExchange).getRequestBody();
         var reader = new BufferedReader(new InputStreamReader(requestStream));
         CompletionStage<DeliveryStatus> whileLoop;
-        while (sendTillAvailable(raCtx, reader).isDelivered());
+        while (sendTillAvailable(ctx, reader).isDelivered());
         Try.ofRunnable(reader::close)
-           .ifSuccessOrElse(noVal -> raCtx.logInfo("Stream closed"),
-                            error -> raCtx.logError("Error closing stream", error));
+           .ifSuccessOrElse(noVal -> ctx.logInfo("Stream closed"),
+                            error -> ctx.logError("Error closing stream", error));
     }
 
    @Nullable
-   private static DeliveryStatus sendTillAvailable(ReActorContext raCtx,
+   private static DeliveryStatus sendTillAvailable(ReActorContext ctx,
                                                                          BufferedReader inputStream) {
         var nextMsg = getNextDataChunk(inputStream);
-        var nextSend = raCtx.selfPublish(nextMsg);
+        var nextSend = ctx.selfPublish(nextMsg);
         return nextMsg.getClass() != DataChunksCompleted.class
                 ? nextSend
                 : DeliveryStatus.BACKPRESSURE_REQUIRED;
     }
-    private static Serializable getNextDataChunk(BufferedReader requestStream) {
+    private static ReActedMessage getNextDataChunk(BufferedReader requestStream) {
         return Try.of(requestStream::readLine)
                   .filter(Objects::nonNull)
-                  .map(string -> (Serializable)new DataChunkPush(string))
+                  .map(string -> (ReActedMessage)new DataChunkPush(string))
                   .orElse(new DataChunksCompleted());
     }
 
-    private record DataChunkPush(String lineRead) implements Serializable {
+    private record DataChunkPush(String lineRead) implements ReActedMessage {
     }
 
-    private static final class DataChunksCompleted implements Serializable {}
+    private static final class DataChunksCompleted implements ReActedMessage {}
 }

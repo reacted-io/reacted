@@ -17,12 +17,13 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 
 import javax.annotation.Nonnull;
 
 public class SingleChannel {
     public static void main(String[] args) {
-        final int cycles = 1_000_000_000;
+        final int cycles = 1_00_000_000;
         ReActorSystem singleChanelSystem = new ReActorSystem(ReActorSystemConfig.newBuilder()
                                                                                 .setExpectedReActorsNum(256)
                                                                                 .setReactorSystemName(SingleChannel.class.getSimpleName())
@@ -58,16 +59,17 @@ public class SingleChannel {
         private Cycler(int cycles) {
             this.latencies = new long[cycles];
             this.reActions = ReActions.newBuilder()
-                                      .reAct(Long.class, this::onLong)
-                                      .reAct(ReActorInit.class, (ctx, init) -> ctx.selfTell(System.nanoTime()))
+                                      .reAct(ReActedMessage.LongMessage.class, this::onLong)
+                                      .reAct(ReActorInit.class,
+                                             (ctx, init) -> ctx.selfTell(ReActedMessage.of(System.nanoTime())))
                                       .build();
         }
 
         private synchronized long[] getLatencies() { return latencies; }
-        private void onLong(ReActorContext ctx, Long latency) {
-            latencies[idx++] = System.nanoTime() - latency;
+        private void onLong(ReActorContext ctx, ReActedMessage.LongMessage latency) {
+            latencies[idx++] = System.nanoTime() - latency.getPayload();
             if (idx < latencies.length) {
-                ctx.selfTell(System.nanoTime());
+                ctx.selfTell(ReActedMessage.of(System.nanoTime()));
             } else {
                 ctx.stop();
             }

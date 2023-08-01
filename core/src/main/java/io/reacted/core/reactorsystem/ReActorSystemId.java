@@ -10,19 +10,18 @@ package io.reacted.core.reactorsystem;
 
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.reactors.ReActorId;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import javax.annotation.concurrent.Immutable;
 import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
-import javax.annotation.concurrent.Immutable;
 
 @Immutable
-public class ReActorSystemId implements Externalizable  {
+public class ReActorSystemId implements ReActedMessage {
     public static final String NO_REACTORSYSTEM_ID_NAME = "NO_REACTORSYSTEM_ID";
     public static final int NO_REACTORSYSTEM_ID_MARKER = 1;
     public static final int COMMON_REACTORSYSTEM_ID_MARKER = 0;
@@ -60,21 +59,24 @@ public class ReActorSystemId implements Externalizable  {
     public int getHashCode() { return hashCode(); }
 
     public UUID getReActorSystemUUID() { return reActorSystemUUID; }
+
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
+    public void encode(Serializer serializer) {
         if (this == NO_REACTORSYSTEM_ID) {
-            out.writeInt(NO_REACTORSYSTEM_ID_MARKER);
+            serializer.put(NO_REACTORSYSTEM_ID_MARKER);
         } else {
-            out.writeInt(COMMON_REACTORSYSTEM_ID_MARKER);
-            out.writeObject(reActorSystemUUID);
-            out.writeObject(reActorSystemName);
+            serializer.put(COMMON_REACTORSYSTEM_ID_MARKER);
+            serializer.put(reActorSystemUUID.getMostSignificantBits());
+            serializer.put(reActorSystemUUID.getLeastSignificantBits());
+            serializer.put(reActorSystemName);
         }
     }
+
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        if (in.readInt() == COMMON_REACTORSYSTEM_ID_MARKER) {
-            setReActorSystemUUID((UUID) in.readObject())
-                    .setReActorSystemName((String) (in.readObject()));
+    public void decode(Deserializer deserializer) {
+        if (deserializer.getInt() == COMMON_REACTORSYSTEM_ID_MARKER) {
+            setReActorSystemUUID(new UUID(deserializer.getLong(), deserializer.getLong()))
+                    .setReActorSystemName(deserializer.getString());
             setHashCode(Objects.hash(reActorSystemUUID, reActorSystemName));
         }
     }

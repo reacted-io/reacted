@@ -14,6 +14,7 @@ import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.utils.ReActedUtils;
 import io.reacted.flow.operators.FlowOperator;
 import io.reacted.flow.operators.service.ServiceOperatorConfig.Builder;
@@ -22,7 +23,6 @@ import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -34,8 +34,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 @NonNullByDefault
-public class ServiceOperator extends FlowOperator<Builder,
-                                                  ServiceOperatorConfig> {
+public class ServiceOperator extends FlowOperator<Builder, ServiceOperatorConfig> {
   private final ReActions reActions;
   private final ExecutorService executorService;
   private final boolean shallStopExecutorService;
@@ -56,7 +55,7 @@ public class ServiceOperator extends FlowOperator<Builder,
                               .reAct(ReActorInit.class, this::onServiceOperatorInit)
                               .reAct(ReActorStop.class, this::onServiceOperatorStop)
                               .reAct(RefreshServiceRequest.class,
-                                     (raCtx, refreshServiceRequest) -> onRefreshServiceRequest(raCtx))
+                                     (ctx, refreshServiceRequest) -> onRefreshServiceRequest(ctx))
                               .reAct(RefreshServiceUpdate.class, this::onRefreshServiceUpdate)
                               .reAct(config.getServiceReplyType(), this::onReply)
                               .build();
@@ -67,39 +66,39 @@ public class ServiceOperator extends FlowOperator<Builder,
   public ReActions getReActions() { return reActions; }
 
   @Override
-  protected final CompletionStage<Collection<? extends Serializable>>
-  onNext(Serializable input, ReActorContext raCtx) {
+  protected final CompletionStage<Collection<? extends ReActedMessage>>
+  onNext(ReActedMessage input, ReActorContext ctx) {
 
-    return AsyncUtils.asyncForeach(request -> service.apublish(raCtx.getSelf(), request),
+    return AsyncUtils.asyncForeach(request -> service.apublish(ctx.getSelf(), request),
                                    getOperatorCfg().getToServiceRequests().apply(input).iterator(),
-                                   error -> onFailedDelivery(error, raCtx, input), executorService)
-                     .thenAccept(noVal -> raCtx.getMbox().request(1))
+                                   error -> onFailedDelivery(error, ctx, input), executorService)
+                     .thenAccept(noVal -> ctx.getMbox().request(1))
                      .thenApply(noVal -> FlowOperator.NO_OUTPUT);
   }
 
   @Override
-  protected void broadcastOperatorInitializationComplete(ReActorContext raCtx) {
+  protected void broadcastOperatorInitializationComplete(ReActorContext ctx) {
     if (!serviceInitializationMissing) {
-      super.broadcastOperatorInitializationComplete(raCtx);
+      super.broadcastOperatorInitializationComplete(ctx);
     }
   }
-  private void onServiceOperatorInit(ReActorContext raCtx, ReActorInit init) {
-    super.onInit(raCtx, init);
-    BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
+  private void onServiceOperatorInit(ReActorContext ctx, ReActorInit init) {
+    super.onInit(ctx, init);
+    BackpressuringMbox.toBackpressuringMailbox(ctx.getMbox())
                       .ifPresent(mbox -> mbox.addNonDelayableTypes(Set.of(RefreshServiceRequest.class)));
-    this.serviceRefreshTask = raCtx.getReActorSystem()
+    this.serviceRefreshTask = ctx.getReActorSystem()
          .getSystemSchedulingService()
          .scheduleWithFixedDelay(() -> {
-                                   if (!raCtx.selfPublish(new RefreshServiceRequest()).isSent()) {
-                                       raCtx.logError("Unable to request refresh of service operators");
+                                   if (!ctx.selfPublish(new RefreshServiceRequest()).isSent()) {
+                                       ctx.logError("Unable to request refresh of service operators");
                                    }
                                  },
                                  0, getOperatorCfg().getServiceRefreshPeriod()
                                                     .toNanos(), TimeUnit.NANOSECONDS);
   }
 
-  private void onServiceOperatorStop(ReActorContext raCtx, ReActorStop stop) {
-    super.onStop(raCtx, stop);
+  private void onServiceOperatorStop(ReActorContext ctx, ReActorStop stop) {
+    super.onStop(ctx, stop);
     if (serviceRefreshTask != null) {
       serviceRefreshTask.cancel(true);
     }
@@ -108,14 +107,14 @@ public class ServiceOperator extends FlowOperator<Builder,
     }
   }
 
-  private void onRefreshServiceRequest(ReActorContext raCtx) {
+  private void onRefreshServiceRequest(ReActorContext ctx) {
     ReActedUtils.resolveServices(List.of(getOperatorCfg().getServiceSearchFilter()),
-                                 raCtx.getReActorSystem(),
+                                 ctx.getReActorSystem(),
                                  getOperatorCfg().getGateSelector(),
-                                 raCtx.getSelf().getReActorId().toString())
+                                 ctx.getSelf().getReActorId().toString())
                 .thenAccept(selectedService -> {
                   if (!selectedService.isEmpty()) {
-                    raCtx.selfPublish(new RefreshServiceUpdate(selectedService));
+                    ctx.selfPublish(new RefreshServiceUpdate(selectedService));
                   }
                 });
 
@@ -131,19 +130,18 @@ public class ServiceOperator extends FlowOperator<Builder,
       }
     }
   }
-  private <PayloadT extends Serializable> void onReply(ReActorContext raCtx, PayloadT reply) {
+  private <PayloadT extends ReActedMessage> void onReply(ReActorContext ctx, PayloadT reply) {
     propagate(CompletableFuture.supplyAsync(() -> getOperatorCfg().getFromServiceResponse()
                                                                   .apply(reply), executorService),
-              reply, raCtx);
+              reply, ctx);
   }
 
-  private static class RefreshServiceRequest implements Serializable {
+  private static class RefreshServiceRequest implements ReActedMessage {
     @Override
     public String toString() {
       return "RefreshServiceRequest{}";
     }
   }
 
-  private record RefreshServiceUpdate(Collection<ReActorRef> serviceGates) implements Serializable {
-  }
+  private record RefreshServiceUpdate(Collection<ReActorRef> serviceGates) implements ReActedMessage { }
 }

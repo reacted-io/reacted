@@ -9,14 +9,14 @@
 package io.reacted.core.reactors.systemreactors;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.runtime.Dispatcher;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.UnboundedMbox;
-import io.reacted.core.messages.Message;
 import io.reacted.core.messages.reactors.DeadMessage;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.atomic.LongAdder;
@@ -48,7 +48,7 @@ public class MagicTestReActor implements ReActor {
         this.reActorConfig = reActorConfig;
         this.reActions = ReActions.newBuilder()
                                   .reAct(DeadMessage.class, this::onDeadMessage)
-                                  .reAct(Message.class, this::onMessage)
+                                  .reAct(ReActedMessage.StringMessage.class, this::onMessage)
                                   .build();
     }
 
@@ -58,9 +58,9 @@ public class MagicTestReActor implements ReActor {
         DEADMSG.increment();
     }
 
-    public void onMessage(ReActorContext ctx, Message message) {
-        System.err.printf("Dispatcher used [%s] Payload: %s%n", ctx.getDispatcher()
-                                                                   .getName(), message.getPayload());
+    public void onMessage(ReActorContext ctx, ReActedMessage.StringMessage message) {
+        System.err.printf("Dispatcher used [%s] Payload: %s%n",
+                          ctx.getDispatcher().getName(), message);
         RECEIVED.increment();
     }
 

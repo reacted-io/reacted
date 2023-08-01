@@ -18,11 +18,11 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
-import java.io.Serializable;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -63,12 +63,12 @@ public class DirectCommunicationDriver extends LocalDriver<DirectCommunicationCo
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
+    public <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                 long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
         return destinationCtx.isStop()
                ? DeliveryStatus.NOT_DELIVERED
-               : localDeliver(destinationCtx, new Message(source, destination, seqNum, reActorSystemId,
-                                                          ackingPolicy, message));
+               : localDeliver(destinationCtx,
+                              Message.of(source, destination, seqNum, reActorSystemId, ackingPolicy, message));
     }
 }

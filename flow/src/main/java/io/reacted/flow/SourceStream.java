@@ -8,11 +8,13 @@
 
 package io.reacted.flow;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.streams.ReactedSubmissionPublisher;
 import io.reacted.streams.ReactedSubmissionPublisher.ReActedSubscriptionConfig;
-import java.io.Serializable;
+
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Spliterator;
 import java.util.concurrent.BlockingQueue;
@@ -24,9 +26,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import javax.annotation.Nullable;
 @NonNullByDefault
-public class SourceStream<OutputT extends Serializable> extends StreamProxy<OutputT> {
+public class SourceStream<OutputT extends ReActedMessage> extends StreamProxy<OutputT> {
     @Nullable
     private final SourceSubscriber<OutputT> sourceSubscriber;
     private SourceStream(Stream<OutputT> inputStream) {
@@ -39,19 +40,19 @@ public class SourceStream<OutputT extends Serializable> extends StreamProxy<Outp
         super(inputStream);
         this.sourceSubscriber = sourceSubscriber;
     }
-    public static <OutputT extends Serializable> SourceStream<OutputT>
+    public static <OutputT extends ReActedMessage> SourceStream<OutputT>
     of(Collection<OutputT> inputCollection) {
         return of(inputCollection.stream());
     }
 
-    public static <OutputT extends Serializable>
+    public static <OutputT extends ReActedMessage>
     SourceStream<OutputT> of(Flow.Publisher<OutputT> publisher) {
         SourceSubscriber<OutputT> subscriber = new SourceSubscriber<>();
         publisher.subscribe(subscriber);
         return of(subscriber);
     }
 
-    public static <OutputT extends Serializable>
+    public static <OutputT extends ReActedMessage>
     SourceStream<OutputT> of(ReactedSubmissionPublisher<OutputT> publisher,
                              ReActedSubscriptionConfig<OutputT> subscriptionConfig) {
         SourceSubscriber<OutputT> subscriber = new SourceSubscriber<>();
@@ -59,7 +60,7 @@ public class SourceStream<OutputT extends Serializable> extends StreamProxy<Outp
         return of(subscriber);
     }
 
-    public static <OutputT extends Serializable>
+    public static <OutputT extends ReActedMessage>
     SourceStream<OutputT> of(Stream<OutputT> inputStream) {
         return new SourceStream<>(inputStream);
     }
@@ -70,7 +71,7 @@ public class SourceStream<OutputT extends Serializable> extends StreamProxy<Outp
             sourceSubscriber.stop();
         }
     }
-    private static <OutputT extends Serializable> SourceStream<OutputT>
+    private static <OutputT extends ReActedMessage> SourceStream<OutputT>
     of(SourceSubscriber<OutputT> subscription) {
         Spliterator<OutputT> spliterator = new Spliterator<>() {
             @Override
@@ -95,7 +96,7 @@ public class SourceStream<OutputT extends Serializable> extends StreamProxy<Outp
         };
         return new SourceStream<>(StreamSupport.stream(spliterator, false), subscription);
     }
-    private static class SourceSubscriber<OutputT extends Serializable>
+    private static class SourceSubscriber<OutputT extends ReActedMessage>
         implements Subscriber<OutputT> {
         private final BlockingQueue<OutputT> dataOutput = new LinkedBlockingQueue<>();
         private volatile boolean isTerminated = false;

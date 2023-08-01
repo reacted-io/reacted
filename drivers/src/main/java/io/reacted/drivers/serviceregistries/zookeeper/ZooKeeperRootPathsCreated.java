@@ -8,6 +8,6 @@
 
 package io.reacted.drivers.serviceregistries.zookeeper;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
 
-class ZooKeeperRootPathsCreated implements Serializable {}
+class ZooKeeperRootPathsCreated implements ReActedMessage {}

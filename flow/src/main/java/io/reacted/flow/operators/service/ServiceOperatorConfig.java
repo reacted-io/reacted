@@ -10,12 +10,14 @@ package io.reacted.flow.operators.service;
 
 import io.reacted.core.messages.services.ServiceDiscoverySearchFilter;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.services.GateSelectorPolicies;
 import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.flow.operators.service.ServiceOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
-import java.io.Serializable;
+
+import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
@@ -23,15 +25,14 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
-import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOperatorConfig> {
   public static final Duration DEFAULT_SERVICE_REFRESH_PERIOD = Duration.ofMinutes(1);
-  public static final Function<Serializable, Collection<? extends Serializable>> IDENTITY = List::of;
-  private final Function<Serializable, Collection<? extends Serializable>> toServiceRequests;
-  private final Function<Serializable, Collection<? extends Serializable>> fromServiceResponse;
-  private final Class<? extends Serializable> serviceReplyType;
+  public static final Function<ReActedMessage, Collection<? extends ReActedMessage>> IDENTITY = List::of;
+  private final Function<ReActedMessage, Collection<? extends ReActedMessage>> toServiceRequests;
+  private final Function<ReActedMessage, Collection<? extends ReActedMessage>> fromServiceResponse;
+  private final Class<? extends ReActedMessage> serviceReplyType;
   private final ServiceDiscoverySearchFilter serviceSearchFilter;
   private final Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector;
   private final Builder builder;
@@ -56,15 +57,15 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
     this.builder = builder;
   }
 
-  public Function<Serializable, Collection<? extends Serializable>> getToServiceRequests() {
+  public Function<ReActedMessage, Collection<? extends ReActedMessage>> getToServiceRequests() {
     return toServiceRequests;
   }
 
-  public Function<Serializable, Collection<? extends Serializable>> getFromServiceResponse() {
+  public Function<ReActedMessage, Collection<? extends ReActedMessage>> getFromServiceResponse() {
     return fromServiceResponse;
   }
 
-  public Class<? extends Serializable> getServiceReplyType() {
+  public Class<? extends ReActedMessage> getServiceReplyType() {
     return serviceReplyType;
   }
 
@@ -87,10 +88,10 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
 
   public static Builder newBuilder() { return new Builder(); }
   public static class Builder extends FlowOperatorConfig.Builder<Builder, ServiceOperatorConfig> {
-    private Function<Serializable, Collection<? extends Serializable>> toServiceRequests = IDENTITY;
-    private Function<Serializable, Collection<? extends Serializable>> fromServiceResponse = IDENTITY;
+    private Function<ReActedMessage, Collection<? extends ReActedMessage>> toServiceRequests = IDENTITY;
+    private Function<ReActedMessage, Collection<? extends ReActedMessage>> fromServiceResponse = IDENTITY;
     @SuppressWarnings("NotNullFieldNotInitialized")
-    private Class<? extends Serializable> serviceReplyType;
+    private Class<? extends ReActedMessage> serviceReplyType;
     @SuppressWarnings("NotNullFieldNotInitialized")
     private ServiceDiscoverySearchFilter serviceSearchFilter;
     private Function<Collection<ReActorRef>, Optional<ReActorRef>> gateSelector = GateSelectorPolicies.RANDOM_GATE;
@@ -100,18 +101,18 @@ public class ServiceOperatorConfig extends FlowOperatorConfig<Builder, ServiceOp
     private Duration serviceRefreshPeriod = DEFAULT_SERVICE_REFRESH_PERIOD;
     private Builder() { super.setRouteeProvider(ServiceOperator::new); }
 
-    public final Builder setServiceReplyType(Class<? extends Serializable> serviceReplyType) {
+    public final Builder setServiceReplyType(Class<? extends ReActedMessage> serviceReplyType) {
       this.serviceReplyType = serviceReplyType;
       return this;
     }
 
-    public final Builder setToServiceRequest(Function<Serializable, Collection<? extends Serializable>>
+    public final Builder setToServiceRequest(Function<ReActedMessage, Collection<? extends ReActedMessage>>
                                            toServiceRequests) {
       this.toServiceRequests = toServiceRequests;
       return this;
     }
 
-    public final Builder setFromServiceResponse(Function<Serializable, Collection<? extends Serializable>>
+    public final Builder setFromServiceResponse(Function<ReActedMessage, Collection<? extends ReActedMessage>>
                                               fromServiceResponse) {
       this.fromServiceResponse = fromServiceResponse;
       return this;

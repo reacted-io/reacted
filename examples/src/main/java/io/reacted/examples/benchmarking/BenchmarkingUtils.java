@@ -4,6 +4,9 @@ import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.flow.ReActedGraph;
 import io.reacted.flow.operators.map.MapOperatorConfig;
@@ -13,7 +16,6 @@ import io.reacted.patterns.UnChecked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -68,12 +70,12 @@ public class BenchmarkingUtils {
         return executor.submit(messageGenerator);
     }
     static Runnable backpressureAwareMessageSender(long messageNum, ReActorRef destination) {
-        return backpressureAwareMessageSender(messageNum, destination, System::nanoTime);
+        return backpressureAwareMessageSender(messageNum, destination, () -> ReActedMessage.of(System.nanoTime()));
     }
 
     static Runnable backpressureAwareMessageSender(long messageNum, ReActorRef destination,
-                                                   Supplier<? extends Serializable> payloadProducer) {
-        Runnable sender = UnChecked.runnable(() -> {
+                                                   Supplier<? extends ReActedMessage> payloadProducer) {
+        return UnChecked.runnable(() -> {
             long baseNanosDelay = 100;
             long delay = baseNanosDelay;
             for (int msg = 0; msg < messageNum; msg++) {
@@ -90,14 +92,13 @@ public class BenchmarkingUtils {
                 }
             }
         });
-        return sender;
     }
 
     static Runnable nonStopMessageSender(long messageNum, ReActorRef destination) {
-        return nonStopMessageSender(messageNum, destination, System::nanoTime);
+        return nonStopMessageSender(messageNum, destination, () -> ReActedMessage.of(System.nanoTime()));
     }
     static Runnable nonStopMessageSender(long messageNum, ReActorRef destination,
-                                         Supplier<? extends Serializable> payloadProducer) {
+                                         Supplier<? extends ReActedMessage> payloadProducer) {
         return UnChecked.runnable(() -> {
             for (int msg = 0; msg < messageNum; msg++) {
                 destination.tell(payloadProducer.get());
@@ -106,11 +107,11 @@ public class BenchmarkingUtils {
     }
 
     static Runnable constantWindowMessageSender(long messageNum, ReActorRef destination, Duration window) {
-        return constantWindowMessageSender(messageNum, destination, window, System::nanoTime);
+        return constantWindowMessageSender(messageNum, destination, window, () -> ReActedMessage.of(System.nanoTime()));
     }
     static Runnable constantWindowMessageSender(long messageNum,
                                                 ReActorRef destination, Duration window,
-                                                Supplier<? extends Serializable> payloadProducer) {
+                                                Supplier<? extends ReActedMessage> payloadProducer) {
         Runnable sender = UnChecked.runnable(() -> {
             long pauseWindowDuration = window.toNanos();
             long start = System.nanoTime();
@@ -184,8 +185,9 @@ public class BenchmarkingUtils {
                     .build();
     }
 
-    static List<String>
-    fromRequestsPerIntervalSnapshotsToPrintableOutput(Map<Class<? extends Serializable>, List<? extends Serializable>> payloadByType) {
+    @SuppressWarnings("unchecked")
+    static List<ReActedMessage>
+    fromRequestsPerIntervalSnapshotsToPrintableOutput(Map<Class<? extends ReActedMessage>, List<? extends ReActedMessage>> payloadByType) {
         List<RPISnapshot> requestsPerInterval = (List<RPISnapshot>)payloadByType.get(RPISnapshot.class);
         long totalRequests = requestsPerInterval.stream()
                                                 .mapToLong(RPISnapshot::requestsPerInterval)
@@ -195,22 +197,23 @@ public class BenchmarkingUtils {
             output.append(String.format("%d ", rpi.requestsPerInterval()));
         }
         output.append(String.format("-> %d%n", totalRequests));
-        return List.of(output.toString());
+        return List.of(ReActedMessage.of(output.toString()));
     }
-    static List<String>
-    fromLatenciesSnapshotsToPrintableOutput(Map<Class<? extends Serializable>, List<? extends Serializable>> payloadByType) {
+    static List<ReActedMessage>
+    fromLatenciesSnapshotsToPrintableOutput(Map<Class<? extends ReActedMessage>, List<? extends ReActedMessage>> payloadByType) {
         List<LatenciesSnapshot> snapshots = (List<LatenciesSnapshot>)payloadByType.get(LatenciesSnapshot.class);
         long[] latencies = snapshots.stream()
-                              .map(LatenciesSnapshot::latencies)
+                              .map(LatenciesSnapshot::getLatencies)
                               .flatMapToLong(Arrays::stream)
                               .toArray();
         return computeLatenciesOutput(latencies);
     }
-    static List<String> computeLatenciesOutput(long[] latencies) {
+    static List<ReActedMessage> computeLatenciesOutput(long[] latencies) {
         return computeLatencies(latencies).stream()
                 .map(percentile -> String.format("Msgs: %d Percentile %f Latency: %s",
                                                  latencies.length, percentile.percentile,
                                                  percentile.latency))
+                .map(ReActedMessage::of)
                 .collect(Collectors.toUnmodifiableList());
     }
 
@@ -238,13 +241,32 @@ public class BenchmarkingUtils {
         }
     }
 
-    record LatencyForPercentile(double percentile, Duration latency) implements Serializable { }
+    record LatencyForPercentile(double percentile, Duration latency) implements ReActedMessage { }
 
-    record DiagnosticRequest() implements Serializable { }
+    record DiagnosticRequest() implements ReActedMessage { }
 
-    record RPISnapshot(int requestsPerInterval) implements Serializable { }
+    record RPISnapshot(int requestsPerInterval) implements ReActedMessage { }
 
-    record LatenciesSnapshot(long[] latencies) implements Serializable { }
+    static class LatenciesSnapshot implements ReActedMessage {
 
-    record StopCrunching() implements Serializable { }
+        private long[] latencies;
+        public LatenciesSnapshot(long[] latencies) {
+            this.latencies = latencies;
+        }
+
+        public long[] getLatencies() { return latencies; }
+        @Override
+        public void encode(Serializer serializer) {
+            serializer.put(latencies.length);
+            serializer.put(latencies);
+        }
+
+        @Override
+        public void decode(Deserializer deserializer) {
+            this.latencies = new long[deserializer.getInt()];
+            deserializer.getLongs(latencies);
+        }
+    }
+
+    record StopCrunching() implements ReActedMessage { }
 }

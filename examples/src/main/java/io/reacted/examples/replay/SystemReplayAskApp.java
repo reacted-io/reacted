@@ -10,12 +10,13 @@ package io.reacted.examples.replay;
 
 import com.google.common.base.Strings;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.runtime.Dispatcher;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.drivers.channels.replay.ReplayLocalDriver;
@@ -43,6 +44,7 @@ public class SystemReplayAskApp {
         var echoReActions = ReActions.newBuilder()
                                      .reAct((ctx, payload) -> ctx.getSender()
                                                                 .publish(ReActorRef.NO_REACTOR_REF,
+                                                                         ReActedMessage.of(
                                                                          String.format("%s - Received %s from %s @ %s%n",
                                                                                     Instant.now().toString(),
                                                                                     payload.toString(),
@@ -50,7 +52,7 @@ public class SystemReplayAskApp {
                                                                                        .getReActorName(),
                                                                                     ctx.getReActorSystem()
                                                                                        .getSystemConfig()
-                                                                                       .getReActorSystemName())))
+                                                                                       .getReActorSystemName()))))
                                      .build();
         var echoReActorConfig = ReActorConfig.newBuilder()
                                              .setReActorName("EchoReActor")
@@ -62,7 +64,7 @@ public class SystemReplayAskApp {
         var echoReference = recordedReactorSystem.spawn(echoReActions, echoReActorConfig)
                                                  .orElseSneakyThrow();
 
-        echoReference.ask("I am an ask", String.class, "AskRequest")
+        echoReference.ask(ReActedMessage.of("I am an ask"), ReActedMessage.StringMessage.class, "AskRequest")
                      .thenAccept(System.out::println)
                      .toCompletableFuture()
                      .join();
@@ -78,7 +80,7 @@ public class SystemReplayAskApp {
                 .initReActorSystem();
         //Once the reactor will be created, the system will notify that and will begin its replay
         echoReference = replayedReActorSystem.spawn(echoReActions, echoReActorConfig).orElseSneakyThrow();
-        echoReference.ask("I am an ask", String.class, "AskRequest")
+        echoReference.ask(ReActedMessage.of("I am an ask"), ReActedMessage.StringMessage.class, "AskRequest")
                      .thenAccept(System.out::println)
                      .toCompletableFuture()
                      .join();

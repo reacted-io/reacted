@@ -8,6 +8,11 @@
 
 package io.reacted.examples.remoting.services;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
 
-public class TimeRequest implements Serializable {}
+import java.time.ZonedDateTime;
+
+class TimeMessages {
+    public record TimeRequest() implements ReActedMessage {}
+    public record TimeReply(ZonedDateTime time) implements ReActedMessage { }
+}

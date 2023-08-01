@@ -9,16 +9,17 @@
 package io.reacted.examples.communication.tell.ping;
 
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.runtime.Dispatcher;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.mailboxes.UnboundedMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.messages.reactors.ReActorStop;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
-import io.reacted.patterns.ObjectUtils;
+import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.patterns.NonNullByDefault;
+import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
 
 import javax.annotation.Nonnull;
@@ -45,14 +46,14 @@ class SimpleTestReActor implements ReActor {
                         .reAct(ReActorStop.class, (ctx, stop) -> ctx.logInfo("ReActor Stopped! Received {}/{} pings",
                                                                              receivedPings, expectedMessages))
                         .reAct(PreparationRequest.class, (ctx, prepReq) -> ctx.logInfo("ReActor is ready!"))
-                        .reAct(String.class, this::onPing)
+                        .reAct(ReActedMessage.StringMessage.class, this::onPing)
                         .build();
     }
 
-    private void onPing(ReActorContext raCtx, String ping) {
-        Try.ofRunnable(() -> raCtx.logInfo("Received ping {} on dispatcher {}", ping.split(splitter)[1].trim(),
+    private void onPing(ReActorContext ctx, ReActedMessage.StringMessage ping) {
+        Try.ofRunnable(() -> ctx.logInfo("Received ping {} on dispatcher {}", ping.toString().split(splitter)[1].trim(),
                                                Thread.currentThread().getName()))
-           .ifError(error -> raCtx.logError("Illegal ping format received", error));
+           .ifError(error -> ctx.logError("Illegal ping format received", error));
         receivedPings++;
     }
 

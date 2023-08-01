@@ -10,10 +10,11 @@ package io.reacted.flow.operators.reduce;
 
 import com.google.common.collect.ImmutableMap;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.flow.operators.FlowOperator;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.annotations.unstable.Unstable;
-import java.io.Serializable;
+
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,8 +30,8 @@ import java.util.stream.Collectors;
 public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorConfig.Builder<ConfigBuilderT, ConfigT>,
                                        ConfigT extends ReducingOperatorConfig<ConfigBuilderT, ConfigT>>
     extends FlowOperator<ConfigBuilderT, ConfigT> {
-    private static final Queue<Serializable> NO_ELEMENTS = new LinkedList<>();
-    private final Map<Class<? extends Serializable>, Queue<Serializable>> storage;
+    private static final Queue<ReActedMessage> NO_ELEMENTS = new LinkedList<>();
+    private final Map<Class<? extends ReActedMessage>, Queue<ReActedMessage>> storage;
     protected ReducingOperator(ConfigT config) {
         super(config);
         this.storage = config.getReductionRules().keySet().stream()
@@ -38,10 +39,10 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
     }
 
     @Override
-    protected CompletionStage<Collection<? extends Serializable>>
-    onNext(Serializable input, ReActorContext raCtx) {
-        Collection<? extends Serializable> result = List.of();
-        Class<? extends Serializable> inputType = input.getClass();
+    protected CompletionStage<Collection<? extends ReActedMessage>>
+    onNext(ReActedMessage input, ReActorContext ctx) {
+        Collection<? extends ReActedMessage> result = List.of();
+        Class<? extends ReActedMessage> inputType = input.getClass();
         if (storage.containsKey(inputType)) {
             storage.computeIfAbsent(inputType, newKey -> new LinkedList<>())
                    .add(input);
@@ -53,12 +54,12 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
         return CompletableFuture.completedStage(result);
     }
 
-    private Map<Class<? extends Serializable>, List<? extends Serializable>>
-    getReduceData(Map<Class<? extends Serializable>, Long> reductionRules) {
-        ImmutableMap.Builder<Class<? extends Serializable>, List<? extends Serializable>> output;
+    private Map<Class<? extends ReActedMessage>, List<? extends ReActedMessage>>
+    getReduceData(Map<Class<? extends ReActedMessage>, Long> reductionRules) {
+        ImmutableMap.Builder<Class<? extends ReActedMessage>, List<? extends ReActedMessage>> output;
         output = ImmutableMap.builder();
         for(var entry : storage.entrySet()) {
-            Class<? extends Serializable> type = entry.getKey();
+            Class<? extends ReActedMessage> type = entry.getKey();
             var payloads = entry.getValue();
             var required = reductionRules.get(type).intValue();
             var elements = removeNfromInput(payloads, required);
@@ -67,15 +68,15 @@ public abstract class ReducingOperator<ConfigBuilderT extends ReducingOperatorCo
         return output.build();
     }
 
-    private static List<Serializable> removeNfromInput(Queue<Serializable> input,
+    private static List<ReActedMessage> removeNfromInput(Queue<ReActedMessage> input,
                                                        long howManyToRemove) {
-        List<Serializable> output = new LinkedList<>();
+        List<ReActedMessage> output = new LinkedList<>();
         for(int iter = 0; iter < howManyToRemove; iter++) {
             output.add(input.poll());
         }
         return output;
     }
-    private boolean canReduce(Class<? extends Serializable> inputType) {
+    private boolean canReduce(Class<? extends ReActedMessage> inputType) {
         return getOperatorCfg().getReductionRules().entrySet().stream()
                                .allMatch(typeToNum -> storage.getOrDefault(inputType, NO_ELEMENTS)
                                                              .size() >= typeToNum.getValue()

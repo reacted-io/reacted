@@ -8,25 +8,25 @@
 
 package io.reacted.core.messages.reactors;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.helpers.MessageFormatter;
 
 import java.io.Serializable;
+
 @NonNullByDefault
-public abstract class LogMessage implements Serializable {
-    private final String message;
-    protected LogMessage(String format, Serializable ...arguments) {
+public abstract class LogMessage extends ReActedMessage.StringMessage {
+    protected LogMessage(String format, Serializable...arguments) {
         var formattingTuple = MessageFormatter.arrayFormat(format, arguments);
-        this.message = formattingTuple.getMessage() + (formattingTuple.getThrowable() != null
+        super.payload = formattingTuple.getMessage() + (formattingTuple.getThrowable() != null
                                                        ? ExceptionUtils.getStackTrace(formattingTuple.getThrowable())
                                                        : "");
     }
-
-    public String getMessage() { return message; }
+    public String getMessage() { return payload; }
 
     @Override
     public String toString() {
-        return "LogMessage{" + "message='" + message + '\'' + '}';
+        return "LogMessage{" + "message='" + payload + '\'' + '}';
     }
 }

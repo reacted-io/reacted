@@ -12,7 +12,6 @@ import io.reacted.core.CoreConstants;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
-import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.messages.AckingPolicy;
@@ -20,6 +19,8 @@ import io.reacted.core.messages.Message;
 import io.reacted.core.reactors.systemreactors.MagicTestReActor;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.typedsubscriptions.TypedSubscription;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -57,13 +58,13 @@ class LoopbackDriverTest {
         ReActorConfig reActorConfig = ReActorConfig.newBuilder()
                                                    .setReActorName("ReActorName")
                                                    .setDispatcherName(testDispatcher)
-                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(Message.class))
+                                                   .setTypedSubscriptions(TypedSubscription.LOCAL.forType(ReActedMessage.StringMessage.class))
                                                    .build();
 
         destReActorRef = reActorSystem.spawn(new MagicTestReActor(1, true, reActorConfig))
                                       .orElseSneakyThrow();
-        message = new Message(ReActorRef.NO_REACTOR_REF, destReActorRef, 0, reActorSystem.getLocalReActorSystemId(),
-                              AckingPolicy.NONE, "payload");
+        message = Message.of(ReActorRef.NO_REACTOR_REF, destReActorRef, 0, reActorSystem.getLocalReActorSystemId(),
+                             AckingPolicy.NONE, ReActedMessage.of("payload"));
     }
 
     @AfterEach
@@ -71,7 +72,8 @@ class LoopbackDriverTest {
 
     @Test
     void loopbackDriverCanTellMessageToReactor() throws ExecutionException, InterruptedException {
-        Assertions.assertTrue(loopbackDriver.publish(ReActorRef.NO_REACTOR_REF, destReActorRef, message).isDelivered());
+        Assertions.assertTrue(loopbackDriver.publish(ReActorRef.NO_REACTOR_REF, destReActorRef,
+                                                     message.getPayload()).isDelivered());
         // as we have a dispatcher the message was dispatched & it cannot be found in destination mbox
         Awaitility.await().until(() -> MagicTestReActor.RECEIVED.sum() == 1);
     }

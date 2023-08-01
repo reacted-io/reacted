@@ -9,11 +9,11 @@
 package io.reacted.flow.operators.map;
 
 import io.reacted.core.reactorsystem.ReActorContext;
-
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.flow.operators.FlowOperator;
 import io.reacted.flow.operators.map.MapOperatorConfig.Builder;
 import io.reacted.patterns.NonNullByDefault;
-import java.io.Serializable;
+
 import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -22,7 +22,7 @@ import java.util.function.Function;
 
 @NonNullByDefault
 public class MapOperator extends FlowOperator<Builder, MapOperatorConfig> {
-    private final Function<Object, Collection<? extends Serializable>> mappingFunction;
+    private final Function<Object, Collection<? extends ReActedMessage>> mappingFunction;
 
     protected MapOperator(MapOperatorConfig config) {
         super(config);
@@ -31,8 +31,8 @@ public class MapOperator extends FlowOperator<Builder, MapOperatorConfig> {
     }
 
     @Override
-    protected CompletionStage<Collection<? extends Serializable>>
-    onNext(Serializable input, ReActorContext raCtx) {
+    protected CompletionStage<Collection<? extends ReActedMessage>>
+    onNext(ReActedMessage input, ReActorContext ctx) {
         return CompletableFuture.completedStage(mappingFunction.apply(input));
     }
 }

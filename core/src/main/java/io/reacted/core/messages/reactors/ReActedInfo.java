@@ -16,7 +16,7 @@ import java.io.Serializable;
 @Immutable
 @NonNullByDefault
 public class ReActedInfo extends LogMessage {
-    public ReActedInfo(String format, Serializable... arguments) {
+    public ReActedInfo(String format, Serializable ...arguments) {
         super(format, arguments);
     }
 }

@@ -14,9 +14,9 @@ import io.reacted.core.drivers.system.NullDriver;
 import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
 
@@ -34,13 +34,13 @@ public final class NullReActorSystemRef extends ReActorSystemRef {
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+    public <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
                                                                   PayloadT message) {
         return NullDriver.NULL_DRIVER.publish(src, dst, message);
     }
 
     @Override
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst,
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst,
                                                                                     AckingPolicy ackingPolicy,
                                                                                     PayloadT message) {
         return NullDriver.NULL_DRIVER.apublish(src, dst, ackingPolicy, message);

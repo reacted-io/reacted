@@ -8,7 +8,8 @@
 
 package io.reacted.core.messages.serviceregistry;
 
+import io.reacted.core.serialization.ReActedMessage;
+
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 @Immutable
-public class SynchronizationWithServiceRegistryComplete implements Serializable { }
+public class SynchronizationWithServiceRegistryComplete implements ReActedMessage { }

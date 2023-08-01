@@ -17,12 +17,12 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
 import java.io.PrintWriter;
-import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.Properties;
@@ -79,7 +79,7 @@ public class DirectCommunicationSimplifiedLoggerDriver extends
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
+    public <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef src, ReActorContext destinationCtx, ReActorRef destination, long seqNum, ReActorSystemId reActorSystemId,
                 AckingPolicy ackingPolicy, PayloadT message) {
         synchronized (logFile) {

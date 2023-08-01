@@ -22,11 +22,11 @@ public class SystemLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(SystemLogger.class);
     public static final ReActions SYSTEM_LOGGER = ReActions.newBuilder()
             .reAct(ReActedError.class,
-                   (raCtx, message) -> logMessage(LOGGER::error, message))
+                   (ctx, message) -> logMessage(LOGGER::error, message))
             .reAct(ReActedDebug.class,
-                   (raCtx, message) -> logMessage(LOGGER::debug, message))
+                   (ctx, message) -> logMessage(LOGGER::debug, message))
             .reAct(ReActedInfo.class,
-                   (raCtx, message) -> logMessage(LOGGER::info, message))
+                   (ctx, message) -> logMessage(LOGGER::info, message))
             .reAct(ReActions::noReAction)
             .build();
 

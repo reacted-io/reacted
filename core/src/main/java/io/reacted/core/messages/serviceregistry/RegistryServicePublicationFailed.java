@@ -8,15 +8,15 @@
 
 package io.reacted.core.messages.serviceregistry;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 import java.util.Objects;
 
 @Immutable
 @NonNullByDefault
-public class RegistryServicePublicationFailed implements Serializable {
+public class RegistryServicePublicationFailed implements ReActedMessage {
     private final Throwable publicationError;
     private final String serviceName;
 

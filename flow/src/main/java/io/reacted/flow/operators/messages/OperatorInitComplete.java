@@ -8,14 +8,15 @@
 
 package io.reacted.flow.operators.messages;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
-import java.io.Serializable;
-import java.util.Objects;
+
 import javax.annotation.concurrent.Immutable;
+import java.util.Objects;
 
 @NonNullByDefault
 @Immutable
-public class OperatorInitComplete implements Serializable {
+public class OperatorInitComplete implements ReActedMessage {
   private final String flowName;
   private final String operatorName;
   private final String routeeName;

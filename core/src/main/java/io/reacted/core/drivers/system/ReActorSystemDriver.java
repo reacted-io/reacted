@@ -26,6 +26,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -35,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Properties;
@@ -51,7 +51,7 @@ import java.util.concurrent.TimeoutException;
 @NonNullByDefault
 public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?, ConfigT>> {
     @Nullable
-    public static final TriConsumer<ReActorId, Serializable, ReActorRef> DO_NOT_PROPAGATE = null;
+    public static final TriConsumer<ReActorId, ReActedMessage, ReActorRef> DO_NOT_PROPAGATE = null;
     public static final ThreadLocal<DriverCtx> REACTOR_SYSTEM_CTX = new InheritableThreadLocal<>();
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystemDriver.class);
     @SuppressWarnings("unchecked")
@@ -88,10 +88,10 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
     /**
      * @throws io.reacted.core.exceptions.DeliveryException when a driver specific delivery error occurs
      */
-    public abstract <PayloadT extends Serializable> DeliveryStatus
+    public abstract <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef src, ReActorContext destinationCtx, ReActorRef destination, long seqNum,
                 ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message);
-    public <PayloadT extends Serializable> CompletionStage<DeliveryStatus>
+    public <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus>
     sendAsyncMessage(ReActorRef src, ReActorContext destinationCtx, ReActorRef destination,
                      long seqNum, ReActorSystemId reActorSystemId,
                      AckingPolicy ackingPolicy, PayloadT message) {
@@ -106,12 +106,12 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      * @param src source of the message
      * @param dst destination of the message
      * @param message payload
-     * @param <PayloadT> any Serializable object
+     * @param <PayloadT> any ReActedMessage object
      * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
      * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
      * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public abstract <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst, PayloadT message);
+    public abstract <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef src, ReActorRef dst, PayloadT message);
 
     /**
      * Sends a message through this driver
@@ -122,13 +122,13 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      *                               for propagating that message to its type-subscribers.
      * @see io.reacted.core.typedsubscriptions.TypedSubscription
      * @param message payload
-     * @param <PayloadT> any Serializable object
+     * @param <PayloadT> any ReActedMessage object
      * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
      * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
      * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public abstract  <PayloadT extends Serializable> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
-                                                                            @Nullable TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message);
+    public abstract  <PayloadT extends ReActedMessage> DeliveryStatus publish(ReActorRef src, ReActorRef dst,
+                                                                            @Nullable TriConsumer<ReActorId, ReActedMessage, ReActorRef> propagateToSubscribers, PayloadT message);
     /**
      * Sends a message through this driver. Type subscribers will not be notified
      * @see io.reacted.core.typedsubscriptions.TypedSubscription
@@ -136,12 +136,12 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      * @param src source of the message
      * @param dst destination of the message
      * @param message payload
-     * @param <PayloadT> any Serializable object
+     * @param <PayloadT> any ReActedMessage object
      * @return A {@link DeliveryStatus} representing the outcome of the operation. Different drivers
      * may offer different guarantees regarding the returned {@link DeliveryStatus}. The common
      * baseline for this method is providing delivery guarantee to the local driver bus
      */
-    public abstract <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message);
+    public abstract <PayloadT extends ReActedMessage> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message);
     /**
      * Sends a message through this driver requiring an ack as a confirmation of the delivery into the target reactor's
      * mailbox. Type subscribers will not be notified.
@@ -151,11 +151,11 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      * @param dst destination of the message
      * @param ackingPolicy the {@link AckingPolicy} that should be used for managing the ack control for this message
      * @param message payload
-     * @param <PayloadT> any Serializable object
+     * @param <PayloadT> any ReActedMessage object
      * @return A {@link CompletionStage} that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public abstract <PayloadT extends Serializable> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
+    public abstract <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
     /**
      * Sends a message through this driver requiring an ack as a confirmation of the delivery into the target reactor's
      * mailbox.
@@ -164,11 +164,11 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      * @param dst destination of the message
      * @param ackingPolicy the {@link AckingPolicy} that should be used for managing the ack control for this message
      * @param message payload
-     * @param <PayloadT> any Serializable object
+     * @param <PayloadT> any ReActedMessage object
      * @return A {@link CompletionStage} that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public abstract <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
+    public abstract <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy, PayloadT message);
     /**
      * Sends a message through this driver requiring an ack as a confirmation of the delivery into the target reactor's
      * mailbox.
@@ -180,14 +180,14 @@ public abstract class ReActorSystemDriver<ConfigT extends ChannelDriverConfig<?,
      *                               for propagating that message to its type-subscribers.
      * @see io.reacted.core.typedsubscriptions.TypedSubscription
      * @param message payload
-     * @param <PayloadT> any Serializable object
+     * @param <PayloadT> any ReActedMessage object
      * @return A {@link CompletionStage} that is going to be completed when an ack from the destination reactor system
      * is received containing the outcome of the delivery of the message into the target actor mailbox
      */
-    public abstract  <PayloadT extends Serializable> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
-                                                                                              TriConsumer<ReActorId, Serializable, ReActorRef> propagateToSubscribers, PayloadT message);
+    public abstract  <PayloadT extends ReActedMessage> CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
+                                                                                              TriConsumer<ReActorId, ReActedMessage, ReActorRef> propagateToSubscribers, PayloadT message);
 
-    protected <PayloadT extends Serializable> void offerMessage(ReActorRef source, ReActorRef destination,
+    protected <PayloadT extends ReActedMessage> void offerMessage(ReActorRef source, ReActorRef destination,
                                                                 long sequenceNumber,
                                                                 ReActorSystemId fromReActorSystemId,
                                                                 AckingPolicy ackingPolicy,

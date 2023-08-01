@@ -17,6 +17,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -29,9 +30,9 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.LongDeserializer;
-import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.Serializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +41,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -57,10 +57,9 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     private static final byte[] NO_SERIALIZED_PAYLOAD = null;
     private static final Duration POLL_TIMEOUT = Duration.ofSeconds(1);
     @Nullable
-    private Consumer<Long, Message> kafkaConsumer;
+    private Consumer<String, Message> kafkaConsumer;
     @Nullable
-    private Producer<Long, Message> kafkaProducer;
-
+    private Producer<String, Message> kafkaProducer;
     public KafkaDriver(KafkaDriverConfig config) {
         super(config);
     }
@@ -92,47 +91,53 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getChannelProperties(); }
 
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
-                               long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
-                               PayloadT message) {
+                               long sequenceNumber, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
+                               PayloadT payload) {
+
         try {
+
             Objects.requireNonNull(kafkaProducer)
                    .send(new ProducerRecord<>(getDriverConfig().getTopic(),
-                                              new Message(source, destination, seqNum,
-                                                          reActorSystemId, ackingPolicy,
-                                                          message))).get();
+                                              Message.of(source, destination, sequenceNumber,
+                                                          reActorSystemId, ackingPolicy, payload)))
+                   .get();
             return DeliveryStatus.SENT;
         } catch (Exception sendError) {
-            getLocalReActorSystem().logError("Error sending message {}", message.toString(),
+            getLocalReActorSystem().logError("Error sending message {}", payload.toString(),
                                              sendError);
             return DeliveryStatus.NOT_SENT;
         }
     }
 
-    private static Consumer<Long, Message> createConsumer(KafkaDriverConfig driverConfig) {
+    private static Consumer<String, Message> createConsumer(KafkaDriverConfig driverConfig) {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, driverConfig.getBootstrapEndpoint());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, driverConfig.getGroupId());
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,  MessageDecoder.class.getName());
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MessageDecoder.class.getName());
         props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, driverConfig.getMaxPollRecords());
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-        Consumer<Long, Message> consumer = new KafkaConsumer<>(props);
+        props.put("schema.registry.url", driverConfig.getAvroSchemaRegistryUrl());
+        props.put("schema.registry.url", driverConfig.getAvroSchemaRegistryUrl());
+        Consumer<String, Message> consumer = new KafkaConsumer<>(props);
         consumer.subscribe(List.of(driverConfig.getTopic()));
         return consumer;
     }
 
-    public static Producer<Long, Message> createProducer(KafkaDriverConfig driverConfig) {
+    public static Producer<String, Message> createProducer(KafkaDriverConfig driverConfig) {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, driverConfig.getBootstrapEndpoint());
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MessageEncoder.class.getName());
+        props.put("schema.registry.url", driverConfig.getAvroSchemaRegistryUrl());
+        props.put("schema.registry.url", driverConfig.getAvroSchemaRegistryUrl());
         return new KafkaProducer<>(props);
     }
 
-    private static void kafkaDriverLoop(Consumer<Long, Message> kafkaConsumer, KafkaDriver thisDriver,
+    private static void kafkaDriverLoop(Consumer<String, Message> kafkaConsumer, KafkaDriver thisDriver,
                                         ReActorSystem localReActorSystem) {
         while(!Thread.currentThread().isInterrupted()) {
             try {
@@ -140,8 +145,8 @@ public class KafkaDriver extends RemotingDriver<KafkaDriverConfig> {
                              .forEach(record -> thisDriver.offerMessage(record.value().getSender(),
                                                                         record.value().getDestination(),
                                                                         record.value().getSequenceNumber(),
-                                                                        record.value().getDataLink().getGeneratingReActorSystem(),
-                                                                        record.value().getDataLink().getAckingPolicy(),
+                                                                        record.value().getCreatingReactorSystemId(),
+                                                                        record.value().getAckingPolicy(),
                                                                         record.value().getPayload()));
             } catch (InterruptException interruptException) {
                 Thread.currentThread().interrupt();

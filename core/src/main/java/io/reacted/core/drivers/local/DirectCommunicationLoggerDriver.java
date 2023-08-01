@@ -17,6 +17,7 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
@@ -24,7 +25,6 @@ import io.reacted.patterns.UnChecked;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -76,7 +76,7 @@ public class DirectCommunicationLoggerDriver extends LocalDriver<DirectCommunica
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
+    public <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination, long seqNum,
                 ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
         logFile.println(message);

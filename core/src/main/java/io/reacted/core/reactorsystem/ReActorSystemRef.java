@@ -17,22 +17,21 @@ import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.SerializationUtils;
 import io.reacted.core.messages.reactors.DeliveryStatus;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
+
+import javax.annotation.Nullable;
 import java.io.Serial;
-import java.io.Serializable;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
-import javax.annotation.Nullable;
 
 /**
  * ReActorSystem abstraction. Through this interface we can perform operations on the contained reactors,
  * regardless if they are local or remote
  */
-public class ReActorSystemRef implements Externalizable {
+public class ReActorSystemRef implements ReActedMessage {
     @Serial
     private static final long serialVersionUID = 1;
     private static final long REACTORSYSTEM_ID_OFFSET = SerializationUtils.getFieldOffset(ReActorSystemRef.class,
@@ -73,23 +72,23 @@ public class ReActorSystemRef implements Externalizable {
         this.gateProperties = gateProperties;
     }
 
-    <PayloadT extends Serializable>
+    <PayloadT extends ReActedMessage>
     DeliveryStatus publish(ReActorRef src, ReActorRef dst, PayloadT message) {
         return backingDriver.publish(src, dst, message);
     }
 
-    <PayloadT extends Serializable>
+    <PayloadT extends ReActedMessage>
     DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
         return backingDriver.tell(src, dst, message);
     }
 
-    <PayloadT extends Serializable>
+    <PayloadT extends ReActedMessage>
     CompletionStage<DeliveryStatus> apublish(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
                                              PayloadT message) {
         return backingDriver.apublish(src, dst, ackingPolicy, message);
     }
 
-    <PayloadT extends Serializable>
+    <PayloadT extends ReActedMessage>
     CompletionStage<DeliveryStatus> atell(ReActorRef src, ReActorRef dst, AckingPolicy ackingPolicy,
                                           PayloadT message) {
         return backingDriver.atell(src, dst, ackingPolicy, message);
@@ -122,9 +121,19 @@ public class ReActorSystemRef implements Externalizable {
     }
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        Objects.requireNonNull(reActorSystemId).writeExternal(out);
-        channelId.writeExternal(out);
+    public void encode(Serializer serializer) {
+        reActorSystemId.encode(serializer);
+        channelId.encode(serializer);
+    }
+
+    @Override
+    public void decode(Deserializer deserializer) {
+        ReActorSystemId reActorSystemId = new ReActorSystemId();
+        ReActorSystemRef currentRef = this;
+        reActorSystemId.decode(deserializer);
+        ChannelId sourceChannelId = new ChannelId();
+        sourceChannelId.decode(deserializer);
+        setGateForReActorSystem(currentRef, reActorSystemId, sourceChannelId, ReActorSystemDriver.getDriverCtx());
     }
 
     @Override
@@ -135,16 +144,6 @@ public class ReActorSystemRef implements Externalizable {
                ", backingDriver=" + backingDriver +
                ", gateProperties=" + gateProperties +
                '}';
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        ReActorSystemId reActorSystemId = new ReActorSystemId();
-        ReActorSystemRef currentRef = this;
-        reActorSystemId.readExternal(in);
-        ChannelId sourceChannelId = new ChannelId();
-        sourceChannelId.readExternal(in);
-        setGateForReActorSystem(currentRef, reActorSystemId, sourceChannelId, ReActorSystemDriver.getDriverCtx());
     }
 
     public void setReActorSystemId(ReActorSystemId reActorSystemId) {

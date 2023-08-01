@@ -8,11 +8,12 @@
 
 package io.reacted.streams.messages;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
+
 import javax.annotation.concurrent.Immutable;
 
 @Immutable
-public class PublisherComplete implements Serializable {
+public class PublisherComplete implements ReActedMessage {
 
   @Override
   public String toString() {

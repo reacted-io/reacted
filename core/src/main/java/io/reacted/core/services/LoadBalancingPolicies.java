@@ -12,12 +12,12 @@ import io.reacted.core.config.reactors.ReActorServiceConfig;
 import io.reacted.core.config.reactors.ReActorServiceConfig.Builder;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 import java.util.List;
 import java.util.function.ToIntFunction;
 
@@ -31,7 +31,7 @@ public final class LoadBalancingPolicies {
             ServiceConfigT extends ReActorServiceConfig<ServiceConfigBuilderT, ServiceConfigT>>
     ReActorRef selectRoutee(@Nonnull ReActorContext routerCtx,
                             @Nonnull Service<ServiceConfigBuilderT, ServiceConfigT> thisService,
-                            long msgNum, @Nonnull Serializable message) {
+                            long msgNum, @Nonnull ReActedMessage message) {
       List<ReActorRef> routees = thisService.getRouteesMap();
       if (routees.size() == 0) {
         return null;
@@ -51,7 +51,7 @@ public final class LoadBalancingPolicies {
      ServiceConfigT extends ReActorServiceConfig<ServiceConfigBuilderT, ServiceConfigT>>
     ReActorRef selectRoutee(@Nonnull ReActorContext routerCtx,
                                       @Nonnull Service<ServiceConfigBuilderT, ServiceConfigT> thisService,
-                                      long msgNum, @Nonnull Serializable message) {
+                                      long msgNum, @Nonnull ReActedMessage message) {
       ReActorRef minLoadRoutee = null;
       long minLoad = Long.MAX_VALUE;
       for (ReActorRef routee : routerCtx.getChildren()) {
@@ -66,7 +66,8 @@ public final class LoadBalancingPolicies {
   };
 
   private LoadBalancingPolicies() { /* No implementation required */ }
-  public static LoadBalancingPolicy partitionBy(ToIntFunction<Serializable> partitioner) {
+  public static LoadBalancingPolicy
+  partitionBy(ToIntFunction<ReActedMessage> partitioner) {
     return new LoadBalancingPolicy() {
       @Nullable
       @Override
@@ -74,7 +75,7 @@ public final class LoadBalancingPolicies {
               ServiceConfigT extends ReActorServiceConfig<ServiceConfigBuilderT, ServiceConfigT>>
       ReActorRef selectRoutee(@Nonnull ReActorContext routerCtx,
                               @Nonnull Service<ServiceConfigBuilderT, ServiceConfigT> thisService,
-                              long msgNum, @Nonnull Serializable message) {
+                              long msgNum, @Nonnull ReActedMessage message) {
         ReActorRef routee = null;
         try {
           int partitionKey = Math.abs(partitioner.applyAsInt(message));

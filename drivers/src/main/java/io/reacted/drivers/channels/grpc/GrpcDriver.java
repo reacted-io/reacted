@@ -24,7 +24,7 @@ import io.grpc.MethodDescriptor;
 import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.netty.NettyServerBuilder;
-import io.grpc.services.HealthStatusManager;
+import io.grpc.protobuf.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -41,15 +41,17 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.core.reactorsystem.ReActorSystemRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
+
+import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Objects;
@@ -62,7 +64,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import javax.annotation.Nullable;
 
 @NonNullByDefault
 public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
@@ -151,7 +152,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
     public ChannelId getChannelId() { return channelId; }
 
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                                long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
                                PayloadT payload) {
@@ -274,7 +275,7 @@ public class GrpcDriver extends RemotingDriver<GrpcDriverConfig> {
                                                 reActedDatagram.getSequenceNumber(),
                                                 fromReActorSystemId(reActedDatagram.getGeneratorSystem()),
                                                 AckingPolicy.forOrdinal(reActedDatagram.getAckingPolicyOrdinal()),
-                                                (Serializable)msgSource.readObject());
+                                                (ReActedMessage)msgSource.readObject());
                     } catch (Exception deserializationError) {
                         thisDriver.getLocalReActorSystem()
                                   .logError("Error decoding message", deserializationError);

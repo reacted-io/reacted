@@ -9,14 +9,14 @@
 package io.reacted.core.messages.serviceregistry;
 
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
 import javax.annotation.concurrent.Immutable;
-import java.io.Serializable;
 
 @Immutable
 @NonNullByDefault
-public class ServiceCancellationRequest implements Serializable {
+public class ServiceCancellationRequest implements ReActedMessage {
     private final ReActorSystemId reActorSystemId;
     private final String serviceName;
 

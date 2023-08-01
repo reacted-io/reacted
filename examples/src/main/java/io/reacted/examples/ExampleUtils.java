@@ -11,13 +11,15 @@ package io.reacted.examples;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.drivers.ChannelDriverConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
-import io.reacted.core.drivers.local.SystemLocalDrivers;
 import io.reacted.core.drivers.serviceregistries.ServiceRegistryDriver;
 import io.reacted.core.drivers.system.LocalDriver;
 import io.reacted.core.drivers.system.RemotingDriver;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriver;
+import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
+
 import java.io.FileNotFoundException;
 import java.util.Collection;
 import java.util.List;
@@ -36,7 +38,11 @@ public final class ExampleUtils {
     }
 
     public static ReActorSystemConfig getDefaultReActorSystemCfg(String reActorSystemName) {
-        return getDefaultReActorSystemCfg(reActorSystemName, SystemLocalDrivers.DIRECT_COMMUNICATION,
+        return getDefaultReActorSystemCfg(reActorSystemName, //SystemLocalDrivers.DIRECT_COMMUNICATION,
+                                          new CQLocalDriver(CQLocalDriverConfig.newBuilder()
+                                                                    .setChannelName("LC")
+                                                                    .setChronicleFilesDir("/tmp/chronicle")
+                                                                               .build()),
                                           NO_SERVICE_REGISTRIES, NO_REMOTING_DRIVERS);
     }
 
@@ -52,7 +58,7 @@ public final class ExampleUtils {
                                   //Fan out pool to message type subscribers
                                   .setMsgFanOutPoolSize(1)
                                   //Generate extra information for replaying if required
-                                  .setRecordExecution(true)
+                                  //.setRecordExecution(true)
                                   .addDispatcherConfig(DispatcherConfig.newBuilder()
                                                                        .setDispatcherName("FlowDispatcher")
                                                                        .setBatchSize(10)

@@ -9,9 +9,7 @@
 package io.reacted.drivers.channels.chroniclequeue;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.LocalDriver;
-import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.reactors.DeliveryStatus;
 import io.reacted.core.reactors.ReActorId;
@@ -20,29 +18,31 @@ import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
 import io.reacted.core.reactorsystem.ReActorSystemRef;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-
-import java.io.Serializable;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import javax.annotation.Nullable;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.RollCycles;
 import net.openhft.chronicle.threads.Pauser;
-import net.openhft.chronicle.wire.WireIn;
-import net.openhft.chronicle.wire.WireOut;
+import net.openhft.chronicle.wire.DocumentContext;
+import net.openhft.chronicle.wire.ReadMarshallable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 @NonNullByDefault
 public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     private static final Logger LOGGER = LoggerFactory.getLogger(CQLocalDriver.class);
+    private final ThreadLocal<Serializer> serializerThreadLocal = ThreadLocal.withInitial(() -> null);
     @Nullable
     private ChronicleQueue chronicle;
     @Nullable
@@ -74,7 +74,7 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     public Properties getChannelProperties() { return getDriverConfig().getChannelProperties(); }
 
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorRef source, ReActorContext destinationCtx,
                                                      ReActorRef destination, long seqNum,
                                                      ReActorSystemId reActorSystemId,
@@ -95,13 +95,18 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
+    public <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination, long seqNum,
                 ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
         try {
-            chronicle.acquireAppender()
-                     .writeDocument(w -> writeMessage(w, source, destination, seqNum, reActorSystemId,
-                                                      ackingPolicy, message));
+            Serializer serializer = serializerThreadLocal.get();
+            if (serializer == null) {
+                serializer = new CQSerializer(Objects.requireNonNull(chronicle.acquireAppender()
+                                                                              .wire()));
+                serializerThreadLocal.set(serializer);
+            }
+            writeMessage(serializer, source, destination, seqNum, reActorSystemId,
+                         ackingPolicy, message);
             return DeliveryStatus.SENT;
         } catch (Exception anyException) {
             getLocalReActorSystem().logError("Unable to send message {}", message, anyException);
@@ -116,137 +121,59 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
 
     private void chronicleMainLoop(ExcerptTailer tailer) {
         var waitForNextMsg = Pauser.balanced();
-        DriverCtx ctx = Objects.requireNonNull(ReActorSystemDriver.getDriverCtx());
-        while(!Thread.currentThread().isInterrupted()) {
-            try {
-                if (tailer.readDocument(document -> readMessage(document, ctx))) {
-                    waitForNextMsg.reset();
-                } else {
-                    waitForNextMsg.pause();
+        try(DocumentContext documentContext = tailer.readingDocument()) {
+            var deserializer = new CQDeserializer();
+            ReadMarshallable reader = wireIn -> {
+                deserializer.setDeserializerInput(wireIn);
+                readMessage(deserializer);
+            };
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    tailer.readDocument(reader);
+                    if (documentContext.isPresent()) {
+                        readMessage(deserializer);
+                        waitForNextMsg.reset();
+                    } else {
+                        waitForNextMsg.pause();
+                    }
                 }
-            } catch (Exception anyException) {
-                LOGGER.error("Unable to decode data", anyException);
+                catch (Exception anyException) {
+                    LOGGER.error("Unable to decode data", anyException);
+                }
             }
         }
     }
 
-    private void readMessage(WireIn in, DriverCtx driverCtx) {
-        in.read("M").marshallable(m -> offerMessage(readReActorRef(in, driverCtx),
-                                                             readReActorRef(in, driverCtx),
-                                                             readSequenceNumber(in),
-                                                             readReActorSystemId(in),
-                                                             readAckingPolicy(in),
-                                                             readPayload(in)));
+    private void readMessage(Deserializer in) {
+        offerMessage(readReActorRef(in),
+                     readReActorRef(in),
+                     in.getLong(),
+                     readReActorSystemId(in),
+                     in.getEnum(AckingPolicy.class),
+                     in.getObject());
     }
-    public static <PayloadT extends Serializable>
-    void writeMessage(WireOut out, ReActorRef source, ReActorRef destination, long seqNum,
+    public static <PayloadT extends ReActedMessage>
+    void writeMessage(Serializer out, ReActorRef source, ReActorRef destination, long seqNum,
                       ReActorSystemId localReActorSystemId, AckingPolicy ackingPolicy, PayloadT payload) {
-        out.write("M")
-           .marshallable(m -> writePayload(writeAckingPolicy(writeReActorSystemId(writeSequenceNumber(writeReActorRef(writeReActorRef(m, source),
-                                                                                                                      destination),
-                                                                                                      seqNum),
-                                                                                  localReActorSystemId),
-                                                             ackingPolicy),
-                                           payload));
-    }
-    public static WireOut writeReActorRef(WireOut out, ReActorRef reActorRef) {
-        return writeReActorSystemRef(writeReActorId(out, reActorRef.getReActorId()),
-                                     reActorRef.getReActorSystemRef());
+        source.encode(out);
+        destination.encode(out);
+        out.put(seqNum);
+        localReActorSystemId.encode(out);
+        out.putEnum(ackingPolicy);
+        payload.encode(out);
     }
 
-    public static ReActorRef readReActorRef(WireIn in, DriverCtx driverCtx) {
-        ReActorId reActorId = readReActorId(in);
-        ReActorSystemRef reActorSystemRef = readReActorSystemRef(in, driverCtx);
+    public static ReActorRef readReActorRef(Deserializer in) {
+        ReActorId reActorId = new ReActorId();
+        reActorId.decode(in);
+        ReActorSystemRef reActorSystemRef = new ReActorSystemRef();
+        reActorSystemRef.decode(in);
         return new ReActorRef(reActorId, reActorSystemRef)
                 .setHashCode(Objects.hash(reActorId, reActorSystemRef));
     }
-
-    public static WireOut writeReActorSystemRef(WireOut out, ReActorSystemRef reActorSystemRef) {
-        return writeChannelId(writeReActorSystemId(out, reActorSystemRef.getReActorSystemId()),
-                              reActorSystemRef.getChannelId());
-    }
-
-    public static ReActorSystemRef readReActorSystemRef(WireIn in, DriverCtx ctx) {
-        ReActorSystemRef reActorSystemRef = new ReActorSystemRef();
-        ReActorSystemId reActorSystemId = readReActorSystemId(in);
-        ChannelId channelId = readChannelId(in);
-        ReActorSystemRef.setGateForReActorSystem(reActorSystemRef, reActorSystemId, channelId, ctx);
-        return reActorSystemRef;
-    }
-    public static <PayloadT extends Serializable> WireOut writePayload(WireOut wireOut, PayloadT payloadT) {
-        return wireOut.write().object(payloadT);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <PayloadT extends Serializable> PayloadT readPayload(WireIn in) {
-        return (PayloadT)in.read().object();
-    }
-    public static WireOut writeSequenceNumber(WireOut out, long sequenceNumber) {
-        return out.write().int64(sequenceNumber);
-    }
-
-    public static long readSequenceNumber(WireIn in) {
-        return in.read().int64();
-    }
-    public static WireOut writeReActorSystemId(WireOut out, ReActorSystemId reActorSystemId) {
-        return reActorSystemId == ReActorSystemId.NO_REACTORSYSTEM_ID
-               ? out.write().int8(ReActorSystemId.NO_REACTORSYSTEM_ID_MARKER)
-               : out.write().int8(ReActorSystemId.COMMON_REACTORSYSTEM_ID_MARKER)
-                    .write().writeString(reActorSystemId.getReActorSystemName());
-    }
-
-    public static ReActorSystemId readReActorSystemId(WireIn in) {
-        if (in.read().int8() == ReActorSystemId.NO_REACTORSYSTEM_ID_MARKER) {
-            return ReActorSystemId.NO_REACTORSYSTEM_ID;
-        }
-        return new ReActorSystemId(in.read().readString());
-    }
-    public static WireOut writeChannelId(WireOut out, ChannelId channelId) {
-        return out.write().int8(channelId.getChannelType().ordinal())
-                  .write().writeString(channelId.getChannelName());
-    }
-
-    public static ChannelId readChannelId(WireIn in) {
-        return ChannelId.ChannelType.forOrdinal(in.read().int8())
-                                    .forChannelName(in.read().readString());
-    }
-
-    public static WireOut writeAckingPolicy(WireOut out, AckingPolicy ackingPolicy) {
-        return out.write().int8(ackingPolicy.ordinal());
-    }
-    public static AckingPolicy readAckingPolicy(WireIn in) {
-        return AckingPolicy.forOrdinal(in.read().int8());
-    }
-    public static WireOut writeReActorId(WireOut out, ReActorId reActorId) {
-        return reActorId == ReActorId.NO_REACTOR_ID
-               ? out.write().int8(ReActorId.NO_REACTOR_ID_MARKER)
-               : writeUUID(out.write().int8(ReActorId.COMMON_REACTOR_ID_MARKER)
-                              .write().writeString(reActorId.getReActorName()), reActorId.getReActorUUID());
-    }
-
-    public static ReActorId readReActorId(WireIn in) {
-        if (in.read().int8() == ReActorId.NO_REACTOR_ID_MARKER) {
-            return ReActorId.NO_REACTOR_ID;
-        }
-        String reactorName = in.read().readString();
-        UUID uuid = readUUID(in);
-        return new ReActorId().setReActorName(reactorName)
-                              .setReActorUUID(uuid)
-                              .setHashCode(Objects.hash(uuid, reactorName));
-
-    }
-
-    public static WireOut writeUUID(WireOut out, UUID uuid) {
-        return out.write().int64(uuid.getLeastSignificantBits())
-                  .write().int64(uuid.getMostSignificantBits());
-    }
-
-    public static UUID readUUID(WireIn in) {
-        long least = in.read().int64();
-        long most = in.read().int64();
-        return ReActorId.NO_REACTOR_ID_UUID.getLeastSignificantBits() == least &&
-               ReActorId.NO_REACTOR_ID_UUID.getMostSignificantBits() == most
-               ? ReActorId.NO_REACTOR_ID_UUID
-               : new UUID(most, least);
+    public static ReActorSystemId readReActorSystemId(Deserializer in) {
+        ReActorSystemId reActorSystemId = new ReActorSystemId();
+        reActorSystemId.decode(in);
+        return reActorSystemId;
     }
 }

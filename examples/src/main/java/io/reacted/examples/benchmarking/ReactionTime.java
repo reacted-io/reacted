@@ -11,15 +11,16 @@ package io.reacted.examples.benchmarking;
 import io.reacted.core.config.dispatchers.DispatcherConfig;
 import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
+import io.reacted.core.mailboxes.FastUnboundedMbox;
 import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 
 import javax.annotation.Nonnull;
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -44,11 +45,11 @@ public class ReactionTime {
                                                                                                     .setDispatcherThreadsNum(1)
                                                                                                     .build())
                                                                .build()).initReActorSystem();
-        int iterations = 10_000_000;
+        int iterations = 5_000_000;
         MessageGrabber latencyGrabberBody = new MessageGrabber(iterations);
         ReActorRef latencyGrabber = benchmarkSystem.spawn(latencyGrabberBody.getReActions(),
                                                  ReActorConfig.newBuilder()
-                                                              //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
+                                                              .setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new BoundedMbox(iterations))
                                                               //.setMailBoxProvider((ctx) -> new FastUnboundedMbox())
                                                               //.setMailBoxProvider((ctx) -> new TypeCoalescingMailbox())
@@ -67,14 +68,18 @@ public class ReactionTime {
         long start = System.nanoTime();
         long end;
         long elapsed = 0;
+        ReActedMessage.LongMessage recycle = new ReActedMessage.LongMessage();
         for(long cycle = 0; cycle < iterations; cycle++) {
+
             while (elapsed < pauseWindowDuration) {
                 end = System.nanoTime();
                 elapsed = end - start;
             }
+
             elapsed = 0;
             start = System.nanoTime();
-            latencyGrabber.tell(start);
+            recycle.setPayload(start);
+            latencyGrabber.tell(recycle);
             //benchmarkSystem.getSystemSink().publish(start);
         }
         TimeUnit.SECONDS.sleep(5);
@@ -94,8 +99,8 @@ public class ReactionTime {
         return Duration.ofNanos(latencies[index]);
     }
 
-    private record LatenciesRequest() implements Serializable {}
-    private record LatenciesReply(long[] latencies) implements Serializable {}
+    private record LatenciesRequest() implements ReActedMessage {}
+    private record LatenciesReply(long[] latencies) implements ReActedMessage {}
     private static class MessageGrabber implements ReActiveEntity {
         private ReActorContext ctx;
         private final long[] latencies;
@@ -108,7 +113,7 @@ public class ReactionTime {
         @Override
         public ReActions getReActions() {
             return ReActions.newBuilder()
-                            .reAct(Long.class, this::onNanoTime)
+                            .reAct(ReActedMessage.LongMessage.class, this::onNanoTime)
                             .reAct(LatenciesRequest.class,
                                    (ctx, request) -> ctx.reply(new LatenciesReply(getLatencies())))
                             .reAct(ReActorInit.class, (ctx, init) -> this.ctx = ctx)
@@ -120,8 +125,8 @@ public class ReactionTime {
         }
 
         public synchronized CompletionStage<Void> stop() { return ctx.stop(); }
-        private void onNanoTime(ReActorContext reActorContext, long nanotime) {
-            latencies[cycles++] = System.nanoTime() - nanotime;
+        private void onNanoTime(ReActorContext reActorContext, ReActedMessage.LongMessage nanotime) {
+            latencies[cycles++] = System.nanoTime() - nanotime.getPayload();
         }
     }
 }

@@ -8,7 +8,7 @@
 
 package io.reacted.examples.typedsubscription;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.ReActedMessage;
 
-record Update(int updateId) implements Serializable {
+record Update(int updateId) implements ReActedMessage {
 }

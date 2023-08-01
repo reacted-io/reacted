@@ -11,13 +11,14 @@ package io.reacted.core.messages.reactors;
 import com.google.common.base.Objects;
 import io.reacted.core.config.ChannelId;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
-import java.io.Serializable;
+
 import javax.annotation.concurrent.Immutable;
 
 @Immutable
 @NonNullByDefault
-public class DeliveryStatusUpdate implements Serializable {
+public class DeliveryStatusUpdate implements ReActedMessage {
 
     private final long msgSeqNum;
     private final DeliveryStatus deliveryStatus;

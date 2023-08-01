@@ -26,8 +26,8 @@ public class ReactiveClockApp {
 
         var reactiveClockReactions = ReActions.newBuilder()
                                               .reAct(TimeRequest.class,
-                                                     (raCtx, request) -> raCtx.getSender()
-                                                                              .publish(Instant.now()))
+                                                     (ctx, request) -> ctx.getSender()
+                                                                              .publish(new TimeReply(Instant.now())))
                                               //For any other message type simply ignore the message
                                               .reAct((ctx, any) -> {
                                               })
@@ -44,10 +44,10 @@ public class ReactiveClockApp {
         var reactiveClock = reActorSystem.spawn(reactiveClockReactions, reactiveClockConfig)
                                          .orElseSneakyThrow();
         //Note: we do not need another reactor to intercept the answer
-        reactiveClock.ask(new TimeRequest(), Instant.class, "What's the time?")
+        reactiveClock.ask(new TimeRequest(), TimeReply.class, "What's the time?")
                      //Ignore the exception, it's just an example
                      .thenAccept(time -> System.out.printf("It's %s%n",
-                                                           ZonedDateTime.ofInstant(time, ZoneId.systemDefault())))
+                                                           ZonedDateTime.ofInstant(time.time(), ZoneId.systemDefault())))
                      .thenAcceptAsync(nullValue -> reActorSystem.shutDown());
     }
 }

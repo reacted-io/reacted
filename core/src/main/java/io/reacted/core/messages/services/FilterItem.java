@@ -10,13 +10,13 @@ package io.reacted.core.messages.services;
 
 import com.google.common.base.Objects;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
 import java.util.Properties;
 
 @NonNullByDefault
-public record FilterItem(ReActorRef serviceGate, Properties serviceProperties) implements Serializable {
+public record FilterItem(ReActorRef serviceGate, Properties serviceProperties) implements ReActedMessage {
 
     @Override
     public boolean equals(Object o) {

@@ -15,7 +15,6 @@ import io.reacted.examples.ExampleUtils;
 
 import java.io.FileNotFoundException;
 import java.time.Duration;
-import java.time.Instant;
 
 public class BrokenClockApp {
     public static void main(String[] args) throws FileNotFoundException {
@@ -31,7 +30,7 @@ public class BrokenClockApp {
         var brokenReactiveClock = reActorSystem.spawn(ReActions.NO_REACTIONS, reactiveClockConfig)
                                                            .orElseSneakyThrow();
         //Note: we do not need another reactor to intercept the answer
-        brokenReactiveClock.ask(new TimeRequest(), Instant.class, Duration.ofSeconds(2), "What's the time?")
+        brokenReactiveClock.ask(new TimeRequest(), TimeReply.class, Duration.ofSeconds(2), "What's the time?")
                            .handle((timeReply,error) -> error == null ? "Wow, unexpected" : "Clock did not reply as expected")
                            .thenAccept(System.out::println)
                            .thenAccept(nullValue -> reActorSystem.shutDown());

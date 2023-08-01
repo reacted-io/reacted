@@ -16,11 +16,11 @@ import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 
 import javax.annotation.Nonnull;
-import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -28,16 +28,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @NonNullByDefault
-public class Ask<ReplyT extends Serializable> implements ReActor {
+public class Ask<ReplyT extends ReActedMessage> implements ReActor {
     private final Duration askTimeout;
     private final Class<ReplyT> expectedReplyType;
     private final CompletableFuture<ReplyT> completionTrigger;
     private final String requestName;
     private final ReActorRef target;
-    private final Serializable request;
+    private final ReActedMessage request;
 
     public Ask(Duration askTimeout, Class<ReplyT> expectedReplyType, CompletableFuture<ReplyT> completionTrigger,
-               String requestName, ReActorRef target, Serializable request) {
+               String requestName, ReActorRef target, ReActedMessage request) {
         this.askTimeout = ObjectUtils.checkNonNullPositiveTimeInterval(askTimeout);
         this.expectedReplyType = Objects.requireNonNull(expectedReplyType);
         this.completionTrigger = Objects.requireNonNull(completionTrigger);
@@ -68,28 +68,28 @@ public class Ask<ReplyT extends Serializable> implements ReActor {
                             .build();
     }
 
-    private void onInit(ReActorContext raCtx, ReActorInit init) {
-        if (!target.publish(raCtx.getSelf(), request).isSent()) {
-            raCtx.stop()
+    private void onInit(ReActorContext ctx, ReActorInit init) {
+        if (!target.publish(ctx.getSelf(), request).isSent()) {
+            ctx.stop()
                  .thenAccept(noVal -> completionTrigger.completeExceptionally(new DeliveryException()));
         } else {
-            raCtx.getReActorSystem()
+            ctx.getReActorSystem()
                  .getSystemSchedulingService()
-                 .schedule(() -> raCtx.stop()
+                 .schedule(() -> ctx.stop()
                                       .thenAccept(noVal -> completionTrigger.completeExceptionally(new TimeoutException())),
                            askTimeout.toMillis(), TimeUnit.MILLISECONDS);
         }
     }
 
-    private void onExpectedReply(ReActorContext raCtx, ReplyT reply) {
-        raCtx.stop()
+    private void onExpectedReply(ReActorContext ctx, ReplyT reply) {
+        ctx.stop()
              .thenAccept(noVal -> completionTrigger.complete(reply));
     }
-    private void onUnexpected(ReActorContext raCtx, Serializable anyType) {
+    private void onUnexpected(ReActorContext ctx, ReActedMessage anyType) {
         var failure = new IllegalArgumentException(String.format("Received %s instead of %s",
                                                                  anyType.getClass().getName(),
                                                                  expectedReplyType.getName()));
-        raCtx.stop()
+        ctx.stop()
              .thenAccept(noVal -> completionTrigger.completeExceptionally(failure));
     }
 }

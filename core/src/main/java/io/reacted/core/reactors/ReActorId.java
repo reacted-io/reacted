@@ -9,19 +9,19 @@
 package io.reacted.core.reactors;
 
 import io.reacted.core.messages.SerializationUtils;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
 import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 
 @Immutable
-public final class ReActorId implements Externalizable {
+public final class ReActorId implements ReActedMessage {
     public static final UUID NO_REACTOR_ID_UUID = new UUID(0, 0);
     public static final int NO_REACTOR_ID_MARKER = 1;
     public static final int COMMON_REACTOR_ID_MARKER = 0;
@@ -86,21 +86,22 @@ public final class ReActorId implements Externalizable {
     }
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
+    public void encode(Serializer serializer) {
         if (this == NO_REACTOR_ID) {
-            out.writeInt(NO_REACTOR_ID_MARKER);
+            serializer.put(NO_REACTOR_ID_MARKER);
         } else {
-            out.writeInt(0);
-            out.writeObject(getReActorUUID());
-            out.writeObject(reActorName);
+            serializer.put(COMMON_REACTOR_ID_MARKER);
+            serializer.put(getReActorUUID().getMostSignificantBits());
+            serializer.put(getReActorUUID().getLeastSignificantBits());
+            serializer.put(reActorName);
         }
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        if (in.readInt() != NO_REACTOR_ID_MARKER) {
-            setReActorUUID((UUID) in.readObject());
-            setReActorName((String) in.readObject());
+    public void decode(Deserializer deserializer) {
+        if (deserializer.getInt() != NO_REACTOR_ID_MARKER) {
+            setReActorUUID(new UUID(deserializer.getLong(), deserializer.getLong()));
+            setReActorName(deserializer.getString());
             setHashCode(Objects.hash(getReActorUUID(), getReActorName()));
         }
     }

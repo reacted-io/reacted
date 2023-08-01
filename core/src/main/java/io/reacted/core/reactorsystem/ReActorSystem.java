@@ -50,12 +50,17 @@ import io.reacted.core.reactors.systemreactors.RemotingRoot;
 import io.reacted.core.reactors.systemreactors.SystemLogger;
 import io.reacted.core.reactors.systemreactors.SystemMonitor;
 import io.reacted.core.runtime.Dispatcher;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.services.Service;
 import io.reacted.core.typedsubscriptions.SubscriptionsManager;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.core.typedsubscriptions.TypedSubscriptionsManager;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Arrays;
@@ -80,9 +85,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 @NonNullByDefault
@@ -93,7 +95,7 @@ public class ReActorSystem {
     // to wait indefinitely for an answer from local resources
     private static final Duration SERVICE_DISCOVERY_TIMEOUT = Duration.ofSeconds(10);
     private static final Logger LOGGER = LoggerFactory.getLogger(ReActorSystem.class);
-    private static final Serializable REACTOR_INIT = new ReActorInit();
+    private static final ReActedMessage REACTOR_INIT = new ReActorInit();
     private static final DispatcherConfig SYSTEM_DISPATCHER_CONFIG = DispatcherConfig.newBuilder()
                                                                                      .setDispatcherName(
                                                                                          Dispatcher.DEFAULT_DISPATCHER_NAME)
@@ -159,9 +161,9 @@ public class ReActorSystem {
         this.gatesCentralizedManager = new RegistryGatesCentralizedManager(localReActorSystemId,
                                                                            new LoopbackDriver<>(this, getSystemConfig().getLocalDriver()));
         this.newSeqNum = new AtomicLong(Long.MAX_VALUE);
-        this.reActorStop = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF,
-                                       Long.MIN_VALUE, localReActorSystemId, AckingPolicy.NONE,
-                                       ReActorStop.STOP);
+        this.reActorStop = Message.of(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF,
+                                      Long.MIN_VALUE, localReActorSystemId, AckingPolicy.NONE,
+                                      ReActorStop.STOP);
     }
 
     public ReActorSystem(ReActorSystemConfig config) {
@@ -176,8 +178,8 @@ public class ReActorSystem {
         this.typedSubscriptionsManager = new TypedSubscriptionsManager();
         this.dispatchers = new ConcurrentHashMap<>(10, 0.5f);
         this.newSeqNum = new AtomicLong(0);
-        this.reActorStop = new Message(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, Long.MIN_VALUE,
-                                       localReActorSystemId, AckingPolicy.NONE, ReActorStop.STOP);
+        this.reActorStop = Message.of(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, Long.MIN_VALUE,
+                                      localReActorSystemId, AckingPolicy.NONE, ReActorStop.STOP);
     }
     /**
      * @return The configuration for the reactor system
@@ -262,7 +264,7 @@ public class ReActorSystem {
     public void logDebug(String format, Serializable ...args) {
         if (getSystemLogger().publish(getSystemSink(),
                                       new ReActedDebug(Objects.requireNonNull(format),
-                                                    Objects.requireNonNull(args))).isNotSent()) {
+                                                       Objects.requireNonNull(args))).isNotSent()) {
             LOGGER.error("Unable to log {}", format);
             LOGGER.debug(format, (Object) args);
         }
@@ -283,11 +285,11 @@ public class ReActorSystem {
             }
     }
 
-    public DeliveryStatus toDeadLetters(Serializable payload) {
+    public DeliveryStatus toDeadLetters(ReActedMessage payload) {
         return toDeadLetters(ReActorRef.NO_REACTOR_REF, payload);
     }
 
-    public DeliveryStatus toDeadLetters(ReActorRef sender, Serializable payload) {
+    public DeliveryStatus toDeadLetters(ReActorRef sender, ReActedMessage payload) {
         DeliveryStatus deliveryStatus = Objects.requireNonNull(systemDeadLetters)
                                                .tell(sender, new DeadMessage(payload));
         if (deliveryStatus.isNotSent()) {
@@ -580,10 +582,10 @@ public class ReActorSystem {
      * Sends a message to all the local subscribers for the message type
      * @param msgSender A {@link ReActorRef} defining the sender of this message
      * @param payload The payload that should be broadcasted
-     * @param <PayLoadT> Any {@link Serializable} object
+     * @param <PayLoadT> Any {@link ReActedMessage} object
      * @return A {@link CompletionStage} that is going to be completed when the message is sent
      */
-    public <PayLoadT extends Serializable> DeliveryStatus
+    public <PayLoadT extends ReActedMessage> DeliveryStatus
     broadcastToLocalSubscribers(ReActorRef msgSender, PayLoadT payload) {
         return getSystemSink().publish(Objects.requireNonNull(msgSender), Objects.requireNonNull(payload));
     }
@@ -591,9 +593,9 @@ public class ReActorSystem {
     /**
      * Sends a message to all the remote subscribers for the message type
      * @param payload The payload that should be broadcasted
-     * @param <PayLoadT> Any {@link Serializable} object
+     * @param <PayLoadT> Any {@link ReActedMessage} object
      */
-    public <PayLoadT extends Serializable> void broadcastToRemoteSubscribers(PayLoadT payload) {
+    public <PayLoadT extends ReActedMessage> void broadcastToRemoteSubscribers(PayLoadT payload) {
         broadcastToRemoteSubscribers(ReActorRef.NO_REACTOR_REF, payload);
     }
 
@@ -601,9 +603,9 @@ public class ReActorSystem {
      * Sends a message to all the remote subscribers for the message type
      * @param msgSender A {@link ReActorRef} defining the sender of this message
      * @param payload The payload that should be broadcasted
-     * @param <PayLoadT> Any {@link Serializable} object
+     * @param <PayLoadT> Any {@link ReActedMessage} object
      */
-    public <PayLoadT extends Serializable> void broadcastToRemoteSubscribers(ReActorRef msgSender, PayLoadT payload) {
+    public <PayLoadT extends ReActedMessage> void broadcastToRemoteSubscribers(ReActorRef msgSender, PayLoadT payload) {
         gatesCentralizedManager.findAllGates().stream()
                                .filter(Predicate.not(getLoopback()::equals))
                                .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))
@@ -615,9 +617,9 @@ public class ReActorSystem {
      * Sends a message to all the remote subscribers for the message type
      * @param channelId {@link ChannelId} towards the message should be broadcasted to
      * @param payload The payload that should be broadcasted
-     * @param <PayLoadT> Any {@link Serializable} object
+     * @param <PayLoadT> Any {@link ReActedMessage} object
      */
-    public <PayLoadT extends Serializable> void broadcastToAllSubscribers(ChannelId channelId, PayLoadT payload) {
+    public <PayLoadT extends ReActedMessage> void broadcastToAllSubscribers(ChannelId channelId, PayLoadT payload) {
         broadcastToAllSubscribers(channelId, getSystemSink(), payload);
     }
 
@@ -626,9 +628,9 @@ public class ReActorSystem {
      * @param channelId {@link ChannelId} towards the message should be broadcasted to
      * @param msgSender A {@link ReActorRef} defining the sender of this message
      * @param payload The payload that should be broadcasted
-     * @param <PayLoadT> Any {@link Serializable} object
+     * @param <PayLoadT> Any {@link ReActedMessage} object
      */
-    public <PayLoadT extends Serializable> void broadcastToAllSubscribers(ChannelId channelId, ReActorRef msgSender,
+    public <PayLoadT extends ReActedMessage> void broadcastToAllSubscribers(ChannelId channelId, ReActorRef msgSender,
                                                                           PayLoadT payload) {
         gatesCentralizedManager.findAllGates(channelId).stream()
                                .map(remoteGate -> new ReActorRef(ReActorId.NO_REACTOR_ID, remoteGate))

@@ -12,13 +12,13 @@ import io.reacted.core.config.reactors.ReActorConfig;
 import io.reacted.core.config.reactorsystem.ReActorSystemConfig;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 import io.reacted.drivers.channels.grpc.GrpcDriver;
 import io.reacted.drivers.channels.grpc.GrpcDriverConfig;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriver;
 import io.reacted.drivers.serviceregistries.zookeeper.ZooKeeperDriverConfig;
 
-import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
 
 public class RemoteBroadcastingApp {
@@ -53,7 +53,7 @@ public class RemoteBroadcastingApp {
 
         subscriberSystem.spawn(ReActions.newBuilder()
                                         .reAct(Update.class,
-                                               (raCtx, update) -> raCtx.logInfo("Received {}",
+                                               (ctx, update) -> ctx.logInfo("Received {}",
                                                                                 update.getClass().getSimpleName()))
                                         .build(),
                                ReActorConfig.newBuilder()
@@ -68,5 +68,5 @@ public class RemoteBroadcastingApp {
         subscriberSystem.shutDown();
     }
 
-    private static final class Update implements Serializable { }
+    private static final class Update implements ReActedMessage { }
 }

@@ -22,7 +22,6 @@ import io.reacted.core.services.SelectionType;
 import io.reacted.core.typedsubscriptions.TypedSubscription;
 
 import javax.annotation.Nonnull;
-import java.time.ZonedDateTime;
 
 public class TimeReActor implements ReActor {
     private final String serviceToQuery;
@@ -37,34 +36,34 @@ public class TimeReActor implements ReActor {
         return ReActions.newBuilder()
                         .reAct(ReActorInit.class, this::onInit)
                         .reAct(ServiceDiscoveryReply.class, this:: onServiceDiscoveryReply)
-                        .reAct(ZonedDateTime.class, this::onServiceResponse)
+                        .reAct(TimeMessages.TimeReply.class, this::onServiceResponse)
                         .reAct(ReActorStop.class, this::onStop)
                         .build();
     }
 
-    private void onInit(ReActorContext raCtx, ReActorInit init) {
-        if (!raCtx.getReActorSystem()
+    private void onInit(ReActorContext ctx, ReActorInit init) {
+        if (!ctx.getReActorSystem()
                             .serviceDiscovery(BasicServiceDiscoverySearchFilter.newBuilder()
                                                                                .setServiceName(serviceToQuery)
                                                                                .setSelectionType(SelectionType.DIRECT)
-                                                                               .build(), raCtx.getSelf()).isDelivered()) {
-            raCtx.logError("Error discovering service");
+                                                                               .build(), ctx.getSelf()).isDelivered()) {
+            ctx.logError("Error discovering service");
         }
     }
 
-    private void onServiceDiscoveryReply(ReActorContext raCtx, ServiceDiscoveryReply serviceDiscoveryReply) {
+    private void onServiceDiscoveryReply(ReActorContext ctx, ServiceDiscoveryReply serviceDiscoveryReply) {
         var gate = serviceDiscoveryReply.getServiceGates().stream()
                                         .findAny();
-        gate.ifPresentOrElse(serviceGate -> serviceGate.publish(raCtx.getSelf(), new TimeRequest()),
-                             () -> raCtx.logError("No service discovery response received"));
+        gate.ifPresentOrElse(serviceGate -> serviceGate.publish(ctx.getSelf(), new TimeMessages.TimeRequest()),
+                             () -> ctx.logError("No service discovery response received"));
     }
 
-    private void onServiceResponse(ReActorContext raCtx, ZonedDateTime time) {
-        raCtx.logInfo("Received {} response from service: {}", ++received, time.toString());
+    private void onServiceResponse(ReActorContext ctx, TimeMessages.TimeReply time) {
+        ctx.logInfo("Received {} response from service: {}", ++received, time.toString());
     }
 
-    private void onStop(ReActorContext raCtx, ReActorStop stop) {
-        raCtx.logInfo("{} is exiting", raCtx.getSelf().getReActorId().getReActorName());
+    private void onStop(ReActorContext ctx, ReActorStop stop) {
+        ctx.logInfo("{} is exiting", ctx.getSelf().getReActorId().getReActorName());
     }
 
     @Nonnull

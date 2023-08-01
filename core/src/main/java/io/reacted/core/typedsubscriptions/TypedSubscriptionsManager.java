@@ -9,9 +9,10 @@
 package io.reacted.core.typedsubscriptions;
 
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serializable;
+import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -22,17 +23,16 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nonnull;
 
 @NonNullByDefault
 public class TypedSubscriptionsManager implements SubscriptionsManager {
-    private final Map<Class<? extends Serializable>, SubscriptionBucket> typeToSubscriber;
+    private final Map<Class<? extends ReActedMessage>, SubscriptionBucket> typeToSubscriber;
     public TypedSubscriptionsManager() {
         this.typeToSubscriber = new ConcurrentHashMap<>(5000, 0.5f);
     }
 
     @Override
-    public void addSubscription(@Nonnull Class<? extends Serializable> payloadType,
+    public void addSubscription(@Nonnull Class<? extends ReActedMessage> payloadType,
                                 @Nonnull TypedSubscription.TypedSubscriptionPolicy subscriptionPolicy,
                                 @Nonnull ReActorContext subscriber) {
         var bucket = typeToSubscriber.computeIfAbsent(Objects.requireNonNull(payloadType),
@@ -40,7 +40,7 @@ public class TypedSubscriptionsManager implements SubscriptionsManager {
         bucket.addSubscriber(Objects.requireNonNull(subscriptionPolicy), Objects.requireNonNull(subscriber));
     }
     @Override
-    public void removeSubscription(@Nonnull Class<? extends Serializable> payloadType,
+    public void removeSubscription(@Nonnull Class<? extends ReActedMessage> payloadType,
                                    @Nonnull TypedSubscription.TypedSubscriptionPolicy subscriptionPolicy,
                                    @Nonnull ReActorContext subscriber) {
         var bucket = typeToSubscriber.get(Objects.requireNonNull(payloadType));
@@ -50,14 +50,14 @@ public class TypedSubscriptionsManager implements SubscriptionsManager {
         }
     }
     @Override
-    public boolean hasFullSubscribers(@Nonnull Class<? extends Serializable> payloadType) {
+    public boolean hasFullSubscribers(@Nonnull Class<? extends ReActedMessage> payloadType) {
         var bucket = typeToSubscriber.get(payloadType);
         return bucket != null && bucket.hasFullSubscriptions();
     }
     @Nonnull
     @Override
     public List<ReActorContext> getLocalSubscribers(
-        @Nonnull Class<? extends Serializable> payloadType) {
+        @Nonnull Class<? extends ReActedMessage> payloadType) {
         var localBucket = typeToSubscriber.get(payloadType);
         return localBucket != null
                ? localBucket.subscribers

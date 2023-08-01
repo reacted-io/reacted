@@ -8,16 +8,28 @@
 
 package io.reacted.core.messages;
 
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import sun.misc.Unsafe;
 
-import java.io.Serializable;
 import java.lang.reflect.Field;
 
 @NonNullByDefault
 public final class SerializationUtils {
-    public static final Serializable NO_PAYLOAD = new Serializable() {};
+    public static final ReActedMessage NO_PAYLOAD = new ReActedMessage() {
+        @Override
+        public void encode(Serializer serializer) {
+
+        }
+
+        @Override
+        public void decode(Deserializer deserializer) {
+
+        }
+    };
     private static final Unsafe UNSAFE = Try.of(SerializationUtils::getUnsafeRef)
                                             .orElseSneakyThrow();
 

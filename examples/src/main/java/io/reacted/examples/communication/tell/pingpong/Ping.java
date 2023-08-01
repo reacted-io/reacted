@@ -8,7 +8,21 @@
 
 package io.reacted.examples.communication.tell.pingpong;
 
-import java.io.Serializable;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 
-record Ping(int pingValue) implements Serializable {
+class Ping implements ReActedMessage {
+    int pingValue;
+
+    Ping(int pingValue) { this.pingValue = pingValue; }
+    @Override
+    public void encode(Serializer serializer) {
+        serializer.put(pingValue);
+    }
+
+    @Override
+    public void decode(Deserializer deserializer) {
+        this.pingValue = deserializer.getInt();
+    }
 }

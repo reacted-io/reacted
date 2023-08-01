@@ -9,9 +9,7 @@
 package io.reacted.drivers.channels.replay;
 
 import io.reacted.core.config.ChannelId;
-import io.reacted.core.drivers.DriverCtx;
 import io.reacted.core.drivers.system.LocalDriver;
-import io.reacted.core.drivers.system.ReActorSystemDriver;
 import io.reacted.core.messages.AckingPolicy;
 import io.reacted.core.messages.Message;
 import io.reacted.core.messages.Recyclable;
@@ -23,11 +21,22 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.drivers.channels.chroniclequeue.CQDeserializer;
 import io.reacted.drivers.channels.chroniclequeue.CQLocalDriverConfig;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
-import java.io.Serializable;
+import net.openhft.chronicle.queue.ChronicleQueue;
+import net.openhft.chronicle.queue.ExcerptTailer;
+import net.openhft.chronicle.threads.Pauser;
+import net.openhft.chronicle.wire.DocumentContext;
+import net.openhft.chronicle.wire.ReadMarshallable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -36,19 +45,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.annotation.Nullable;
-import net.openhft.chronicle.queue.ChronicleQueue;
-import net.openhft.chronicle.queue.ExcerptTailer;
-import net.openhft.chronicle.threads.Pauser;
-import net.openhft.chronicle.wire.WireIn;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readAckingPolicy;
-import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readPayload;
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readReActorRef;
 import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readReActorSystemId;
-import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readSequenceNumber;
 
 @NonNullByDefault
 public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
@@ -84,7 +83,7 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     public Properties getChannelProperties() { return new Properties(); }
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus
+    public <PayloadT extends ReActedMessage> DeliveryStatus
     sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                 long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
         if (!(message instanceof DeliveryStatusUpdate)) {
@@ -98,7 +97,7 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     }
 
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     CompletionStage<DeliveryStatus> sendAsyncMessage(ReActorRef source, ReActorContext destinationCtx,
                                                      ReActorRef destination, long seqNum,
                                                      ReActorSystemId reActorSystemId,
@@ -116,23 +115,30 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         Map<Long, Message> emptyMap = new HashMap<>();
         ExcerptTailer chronicleReader = chronicle.createTailer();
         Map<ReActorId, Map<Long, Message>> dstToMessageBySeqNum = new HashMap<>();
-        DriverCtx ctx = Objects.requireNonNull(ReActorSystemDriver.getDriverCtx());
         Pauser pauser = Pauser.balanced();
-        while (!Thread.currentThread().isInterrupted() && !chronicle.isClosed()) {
-            try {
-                if (chronicleReader.readDocument(in -> readMessage(in, ctx, localReActorSystem, emptyMap,
-                                                                   dstToMessageBySeqNum))) {
-                    pauser.reset();
-                } else {
-                    pauser.pause();
+        try(DocumentContext documentContext = chronicleReader.readingDocument()) {
+            var deserializer = new CQDeserializer();
+            ReadMarshallable reader = wireIn -> {
+                deserializer.setDeserializerInput(wireIn);
+                readMessage(deserializer, localReActorSystem, emptyMap, dstToMessageBySeqNum);
+            };
+            while (!Thread.currentThread()
+                          .isInterrupted() && !chronicle.isClosed()) {
+                try {
+                    if (chronicleReader.readDocument(reader)
+                        readMessage(deserializer, localReActorSystem, emptyMap, dstToMessageBySeqNum);
+                        pauser.reset();
+                    } else {
+                        pauser.pause();
+                    }
+                } catch (Exception anyError) {
+                    LOGGER.error("Error reading message from CQ", anyError);
                 }
-            } catch (Exception anyError) {
-                LOGGER.error("Error reading message from CQ", anyError);
             }
         }
     }
 
-    private <PayloadT extends Serializable>
+    private <PayloadT extends ReActedMessage>
     void onNewMessage(ReActorSystem localReActorSystem, Map<Long, Message> emptyMap, Map<ReActorId,
                       Map<Long, Message>> dstToMessageBySeqNum, ReActorRef source, ReActorRef destination,
                       long sequenceNumber, ReActorSystemId fromReActorSystemId, AckingPolicy ackingPolicy,
@@ -145,8 +151,9 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
 
         if (!(payload instanceof EventExecutionAttempt executionAttempt)) {
             dstToMessageBySeqNum.computeIfAbsent(destination.getReActorId(), reActorId -> new HashMap<>())
-                                .put(sequenceNumber, new Message(source, destination, sequenceNumber,
-                                                                 fromReActorSystemId, ackingPolicy, payload));
+                                .put(sequenceNumber,
+                                     Message.of(source, destination, sequenceNumber,
+                                                fromReActorSystemId, ackingPolicy, payload));
             return;
         }
         while (!isReactorAlreadySpawned(source)) {
@@ -164,8 +171,8 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         } else if (syncForwardMessageToLocalActor(originalMessage.getSender(), destinationCtx,
                                                   originalMessage.getDestination(),
                                                   originalMessage.getSequenceNumber(),
-                                                  originalMessage.getDataLink().getGeneratingReActorSystem(),
-                                                  originalMessage.getDataLink().getAckingPolicy(),
+                                                  originalMessage.getCreatingReactorSystemId(),
+                                                  originalMessage.getAckingPolicy(),
                                                   originalMessage.getPayload()).isNotDelivered()) {
                 LOGGER.error("Unable to delivery message {} for ReActor {}",
                              originalMessage, executionAttempt.getReActorId());
@@ -181,14 +188,10 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
         return spawnedReActors.contains(sender.getReActorId());
     }
 
-    private void readMessage(WireIn in, DriverCtx driverCtx, ReActorSystem localReActorSystem, Map<Long,
-            Message> emptyMap, Map<ReActorId, Map<Long, Message>> dstToMessageBySeqNum) {
-        in.read("M").marshallable(m -> onNewMessage(localReActorSystem, emptyMap, dstToMessageBySeqNum,
-                                                             readReActorRef(in, driverCtx),
-                                                             readReActorRef(in, driverCtx),
-                                                             readSequenceNumber(in),
-                                                             readReActorSystemId(in),
-                                                             readAckingPolicy(in),
-                                                             readPayload(in)));
+    private void readMessage(Deserializer in, ReActorSystem localReActorSystem,
+                             Map<Long, Message> emptyMap, Map<ReActorId, Map<Long, Message>> dstToMessageBySeqNum) {
+        onNewMessage(localReActorSystem, emptyMap, dstToMessageBySeqNum,
+                     readReActorRef(in), readReActorRef(in), in.getLong(), readReActorSystemId(in),
+                     in.getEnum(AckingPolicy.class), in.getObject());
     }
 }

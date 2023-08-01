@@ -18,6 +18,7 @@ import io.reacted.core.reactors.ReActiveEntity;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.flow.operators.FlowOperatorConfig;
 import io.reacted.flow.operators.FlowOperatorConfig.Builder;
 import io.reacted.flow.operators.messages.OperatorInitComplete;
@@ -26,7 +27,8 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.ObjectUtils;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked.TriConsumer;
-import java.io.Serializable;
+
+import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -41,7 +43,6 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nonnull;
 
 @SuppressWarnings("unchecked")
 @NonNullByDefault
@@ -71,9 +72,9 @@ class GraphController implements ReActiveEntity {
     this.operatorNameToOperator = new ConcurrentHashMap<>(operatorsCfgs.size(), 0.5f);
     this.operatorToInitedRoutees = new HashMap<>();
     this.reActions = ReActions.newBuilder()
-                              .reAct(ReActorInit.class, (raCtx, init) -> onInit(raCtx))
-                              .reAct(InitInputStreams.class, (raCtx, initStreams) -> onInitInputStreams(raCtx))
-                              .reAct(ReActorStop.class, (raCtx, stop) -> onStop())
+                              .reAct(ReActorInit.class, (ctx, init) -> onInit(ctx))
+                              .reAct(InitInputStreams.class, (ctx, initStreams) -> onInitInputStreams(ctx))
+                              .reAct(ReActorStop.class, (ctx, stop) -> onStop())
                               .reAct(OperatorInitComplete.class, this::onOperatorInitComplete)
                               .build();
     this.inputStreamProcessors = new LinkedList<>();
@@ -86,7 +87,7 @@ class GraphController implements ReActiveEntity {
 
   Map<String, ReActorRef> getOperatorsByName() { return operatorNameToOperator; }
 
-  private void onOperatorInitComplete(ReActorContext raCtx,
+  private void onOperatorInitComplete(ReActorContext ctx,
                                       OperatorInitComplete operatorInitComplete) {
     if (!Objects.equals(flowName, operatorInitComplete.getFlowName())) {
       return; // Not Interesting, it's for another flow
@@ -98,24 +99,24 @@ class GraphController implements ReActiveEntity {
                                               entry.getValue().getRouteesNum()) &&
         !inputStreamsHaveBeenInited) {
       this.inputStreamsHaveBeenInited = true;
-      raCtx.selfPublish(new InitInputStreams());
+      ctx.selfPublish(new InitInputStreams());
     }
   }
-  private void onInit(ReActorContext raCtx) {
-    BackpressuringMbox.toBackpressuringMailbox(raCtx.getMbox())
+  private void onInit(ReActorContext ctx) {
+    BackpressuringMbox.toBackpressuringMailbox(ctx.getMbox())
                       .ifPresent(mbox -> mbox.addNonDelayableTypes(Set.of(OperatorInitComplete.class)));
     for(var operatorCfg : operatorsCfgsByName.entrySet()) {
       operatorNameToOperator.put(operatorCfg.getKey(),
-                                 spawnOperator(raCtx.getReActorSystem(),operatorCfg.getValue(),
-                                               raCtx.getSelf()).orElseSneakyThrow());
+                                 spawnOperator(ctx.getReActorSystem(),operatorCfg.getValue(),
+                                               ctx.getSelf()).orElseSneakyThrow());
     }
   }
-  private void onInitInputStreams(ReActorContext raCtx) {
+  private void onInitInputStreams(ReActorContext ctx) {
     for(var operatorCfg : operatorsCfgsByName.entrySet()) {
       for(var inputStream : operatorCfg.getValue().getInputStreams()) {
         spawnNewStreamConsumer(operatorNameToOperator.get(operatorCfg.getKey()),
-                               inputStream, raCtx.getReActorSystem(),
-                               raCtx.getSelf().getReActorId().getReActorName(),
+                               inputStream, ctx.getReActorSystem(),
+                               ctx.getSelf().getReActorId().getReActorName(),
                                operatorCfg.getValue());
       }
     }
@@ -125,7 +126,7 @@ class GraphController implements ReActiveEntity {
     inputStreamProcessors.forEach(ExecutorService::shutdownNow);
   }
   private void spawnNewStreamConsumer(ReActorRef operator,
-                                      Stream<? extends Serializable> inputStream,
+                                      Stream<? extends ReActedMessage> inputStream,
                                       ReActorSystem localReActorSystem, String flowName,
                               FlowOperatorConfig<?, ?> operatorCfg) {
     ExecutorService streamConsumerExecutor = spawnNewInputStreamExecutor(localReActorSystem,
@@ -159,7 +160,7 @@ class GraphController implements ReActiveEntity {
     return Executors.newSingleThreadExecutor(inputStreamThreadFactory.build());
   }
 
-  private record InitInputStreams() implements Serializable {
+  private record InitInputStreams() implements ReActedMessage {
     @Override
     public String toString() {
       return "InitInputStreams{}";

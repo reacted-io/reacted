@@ -65,9 +65,9 @@ public class QuickstartSubscriber {
         public ReActions getReActions() {
             return ReActions.newBuilder()
                             .reAct(GreeterService.GreetingsRequest.class,
-                                   (raCtx, greetingsRequest) ->
-                                           raCtx.logInfo("{} intercepted {}",
-                                                         raCtx.getSelf().getReActorId().getReActorName(),
+                                   (ctx, greetingsRequest) ->
+                                           ctx.logInfo("{} intercepted {}",
+                                                         ctx.getSelf().getReActorId().getReActorName(),
                                                          greetingsRequest))
                             .build();
         }

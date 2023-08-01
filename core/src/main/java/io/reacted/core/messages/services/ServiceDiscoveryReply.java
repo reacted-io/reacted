@@ -9,12 +9,12 @@
 package io.reacted.core.messages.services;
 
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 
-import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
 
-public class ServiceDiscoveryReply implements Serializable {
+public class ServiceDiscoveryReply implements ReActedMessage {
     private final Set<ReActorRef> serviceRefs;
     public ServiceDiscoveryReply(ReActorRef serviceRef) {
         this.serviceRefs = Set.of(serviceRef);

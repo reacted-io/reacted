@@ -9,13 +9,13 @@
 package io.reacted.core.messages.services;
 
 import io.reacted.core.reactorsystem.ReActorRef;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.core.services.SelectionType;
 import io.reacted.core.services.Service;
 
-import java.io.Serializable;
 import java.util.Properties;
 
-public interface ServiceDiscoverySearchFilter extends Serializable {
+public interface ServiceDiscoverySearchFilter extends ReActedMessage {
 
     String FIELD_NAME_SERVICE_NAME = "serviceName";
     String FIELD_NAME_CPU_LOAD = "cpuLoad";

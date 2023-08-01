@@ -16,12 +16,12 @@ import io.reacted.core.messages.reactors.ReActorInit;
 import io.reacted.core.reactors.ReActions;
 import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import org.bson.Document;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -50,33 +50,33 @@ public class DatabaseService implements ReActor {
     @Override
     public ReActions getReActions() {
         return ReActions.newBuilder()
-                        .reAct(ReActorInit.class, (raCtx, init) -> ifNotReplaying(this::onMongoInit, raCtx, init))
+                        .reAct(ReActorInit.class, (ctx, init) -> ifNotReplaying(this::onMongoInit, ctx, init))
                         .reAct(StorageMessages.StoreRequest.class,
-                               (raCtx, store) -> ifNotReplaying(this::onStoreRequest, raCtx, store))
+                               (ctx, store) -> ifNotReplaying(this::onStoreRequest, ctx, store))
                         .reAct(StorageMessages.QueryRequest.class,
-                               (raCtx, query) -> ifNotReplaying(this::onQueryRequest, raCtx, query))
+                               (ctx, query) -> ifNotReplaying(this::onQueryRequest, ctx, query))
                         .build();
     }
 
-    private void onMongoInit(ReActorContext raCtx, ReActorInit init) {
+    private void onMongoInit(ReActorContext ctx, ReActorInit init) {
         this.mongoCollection = Objects.requireNonNull(mongoClient).getDatabase(DB_NAME)
                                       .getCollection(COLLECTION);
     }
-    private void onStoreRequest(ReActorContext raCtx, StorageMessages.StoreRequest request) {
+    private void onStoreRequest(ReActorContext ctx, StorageMessages.StoreRequest request) {
         var publisher = mongoCollection.insertOne(new Document(Map.of("_id", request.getKey(),
                                                                       PAYLOAD_FIELD, request.getPayload())));
-        publisher.subscribe(new MongoSubscribers.MongoStoreSubscriber(raCtx.getSelf(), raCtx.getSender()));
+        publisher.subscribe(new MongoSubscribers.MongoStoreSubscriber(ctx.getSelf(), ctx.getSender()));
     }
 
-    private void onQueryRequest(ReActorContext raCtx, StorageMessages.QueryRequest request) {
+    private void onQueryRequest(ReActorContext ctx, StorageMessages.QueryRequest request) {
         mongoCollection.find(Filters.eq("_id", request.key()))
-                       .first().subscribe(new MongoSubscribers.MongoQuerySubscriber(raCtx.getSelf(),
-                                                                                    raCtx.getSender()));
+                       .first().subscribe(new MongoSubscribers.MongoQuerySubscriber(ctx.getSelf(),
+                                                                                    ctx.getSender()));
     }
-    private <PayloadT extends Serializable>
-    void ifNotReplaying(BiConsumer<ReActorContext, PayloadT> realCall, ReActorContext raCtx, PayloadT anyPayload) {
+    private <PayloadT extends ReActedMessage>
+    void ifNotReplaying(BiConsumer<ReActorContext, PayloadT> realCall, ReActorContext ctx, PayloadT anyPayload) {
         if (mongoClient != null) {
-            realCall.accept(raCtx, anyPayload);
+            realCall.accept(ctx, anyPayload);
         }
     }
 }

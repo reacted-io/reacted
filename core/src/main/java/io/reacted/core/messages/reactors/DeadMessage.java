@@ -9,34 +9,36 @@
 package io.reacted.core.messages.reactors;
 
 import io.reacted.core.messages.SerializationUtils;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serial;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.io.Serializable;
+import java.io.Serial;
 import java.util.Objects;
 
 @Immutable
 @NonNullByDefault
-public class DeadMessage implements Externalizable {
+public class DeadMessage implements Externalizable, ReActedMessage {
 
     @Serial
     private static final long serialVersionUID = 1;
     private static final long PAYLOAD_OFFSET = SerializationUtils.getFieldOffset(DeadMessage.class, "payload")
                                                                  .orElseSneakyThrow();
 
-    private final Serializable payload;
+    private final ReActedMessage payload;
 
     public DeadMessage() { this.payload = SerializationUtils.NO_PAYLOAD; /* required for Externalizable */ }
-    public DeadMessage(Serializable payload) { this.payload = payload; }
+    public DeadMessage(ReActedMessage payload) { this.payload = payload; }
 
     @SuppressWarnings("unchecked")
-    public <PayloadT extends Serializable> PayloadT getPayload() { return (PayloadT)payload; }
+    public <PayloadT extends ReActedMessage> PayloadT getPayload() { return (PayloadT)payload; }
 
     @Override
     public boolean equals(@Nullable Object o) {
@@ -64,5 +66,15 @@ public class DeadMessage implements Externalizable {
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         SerializationUtils.setObjectField(this, PAYLOAD_OFFSET, in.readObject());
+    }
+
+    @Override
+    public void encode(Serializer serializer) {
+
+    }
+
+    @Override
+    public void decode(Deserializer deserializer) {
+
     }
 }

@@ -8,23 +8,25 @@
 
 package io.reacted.examples.streams;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.examples.ExampleUtils;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.streams.ReactedSubmissionPublisher;
+import org.awaitility.Awaitility;
+
 import java.io.FileNotFoundException;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
-import org.awaitility.Awaitility;
 
 @NonNullByDefault
 class SlowdownProducerApp {
 
     public static void main(String[] args) throws InterruptedException, FileNotFoundException {
         var reactorSystem = ExampleUtils.getDefaultInitedReActorSystem(SlowdownProducerApp.class.getSimpleName());
-        try(var streamPublisher = new ReactedSubmissionPublisher<Integer>(reactorSystem, 1_000,
+        try(var streamPublisher = new ReactedSubmissionPublisher<ReActedMessage.IntMessage>(reactorSystem, 1_000,
                                                                           SlowdownProducerApp.class.getSimpleName() + "-Publisher")) {
             var subscribers = List.of(new TestSubscriber(), new TestSubscriber(), new TestSubscriber());
             int subId = 0;
@@ -39,7 +41,7 @@ class SlowdownProducerApp {
             Duration delay = Duration.ofNanos(1);
             //Produce a stream of updates
             for(int updateNum = 0; updateNum < msgNum; updateNum++) {
-                if (streamPublisher.submit(updateNum).isBackpressureRequired()) {
+                if (streamPublisher.submit(new ReActedMessage.IntMessage(updateNum)).isBackpressureRequired()) {
                     TimeUnit.NANOSECONDS.sleep(delay.toNanos());
                     delay = delay.multipliedBy(2);
                     bpcnt++;
@@ -63,7 +65,7 @@ class SlowdownProducerApp {
         reactorSystem.shutDown();
     }
 
-    private static class TestSubscriber implements Flow.Subscriber<Integer> {
+    private static class TestSubscriber implements Flow.Subscriber<ReActedMessage.IntMessage> {
         private final LongAdder updatesReceived = new LongAdder();
         private boolean isTerminated = false;
         private Flow.Subscription subscription;
@@ -76,13 +78,13 @@ class SlowdownProducerApp {
         }
 
         @Override
-        public void onNext(Integer item) {
+        public void onNext(ReActedMessage.IntMessage item) {
             updatesReceived.increment();
             if (!isTerminated) {
-                if (lastItem >= item) {
+                if (lastItem >= item.getPayload()) {
                     throw new IllegalStateException("Unordered sequence detected");
                 }
-                this.lastItem = item;
+                this.lastItem = item.getPayload();
                 subscription.request(1);
             }
         }

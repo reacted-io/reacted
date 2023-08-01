@@ -52,7 +52,12 @@
             </roles>
         </developer>
     </developers>
-
+    <repositories>
+        <repository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
+        </repository>
+    </repositories>
     <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>
@@ -102,6 +107,8 @@
         <grpc.version>1.51.0</grpc.version>
         <protobuf.version>3.21.9</protobuf.version>
         <protobuf.maven.plugin.version>0.6.1</protobuf.maven.plugin.version>
+        <avro.maven.version>1.11.1</avro.maven.version>
+        <kafka.avro.serializer.version>7.3.1</kafka.avro.serializer.version>
         <tomcat.annotations.version>6.0.53</tomcat.annotations.version>
         <build.helper.version>3.0.0</build.helper.version>
         <kafka.client.version>3.3.1</kafka.client.version>
@@ -121,6 +128,11 @@
     </modules>
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-avro-serializer</artifactId>
+                <version>${kafka.avro.serializer.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
@@ -288,6 +300,26 @@
                 <artifactId>commons-io</artifactId>
                 <version>${commons-io.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro</artifactId>
+                <version>${avro.maven.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro-maven-plugin</artifactId>
+                <version>${avro.maven.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro-compiler</artifactId>
+                <version>${avro.maven.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro-ipc</artifactId>
+                <version>${avro.maven.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -302,7 +334,6 @@
             <version>${jmh.version}</version>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
     <build>
         <pluginManagement>

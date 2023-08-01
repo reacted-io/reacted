@@ -8,10 +8,10 @@
 
 package io.reacted.core.messages.reactors;
 
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.ObjectUtils;
-import java.io.Serializable;
 
-public class SystemMonitorReport implements Serializable {
+public class SystemMonitorReport implements ReActedMessage {
     private final double cpuLoad;
     private final long freeMemorySize;
 

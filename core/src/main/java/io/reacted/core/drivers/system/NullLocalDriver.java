@@ -16,11 +16,11 @@ import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.ReActedMessage;
 import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 
-import java.io.Serializable;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -68,11 +68,11 @@ public class NullLocalDriver extends LocalDriver<NullLocalDriverConfig> {
 
 
     @Override
-    public <PayloadT extends Serializable> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
+    public <PayloadT extends ReActedMessage> DeliveryStatus tell(ReActorRef src, ReActorRef dst, PayloadT message) {
         return DeliveryStatus.NOT_DELIVERED;
     }
     @Override
-    public <PayloadT extends Serializable>
+    public <PayloadT extends ReActedMessage>
     DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                                long seqNum, ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy,
                                PayloadT message) {

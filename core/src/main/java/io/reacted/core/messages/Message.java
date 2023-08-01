@@ -10,65 +10,54 @@ package io.reacted.core.messages;
 
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystemId;
+import io.reacted.core.serialization.Deserializer;
+import io.reacted.core.serialization.ReActedMessage;
+import io.reacted.core.serialization.Serializer;
 import io.reacted.patterns.NonNullByDefault;
 
-import java.io.Serial;
 import javax.annotation.Nullable;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.Serializable;
 import java.util.Objects;
 
 @NonNullByDefault
-public final class Message implements Externalizable {
-    @Serial
-    private static final long serialVersionUID = 1;
+public final class Message implements ReActedMessage {
     private static final long SENDER_OFFSET = SerializationUtils.getFieldOffset(Message.class, "sender")
                                                                 .orElseSneakyThrow();
     private static final long DESTINATION_OFFSET = SerializationUtils.getFieldOffset(Message.class, "destination")
                                                                      .orElseSneakyThrow();
     private static final long SEQ_NUM_OFFSET = SerializationUtils.getFieldOffset(Message.class, "sequenceNumber")
                                                                  .orElseSneakyThrow();
+    private static final long CREATING_REACTOR_SYSTEM_ID = SerializationUtils.getFieldOffset(Message.class, "creatingReactorSystemId")
+                                                                 .orElseSneakyThrow();
+    private static final long ACKING_POLICY = SerializationUtils.getFieldOffset(Message.class, "ackingPolicy")
+                                                                 .orElseSneakyThrow();
     private static final long PAYLOAD_OFFSET = SerializationUtils.getFieldOffset(Message.class, "payload")
                                                                  .orElseSneakyThrow();
-    private static final long DATALINK_OFFSET = SerializationUtils.getFieldOffset(Message.class, "dataLink")
-                                                                  .orElseSneakyThrow();
     private final ReActorRef sender;
     private final ReActorRef destination;
     private final long sequenceNumber;
-    private final Serializable payload;
-    private final DataLink dataLink;
+    private final ReActorSystemId creatingReactorSystemId;
+    private final AckingPolicy ackingPolicy;
+    private final ReActedMessage payload;
 
     public Message() {
-        /* Required by Externalizable */
-        this.sender = ReActorRef.NO_REACTOR_REF;
-        this.destination = ReActorRef.NO_REACTOR_REF;
-        this.sequenceNumber = 0;
-        this.payload = SerializationUtils.NO_PAYLOAD;
-        this.dataLink = DataLink.NO_DATALINK;
+        this(ReActorRef.NO_REACTOR_REF, ReActorRef.NO_REACTOR_REF, 0L,
+             ReActorSystemId.NO_REACTORSYSTEM_ID, AckingPolicy.NONE, SerializationUtils.NO_PAYLOAD);
     }
 
-    public Message(ReActorRef sender, ReActorRef dest, long seqNum, ReActorSystemId generatingReActorSystem,
-                   AckingPolicy ackingPolicy, Serializable payload) {
+    private Message(ReActorRef sender, ReActorRef destination, long sequenceNumber,
+                    ReActorSystemId creatingReActorSystem, AckingPolicy ackingPolicy, ReActedMessage payload) {
         this.sender = sender;
-        this.destination = dest;
-        this.sequenceNumber = seqNum;
-        this.dataLink = new DataLink(generatingReActorSystem, ackingPolicy);
+        this.destination = destination;
+        this.sequenceNumber = sequenceNumber;
+        this.creatingReactorSystemId = creatingReActorSystem;
+        this.ackingPolicy = ackingPolicy;
         this.payload = payload;
     }
-
-    public ReActorRef getSender() { return sender; }
-
-    public ReActorRef getDestination() { return destination; }
-
-    @SuppressWarnings("unchecked")
-    public <PayloadT extends Serializable> PayloadT getPayload() { return (PayloadT)payload; }
-
-    public long getSequenceNumber() { return sequenceNumber; }
-
-    public DataLink getDataLink() { return dataLink; }
+    public static Message of(ReActorRef sender, ReActorRef destination, long sequenceNumber,
+                             ReActorSystemId generatingReActorSystem, AckingPolicy ackingPolicy, ReActedMessage payload) {
+        return new Message(sender, destination, sequenceNumber, generatingReActorSystem, ackingPolicy,
+                           payload);
+    }
 
     @Override
     public boolean equals(@Nullable Object o) {
@@ -87,41 +76,45 @@ public final class Message implements Externalizable {
 
     @Override
     public String toString() {
-        return "Message{" +
-               "sender=" + sender +
-               ", destination=" + destination +
-               ", sequenceNumber=" + sequenceNumber +
-               ", payload=" + payload +
-               '}';
+        return "Message{" + "sender=" + sender + ", destination=" + destination + ", sequenceNumber=" + sequenceNumber + ", creatingReactorSystemId=" + creatingReactorSystemId + ", ackingPolicy=" + ackingPolicy + ", payload=" + payload + '}';
     }
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        Objects.requireNonNull(sender).writeExternal(out);
-        Objects.requireNonNull(destination).writeExternal(out);
-        Objects.requireNonNull(dataLink).writeExternal(out);
-        out.writeLong(sequenceNumber);
-        out.writeObject(payload);
+    public void encode(Serializer serializer) {
+        Objects.requireNonNull(sender).encode(serializer);
+        Objects.requireNonNull(destination).encode(serializer);
+        Objects.requireNonNull(creatingReactorSystemId).encode(serializer);
+        serializer.put(ackingPolicy.ordinal());
+        serializer.put(sequenceNumber);
+        payload.encode(serializer);
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+    public void decode(Deserializer deserializer) {
         ReActorRef senderRef = new ReActorRef();
-        senderRef.readExternal(in);
+        senderRef.decode(deserializer);
         setSender(senderRef);
         var destinationRef = new ReActorRef();
-        destinationRef.readExternal(in);
+        destinationRef.decode(deserializer);
         setDestination(destinationRef);
-        var datalink = new DataLink();
-        datalink.readExternal(in);
-        setDataLink(datalink);
-        setSequenceNumber(in.readLong());
-        try {
-            setPayload((Serializable)in.readObject());
-        } catch (Exception exc) {
-            exc.printStackTrace();
-        }
+        var receivedGeneratingReActorSystem = new ReActorSystemId();
+        receivedGeneratingReActorSystem.decode(deserializer);
+        setCreatingReactorSystemId(receivedGeneratingReActorSystem);
+        setAckingPolicy(AckingPolicy.forOrdinal(deserializer.getInt()));
+        setSequenceNumber(deserializer.getLong());
+        setPayload(deserializer.getObject());
     }
+    public ReActorRef getSender() { return sender; }
+
+    public ReActorRef getDestination() { return destination; }
+
+    public long getSequenceNumber() { return sequenceNumber; }
+
+    public ReActorSystemId getCreatingReactorSystemId() { return creatingReactorSystemId; }
+
+    public AckingPolicy getAckingPolicy() { return ackingPolicy; }
+
+    public ReActedMessage getPayload() { return payload; }
 
     @SuppressWarnings("UnusedReturnValue")
     private Message setSender(ReActorRef sender) {
@@ -134,8 +127,13 @@ public final class Message implements Externalizable {
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    private Message setDataLink(DataLink dataLink) {
-        return SerializationUtils.setObjectField(this, DATALINK_OFFSET, dataLink);
+    private Message setAckingPolicy(AckingPolicy ackingPolicy) {
+        return SerializationUtils.setObjectField(this, ACKING_POLICY, ackingPolicy);
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
+    private Message setCreatingReactorSystemId(ReActorSystemId creatingReactorSystemId) {
+        return SerializationUtils.setObjectField(this, CREATING_REACTOR_SYSTEM_ID, creatingReactorSystemId);
     }
 
     @SuppressWarnings("UnusedReturnValue")
@@ -144,7 +142,7 @@ public final class Message implements Externalizable {
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    private Message setPayload(Serializable payload) {
+    private Message setPayload(ReActedMessage payload) {
         return SerializationUtils.setObjectField(this, PAYLOAD_OFFSET, payload);
     }
 }

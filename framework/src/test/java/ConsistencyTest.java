@@ -16,14 +16,14 @@ import io.reacted.core.reactors.ReActor;
 import io.reacted.core.reactorsystem.ReActorContext;
 import io.reacted.core.reactorsystem.ReActorRef;
 import io.reacted.core.reactorsystem.ReActorSystem;
+import io.reacted.core.serialization.ReActedMessage;
 
 import javax.annotation.Nonnull;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 public class ConsistencyTest {
-    private static final int CYCLES = 9_999_999;
+    private static final int CYCLES = 999_999_999;
     public static void main(String[] args)  {
 
 
@@ -44,9 +44,9 @@ public class ConsistencyTest {
 
         Instant start = Instant.now();
 
-        BenchmarkingUtils.initAndWaitForMessageProducersToCompleteWithDedicatedExecutors(BenchmarkingUtils.constantWindowMessageSender(CYCLES/3, worker, Duration.ofNanos(10000)),
-                                                                                         BenchmarkingUtils.constantWindowMessageSender(CYCLES/3, worker, Duration.ofNanos(500000)),
-                                                                                         BenchmarkingUtils.constantWindowMessageSender(CYCLES/3, worker, Duration.ofNanos(5000)));
+        BenchmarkingUtils.initAndWaitForMessageProducersToCompleteWithDedicatedExecutors(BenchmarkingUtils.nonStopMessageSender(CYCLES/3, worker), //Duration.ofNanos(10000)),
+                                                                                         BenchmarkingUtils.nonStopMessageSender(CYCLES/3, worker), //Duration.ofNanos(500000)),
+                                                                                         BenchmarkingUtils.nonStopMessageSender(CYCLES/3, worker)); //, Duration.ofNanos(5000)));
 
         System.err.println("Completed in " + ChronoUnit.SECONDS.between(start, Instant.now()));
 
@@ -78,7 +78,7 @@ public class ConsistencyTest {
                                     .setDispatcherName(dispatcher)
                                     .build();
             this.reActions = ReActions.newBuilder()
-                                      .reAct(Long.class, this::onPayload)
+                                      .reAct(ReActedMessage.LongMessage.class, this::onPayload)
                                       .reAct(ReActorStop.class, this::onStop)
                                       .build();
         }
@@ -88,14 +88,14 @@ public class ConsistencyTest {
         private void onStop(ReActorContext reActorContext, ReActorStop stopCrunching) {
             reActorContext.stop();
         }
-        private void onPayload(ReActorContext ctx, Long payLoad) {
+        private void onPayload(ReActorContext ctx, ReActedMessage.LongMessage payLoad) {
             if (marker != 0) {
                 System.err.println("CRITIC!");
                 System.exit(1);
             }
             marker = 1;
             counter++;
-            BenchmarkingUtils.nanoSleep(100);
+            //BenchmarkingUtils.nanoSleep(100);
             if (marker != 1) {
                 System.err.println("CRITIC!");
                 System.exit(2);
