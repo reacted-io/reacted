@@ -20,7 +20,7 @@ public class CQDeserializer implements Deserializer {
 
     public CQDeserializer() {  }
 
-    CQDeserializer setDeserializerInput(WireIn input) { this.input = input; return this; }
+    public CQDeserializer setDeserializerInput(WireIn input) {this.input = input; return this; }
 
     @Override
     public <T extends Enum<T>> T getEnum(Class<T> type) { return input.read().asEnum(type); }

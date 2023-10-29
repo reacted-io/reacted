@@ -104,7 +104,8 @@ public class CQRemoteDriver extends RemotingDriver<CQRemoteDriverConfig> {
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {
         Pauser readPauser = Pauser.balanced();
         try(DocumentContext documentContext = cqTailer.readingDocument()) {
-            Deserializer deserializer = new CQDeserializer(Objects.requireNonNull(documentContext.wire()));
+            CQDeserializer deserializer = new CQDeserializer();
+            deserializer.setDeserializerInput(Objects.requireNonNull(documentContext.wire()));
             while (!Thread.currentThread()
                           .isInterrupted() && !chronicle.isClosed()) {
                 try {

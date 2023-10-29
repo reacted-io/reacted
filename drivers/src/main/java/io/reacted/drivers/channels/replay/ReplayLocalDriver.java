@@ -125,7 +125,8 @@ public class ReplayLocalDriver extends LocalDriver<CQLocalDriverConfig> {
             while (!Thread.currentThread()
                           .isInterrupted() && !chronicle.isClosed()) {
                 try {
-                    if (chronicleReader.readDocument(reader)
+                    if (chronicleReader.readDocument(reader) &&
+                        documentContext.isPresent()) {
                         readMessage(deserializer, localReActorSystem, emptyMap, dstToMessageBySeqNum);
                         pauser.reset();
                     } else {

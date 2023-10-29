@@ -34,6 +34,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -58,7 +59,7 @@ public class ReActorContext {
     private final Set<ReActorRef> children;
     private final ReActorRef parent;
     private final Dispatcher dispatcher;
-    private boolean isNaiveScheduled;
+    private final AtomicBoolean isScheduled;
     private final ReadWriteLock structuralLock;
     private final CompletionStage<Void> hierarchyTermination;
     private final AtomicLong msgExecutionId;
@@ -80,7 +81,7 @@ public class ReActorContext {
         this.children = ConcurrentHashMap.newKeySet();
         this.parent = Objects.requireNonNull(reActorCtxBuilder.parent);
         this.dispatcher = Objects.requireNonNull(reActorCtxBuilder.dispatcher);
-        this.isNaiveScheduled = false;
+        this.isScheduled = new AtomicBoolean(false);
         this.structuralLock = new ReentrantReadWriteLock();
         this.typedSubscriptions = Objects.requireNonNull(reActorCtxBuilder.typedSubscriptions).length == 0
                                   ? TypedSubscription.NO_SUBSCRIPTIONS
