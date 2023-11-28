@@ -25,6 +25,7 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import net.openhft.chronicle.queue.ChronicleQueue;
+import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.RollCycles;
 import net.openhft.chronicle.threads.Pauser;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -42,9 +44,10 @@ import java.util.concurrent.CompletionStage;
 @NonNullByDefault
 public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     private static final Logger LOGGER = LoggerFactory.getLogger(CQLocalDriver.class);
-    private final ThreadLocal<Serializer> serializerThreadLocal = ThreadLocal.withInitial(() -> null);
+    private final ThreadLocal<CQSerializer> localSerializer = ThreadLocal.withInitial(CQSerializer::new);
     @Nullable
     private ChronicleQueue chronicle;
+    private final ThreadLocal<ExcerptAppender> localAppender = ThreadLocal.withInitial(() -> chronicle.createAppender());
     @Nullable
     private ExcerptTailer cqTailer;
 
@@ -99,16 +102,14 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination, long seqNum,
                 ReActorSystemId reActorSystemId, AckingPolicy ackingPolicy, PayloadT message) {
         try {
-            Serializer serializer = serializerThreadLocal.get();
-            if (serializer == null) {
-                serializer = new CQSerializer(Objects.requireNonNull(chronicle.acquireAppender()
-                                                                              .wire()));
-                serializerThreadLocal.set(serializer);
+            CQSerializer serializer = localSerializer.get();
+            try(var ctx =  localAppender.get().acquireWritingDocument(false)) {
+                serializer.setSerializerOutput(Objects.requireNonNull(ctx.wire()));
+                writeMessage(serializer, source, destination, seqNum, reActorSystemId, ackingPolicy, message);
             }
-            writeMessage(serializer, source, destination, seqNum, reActorSystemId,
-                         ackingPolicy, message);
             return DeliveryStatus.SENT;
         } catch (Exception anyException) {
+            LOGGER.error("ERROR SENDING MESSAGE:", anyException);
             getLocalReActorSystem().logError("Unable to send message {}", message, anyException);
             return DeliveryStatus.NOT_SENT;
         }
@@ -116,30 +117,25 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
 
     @Override
     public CompletionStage<Try<Void>> cleanDriverLoop() {
+        Optional.ofNullable(localAppender.get()).ifPresent(ExcerptAppender::close);
         return CompletableFuture.completedFuture(Try.ofRunnable(() -> Objects.requireNonNull(chronicle).close()));
     }
 
     private void chronicleMainLoop(ExcerptTailer tailer) {
         var waitForNextMsg = Pauser.balanced();
-        try(DocumentContext documentContext = tailer.readingDocument()) {
-            var deserializer = new CQDeserializer();
-            ReadMarshallable reader = wireIn -> {
-                deserializer.setDeserializerInput(wireIn);
-                readMessage(deserializer);
-            };
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    tailer.readDocument(reader);
-                    if (documentContext.isPresent()) {
-                        readMessage(deserializer);
-                        waitForNextMsg.reset();
-                    } else {
-                        waitForNextMsg.pause();
-                    }
+        var deserializer = new CQDeserializer();
+        while (!Thread.currentThread().isInterrupted()) {
+            try(var ctx = tailer.readingDocument(false)) {
+                if (!ctx.isPresent()) {
+                    waitForNextMsg.pause();
+                } else {
+                    deserializer.setDeserializerInput(Objects.requireNonNull(ctx.wire()));
+                    readMessage(deserializer);
+                    waitForNextMsg.reset();
                 }
-                catch (Exception anyException) {
-                    LOGGER.error("Unable to decode data", anyException);
-                }
+            }
+            catch (Exception anyException) {
+                LOGGER.error("Unable to decode data", anyException);
             }
         }
     }
@@ -164,12 +160,10 @@ public class CQLocalDriver extends LocalDriver<CQLocalDriverConfig> {
     }
 
     public static ReActorRef readReActorRef(Deserializer in) {
-        ReActorId reActorId = new ReActorId();
-        reActorId.decode(in);
-        ReActorSystemRef reActorSystemRef = new ReActorSystemRef();
-        reActorSystemRef.decode(in);
-        return new ReActorRef(reActorId, reActorSystemRef)
-                .setHashCode(Objects.hash(reActorId, reActorSystemRef));
+        var ref = new ReActorRef();
+        ref.decode(in);
+        ref.setHashCode(Objects.hash(ref.getReActorId(), ref.getReActorSystemRef()));
+        return ref;
     }
     public static ReActorSystemId readReActorSystemId(Deserializer in) {
         ReActorSystemId reActorSystemId = new ReActorSystemId();

@@ -23,6 +23,7 @@ import io.reacted.patterns.NonNullByDefault;
 import io.reacted.patterns.Try;
 import io.reacted.patterns.UnChecked;
 import net.openhft.chronicle.queue.ChronicleQueue;
+import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
@@ -37,10 +38,11 @@ import static io.reacted.drivers.channels.chroniclequeue.CQLocalDriver.readReAct
 
 @NonNullByDefault
 public class CQRemoteDriver extends RemotingDriver<CQRemoteDriverConfig> {
-    private final ThreadLocal<Serializer> serializerThreadLocal = ThreadLocal.withInitial(() -> null);
-
+    private final ThreadLocal<CQSerializer> localSerializer = ThreadLocal.withInitial(CQSerializer::new);
     @Nullable
     private ChronicleQueue chronicle;
+
+    private final ThreadLocal<ExcerptAppender> localAppender = ThreadLocal.withInitial(() -> chronicle.createAppender());
     @Nullable
     private ExcerptTailer cqTailer;
 
@@ -91,14 +93,11 @@ public class CQRemoteDriver extends RemotingDriver<CQRemoteDriverConfig> {
     DeliveryStatus sendMessage(ReActorRef source, ReActorContext destinationCtx, ReActorRef destination,
                                long seqNum, ReActorSystemId reActorSystemId,
                                AckingPolicy ackingPolicy, PayloadT message) {
-        Serializer serializer = serializerThreadLocal.get();
-        if (serializer == null) {
-            serializer = new CQSerializer(Objects.requireNonNull(chronicle.acquireAppender()
-                                                                          .wire()));
-            serializerThreadLocal.set(serializer);
+        CQSerializer serializer = localSerializer.get();
+        try(var ctx =  localAppender.get().acquireWritingDocument(false)) {
+            serializer.setSerializerOutput(Objects.requireNonNull(ctx.wire()));
+            return sendMessage(getLocalReActorSystem(), serializer, source, destination, seqNum, ackingPolicy, message);
         }
-        return sendMessage(getLocalReActorSystem(), serializer,
-                           source, destination, seqNum, ackingPolicy, message);
     }
 
     private void cqRemoteDriverMainLoop(ExcerptTailer cqTailer, ChronicleQueue chronicle) {

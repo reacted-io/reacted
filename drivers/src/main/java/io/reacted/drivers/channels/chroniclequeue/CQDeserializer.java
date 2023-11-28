@@ -13,6 +13,7 @@ import io.reacted.patterns.NonNullByDefault;
 import net.openhft.chronicle.wire.WireIn;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 @NonNullByDefault
 public class CQDeserializer implements Deserializer {

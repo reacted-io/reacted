@@ -248,10 +248,15 @@ public class ReActorSystem {
      * @param args             Arguments for Sl4j
      */
     public void logError(String errorDescription, Serializable ...args) {
-        if (getSystemLogger().publish(getSystemSink(), new ReActedError(errorDescription, args))
-                             .isNotSent()) {
+        try {
+            if (getSystemLogger().publish(getSystemSink(), new ReActedError(errorDescription, args))
+                                 .isNotSent()) {
                 LOGGER.error("Unable to log error: {}", errorDescription);
                 LOGGER.error(errorDescription, (Object) args);
+            }
+        } catch (Exception anyException) {
+            LOGGER.error("CRITIC! Nested exception while logging an error! ", anyException);
+            LOGGER.error("Original error:", (Object[]) args);
         }
     }
 

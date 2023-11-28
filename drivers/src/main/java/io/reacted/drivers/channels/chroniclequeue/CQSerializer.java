@@ -18,9 +18,6 @@ import java.io.Serializable;
 public class CQSerializer implements Serializer {
 
     private WireOut out;
-
-    CQSerializer(WireOut out) {setSerializerOutput(out);}
-
     CQSerializer setSerializerOutput(WireOut out) {
         this.out = out;
         return this;
